@@ -26,14 +26,12 @@ def seed_database():
 
         print("Seeding categories...")
 
-        # Create categories
+        # Create categories (aligned with v0.1 spec)
         categories = {
-            "Coffee": models.Category(name="Coffee"),
-            "Tea": models.Category(name="Tea"),
-            "Cold Beverages": models.Category(name="Cold Beverages"),
+            "South Indian": models.Category(name="South Indian"),
+            "North Indian": models.Category(name="North Indian"),
+            "Beverages": models.Category(name="Beverages"),
             "Snacks": models.Category(name="Snacks"),
-            "Breakfast": models.Category(name="Breakfast"),
-            "Meals": models.Category(name="Meals"),
             "Desserts": models.Category(name="Desserts"),
         }
 
@@ -49,193 +47,167 @@ def seed_database():
 
         print("Seeding menu items...")
 
-        # Create menu items (prices in paise: �80 = 8000 paise)
+        # Create menu items (prices in paise: ₹80 = 8000 paise)
         menu_items = [
-            # Coffee
+            # South Indian
             models.MenuItem(
-                name="Espresso",
-                description="Strong shot of Italian coffee",
-                price=6000,  # �60
-                category_id=categories["Coffee"].id,
+                name="Masala Dosa",
+                description="Crispy dosa with spiced potato filling",
+                price=8000,  # ₹80
+                category_id=categories["South Indian"].id,
             ),
             models.MenuItem(
-                name="Cappuccino",
-                description="Espresso with steamed milk and foam",
-                price=9000,  # �90
-                category_id=categories["Coffee"].id,
+                name="Plain Dosa",
+                description="Crispy rice crepe",
+                price=6000,  # ₹60
+                category_id=categories["South Indian"].id,
             ),
             models.MenuItem(
-                name="Latte",
-                description="Espresso with steamed milk",
-                price=10000,  # �100
-                category_id=categories["Coffee"].id,
+                name="Idli (2 pcs)",
+                description="Steamed rice cakes with sambhar and chutney",
+                price=5000,  # ₹50
+                category_id=categories["South Indian"].id,
             ),
             models.MenuItem(
-                name="Americano",
-                description="Espresso with hot water",
-                price=7000,  # �70
-                category_id=categories["Coffee"].id,
+                name="Medu Vada (2 pcs)",
+                description="Crispy lentil donuts",
+                price=5000,  # ₹50
+                category_id=categories["South Indian"].id,
             ),
             models.MenuItem(
-                name="Mocha",
-                description="Chocolate flavored coffee",
-                price=11000,  # �110
-                category_id=categories["Coffee"].id,
+                name="Rava Dosa",
+                description="Crispy semolina dosa",
+                price=7000,  # ₹70
+                category_id=categories["South Indian"].id,
             ),
-            # Tea
             models.MenuItem(
-                name="Masala Chai",
+                name="Uttapam",
+                description="Thick rice pancake with vegetables",
+                price=7000,  # ₹70
+                category_id=categories["South Indian"].id,
+            ),
+            # North Indian
+            models.MenuItem(
+                name="Chole Bhature",
+                description="Chickpea curry with fried bread",
+                price=10000,  # ₹100
+                category_id=categories["North Indian"].id,
+            ),
+            models.MenuItem(
+                name="Aloo Paratha",
+                description="Potato stuffed flatbread with curd",
+                price=8000,  # ₹80
+                category_id=categories["North Indian"].id,
+            ),
+            models.MenuItem(
+                name="Paneer Butter Masala",
+                description="Cottage cheese in rich tomato gravy",
+                price=14000,  # ₹140
+                category_id=categories["North Indian"].id,
+            ),
+            models.MenuItem(
+                name="Dal Makhani",
+                description="Black lentils in creamy sauce",
+                price=12000,  # ₹120
+                category_id=categories["North Indian"].id,
+            ),
+            models.MenuItem(
+                name="Rajma Chawal",
+                description="Kidney beans curry with rice",
+                price=10000,  # ₹100
+                category_id=categories["North Indian"].id,
+            ),
+            # Beverages
+            models.MenuItem(
+                name="Filter Coffee",
+                description="Traditional South Indian filter coffee",
+                price=4000,  # ₹40
+                category_id=categories["Beverages"].id,
+            ),
+            models.MenuItem(
+                name="Masala Tea",
                 description="Spiced Indian tea",
-                price=4000,  # �40
-                category_id=categories["Tea"].id,
+                price=2000,  # ₹20
+                category_id=categories["Beverages"].id,
             ),
-            models.MenuItem(
-                name="Green Tea",
-                description="Healthy green tea",
-                price=5000,  # �50
-                category_id=categories["Tea"].id,
-            ),
-            models.MenuItem(
-                name="Lemon Tea",
-                description="Refreshing tea with lemon",
-                price=5000,  # �50
-                category_id=categories["Tea"].id,
-            ),
-            # Cold Beverages
             models.MenuItem(
                 name="Cold Coffee",
                 description="Chilled coffee with ice cream",
-                price=12000,  # �120
-                category_id=categories["Cold Beverages"].id,
+                price=8000,  # ₹80
+                category_id=categories["Beverages"].id,
             ),
             models.MenuItem(
-                name="Iced Tea",
-                description="Chilled lemon iced tea",
-                price=8000,  # �80
-                category_id=categories["Cold Beverages"].id,
+                name="Lemon Soda",
+                description="Fresh lime with soda",
+                price=5000,  # ₹50
+                category_id=categories["Beverages"].id,
             ),
             models.MenuItem(
-                name="Fresh Lime Soda",
-                description="Tangy lime with soda",
-                price=6000,  # �60
-                category_id=categories["Cold Beverages"].id,
+                name="Buttermilk",
+                description="Refreshing spiced yogurt drink",
+                price=3000,  # ₹30
+                category_id=categories["Beverages"].id,
             ),
             models.MenuItem(
-                name="Mango Smoothie",
-                description="Fresh mango smoothie",
-                price=13000,  # �130
-                category_id=categories["Cold Beverages"].id,
+                name="Mango Lassi",
+                description="Sweet mango yogurt drink",
+                price=7000,  # ₹70
+                category_id=categories["Beverages"].id,
             ),
             # Snacks
             models.MenuItem(
                 name="Samosa (2 pcs)",
                 description="Crispy potato samosa",
-                price=4000,  # �40
+                price=3000,  # ₹30
                 category_id=categories["Snacks"].id,
             ),
             models.MenuItem(
                 name="Veg Sandwich",
                 description="Grilled vegetable sandwich",
-                price=8000,  # �80
-                category_id=categories["Snacks"].id,
-            ),
-            models.MenuItem(
-                name="Paneer Sandwich",
-                description="Grilled paneer sandwich",
-                price=10000,  # �100
+                price=6000,  # ₹60
                 category_id=categories["Snacks"].id,
             ),
             models.MenuItem(
                 name="French Fries",
                 description="Crispy golden fries",
-                price=7000,  # �70
+                price=6000,  # ₹60
                 category_id=categories["Snacks"].id,
             ),
             models.MenuItem(
                 name="Veg Pakora",
                 description="Assorted vegetable fritters",
-                price=8000,  # �80
+                price=7000,  # ₹70
                 category_id=categories["Snacks"].id,
             ),
-            # Breakfast
             models.MenuItem(
-                name="Poha",
-                description="Flattened rice with spices",
-                price=6000,  # �60
-                category_id=categories["Breakfast"].id,
-            ),
-            models.MenuItem(
-                name="Upma",
-                description="Semolina with vegetables",
-                price=6000,  # �60
-                category_id=categories["Breakfast"].id,
-            ),
-            models.MenuItem(
-                name="Idli Sambhar (3 pcs)",
-                description="Steamed rice cakes with sambhar",
-                price=8000,  # �80
-                category_id=categories["Breakfast"].id,
-            ),
-            models.MenuItem(
-                name="Masala Dosa",
-                description="Crispy dosa with potato filling",
-                price=9000,  # �90
-                category_id=categories["Breakfast"].id,
-            ),
-            models.MenuItem(
-                name="Aloo Paratha with Curd",
-                description="Potato stuffed flatbread",
-                price=10000,  # �100
-                category_id=categories["Breakfast"].id,
-            ),
-            # Meals
-            models.MenuItem(
-                name="Veg Thali",
-                description="Complete vegetarian meal",
-                price=15000,  # �150
-                category_id=categories["Meals"].id,
-            ),
-            models.MenuItem(
-                name="Dal Khichdi",
-                description="Rice and lentil comfort food",
-                price=12000,  # �120
-                category_id=categories["Meals"].id,
-            ),
-            models.MenuItem(
-                name="Chole Bhature",
-                description="Chickpea curry with fried bread",
-                price=14000,  # �140
-                category_id=categories["Meals"].id,
-            ),
-            models.MenuItem(
-                name="Paneer Butter Masala with Roti",
-                description="Rich paneer curry with flatbread",
-                price=16000,  # �160
-                category_id=categories["Meals"].id,
+                name="Paneer Tikka",
+                description="Grilled cottage cheese cubes",
+                price=12000,  # ₹120
+                category_id=categories["Snacks"].id,
             ),
             # Desserts
             models.MenuItem(
                 name="Gulab Jamun (2 pcs)",
-                description="Sweet milk dumplings",
-                price=6000,  # �60
+                description="Sweet milk dumplings in sugar syrup",
+                price=5000,  # ₹50
                 category_id=categories["Desserts"].id,
             ),
             models.MenuItem(
                 name="Ras Malai (2 pcs)",
                 description="Cottage cheese in sweet cream",
-                price=8000,  # �80
+                price=7000,  # ₹70
+                category_id=categories["Desserts"].id,
+            ),
+            models.MenuItem(
+                name="Gajar Halwa",
+                description="Carrot pudding with nuts",
+                price=6000,  # ₹60
                 category_id=categories["Desserts"].id,
             ),
             models.MenuItem(
                 name="Ice Cream",
                 description="Choose your flavor",
-                price=7000,  # �70
-                category_id=categories["Desserts"].id,
-            ),
-            models.MenuItem(
-                name="Brownie with Ice Cream",
-                description="Chocolate brownie with vanilla ice cream",
-                price=12000,  # �120
+                price=5000,  # ₹50
                 category_id=categories["Desserts"].id,
             ),
         ]

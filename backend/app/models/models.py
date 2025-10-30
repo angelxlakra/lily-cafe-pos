@@ -13,9 +13,9 @@ from app.db.session import Base
 class OrderStatus(str, enum.Enum):
     """Order status enumeration."""
 
-    ACTIVE = "active"  # Order is being prepared
-    COMPLETED = "completed"  # Order is ready/served
-    CANCELLED = "cancelled"  # Order was cancelled
+    ACTIVE = "active"  # Order saved, not yet paid
+    PAID = "paid"  # Bill generated, payment completed
+    CANCELED = "canceled"  # Order canceled by admin
 
 
 class PaymentMethod(str, enum.Enum):
