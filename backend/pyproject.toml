@@ -1,0 +1,145 @@
+# pyproject.toml for Lily Cafe POS System Backend
+
+[project]
+name = "lily-cafe-pos"
+version = "0.1.0"
+description = "Point of Sale system for Lily Cafe by Mary's Kitchen - Local-first restaurant management"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+keywords = ["restaurant", "pos", "point-of-sale", "fastapi", "cafe-management"]
+
+# Production dependencies
+dependencies = [
+    "fastapi>=0.104.1",
+    "uvicorn[standard]>=0.24.0",
+    "sqlalchemy>=2.0.23",
+    "pydantic>=2.5.0",
+    "python-multipart>=0.0.6",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "reportlab>=4.0.7",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.28.1",
+    "bcrypt>=5.0.0",
+]
+
+# Optional dependencies for different use cases
+[project.optional-dependencies]
+# Development dependencies
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "httpx>=0.25.0", # For testing FastAPI
+    "black>=23.9.0",
+    "ruff>=0.1.0",
+    "mypy>=1.6.0",
+]
+
+# Production optimization
+prod = [
+    "gunicorn>=21.2.0",  # For production WSGI server
+]
+
+# Future: Inventory management (v0.2+)
+inventory = [
+    "pandas>=2.1.0",
+]
+
+# Future: Advanced analytics (v0.3+)
+analytics = [
+    "pandas>=2.1.0",
+    "openpyxl>=3.1.0",  # Excel export
+]
+
+# Future: MCP server (v1.5+)
+mcp = [
+    "mcp>=0.1.0",  # When available
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Black configuration
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | __pycache__
+  | build
+  | dist
+)/
+'''
+
+# Ruff configuration (fast Python linter)
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]  # Unused imports in __init__ are okay
+
+# MyPy configuration (static type checking)
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Set to true when ready for strict typing
+ignore_missing_imports = true
+
+# Pytest configuration
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-ra",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+# Hatch configuration (build backend)
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+# Version source
+[tool.hatch.version]
+path = "app/__init__.py"
+
+# Scripts - convenient commands can be added here if needed
+# For now, use uv run commands directly:
+# uv run uvicorn app.main:app --reload
+# uv run python -m scripts.seed_data
+
+# URLs for project
+[project.urls]
+Homepage = "https://github.com/yourusername/lily-cafe-pos"
+Documentation = "https://github.com/yourusername/lily-cafe-pos#readme"
+Repository = "https://github.com/yourusername/lily-cafe-pos"
+Issues = "https://github.com/yourusername/lily-cafe-pos/issues"

@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+/* Custom theme configuration for Lily Cafe */
+@theme {
+  /* Coffee theme colors */
+  --color-coffee-brown: #6F4E37;
+  --color-coffee-dark: #4A3728;
+  --color-coffee-light: #A0826D;
+
+  --color-cream: #F5E6D3;
+  --color-off-white: #FAF8F5;
+
+  --color-lily-green: #8B9D83;
+
+  /* Functional colors */
+  --color-success: #4CAF50;
+  --color-error: #F44336;
+  --color-warning: #FF9800;
+  --color-info: #2196F3;
+
+  /* Neutral colors */
+  --color-neutral-text-dark: #2C2420;
+  --color-neutral-text-light: #6B5D54;
+  --color-neutral-border: #D4C4B0;
+  --color-neutral-background: #FFFCF7;
+
+  /* Custom fonts */
+  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+
+  /* Custom spacing (8px grid) */
+  --spacing-18: 4.5rem;
+  --spacing-88: 22rem;
+
+  /* Touch-friendly minimums (48px = 3rem) */
+  --min-height-touch: 3rem;
+  --min-width-touch: 3rem;
+}
+
+/* Global styles */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--color-neutral-background);
+  color: var(--color-neutral-text-dark);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom utilities for touch targets */
+@utility btn {
+  min-height: var(--min-height-touch);
+  min-width: var(--min-width-touch);
+  padding-inline: 1rem;
+  padding-block: 0.5rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}

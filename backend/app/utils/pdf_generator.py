@@ -1,0 +1,171 @@
+"""
+PDF receipt generator for Lily Cafe POS System.
+Generates thermal printer-compatible receipts (80mm width).
+"""
+
+from reportlab.lib.pagesizes import mm
+from reportlab.lib.units import mm as mm_unit
+from reportlab.pdfgen import canvas
+from reportlab.lib.styles import getSampleStyleSheet
+from app.core.config import settings
+from app.models import models
+from datetime import datetime
+from typing import BinaryIO
+
+
+# 80mm thermal printer width
+RECEIPT_WIDTH = 80 * mm_unit
+RECEIPT_HEIGHT = 297 * mm_unit  # A4 height, will be cut as needed
+
+
+def format_currency(amount_in_paise: int) -> str:
+    """
+    Format currency in paise to rupees.
+
+    Args:
+        amount_in_paise: Amount in paise (e.g., 8000 for �80)
+
+    Returns:
+        Formatted string (e.g., "�80.00")
+    """
+    rupees = amount_in_paise / 100
+    return f"�{rupees:.2f}"
+
+
+def generate_receipt(order: models.Order, output: BinaryIO):
+    """
+    Generate a PDF receipt for an order.
+
+    Args:
+        order: Order object with all related data
+        output: Binary file-like object to write PDF to
+    """
+    c = canvas.Canvas(output, pagesize=(RECEIPT_WIDTH, RECEIPT_HEIGHT))
+
+    # Starting position
+    y_position = RECEIPT_HEIGHT - 10 * mm_unit
+    line_height = 5 * mm_unit
+    x_center = RECEIPT_WIDTH / 2
+    x_left = 5 * mm_unit
+    x_right = RECEIPT_WIDTH - 5 * mm_unit
+
+    # Helper function to draw centered text
+    def draw_centered(text, y, font="Helvetica", size=10):
+        c.setFont(font, size)
+        text_width = c.stringWidth(text, font, size)
+        c.drawString(x_center - text_width / 2, y, text)
+
+    # Helper function to draw left-aligned text
+    def draw_left(text, y, font="Helvetica", size=9):
+        c.setFont(font, size)
+        c.drawString(x_left, y, text)
+
+    # Helper function to draw right-aligned text
+    def draw_right(text, y, font="Helvetica", size=9):
+        c.setFont(font, size)
+        text_width = c.stringWidth(text, font, size)
+        c.drawString(x_right - text_width, y, text)
+
+    # Header - Restaurant Name
+    draw_centered(settings.RESTAURANT_NAME, y_position, "Helvetica-Bold", 14)
+    y_position -= line_height
+
+    # Restaurant Address
+    draw_centered(settings.RESTAURANT_ADDRESS_LINE1, y_position, "Helvetica", 8)
+    y_position -= line_height * 0.8
+    draw_centered(settings.RESTAURANT_ADDRESS_LINE2, y_position, "Helvetica", 8)
+    y_position -= line_height * 0.8
+    draw_centered(
+        f"Tel: {settings.RESTAURANT_PHONE} | {settings.RESTAURANT_EMAIL}",
+        y_position,
+        "Helvetica",
+        8,
+    )
+    y_position -= line_height * 0.8
+    draw_centered(f"GSTIN: {settings.RESTAURANT_GSTIN}", y_position, "Helvetica", 8)
+    y_position -= line_height * 1.2
+
+    # Separator line
+    c.line(x_left, y_position, x_right, y_position)
+    y_position -= line_height
+
+    # Order Details
+    draw_left(f"Order No: {order.order_number}", y_position, "Helvetica-Bold", 10)
+    y_position -= line_height * 0.8
+    draw_left(f"Table: {order.table_number}", y_position)
+    y_position -= line_height * 0.8
+    if order.customer_name:
+        draw_left(f"Customer: {order.customer_name}", y_position)
+        y_position -= line_height * 0.8
+    draw_left(
+        f"Date: {order.created_at.strftime('%d-%m-%Y %I:%M %p')}", y_position
+    )
+    y_position -= line_height * 1.2
+
+    # Separator line
+    c.line(x_left, y_position, x_right, y_position)
+    y_position -= line_height
+
+    # Items Header
+    draw_left("Item", y_position, "Helvetica-Bold", 9)
+    draw_right("Amount", y_position, "Helvetica-Bold", 9)
+    y_position -= line_height * 0.8
+
+    # Order Items
+    for item in order.order_items:
+        # Item name
+        item_text = f"{item.quantity}x {item.menu_item_name}"
+        draw_left(item_text, y_position)
+        y_position -= line_height * 0.8
+
+        # Item price
+        price_text = f"{format_currency(item.unit_price)}"
+        amount_text = f"{format_currency(item.subtotal)}"
+        draw_left(f"    @ {price_text}", y_position, "Helvetica", 8)
+        draw_right(amount_text, y_position)
+        y_position -= line_height * 1.2
+
+    # Separator line
+    c.line(x_left, y_position, x_right, y_position)
+    y_position -= line_height
+
+    # Subtotal
+    draw_left("Subtotal:", y_position)
+    draw_right(format_currency(order.subtotal), y_position)
+    y_position -= line_height * 0.8
+
+    # GST
+    draw_left(f"GST ({settings.GST_RATE}%):", y_position)
+    draw_right(format_currency(order.gst_amount), y_position)
+    y_position -= line_height * 1.2
+
+    # Total (Bold)
+    draw_left("TOTAL:", y_position, "Helvetica-Bold", 11)
+    draw_right(format_currency(order.total_amount), y_position, "Helvetica-Bold", 11)
+    y_position -= line_height * 1.5
+
+    # Separator line
+    c.line(x_left, y_position, x_right, y_position)
+    y_position -= line_height
+
+    # Payments
+    if order.payments:
+        draw_left("Payments:", y_position, "Helvetica-Bold", 9)
+        y_position -= line_height * 0.8
+
+        for payment in order.payments:
+            method_name = payment.payment_method.value.upper()
+            draw_left(f"{method_name}:", y_position)
+            draw_right(format_currency(payment.amount), y_position)
+            y_position -= line_height * 0.8
+
+        y_position -= line_height * 0.5
+
+    # Footer
+    y_position -= line_height
+    draw_centered("Thank you for visiting!", y_position, "Helvetica-Bold", 10)
+    y_position -= line_height * 0.8
+    draw_centered("Please visit again!", y_position, "Helvetica", 8)
+
+    # Save PDF
+    c.save()
