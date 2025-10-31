@@ -6,11 +6,13 @@ Provides test database, client, and authentication utilities.
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.db.base import Base  # Import Base with all models registered
-from app.db.session import get_db  # Import the actual get_db function
+from app.db.session import get_db
+from app.api.deps import get_db as deps_get_db
 from app.core.security import create_access_token
 from app.models import models
 
@@ -46,9 +48,37 @@ def test_db():
 
 
 @pytest.fixture(scope="function")
+def db_session():
+    """
+    Alternative fixture name for database session (used by main branch tests).
+    Create a fresh database session for each test.
+    """
+    # Create in-memory SQLite database with StaticPool
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    # Create all tables
+    Base.metadata.create_all(bind=engine)
+
+    # Create session factory
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    db = TestingSessionLocal()
+
+    try:
+        yield db
+    finally:
+        db.close()
+        Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture(scope="function")
 def client(test_db):
     """
     Create a test client with overridden database dependency.
+    Uses test_db fixture for compatibility with ang-35 tests.
     """
     def override_get_db():
         try:
@@ -70,8 +100,28 @@ def client(test_db):
 
 
 @pytest.fixture
-def auth_token():
-    """Generate a valid JWT token for testing protected endpoints."""
+def admin_credentials():
+    """Admin login credentials."""
+    return {"username": "admin", "password": "changeme123"}
+
+
+@pytest.fixture
+def auth_token(client, admin_credentials):
+    """
+    Get a valid JWT token for testing protected endpoints.
+    Authenticates via the login endpoint (realistic approach).
+    """
+    response = client.post("/api/v1/auth/login", json=admin_credentials)
+    assert response.status_code == 200
+    return response.json()["access_token"]
+
+
+@pytest.fixture
+def auth_token_direct():
+    """
+    Generate a valid JWT token directly for testing protected endpoints.
+    Alternative to auth_token that doesn't require API call.
+    """
     return create_access_token(data={"sub": "admin"})
 
 
@@ -82,13 +132,44 @@ def auth_headers(auth_token):
 
 
 # ============================================================================
-# Test Data Fixtures
+# Test Data Fixtures - Main Branch Style (Single Items)
+# ============================================================================
+
+
+@pytest.fixture
+def sample_category(db_session):
+    """Create a sample category for testing (main branch fixture)."""
+    category = models.Category(name="Beverages")
+    db_session.add(category)
+    db_session.commit()
+    db_session.refresh(category)
+    return category
+
+
+@pytest.fixture
+def sample_menu_item(db_session, sample_category):
+    """Create a sample menu item for testing (main branch fixture)."""
+    item = models.MenuItem(
+        name="Filter Coffee",
+        description="South Indian filter coffee",
+        price=4000,  # ₹40 in paise
+        category_id=sample_category.id,
+        is_available=True,
+    )
+    db_session.add(item)
+    db_session.commit()
+    db_session.refresh(item)
+    return item
+
+
+# ============================================================================
+# Test Data Fixtures - ANG-35 Style (Multiple Items)
 # ============================================================================
 
 
 @pytest.fixture
 def sample_categories(test_db):
-    """Create sample categories for testing."""
+    """Create sample categories for testing (ang-35 fixture)."""
     categories = [
         models.Category(name="South Indian"),
         models.Category(name="North Indian"),
@@ -110,7 +191,7 @@ def sample_categories(test_db):
 
 @pytest.fixture
 def sample_menu_items(test_db, sample_categories):
-    """Create sample menu items for testing."""
+    """Create sample menu items for testing (ang-35 fixture)."""
     menu_items = [
         models.MenuItem(
             name="Masala Dosa",
@@ -148,7 +229,7 @@ def sample_menu_items(test_db, sample_categories):
 
 @pytest.fixture
 def sample_order(test_db, sample_menu_items):
-    """Create a sample order for testing."""
+    """Create a sample order for testing (ang-35 fixture)."""
     order = models.Order(
         order_number="ORD-20241031-0001",
         table_number=5,
@@ -195,7 +276,7 @@ def sample_order(test_db, sample_menu_items):
 
 
 # ============================================================================
-# Helper Functions
+# Helper Functions / Factory Fixtures
 # ============================================================================
 
 
