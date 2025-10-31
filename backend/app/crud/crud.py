@@ -119,16 +119,38 @@ def delete_menu_item(db: Session, item_id: int) -> bool:
 # ============================================================================
 
 
-def generate_order_number() -> str:
+def generate_order_number(db: Session) -> str:
     """
-    Generate order number in format: ORD-YYYYMMDD-####
+    Generate sequential order number in format: ORD-YYYYMMDD-####
     Example: ORD-20250130-0001
+
+    Order numbers reset daily. The sequence increments for each order
+    created on the same day.
     """
-    today = date.today().strftime("%Y%m%d")
-    # In a production system, you'd query the database for the last order number
-    # For now, use timestamp-based unique number
-    time_suffix = datetime.now().strftime("%H%M%S")
-    return f"ORD-{today}-{time_suffix}"
+    today = date.today()
+    today_str = today.strftime("%Y%m%d")
+
+    # Get the last order created today
+    last_order = (
+        db.query(models.Order)
+        .filter(func.date(models.Order.created_at) == today)
+        .order_by(models.Order.created_at.desc())
+        .first()
+    )
+
+    if last_order and last_order.order_number.startswith(f"ORD-{today_str}-"):
+        # Extract the sequence number and increment
+        try:
+            last_seq = int(last_order.order_number.split("-")[-1])
+            new_seq = last_seq + 1
+        except (ValueError, IndexError):
+            # If parsing fails, start from 1
+            new_seq = 1
+    else:
+        # First order of the day
+        new_seq = 1
+
+    return f"ORD-{today_str}-{new_seq:04d}"
 
 
 def get_orders(
@@ -194,28 +216,177 @@ def get_active_order_for_table(db: Session, table_number: int) -> Optional[model
 
 def create_order(db: Session, order: schemas.OrderCreate) -> models.Order:
     """
-    Create a new order with order items.
+    Create a new order OR update existing active order (smart logic).
+
+    This implements "upsert" behavior:
+    - If table has an active order: Update it with new items
+    - If table is empty: Create a new order
+
+    This allows waiters to keep adding items to a table without worrying
+    about whether to create or update.
 
     Args:
         db: Database session
         order: Order creation data
 
     Returns:
-        Created order with all items
+        Created or updated order with all items
 
     Raises:
         ValueError: If any menu item is not found or not available
     """
     # Check if table already has an active order
     existing_order = get_active_order_for_table(db, order.table_number)
+
     if existing_order:
-        raise ValueError(f"Table {order.table_number} already has an active order")
+        # Update existing order: delete old items and add new ones
+        # This is simpler than merging items and matches the waiter workflow
+        for old_item in existing_order.order_items:
+            db.delete(old_item)
+        db.flush()  # Flush deletes before adding new items
 
-    # Calculate totals
+        # Now add new items to existing order
+        subtotal = 0
+        for item in order.items:
+            # Get menu item
+            menu_item = get_menu_item(db, item.menu_item_id)
+            if not menu_item:
+                raise ValueError(f"Menu item {item.menu_item_id} not found")
+            if not menu_item.is_available:
+                raise ValueError(f"Menu item '{menu_item.name}' is not available")
+
+            # Calculate item subtotal
+            item_subtotal = menu_item.price * item.quantity
+            subtotal += item_subtotal
+
+            # Create new order item
+            new_order_item = models.OrderItem(
+                order_id=existing_order.id,
+                menu_item_id=menu_item.id,
+                menu_item_name=menu_item.name,
+                quantity=item.quantity,
+                unit_price=menu_item.price,
+                subtotal=item_subtotal,
+            )
+            db.add(new_order_item)
+
+        # Recalculate totals
+        gst_amount = int(subtotal * settings.GST_RATE / 100)
+        total_amount = subtotal + gst_amount
+
+        existing_order.subtotal = subtotal
+        existing_order.gst_amount = gst_amount
+        existing_order.total_amount = total_amount
+        existing_order.updated_at = datetime.utcnow()
+
+        # Update customer name if provided
+        if order.customer_name:
+            existing_order.customer_name = order.customer_name
+
+        db.commit()
+        db.refresh(existing_order)
+        return existing_order
+
+    else:
+        # Create new order
+        subtotal = 0
+        order_items = []
+
+        for item in order.items:
+            # Get menu item
+            menu_item = get_menu_item(db, item.menu_item_id)
+            if not menu_item:
+                raise ValueError(f"Menu item {item.menu_item_id} not found")
+            if not menu_item.is_available:
+                raise ValueError(f"Menu item '{menu_item.name}' is not available")
+
+            # Calculate item subtotal
+            item_subtotal = menu_item.price * item.quantity
+            subtotal += item_subtotal
+
+            # Create order item with snapshot data
+            order_items.append(
+                models.OrderItem(
+                    menu_item_id=menu_item.id,
+                    menu_item_name=menu_item.name,
+                    quantity=item.quantity,
+                    unit_price=menu_item.price,
+                    subtotal=item_subtotal,
+                )
+            )
+
+        # Calculate GST
+        gst_amount = int(subtotal * settings.GST_RATE / 100)
+        total_amount = subtotal + gst_amount
+
+        # Create order
+        db_order = models.Order(
+            order_number=generate_order_number(db),
+            table_number=order.table_number,
+            customer_name=order.customer_name,
+            subtotal=subtotal,
+            gst_amount=gst_amount,
+            total_amount=total_amount,
+            status=models.OrderStatus.ACTIVE,
+            order_items=order_items,
+        )
+
+        db.add(db_order)
+        db.commit()
+        db.refresh(db_order)
+        return db_order
+
+
+def update_order(
+    db: Session, order_id: int, order: schemas.OrderUpdate
+) -> Optional[models.Order]:
+    """Update an existing order (status/metadata only)."""
+    db_order = get_order(db, order_id)
+    if not db_order:
+        return None
+
+    update_data = order.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_order, field, value)
+
+    db_order.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(db_order)
+    return db_order
+
+
+def admin_edit_order(
+    db: Session, order_id: int, order_update: schemas.OrderItemsUpdate
+) -> Optional[models.Order]:
+    """
+    Admin function to edit order items and recalculate totals.
+
+    This replaces all items in the order with the new items provided.
+    Used by admin to fix order mistakes or make changes requested by customers.
+
+    Args:
+        db: Database session
+        order_id: Order ID to edit
+        order_update: New order items and optional customer name
+
+    Returns:
+        Updated order with new items, or None if order not found
+
+    Raises:
+        ValueError: If any menu item is not found or not available
+    """
+    db_order = get_order(db, order_id)
+    if not db_order:
+        return None
+
+    # Delete existing order items
+    for old_item in db_order.order_items:
+        db.delete(old_item)
+    db.flush()  # Flush deletes before adding new items
+
+    # Add new items
     subtotal = 0
-    order_items = []
-
-    for item in order.items:
+    for item in order_update.items:
         # Get menu item
         menu_item = get_menu_item(db, item.menu_item_id)
         if not menu_item:
@@ -227,51 +398,61 @@ def create_order(db: Session, order: schemas.OrderCreate) -> models.Order:
         item_subtotal = menu_item.price * item.quantity
         subtotal += item_subtotal
 
-        # Create order item with snapshot data
-        order_items.append(
-            models.OrderItem(
-                menu_item_id=menu_item.id,
-                menu_item_name=menu_item.name,
-                quantity=item.quantity,
-                unit_price=menu_item.price,
-                subtotal=item_subtotal,
-            )
+        # Create new order item
+        new_order_item = models.OrderItem(
+            order_id=db_order.id,
+            menu_item_id=menu_item.id,
+            menu_item_name=menu_item.name,
+            quantity=item.quantity,
+            unit_price=menu_item.price,
+            subtotal=item_subtotal,
         )
+        db.add(new_order_item)
 
-    # Calculate GST
+    # Recalculate totals
     gst_amount = int(subtotal * settings.GST_RATE / 100)
     total_amount = subtotal + gst_amount
 
-    # Create order
-    db_order = models.Order(
-        order_number=generate_order_number(),
-        table_number=order.table_number,
-        customer_name=order.customer_name,
-        subtotal=subtotal,
-        gst_amount=gst_amount,
-        total_amount=total_amount,
-        status=models.OrderStatus.ACTIVE,
-        order_items=order_items,
-    )
+    db_order.subtotal = subtotal
+    db_order.gst_amount = gst_amount
+    db_order.total_amount = total_amount
+    db_order.updated_at = datetime.utcnow()
 
-    db.add(db_order)
+    # Update customer name if provided
+    if order_update.customer_name:
+        db_order.customer_name = order_update.customer_name
+
     db.commit()
     db.refresh(db_order)
     return db_order
 
 
-def update_order(
-    db: Session, order_id: int, order: schemas.OrderUpdate
-) -> Optional[models.Order]:
-    """Update an existing order."""
+def cancel_order(db: Session, order_id: int) -> Optional[models.Order]:
+    """
+    Cancel an order (soft delete - sets status to CANCELED).
+
+    Canceled orders remain in the database for record keeping but are
+    not shown in active orders. They also don't appear in order history.
+
+    Args:
+        db: Database session
+        order_id: Order ID to cancel
+
+    Returns:
+        Canceled order, or None if order not found
+
+    Raises:
+        ValueError: If order is already paid (cannot cancel paid orders)
+    """
     db_order = get_order(db, order_id)
     if not db_order:
         return None
 
-    update_data = order.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(db_order, field, value)
+    # Don't allow canceling paid orders
+    if db_order.status == models.OrderStatus.PAID:
+        raise ValueError("Cannot cancel a paid order")
 
+    db_order.status = models.OrderStatus.CANCELED
     db_order.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(db_order)
@@ -323,10 +504,10 @@ def create_payment(
     db.commit()
     db.refresh(db_payment)
 
-    # If order is fully paid, mark as completed
+    # If order is fully paid, mark as paid
     total_paid += payment.amount
     if total_paid >= order.total_amount:
-        order.status = models.OrderStatus.COMPLETED
+        order.status = models.OrderStatus.PAID
         order.updated_at = datetime.utcnow()
         db.commit()
 

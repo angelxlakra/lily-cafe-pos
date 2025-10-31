@@ -11,8 +11,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.db.base import Base  # Import Base with all models registered
-from app.db.session import get_db
-from app.api.deps import get_db as deps_get_db
+from app.api.deps import get_db  # Import get_db from deps (used by endpoints)
 from app.core.security import create_access_token
 from app.models import models
 
@@ -72,6 +71,14 @@ def db_session():
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture(scope="function")
+def db(test_db):
+    """
+    Alias for test_db to support ang-36 tests.
+    """
+    return test_db
 
 
 @pytest.fixture(scope="function")
@@ -163,13 +170,13 @@ def sample_menu_item(db_session, sample_category):
 
 
 # ============================================================================
-# Test Data Fixtures - ANG-35 Style (Multiple Items)
+# Test Data Fixtures - ANG-35/ANG-36 Style (Multiple Items)
 # ============================================================================
 
 
 @pytest.fixture
 def sample_categories(test_db):
-    """Create sample categories for testing (ang-35 fixture)."""
+    """Create sample categories for testing (ang-35/ang-36 fixture)."""
     categories = [
         models.Category(name="South Indian"),
         models.Category(name="North Indian"),
@@ -191,7 +198,7 @@ def sample_categories(test_db):
 
 @pytest.fixture
 def sample_menu_items(test_db, sample_categories):
-    """Create sample menu items for testing (ang-35 fixture)."""
+    """Create sample menu items for testing (ang-35/ang-36 fixture)."""
     menu_items = [
         models.MenuItem(
             name="Masala Dosa",
@@ -229,7 +236,7 @@ def sample_menu_items(test_db, sample_categories):
 
 @pytest.fixture
 def sample_order(test_db, sample_menu_items):
-    """Create a sample order for testing (ang-35 fixture)."""
+    """Create a sample order for testing (ang-35/ang-36 fixture)."""
     order = models.Order(
         order_number="ORD-20241031-0001",
         table_number=5,

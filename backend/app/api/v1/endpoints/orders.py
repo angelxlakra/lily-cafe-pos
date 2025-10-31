@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app import schemas, crud
 from app.models.models import OrderStatus
-from app.api.deps import get_db
+from app.api.deps import get_db, get_current_user
 
 router = APIRouter()
 
@@ -16,6 +16,16 @@ router = APIRouter()
 # ============================================================================
 # Order Routes
 # ============================================================================
+
+
+@router.get("/active", response_model=List[schemas.Order])
+def list_active_orders(db: Session = Depends(get_db)):
+    """
+    Get all active (unpaid) orders.
+
+    This endpoint is used by waiters to see all ongoing orders across all tables.
+    """
+    return crud.get_orders(db, status=OrderStatus.ACTIVE)
 
 
 @router.get("", response_model=List[schemas.Order])
@@ -66,11 +76,55 @@ def update_order(
     order: schemas.OrderUpdate,
     db: Session = Depends(get_db),
 ):
-    """Update an order (e.g., change status)."""
+    """Update an order (e.g., change status, customer name)."""
     updated_order = crud.update_order(db, order_id, order)
     if not updated_order:
         raise HTTPException(status_code=404, detail="Order not found")
     return updated_order
+
+
+@router.put("/{order_id}", response_model=schemas.Order)
+def admin_edit_order(
+    order_id: int,
+    order_update: schemas.OrderItemsUpdate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Admin endpoint to edit order items and recalculate totals.
+
+    Requires authentication. Replaces all items in the order.
+    Used to fix order mistakes or handle customer change requests.
+    """
+    try:
+        updated_order = crud.admin_edit_order(db, order_id, order_update)
+        if not updated_order:
+            raise HTTPException(status_code=404, detail="Order not found")
+        return updated_order
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/{order_id}")
+def cancel_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Admin endpoint to cancel an order (soft delete).
+
+    Requires authentication. Sets order status to CANCELED.
+    Canceled orders remain in database for record keeping.
+    Cannot cancel orders that have already been paid.
+    """
+    try:
+        canceled_order = crud.cancel_order(db, order_id)
+        if not canceled_order:
+            raise HTTPException(status_code=404, detail="Order not found")
+        return {"message": "Order canceled successfully", "order_id": order_id}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/table/{table_number}/active", response_model=Optional[schemas.Order])
