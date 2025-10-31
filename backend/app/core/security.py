@@ -16,8 +16,8 @@ from app import schemas
 # Password hashing context (using bcrypt)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# JWT token security
-security = HTTPBearer()
+# JWT token security (auto_error=False to manually handle auth errors with 401)
+security = HTTPBearer(auto_error=False)
 
 # JWT Configuration
 ALGORITHM = "HS256"
@@ -123,7 +123,7 @@ def authenticate_admin(username: str, password: str) -> bool:
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> str:
     """
     FastAPI dependency to get current authenticated user from JWT token.
@@ -142,6 +142,13 @@ async def get_current_user(
     Raises:
         HTTPException: If token is invalid or missing
     """
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     token = credentials.credentials
     token_data = verify_token(token)
     return token_data.username

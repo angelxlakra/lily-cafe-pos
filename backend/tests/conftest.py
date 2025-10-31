@@ -27,8 +27,21 @@ def test_db():
     Create a fresh test database for each test function.
     Uses in-memory SQLite for fast, isolated tests.
     """
-    # Create in-memory SQLite database
-    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    # Create in-memory SQLite database with StaticPool to ensure
+    # all connections share the same in-memory database
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    # Enable foreign key constraints for SQLite
+    from sqlalchemy import event
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_conn, connection_record):
+        cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
     # Create all tables (models are already registered via app.db.base import)
     Base.metadata.create_all(bind=engine)
@@ -144,17 +157,17 @@ def auth_headers(auth_token):
 
 
 @pytest.fixture
-def sample_category(db_session):
+def sample_category(test_db):
     """Create a sample category for testing (main branch fixture)."""
     category = models.Category(name="Beverages")
-    db_session.add(category)
-    db_session.commit()
-    db_session.refresh(category)
+    test_db.add(category)
+    test_db.commit()
+    test_db.refresh(category)
     return category
 
 
 @pytest.fixture
-def sample_menu_item(db_session, sample_category):
+def sample_menu_item(test_db, sample_category):
     """Create a sample menu item for testing (main branch fixture)."""
     item = models.MenuItem(
         name="Filter Coffee",
@@ -163,9 +176,9 @@ def sample_menu_item(db_session, sample_category):
         category_id=sample_category.id,
         is_available=True,
     )
-    db_session.add(item)
-    db_session.commit()
-    db_session.refresh(item)
+    test_db.add(item)
+    test_db.commit()
+    test_db.refresh(item)
     return item
 
 

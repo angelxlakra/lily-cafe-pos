@@ -5,6 +5,8 @@ Menu item endpoints for Lily Cafe POS System.
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+from fastapi.exceptions import ResponseValidationError
 
 from app import schemas, crud
 from app.api.deps import get_db, get_current_user
@@ -48,7 +50,14 @@ def create_menu_item(
     current_user: str = Depends(get_current_user),
 ):
     """Create a new menu item (admin only)."""
-    return crud.create_menu_item(db, item)
+    try:
+        return crud.create_menu_item(db, item)
+    except (IntegrityError, ResponseValidationError):
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Invalid menu item data or category does not exist",
+        )
 
 
 @router.patch("/{item_id}", response_model=schemas.MenuItem)

@@ -5,6 +5,7 @@ Category endpoints for Lily Cafe POS System.
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app import schemas, crud
 from app.api.deps import get_db, get_current_user
@@ -29,4 +30,11 @@ def create_category(
     current_user: str = Depends(get_current_user),
 ):
     """Create a new category (admin only)."""
-    return crud.create_category(db, category)
+    try:
+        return crud.create_category(db, category)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Category with this name already exists",
+        )

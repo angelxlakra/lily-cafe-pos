@@ -92,7 +92,7 @@ class TestVerifyTokenEndpoint:
         """Test token verification without token."""
         response = client.get("/api/v1/auth/verify")
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_verify_token_invalid_token(self, client):
         """Test token verification with invalid token."""
@@ -106,7 +106,7 @@ class TestVerifyTokenEndpoint:
         """Test token verification with malformed authorization header."""
         response = client.get("/api/v1/auth/verify", headers={"Authorization": "InvalidFormat"})
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_verify_token_empty_bearer(self, client):
         """Test token verification with empty bearer token."""
