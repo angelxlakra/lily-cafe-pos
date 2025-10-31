@@ -11,8 +11,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.db.base import Base  # Import Base with all models registered
-from app.db.session import get_db
-from app.api.deps import get_db as deps_get_db
+from app.api.deps import get_db  # Import get_db from deps (used by endpoints)
 from app.core.security import create_access_token
 from app.models import models
 
