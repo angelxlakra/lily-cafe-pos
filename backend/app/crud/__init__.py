@@ -20,6 +20,8 @@ from app.crud.crud import (
     get_active_order_for_table,
     create_order,
     update_order,
+    admin_edit_order,
+    cancel_order,
     # Payment operations
     create_payment,
     get_payments_for_order,
@@ -43,6 +45,8 @@ __all__ = [
     "get_active_order_for_table",
     "create_order",
     "update_order",
+    "admin_edit_order",
+    "cancel_order",
     # Payments
     "create_payment",
     "get_payments_for_order",

@@ -22,6 +22,7 @@ from app.schemas.schemas import (
     # Order schemas
     OrderCreate,
     OrderUpdate,
+    OrderItemsUpdate,
     Order,
     OrderSummary,
     # Auth schemas
@@ -50,6 +51,7 @@ __all__ = [
     # Orders
     "OrderCreate",
     "OrderUpdate",
+    "OrderItemsUpdate",
     "Order",
     "OrderSummary",
     # Auth

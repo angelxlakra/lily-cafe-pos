@@ -149,9 +149,16 @@ class OrderCreate(BaseModel):
 
 
 class OrderUpdate(BaseModel):
-    """Schema for updating an order."""
+    """Schema for updating an order (status/metadata only)."""
 
     status: Optional[OrderStatus] = None
+    customer_name: Optional[str] = Field(None, max_length=200)
+
+
+class OrderItemsUpdate(BaseModel):
+    """Schema for admin to edit order items (replaces all items)."""
+
+    items: List[OrderItemCreate] = Field(..., min_length=1)
     customer_name: Optional[str] = Field(None, max_length=200)
 
 
