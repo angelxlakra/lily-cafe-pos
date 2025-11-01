@@ -39,7 +39,7 @@ export default function ApiTestPage() {
   // Test Menu API
   const testGetMenu = async () => {
     try {
-      const items = menu.items.data?.items || [];
+      const items = menu.items.data || [];
       addResult(`Fetched ${items.length} menu items`);
     } catch (error) {
       addResult(`Failed to fetch menu: ${error}`, false);
@@ -64,7 +64,7 @@ export default function ApiTestPage() {
   // Test Orders API
   const testGetActiveOrders = async () => {
     try {
-      const activeOrders = orders.active.data?.orders || [];
+      const activeOrders = orders.active.data || [];
       addResult(`Fetched ${activeOrders.length} active orders`);
     } catch (error) {
       addResult(`Failed to fetch active orders: ${error}`, false);
@@ -73,7 +73,7 @@ export default function ApiTestPage() {
 
   const testCreateOrder = async () => {
     try {
-      const firstMenuItem = menu.items.data?.items[0];
+      const firstMenuItem = menu.items.data?.[0];
       if (!firstMenuItem) {
         addResult('No menu items available to create order', false);
         return;
@@ -94,7 +94,7 @@ export default function ApiTestPage() {
 
   const testGetCategories = async () => {
     try {
-      const categories = menu.categories.data?.categories || [];
+      const categories = menu.categories.data || [];
       addResult(`Fetched ${categories.length} categories`);
     } catch (error) {
       addResult(`Failed to fetch categories: ${error}`, false);
@@ -219,9 +219,9 @@ export default function ApiTestPage() {
             Current Data
           </h2>
           <div className="space-y-2 text-sm">
-            <p>Menu Items: {menu.items.data?.items.length || 0}</p>
-            <p>Categories: {menu.categories.data?.categories.length || 0}</p>
-            <p>Active Orders: {orders.active.data?.orders.length || 0}</p>
+            <p>Menu Items: {menu.items.data?.length || 0}</p>
+            <p>Categories: {menu.categories.data?.length || 0}</p>
+            <p>Active Orders: {orders.active.data?.length || 0}</p>
           </div>
         </div>
 

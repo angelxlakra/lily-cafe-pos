@@ -8,7 +8,7 @@ import { ordersApi, paymentsApi } from '../api/client';
 import type {
   CreateOrderRequest,
   UpdateOrderRequest,
-  ActiveOrdersResponse,
+  Order,
   QueryParams,
   AddPaymentRequest,
 } from '../types';
@@ -117,19 +117,19 @@ export const useCreateOrUpdateOrder = () => {
       await queryClient.cancelQueries({ queryKey: ordersQueryKeys.active });
 
       // Snapshot the previous value
-      const previousOrders = queryClient.getQueryData<ActiveOrdersResponse>(ordersQueryKeys.active);
+      const previousOrders = queryClient.getQueryData<Order[]>(ordersQueryKeys.active);
 
       // Optimistically update to the new value
       // Note: This is a simplified optimistic update - production may need more sophisticated logic
-      queryClient.setQueryData<ActiveOrdersResponse>(ordersQueryKeys.active, (old) => {
+      queryClient.setQueryData<Order[]>(ordersQueryKeys.active, (old) => {
         if (!old) return old;
 
         // If it's an update, find and update the existing order
         if ('order_id' in data) {
-          const updatedOrders = old.orders.map(order =>
-            order.id === data.order_id ? { ...order, item_count: data.items.length } : order
+          const updatedOrders = old.map(order =>
+            order.id === data.order_id ? { ...order } : order
           );
-          return { orders: updatedOrders };
+          return updatedOrders;
         }
 
         // For new orders, we can't add optimistically without server data
@@ -147,7 +147,10 @@ export const useCreateOrUpdateOrder = () => {
     },
     // Always refetch after error or success
     onSettled: () => {
+      // Invalidate active orders list
       queryClient.invalidateQueries({ queryKey: ordersQueryKeys.active });
+      // Invalidate all order detail queries to refresh individual order views
+      queryClient.invalidateQueries({ queryKey: ordersQueryKeys.all });
     },
   });
 };

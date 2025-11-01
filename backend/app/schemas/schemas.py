@@ -204,6 +204,15 @@ class OrderSummary(BaseModel):
 
 
 # ============================================================================
+# App Config Schema
+# ============================================================================
+class AppConfig(BaseModel):
+    """Schema for exposing application configuration values."""
+    restaurant_name: str
+    max_tables: int
+    gst_rate: float
+    
+# ============================================================================
 # Authentication Schemas
 # ============================================================================
 
