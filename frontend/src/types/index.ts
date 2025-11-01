@@ -89,7 +89,7 @@ export interface Order {
   table_number: number;
   customer_name: string | null;
   status: 'active' | 'paid' | 'canceled';
-  items: OrderItem[];
+  order_items: OrderItem[];
   subtotal: number;
   gst_amount: number;
   total_amount: number;

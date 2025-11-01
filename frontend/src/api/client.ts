@@ -3,44 +3,68 @@
 // Lily Cafe POS System - Frontend
 // ========================================
 
-import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import axios, {
+  AxiosError,
+  AxiosInstance,
+  InternalAxiosRequestConfig,
+} from "axios";
 import type {
   LoginRequest,
   LoginResponse,
   MenuItem,
-  MenuItemsResponse,
   CreateMenuItemRequest,
   UpdateMenuItemRequest,
-  CategoriesResponse,
   CreateCategoryRequest,
   Category,
   Order,
   CreateOrderRequest,
   UpdateOrderRequest,
-  ActiveOrdersResponse,
   AddPaymentRequest,
   PaymentResponse,
-  OrderHistoryResponse,
   QueryParams,
   AppConfig,
-} from '../types';
+} from "../types";
 
 // ========================================
 // Constants
 // ========================================
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-const TOKEN_KEY = 'lily_cafe_auth_token';
+/**
+ * Get the backend API base URL dynamically based on the current hostname.
+ * If running on localhost, uses localhost. Otherwise uses the same IP/hostname.
+ */
+const getApiBaseUrl = (): string => {
+  // Allow manual override via environment variable
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+
+  // Detect current hostname from window location
+  const currentHost =
+    typeof window !== "undefined" ? window.location.hostname : "localhost";
+
+  // Use localhost for 127.0.0.1 or localhost
+  const backendHost =
+    currentHost === "127.0.0.1" || currentHost === "localhost"
+      ? "localhost"
+      : currentHost;
+
+  // Backend runs on port 8000
+  return `http://${backendHost}:8000`;
+};
+
+const API_BASE_URL = getApiBaseUrl();
+const TOKEN_KEY = "lily_cafe_auth_token";
 
 // ========================================
 // Axios Instance
 // ========================================
 
 const apiClient: AxiosInstance = axios.create({
-  baseURL: `${API_BASE_URL}/api`,
+  baseURL: `${API_BASE_URL}/api/v1`,
   timeout: 10000,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
@@ -97,7 +121,7 @@ apiClient.interceptors.response.use(
 
     // Handle network errors
     if (!error.response) {
-      console.error('Network error:', error.message);
+      console.error("Network error:", error.message);
     }
 
     return Promise.reject(error);
@@ -113,7 +137,10 @@ export const authApi = {
    * Login with username and password
    */
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {
-    const response = await apiClient.post<LoginResponse>('/auth/login', credentials);
+    const response = await apiClient.post<LoginResponse>(
+      "/auth/login",
+      credentials
+    );
     // Save token to localStorage
     if (response.data.access_token) {
       setAuthToken(response.data.access_token);
@@ -144,8 +171,10 @@ export const menuApi = {
   /**
    * Get all menu items with optional filters
    */
-  getMenuItems: async (params?: QueryParams): Promise<MenuItemsResponse> => {
-    const response = await apiClient.get<MenuItemsResponse>('/menu', { params });
+  getMenuItems: async (params?: QueryParams): Promise<MenuItem[]> => {
+    const response = await apiClient.get<MenuItem[]>("/menu", {
+      params,
+    });
     return response.data;
   },
 
@@ -161,14 +190,17 @@ export const menuApi = {
    * Create a new menu item (requires auth)
    */
   createMenuItem: async (data: CreateMenuItemRequest): Promise<MenuItem> => {
-    const response = await apiClient.post<MenuItem>('/menu', data);
+    const response = await apiClient.post<MenuItem>("/menu", data);
     return response.data;
   },
 
   /**
    * Update an existing menu item (requires auth)
    */
-  updateMenuItem: async (id: number, data: UpdateMenuItemRequest): Promise<MenuItem> => {
+  updateMenuItem: async (
+    id: number,
+    data: UpdateMenuItemRequest
+  ): Promise<MenuItem> => {
     const response = await apiClient.put<MenuItem>(`/menu/${id}`, data);
     return response.data;
   },
@@ -190,8 +222,8 @@ export const categoriesApi = {
   /**
    * Get all categories
    */
-  getCategories: async (): Promise<CategoriesResponse> => {
-    const response = await apiClient.get<CategoriesResponse>('/categories');
+  getCategories: async (): Promise<Category[]> => {
+    const response = await apiClient.get<Category[]>("/categories");
     return response.data;
   },
 
@@ -199,7 +231,7 @@ export const categoriesApi = {
    * Create a new category (requires auth)
    */
   createCategory: async (data: CreateCategoryRequest): Promise<Category> => {
-    const response = await apiClient.post<Category>('/categories', data);
+    const response = await apiClient.post<Category>("/categories", data);
     return response.data;
   },
 };
@@ -212,16 +244,20 @@ export const ordersApi = {
   /**
    * Create a new order or update existing order
    */
-  createOrUpdateOrder: async (data: CreateOrderRequest | UpdateOrderRequest): Promise<Order> => {
-    const response = await apiClient.post<Order>('/orders', data);
+  createOrUpdateOrder: async (
+    data: CreateOrderRequest | UpdateOrderRequest
+  ): Promise<Order> => {
+    const response = await apiClient.post<Order>("/orders", data);
     return response.data;
   },
 
   /**
    * Get all active (unpaid) orders
    */
-  getActiveOrders: async (): Promise<ActiveOrdersResponse> => {
-    const response = await apiClient.get<ActiveOrdersResponse>('/orders/active');
+  getActiveOrders: async (): Promise<Order[]> => {
+    const response = await apiClient.get<Order[]>(
+      "/orders/active"
+    );
     return response.data;
   },
 
@@ -248,15 +284,22 @@ export const ordersApi = {
    * Cancel an order (admin only, requires auth)
    */
   cancelOrder: async (id: number): Promise<{ message: string }> => {
-    const response = await apiClient.delete<{ message: string }>(`/orders/${id}`);
+    const response = await apiClient.delete<{ message: string }>(
+      `/orders/${id}`
+    );
     return response.data;
   },
 
   /**
    * Get order history with optional filters (requires auth)
    */
-  getOrderHistory: async (params?: QueryParams): Promise<OrderHistoryResponse> => {
-    const response = await apiClient.get<OrderHistoryResponse>('/orders/history', { params });
+  getOrderHistory: async (
+    params?: QueryParams
+  ): Promise<Order[]> => {
+    const response = await apiClient.get<Order[]>(
+      "/orders/history",
+      { params }
+    );
     return response.data;
   },
 };
@@ -269,8 +312,14 @@ export const paymentsApi = {
   /**
    * Add payment(s) to an order (requires auth)
    */
-  addPayments: async (orderId: number, data: AddPaymentRequest): Promise<PaymentResponse> => {
-    const response = await apiClient.post<PaymentResponse>(`/orders/${orderId}/payments`, data);
+  addPayments: async (
+    orderId: number,
+    data: AddPaymentRequest
+  ): Promise<PaymentResponse> => {
+    const response = await apiClient.post<PaymentResponse>(
+      `/orders/${orderId}/payments`,
+      data
+    );
     return response.data;
   },
 
@@ -279,7 +328,7 @@ export const paymentsApi = {
    */
   getReceipt: async (orderId: number): Promise<Blob> => {
     const response = await apiClient.get(`/orders/${orderId}/receipt`, {
-      responseType: 'blob',
+      responseType: "blob",
     });
     return response.data;
   },
@@ -290,9 +339,9 @@ export const paymentsApi = {
   printReceipt: async (orderId: number): Promise<void> => {
     const blob = await paymentsApi.getReceipt(orderId);
     const url = window.URL.createObjectURL(blob);
-    const printWindow = window.open(url, '_blank');
+    const printWindow = window.open(url, "_blank");
     if (printWindow) {
-      printWindow.addEventListener('load', () => {
+      printWindow.addEventListener("load", () => {
         printWindow.print();
         window.URL.revokeObjectURL(url);
       });
@@ -309,7 +358,7 @@ export const configApi = {
    * Get app configuration
    */
   getConfig: async (): Promise<AppConfig> => {
-    const response = await apiClient.get<AppConfig>('/config');
+    const response = await apiClient.get<AppConfig>("/config");
     return response.data;
   },
 };

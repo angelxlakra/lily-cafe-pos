@@ -239,14 +239,13 @@ def create_order(db: Session, order: schemas.OrderCreate) -> models.Order:
     existing_order = get_active_order_for_table(db, order.table_number)
 
     if existing_order:
-        # Update existing order: delete old items and add new ones
-        # This is simpler than merging items and matches the waiter workflow
-        for old_item in existing_order.order_items:
-            db.delete(old_item)
-        db.flush()  # Flush deletes before adding new items
+        # Update existing order: append new items or merge quantities for same items
+        # Create a map of existing items by menu_item_id
+        existing_items_map = {
+            item.menu_item_id: item for item in existing_order.order_items
+        }
 
-        # Now add new items to existing order
-        subtotal = 0
+        # Process new items
         for item in order.items:
             # Get menu item
             menu_item = get_menu_item(db, item.menu_item_id)
@@ -255,22 +254,30 @@ def create_order(db: Session, order: schemas.OrderCreate) -> models.Order:
             if not menu_item.is_available:
                 raise ValueError(f"Menu item '{menu_item.name}' is not available")
 
-            # Calculate item subtotal
-            item_subtotal = menu_item.price * item.quantity
-            subtotal += item_subtotal
+            # Check if this item already exists in the order
+            if menu_item.id in existing_items_map:
+                # Update quantity of existing item
+                existing_item = existing_items_map[menu_item.id]
+                existing_item.quantity += item.quantity
+                existing_item.subtotal = existing_item.quantity * existing_item.unit_price
+            else:
+                # Add new item to order
+                item_subtotal = menu_item.price * item.quantity
+                new_order_item = models.OrderItem(
+                    order_id=existing_order.id,
+                    menu_item_id=menu_item.id,
+                    menu_item_name=menu_item.name,
+                    quantity=item.quantity,
+                    unit_price=menu_item.price,
+                    subtotal=item_subtotal,
+                )
+                db.add(new_order_item)
 
-            # Create new order item
-            new_order_item = models.OrderItem(
-                order_id=existing_order.id,
-                menu_item_id=menu_item.id,
-                menu_item_name=menu_item.name,
-                quantity=item.quantity,
-                unit_price=menu_item.price,
-                subtotal=item_subtotal,
-            )
-            db.add(new_order_item)
+        # Recalculate totals from ALL items (old + new)
+        db.flush()  # Flush to get updated items
+        db.refresh(existing_order)  # Refresh to get all order_items
 
-        # Recalculate totals
+        subtotal = sum(item.subtotal for item in existing_order.order_items)
         gst_amount = int(subtotal * settings.GST_RATE / 100)
         total_amount = subtotal + gst_amount
 

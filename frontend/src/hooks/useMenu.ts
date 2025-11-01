@@ -170,9 +170,9 @@ export const useCreateCategory = () => {
     mutationFn: (data: CreateCategoryRequest) => categoriesApi.createCategory(data),
     onSuccess: (newCategory) => {
       // Update categories cache optimistically
-      queryClient.setQueryData(menuQueryKeys.categories, (old: { categories: Category[] } | undefined) => {
-        if (!old) return { categories: [newCategory] };
-        return { categories: [...old.categories, newCategory] };
+      queryClient.setQueryData(menuQueryKeys.categories, (old: Category[] | undefined) => {
+        if (!old) return [newCategory];
+        return [...old, newCategory];
       });
       // Also invalidate to ensure consistency
       queryClient.invalidateQueries({ queryKey: menuQueryKeys.categories });

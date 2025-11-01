@@ -182,9 +182,19 @@ def generate_receipt(order: models.Order, output: BinaryIO):
     draw_right(format_currency(order.subtotal), y_position, "DejaVuSansMono", 9)
     y_position -= line_height * 0.8
 
-    # GST
-    draw_left(f"GST ({settings.GST_RATE}%):", y_position)
-    draw_right(format_currency(order.gst_amount), y_position, "DejaVuSansMono", 9)
+    # GST split into SGST and CGST (50/50)
+    half_gst_rate = settings.GST_RATE / 2
+    sgst_amount = order.gst_amount // 2
+    cgst_amount = order.gst_amount - sgst_amount  # Ensure exact sum
+
+    # SGST
+    draw_left(f"SGST ({half_gst_rate}%):", y_position)
+    draw_right(format_currency(sgst_amount), y_position, "DejaVuSansMono", 9)
+    y_position -= line_height * 0.8
+
+    # CGST
+    draw_left(f"CGST ({half_gst_rate}%):", y_position)
+    draw_right(format_currency(cgst_amount), y_position, "DejaVuSansMono", 9)
     y_position -= line_height * 1.2
 
     # Total (using DejaVuSansMono for rupee symbol)

@@ -1,9 +1,12 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import App from './App.tsx'
 import ApiTestPage from './pages/ApiTestPage.tsx'
+import TablesPage from './pages/TablesPage.tsx'
+import OrderPage from './pages/OrderPage.tsx'
+import ActiveOrdersPage from './pages/ActiveOrdersPage.tsx'
 import './index.css'
 
 // Configure TanStack Query client
@@ -37,7 +40,16 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<App />} />
+          {/* Redirect root to tables page */}
+          <Route path="/" element={<Navigate to="/tables" replace />} />
+
+          {/* Waiter Interface Routes */}
+          <Route path="/tables" element={<TablesPage />} />
+          <Route path="/order/:tableNumber" element={<OrderPage />} />
+          <Route path="/active-orders" element={<ActiveOrdersPage />} />
+
+          {/* Dev/Testing Routes */}
+          <Route path="/test" element={<App />} />
           <Route path="/api-test" element={<ApiTestPage />} />
         </Routes>
       </BrowserRouter>
