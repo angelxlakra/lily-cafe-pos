@@ -315,6 +315,117 @@ GET /api/v1/orders/1/payments
 
 ---
 
+## 🔹 POST /orders/{order_id}/payments/batch 🔐
+
+**Add multiple payments at once (split payment support)**
+
+### Auth Required
+```
+Authorization: Bearer <token>
+```
+
+### Request
+```json
+{
+  "payments": [
+    {
+      "payment_method": "upi",
+      "amount": 20000
+    },
+    {
+      "payment_method": "cash",
+      "amount": 3600
+    }
+  ]
+}
+```
+
+### Response (201)
+```json
+[
+  {
+    "id": 1,
+    "payment_method": "upi",
+    "amount": 20000,
+    "created_at": "2025-01-30T10:00:00"
+  },
+  {
+    "id": 2,
+    "payment_method": "cash",
+    "amount": 3600,
+    "created_at": "2025-01-30T10:00:00"
+  }
+]
+```
+
+### Response (400)
+```json
+{
+  "detail": "Payment total 15000 does not match order total 23600. Expected 23600 more to complete payment."
+}
+```
+
+### Behavior
+- ✅ **Atomic transaction** - All payments created together or none
+- ✅ **Validation** - Total must equal order amount exactly
+- ✅ **Auto-marks as paid** - Order status becomes "paid" when complete
+- ❌ **Cannot overpay** - Prevents payment total > order total
+- ❌ **Cannot double-pay** - Rejects if order already paid
+
+### Use Case
+Preferred method for completing orders with split payments (e.g., ₹200 UPI + ₹36 cash).
+
+---
+
+## 🔹 GET /orders/{order_id}/receipt
+
+**Generate PDF receipt for paid order**
+
+### Auth Required
+❌ No authentication required (waiters can print)
+
+### Request
+```
+GET /api/v1/orders/1/receipt
+```
+
+### Response (200)
+```
+Content-Type: application/pdf
+Content-Disposition: inline; filename=receipt-ORD-20250131-0001.pdf
+
+[PDF Binary Data]
+```
+
+### Response (400)
+```json
+{
+  "detail": "Cannot generate receipt for unpaid order"
+}
+```
+
+### Response (404)
+```json
+{
+  "detail": "Order not found"
+}
+```
+
+### Receipt Format
+- **Width:** 80mm (thermal printer compatible)
+- **Includes:**
+  - Restaurant name, address, phone, email, GSTIN
+  - Order number, table, date/time
+  - All items with quantities and prices
+  - Subtotal, GST (18%), total
+  - Payment methods used (UPI/Cash/Card)
+  - Thank you message
+
+### Use Case
+Print receipt after payment completion for customer records and GST compliance.
+
+---
+
 ## 💰 GST Calculation
 
 **Rate**: 18% (configured in `settings.GST_RATE`)

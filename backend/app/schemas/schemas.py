@@ -122,6 +122,11 @@ class PaymentCreate(BaseModel):
     payment_method: PaymentMethod
     amount: int = Field(..., gt=0, description="Amount in paise")
 
+class PaymentBatchCreate(BaseModel):
+    """Schema for creating multiple payments at once (split payment)."""
+
+    payments: List[PaymentCreate] = Field(..., min_length=1)
+
 
 class Payment(BaseModel):
     """Schema for payment responses."""

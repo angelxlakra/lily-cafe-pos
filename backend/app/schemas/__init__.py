@@ -19,6 +19,7 @@ from app.schemas.schemas import (
     # Payment schemas
     PaymentCreate,
     Payment,
+    PaymentBatchCreate,
     # Order schemas
     OrderCreate,
     OrderUpdate,

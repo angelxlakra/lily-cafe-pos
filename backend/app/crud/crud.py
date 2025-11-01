@@ -517,3 +517,69 @@ def create_payment(
 def get_payments_for_order(db: Session, order_id: int) -> List[models.Payment]:
     """Get all payments for an order."""
     return db.query(models.Payment).filter(models.Payment.order_id == order_id).all()
+
+def create_payments_batch(
+    db: Session, order_id: int, payments: List[schemas.PaymentCreate]
+) -> List[models.Payment]:
+    """
+    Add multiple payments to an order atomically (for split payments).
+
+      This is the preferred way to handle split payments as it:
+      1. Validates the total equals order amount BEFORE creating any payments
+      2. Creates all payments in a single transaction (atomic)
+      3. Marks order as paid only if total matches exactly
+
+      Args:
+          db: Database session
+          order_id: Order ID
+          payments: List of payments to create
+
+      Returns:
+          List of created payments
+
+      Raises:
+          ValueError: If order not found, total doesn't match, or validation fails
+    """
+
+    order = get_order(db, order_id)
+
+    if not order:
+        raise ValueError(f"Order {order_id} not found")
+    
+
+    if order.status == models.OrderStatus.PAID:
+        raise ValueError("Order is already paid")
+
+    existing_total = sum(p.amount for p in order.payments)
+
+    new_payments_total = sum(p.amount for p in payments)
+
+    total_after = existing_total + new_payments_total
+
+    if total_after != order.total_amount:
+        raise ValueError(
+            f"Payment total {total_after} does not match order total {order.total_amount}. "
+            f"Expected {order.total_amount - existing_total} more to complete payment"
+        )
+
+    created_payments = []
+    for payment in payments:
+        db_payment = models.Payment(
+            order_id=order_id,
+            payment_method=payment.payment_method,
+            amount=payment.amount
+        )
+        db.add(db_payment)
+        created_payments.append(db_payment)
+    
+
+    order.status = models.OrderStatus.PAID
+    order.updated_at = datetime.utcnow()
+
+    db.commit()
+
+    for payment in created_payments:
+        db.refresh(payment)
+    db.refresh(order)
+
+    return created_payments
