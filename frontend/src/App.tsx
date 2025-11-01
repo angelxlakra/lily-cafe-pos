@@ -183,6 +183,15 @@ function App() {
         <div className="mt-8 text-sm text-neutral-text-light">
           <p>Version 0.1.0 - The Order Taker</p>
           <p className="mt-2">Built with Vite + React 18 + TypeScript + Tailwind CSS v4</p>
+
+          <div className="mt-6">
+            <a
+              href="/api-test"
+              className="inline-block px-6 py-3 bg-info text-white rounded-lg hover:bg-[#1976D2] transition-colors"
+            >
+              🧪 Test API Client
+            </a>
+          </div>
         </div>
       </div>
     </div>
