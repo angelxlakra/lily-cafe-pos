@@ -6,7 +6,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { menuApi, categoriesApi } from '../api/client';
 import type {
-  MenuItem,
   QueryParams,
   CreateMenuItemRequest,
   UpdateMenuItemRequest,

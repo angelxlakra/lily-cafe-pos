@@ -6,11 +6,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ordersApi, paymentsApi } from '../api/client';
 import type {
-  Order,
   CreateOrderRequest,
   UpdateOrderRequest,
   ActiveOrdersResponse,
-  OrderHistoryResponse,
   QueryParams,
   AddPaymentRequest,
 } from '../types';
@@ -114,7 +112,7 @@ export const useCreateOrUpdateOrder = () => {
   return useMutation({
     mutationFn: (data: CreateOrderRequest | UpdateOrderRequest) => ordersApi.createOrUpdateOrder(data),
     // Optimistic update
-    onMutate: async (newOrder) => {
+    onMutate: async (data) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ordersQueryKeys.active });
 
@@ -127,9 +125,9 @@ export const useCreateOrUpdateOrder = () => {
         if (!old) return old;
 
         // If it's an update, find and update the existing order
-        if ('order_id' in newOrder) {
+        if ('order_id' in data) {
           const updatedOrders = old.orders.map(order =>
-            order.id === newOrder.order_id ? { ...order, item_count: newOrder.items.length } : order
+            order.id === data.order_id ? { ...order, item_count: data.items.length } : order
           );
           return { orders: updatedOrders };
         }
@@ -143,7 +141,7 @@ export const useCreateOrUpdateOrder = () => {
       return { previousOrders };
     },
     // If the mutation fails, rollback
-    onError: (err, newOrder, context) => {
+    onError: (err, _data, context) => {
       queryClient.setQueryData(ordersQueryKeys.active, context?.previousOrders);
       console.error('Order mutation failed:', err);
     },
