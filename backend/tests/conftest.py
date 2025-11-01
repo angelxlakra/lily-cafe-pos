@@ -333,3 +333,27 @@ def create_test_menu_item(test_db, sample_categories):
         return item
 
     return _create_menu_item
+
+@pytest.fixture
+def paid_order(test_db, sample_menu_items):
+    """Create a paid order for testing."""
+    from app import crud
+    from app.schemas.schemas import OrderCreate, PaymentCreate
+    from app.models.models import OrderStatus
+
+    order_data = OrderCreate(
+        table_number=5,
+        customer_name="Paid Customer",
+        items=[{"menu_item_id": sample_menu_items[0].id, "quantity": 1}]
+    )
+    order = crud.create_order(test_db, order_data)
+
+    payment_data = PaymentCreate(
+        payment_method="cash",
+        amount=order.total_amount
+    )
+    crud.create_payment(test_db, order.id, payment_data)
+
+    test_db.refresh(order)
+    return order
+
