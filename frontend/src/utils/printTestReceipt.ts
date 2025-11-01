@@ -5,7 +5,7 @@
 
 import axios from "axios";
 
-const API_BASE = "http://localhost:8000/api/v1";
+const API_BASE = "http://192.168.31.29:8000/api/v1";
 
 // Test order configuration
 const TEST_ORDER = {
@@ -62,7 +62,10 @@ async function addPayment(
     `${API_BASE}/orders/${orderId}/payments/batch`,
     {
       orderId: orderId,
-      payments: [{ payment_method: "cash", amount: totalAmount }],
+      payments: [
+        { payment_method: "cash", amount: totalAmount / 2 },
+        { payment_method: "upi", amount: totalAmount / 2 },
+      ],
     },
     {
       headers: {
@@ -85,37 +88,64 @@ function openReceiptInNewTab(orderId: number): void {
 /**
  * Trigger print dialog for receipt PDF (requires printer)
  */
-function printReceiptPDF(orderId: number): Promise<void> {
+async function printReceiptPDF(orderId: number): Promise<void> {
   const receiptUrl = `${API_BASE}/orders/${orderId}/receipt`;
 
-  return new Promise((resolve, reject) => {
-    // Create hidden iframe for printing
-    const iframe = document.createElement("iframe");
-    iframe.style.display = "none";
-    iframe.src = receiptUrl;
+  try {
+    // Fetch PDF as blob to avoid cross-origin issues
+    const response = await axios.get(receiptUrl, {
+      responseType: "blob",
+    });
 
-    iframe.onload = () => {
-      try {
-        // Small delay to ensure PDF renders
-        setTimeout(() => {
-          iframe.contentWindow?.print();
-          // Clean up after print
-          setTimeout(() => document.body.removeChild(iframe), 1000);
-          resolve();
-        }, 500);
-      } catch (error) {
+    // Create blob URL (same-origin)
+    const blobUrl = URL.createObjectURL(response.data);
+
+    return new Promise((resolve, reject) => {
+      // Create hidden iframe for printing
+      const iframe = document.createElement("iframe");
+      iframe.style.display = "none";
+      iframe.src = blobUrl;
+
+      iframe.onload = () => {
+        try {
+          // Small delay to ensure PDF renders
+          setTimeout(() => {
+            const iframeWindow = iframe.contentWindow;
+            if (!iframeWindow) {
+              document.body.removeChild(iframe);
+              URL.revokeObjectURL(blobUrl);
+              reject(new Error("Failed to access iframe window"));
+              return;
+            }
+
+            // Listen for afterprint event to clean up only after user closes print dialog
+            iframeWindow.addEventListener("afterprint", () => {
+              document.body.removeChild(iframe);
+              URL.revokeObjectURL(blobUrl);
+            });
+
+            // Trigger print dialog
+            iframeWindow.print();
+            resolve();
+          }, 500);
+        } catch (error) {
+          document.body.removeChild(iframe);
+          URL.revokeObjectURL(blobUrl);
+          reject(new Error("Failed to trigger print dialog"));
+        }
+      };
+
+      iframe.onerror = () => {
         document.body.removeChild(iframe);
-        reject(new Error("Failed to trigger print dialog"));
-      }
-    };
+        URL.revokeObjectURL(blobUrl);
+        reject(new Error("Failed to load receipt PDF"));
+      };
 
-    iframe.onerror = () => {
-      document.body.removeChild(iframe);
-      reject(new Error("Failed to load receipt PDF"));
-    };
-
-    document.body.appendChild(iframe);
-  });
+      document.body.appendChild(iframe);
+    });
+  } catch (error) {
+    throw new Error("Failed to fetch receipt PDF");
+  }
 }
 
 /**

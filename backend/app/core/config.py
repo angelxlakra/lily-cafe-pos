@@ -31,6 +31,7 @@ class Settings:
     RESTAURANT_PHONE: str = os.getenv("RESTAURANT_PHONE", "+91-1234567890")
     RESTAURANT_EMAIL: str = os.getenv("RESTAURANT_EMAIL", "info@lilycafe.com")
     RESTAURANT_GSTIN: str = os.getenv("RESTAURANT_GSTIN", "29ABCDE1234F1Z5")
+    RESTAURANT_LOGO_PATH: str = os.getenv("RESTAURANT_LOGO_PATH", "")
 
     # Admin Credentials
     ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
