@@ -12,6 +12,7 @@ from app import schemas, crud
 from app.models.models import OrderStatus
 from app.api.deps import get_db, get_current_user
 from app.utils.pdf_generator import generate_receipt
+from app.utils.escpos_printer import get_printer
 
 router = APIRouter()
 
@@ -250,6 +251,90 @@ def generate_receipt_endpoint(
             "Content-Disposition": f"inline; filename=receipt-{order.order_number}.pdf"
         }
     )
+
+
+@router.post("/{order_id}/print-thermal")
+def print_thermal_receipt(
+    order_id: int,
+    printer_type: str = "usb",
+    vendor_id: Optional[int] = None,
+    product_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Print receipt directly to ESC/POS thermal printer (USB).
+
+    This endpoint sends receipt data directly to the thermal printer,
+    bypassing PDF generation and browser print dialogs. This eliminates
+    margin issues and provides faster, more reliable printing.
+
+    Query parameters:
+    - printer_type: Type of printer ("usb", "file", "dummy") - default: "usb"
+    - vendor_id: USB Vendor ID (optional, uses common defaults if not provided)
+    - product_id: USB Product ID (optional, uses common defaults if not provided)
+
+    Common USB IDs for thermal printers:
+    - Seiben/XPrinter: vendor_id=0x0416, product_id=0x5011
+    - Epson TM series: vendor_id=0x04b8
+    - Most generic: vendor_id=0x0416, product_id=0x5011
+
+    For testing without a physical printer, use printer_type="dummy"
+
+    Returns:
+        Success message with order details
+    """
+    # Get order
+    order = crud.get_order(db, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if order.status != OrderStatus.PAID:
+        raise HTTPException(
+            status_code=400, detail="Cannot print receipt for unpaid order"
+        )
+
+    if not order.payments:
+        raise HTTPException(
+            status_code=400, detail="Cannot print receipt - no payment found!"
+        )
+
+    # Initialize printer
+    try:
+        printer_kwargs = {}
+        if vendor_id:
+            printer_kwargs["vendor_id"] = vendor_id
+        if product_id:
+            printer_kwargs["product_id"] = product_id
+
+        printer = get_printer(printer_type=printer_type, **printer_kwargs)
+
+        # Configure minimal top margin
+        printer.configure_printer_margins(top_margin=0)
+
+        # Print receipt
+        printer.print_receipt(order)
+
+        # Close printer connection
+        printer.close()
+
+        return {
+            "message": "Receipt printed successfully",
+            "order_id": order.id,
+            "order_number": order.order_number,
+            "printer_type": printer_type,
+        }
+
+    except ConnectionError as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Printer connection failed: {str(e)}. Check USB connection and printer power.",
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=f"Print failed: {str(e)}")
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Unexpected error: {str(e)}"
+        )
 
 
 
