@@ -23,14 +23,13 @@ export default function MenuManagementPage() {
 
   const items = menuItems || [];
 
-  // Helper function to get category name (handles both string and object)
-  const getCategoryName = (category: string | { name: string; id: number; created_at?: string }): string => {
-    return typeof category === 'string' ? category : category.name;
+  const getCategoryName = (menuItem: MenuItem): string => {
+    return menuItem.category?.name || 'Other';
   };
 
   // Get unique categories
   const categories = useMemo(() => {
-    const cats = new Set(items.map((item) => getCategoryName(item.category)));
+    const cats = new Set(items.map((item) => getCategoryName(item)));
     return ['all', ...Array.from(cats)];
   }, [items]);
 
@@ -43,7 +42,7 @@ export default function MenuManagementPage() {
         item.description?.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesCategory =
-        categoryFilter === 'all' || getCategoryName(item.category) === categoryFilter;
+        categoryFilter === 'all' || getCategoryName(item) === categoryFilter;
 
       return matchesSearch && matchesCategory;
     });
@@ -81,10 +80,10 @@ export default function MenuManagementPage() {
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
       {/* Main Content */}
-      <div className="flex-1 lg:ml-60">
+      <div className="flex-1 lg:ml-60 flex flex-col">
         {/* Header */}
         <header className="bg-off-white border-b border-neutral-border p-4 md:p-6">
-          <div className="flex items-center gap-4 mb-4">
+          <div className="flex flex-wrap items-center gap-3 md:gap-4 mb-4">
             {/* Hamburger Menu Button */}
             <button
               onClick={() => setIsSidebarOpen(true)}
@@ -105,7 +104,7 @@ export default function MenuManagementPage() {
             </div>
             <button
               onClick={handleAddNew}
-              className="btn bg-coffee-brown text-cream hover:bg-coffee-dark whitespace-nowrap"
+              className="btn bg-coffee-brown text-cream hover:bg-coffee-dark whitespace-nowrap w-full sm:w-auto"
             >
               + Add Item
             </button>
@@ -113,8 +112,8 @@ export default function MenuManagementPage() {
         </header>
 
         {/* Filters */}
-        <div className="p-6 bg-off-white border-b border-neutral-border">
-          <div className="flex gap-4">
+        <div className="p-4 sm:p-6 bg-off-white border-b border-neutral-border">
+          <div className="flex flex-col md:flex-row gap-4">
             {/* Search */}
             <div className="flex-1">
               <input
@@ -128,7 +127,7 @@ export default function MenuManagementPage() {
             </div>
 
             {/* Category Filter */}
-            <div className="w-48">
+            <div className="w-full md:w-48">
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
@@ -146,7 +145,7 @@ export default function MenuManagementPage() {
         </div>
 
         {/* Content */}
-        <main className="p-6">
+        <main className="p-4 sm:p-6 flex-1">
           {/* Loading State */}
           {isLoading && (
             <div className="flex items-center justify-center min-h-[400px]">
@@ -187,86 +186,150 @@ export default function MenuManagementPage() {
           {/* Table */}
           {!isLoading && filteredItems.length > 0 && (
             <div className="bg-off-white border border-neutral-border rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-cream border-b border-neutral-border">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-dark">
-                      Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-dark">
-                      Description
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-dark">
-                      Category
-                    </th>
-                    <th className="px-6 py-3 text-right text-sm font-semibold text-neutral-text-dark">
-                      Price
-                    </th>
-                    <th className="px-6 py-3 text-center text-sm font-semibold text-neutral-text-dark">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-right text-sm font-semibold text-neutral-text-dark">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-border">
-                  {filteredItems.map((item) => (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-cream/50 transition-colors"
-                    >
-                      <td className="px-6 py-4">
-                        <p className="font-medium text-neutral-text-dark">
+              {/* Desktop Table */}
+              <div className="hidden md:block">
+                <table className="w-full">
+                  <thead className="bg-cream border-b border-neutral-border">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-dark">
+                        Name
+                      </th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-dark">
+                        Description
+                      </th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-dark">
+                        Category
+                      </th>
+                      <th className="px-6 py-3 text-right text-sm font-semibold text-neutral-text-dark">
+                        Price
+                      </th>
+                      <th className="px-6 py-3 text-center text-sm font-semibold text-neutral-text-dark">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-right text-sm font-semibold text-neutral-text-dark">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-border">
+                    {filteredItems.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-cream/50 transition-colors"
+                      >
+                        <td className="px-6 py-4">
+                          <p className="font-medium text-neutral-text-dark">
+                            {item.name}
+                          </p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="text-sm text-neutral-text-light line-clamp-2">
+                            {item.description || 'N/A'}
+                          </p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-block px-2 py-1 bg-lily-green/10 text-lily-green text-sm rounded-md">
+                            {getCategoryName(item)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <p className="font-semibold text-coffee-brown">
+                            {formatCurrency(item.price)}
+                          </p>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span
+                            className={`inline-block px-2 py-1 text-xs rounded-md ${
+                              item.is_available
+                                ? 'bg-success/10 text-success'
+                                : 'bg-error/10 text-error'
+                            }`}
+                          >
+                            {item.is_available ? 'Available' : 'Unavailable'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleEdit(item)}
+                              className="px-3 py-1 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => setDeleteItemId(item.id)}
+                              className="px-3 py-1 text-sm bg-error/10 border border-error text-error hover:bg-error hover:text-white rounded-md transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Cards */}
+              <div className="md:hidden p-4 space-y-4">
+                {filteredItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-xl border border-neutral-border bg-cream/50 p-4 space-y-3"
+                  >
+                    <div className="flex flex-wrap justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-neutral-text-dark">
                           {item.name}
                         </p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="text-sm text-neutral-text-light line-clamp-2">
-                          {item.description || ''}
+                        <p className="text-xs text-neutral-text-light">
+                          {getCategoryName(item)}
                         </p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-block px-2 py-1 bg-lily-green/10 text-lily-green text-sm rounded-md">
-                          {getCategoryName(item.category)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-neutral-text-light uppercase tracking-wide">
+                          Price
+                        </p>
                         <p className="font-semibold text-coffee-brown">
                           {formatCurrency(item.price)}
                         </p>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span
-                          className={`inline-block px-2 py-1 text-xs rounded-md ${
-                            item.is_available
-                              ? 'bg-success/10 text-success'
-                              : 'bg-error/10 text-error'
-                          }`}
+                      </div>
+                    </div>
+
+                    {item.description && (
+                      <p className="text-sm text-neutral-text-light">
+                        {item.description}
+                      </p>
+                    )}
+
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={`inline-block px-2 py-1 text-xs rounded-md ${
+                          item.is_available
+                            ? 'bg-success/10 text-success'
+                            : 'bg-error/10 text-error'
+                        }`}
+                      >
+                        {item.is_available ? 'Available' : 'Unavailable'}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEdit(item)}
+                          className="px-3 py-1 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors"
                         >
-                          {item.is_available ? 'Available' : 'Unavailable'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleEdit(item)}
-                            className="px-3 py-1 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => setDeleteItemId(item.id)}
-                            className="px-3 py-1 text-sm bg-error/10 border border-error text-error hover:bg-error hover:text-white rounded-md transition-colors"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => setDeleteItemId(item.id)}
+                          className="px-3 py-1 text-sm bg-error/10 border border-error text-error hover:bg-error hover:text-white rounded-md transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

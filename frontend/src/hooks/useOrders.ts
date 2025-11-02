@@ -7,10 +7,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ordersApi, paymentsApi } from '../api/client';
 import type {
   CreateOrderRequest,
-  UpdateOrderRequest,
   Order,
   QueryParams,
   AddPaymentRequest,
+  OrderItemsUpdateRequest,
 } from '../types';
 
 // Query keys for caching
@@ -33,7 +33,7 @@ export const ordersQueryKeys = {
  * @example
  * ```tsx
  * const { data, isLoading } = useActiveOrders();
- * const orders = data?.orders || [];
+ * const orders = data || [];
  * ```
  */
 export const useActiveOrders = () => {
@@ -68,8 +68,8 @@ export const useOrder = (id: number) => {
  *
  * @example
  * ```tsx
- * const { data } = useOrderHistory({ date: '2024-10-30', limit: 50 });
- * const orders = data?.orders || [];
+ * const { data } = useOrderHistory({ date: '2024-10-30' });
+ * const orders = data || [];
  * ```
  */
 export const useOrderHistory = (params?: QueryParams) => {
@@ -118,32 +118,14 @@ export const useCreateOrUpdateOrder = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateOrderRequest | UpdateOrderRequest) => ordersApi.createOrUpdateOrder(data),
+    mutationFn: (data: CreateOrderRequest) => ordersApi.createOrUpdateOrder(data),
     // Optimistic update
-    onMutate: async (data) => {
+    onMutate: async () => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ordersQueryKeys.active });
 
       // Snapshot the previous value
       const previousOrders = queryClient.getQueryData<Order[]>(ordersQueryKeys.active);
-
-      // Optimistically update to the new value
-      // Note: This is a simplified optimistic update - production may need more sophisticated logic
-      queryClient.setQueryData<Order[]>(ordersQueryKeys.active, (old) => {
-        if (!old) return old;
-
-        // If it's an update, find and update the existing order
-        if ('order_id' in data) {
-          const updatedOrders = old.map(order =>
-            order.id === data.order_id ? { ...order } : order
-          );
-          return updatedOrders;
-        }
-
-        // For new orders, we can't add optimistically without server data
-        // so we just return the old data
-        return old;
-      });
 
       // Return a context object with the snapshotted value
       return { previousOrders };
@@ -184,7 +166,7 @@ export const useUpdateOrder = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { items: Array<{ menu_item_id: number; quantity: number }> } }) =>
+    mutationFn: ({ id, data }: { id: number; data: OrderItemsUpdateRequest }) =>
       ordersApi.updateOrder(id, data),
     onSuccess: (updatedOrder) => {
       // Update the single order cache
@@ -231,8 +213,8 @@ export const useCancelOrder = () => {
  * addPayments({
  *   orderId: 10,
  *   payments: [
- *     { method: 'upi', amount: 200 },
- *     { method: 'cash', amount: 36 },
+ *     { payment_method: 'upi', amount: 20000 },
+ *     { payment_method: 'cash', amount: 3600 },
  *   ],
  * });
  * ```
@@ -243,11 +225,13 @@ export const useAddPayments = () => {
   return useMutation({
     mutationFn: ({ orderId, data }: { orderId: number; data: AddPaymentRequest }) =>
       paymentsApi.addPayments(orderId, data),
-    onSuccess: () => {
+    onSuccess: (_payments, variables) => {
       // Invalidate active orders (paid order will be removed)
       queryClient.invalidateQueries({ queryKey: ordersQueryKeys.active });
       // Invalidate order history to show the new paid order
       queryClient.invalidateQueries({ queryKey: ordersQueryKeys.history() });
+      // Refresh order detail cache
+      queryClient.invalidateQueries({ queryKey: ordersQueryKeys.detail(variables.orderId) });
     },
   });
 };
@@ -280,8 +264,8 @@ export const usePrintReceipt = () => {
  * const orders = useOrders();
  *
  * // Access data
- * const activeOrders = orders.active.data?.orders || [];
- * const history = orders.history.data?.orders || [];
+ * const activeOrders = orders.active.data || [];
+ * const history = orders.history.data || [];
  *
  * // Use mutations
  * orders.createOrder({ table_number: 5, items: [...] });

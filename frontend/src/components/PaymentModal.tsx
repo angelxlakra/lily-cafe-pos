@@ -3,10 +3,14 @@
 // Split payment support with receipt printing
 // ========================================
 
-import { useState } from 'react';
-import { useOrder, useAddPayments, usePrintReceipt } from '../hooks/useOrders';
-import { formatCurrency } from '../utils/formatCurrency';
-import type { Payment, PaymentMethod } from '../types';
+import { useState } from "react";
+import { useOrder, useAddPayments, usePrintReceipt } from "../hooks/useOrders";
+import { formatCurrency } from "../utils/formatCurrency";
+import type {
+  Payment,
+  PaymentMethod,
+  PaymentCreateRequest,
+} from "../types";
 
 interface PaymentModalProps {
   orderId: number;
@@ -18,32 +22,43 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
   const addPaymentsMutation = useAddPayments();
   const printReceiptMutation = usePrintReceipt();
 
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('upi');
-  const [paymentAmount, setPaymentAmount] = useState('');
-  const [error, setError] = useState('');
+  const paymentIcons: Record<PaymentMethod, string> = {
+    upi: "ðŸ“±",
+    cash: "ðŸ’µ",
+    card: "ðŸ’³",
+  };
+
+  const [payments, setPayments] = useState<PaymentCreateRequest[]>([]);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("upi");
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [error, setError] = useState("");
 
   const totalAmount = order?.total_amount || 0;
-  const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-  const remaining = totalAmount - totalPaid;
+  const existingPayments = order?.payments ?? [];
+  const alreadyPaid = existingPayments.reduce((sum, payment) => sum + payment.amount, 0);
+  const pendingTotal = payments.reduce((sum, p) => sum + p.amount, 0);
+  const totalPaid = alreadyPaid + pendingTotal;
+  const remaining = Math.max(totalAmount - totalPaid, 0);
 
   const handleAddPayment = () => {
-    setError('');
+    setError("");
 
-    const amount = parseInt(paymentAmount, 10);
+    const amount = parseInt(paymentAmount, 10) * 100;
 
     if (!paymentAmount || isNaN(amount) || amount <= 0) {
-      setError('Please enter a valid amount');
+      setError("Please enter a valid amount");
       return;
     }
 
     if (amount > remaining) {
-      setError(`Amount exceeds remaining balance (${formatCurrency(remaining)})`);
+      setError(
+        `Amount exceeds remaining balance (${formatCurrency(remaining)})`
+      );
       return;
     }
 
-    setPayments([...payments, { method: paymentMethod, amount }]);
-    setPaymentAmount('');
+    setPayments([...payments, { payment_method: paymentMethod, amount }]);
+    setPaymentAmount("");
   };
 
   const handleRemovePayment = (index: number) => {
@@ -52,18 +67,20 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
 
   const handlePrintReceipt = async () => {
     if (remaining !== 0) {
-      setError('Please add payments to cover the full amount');
+      setError("Please add payments to cover the full amount");
       return;
     }
 
-    setError('');
+    setError("");
 
     try {
-      // First, submit the payments
-      await addPaymentsMutation.mutateAsync({
-        orderId,
-        data: { payments },
-      });
+      // Submit the payments only if new payments were added
+      if (payments.length > 0) {
+        await addPaymentsMutation.mutateAsync({
+          orderId,
+          data: { payments },
+        });
+      }
 
       // Then, print the receipt
       await printReceiptMutation.mutateAsync(orderId);
@@ -71,17 +88,20 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
       // Close modal on success
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to process payment');
+      setError(
+        err instanceof Error ? err.message : "Failed to process payment"
+      );
     }
   };
 
-  const isProcessing = addPaymentsMutation.isPending || printReceiptMutation.isPending;
+  const isProcessing =
+    addPaymentsMutation.isPending || printReceiptMutation.isPending;
 
   return (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-[60]"
+        className="fixed inset-0 bg-black/50 z-60"
         onClick={!isProcessing ? onClose : undefined}
         aria-hidden="true"
       />
@@ -89,7 +109,7 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
       {/* Modal */}
       <div
         className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                   w-full max-w-lg bg-off-white rounded-2xl shadow-2xl z-[70]
+                   w-full max-w-lg bg-off-white rounded-2xl shadow-2xl z-70
                    flex flex-col max-h-[90vh]"
         role="dialog"
         aria-modal="true"
@@ -127,6 +147,35 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                 </div>
               </div>
 
+              {/* Existing Payments */}
+              {existingPayments.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-neutral-text-dark mb-3">
+                    Recorded Payments:
+                  </h3>
+                  <div className="space-y-2">
+                    {existingPayments.map((payment: Payment) => (
+                      <div
+                        key={payment.id}
+                        className="flex items-center justify-between bg-cream rounded-lg p-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">
+                            {paymentIcons[payment.payment_method]}
+                          </span>
+                          <span className="font-medium text-neutral-text-dark capitalize">
+                            {payment.payment_method}
+                          </span>
+                        </div>
+                        <span className="font-semibold text-coffee-brown">
+                          {formatCurrency(payment.amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Payments Added */}
               {payments.length > 0 && (
                 <div>
@@ -141,10 +190,10 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                       >
                         <div className="flex items-center gap-3">
                           <span className="text-lg">
-                            {payment.method === 'upi' ? '=ñ' : payment.method === 'cash' ? '=µ' : '=³'}
+                            {paymentIcons[payment.payment_method]}
                           </span>
                           <span className="font-medium text-neutral-text-dark capitalize">
-                            {payment.method}
+                            {payment.payment_method}
                           </span>
                         </div>
                         <div className="flex items-center gap-3">
@@ -171,7 +220,11 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                   <span className="font-medium text-neutral-text-dark">
                     Amount Remaining:
                   </span>
-                  <span className={`text-xl font-bold ${remaining === 0 ? 'text-success' : 'text-coffee-brown'}`}>
+                  <span
+                    className={`text-xl font-bold ${
+                      remaining === 0 ? "text-success" : "text-coffee-brown"
+                    }`}
+                  >
                     {formatCurrency(remaining)}
                   </span>
                 </div>
@@ -192,7 +245,9 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                       </label>
                       <select
                         value={paymentMethod}
-                        onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                        onChange={(e) =>
+                          setPaymentMethod(e.target.value as PaymentMethod)
+                        }
                         className="w-full px-4 py-3 border border-neutral-border rounded-lg
                                  focus:outline-none focus:ring-2 focus:ring-coffee-brown"
                       >
@@ -210,7 +265,7 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                       <div className="flex gap-2">
                         <div className="flex-1 relative">
                           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-text-light">
-                            ¹
+                            â‚¹
                           </span>
                           <input
                             type="number"
@@ -222,7 +277,9 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                           />
                         </div>
                         <button
-                          onClick={() => setPaymentAmount(remaining.toString())}
+                          onClick={() =>
+                            setPaymentAmount((remaining / 100).toString())
+                          }
                           className="btn bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white whitespace-nowrap"
                         >
                           Full Amount
@@ -281,7 +338,23 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                 Processing...
               </span>
             ) : (
-              '=¨ Print Receipt'
+              <span className="flex items-center gap-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 17v-2a2 2 0 012-2h2a2 2 0 012 2v2m4 0V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10m16 0a2 2 0 01-2 2H5a2 2 0 01-2-2"
+                  />
+                </svg>
+                Print Receipt
+              </span>
             )}
           </button>
         </div>

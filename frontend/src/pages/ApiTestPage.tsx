@@ -48,12 +48,17 @@ export default function ApiTestPage() {
 
   const testCreateMenuItem = async () => {
     try {
+      const firstCategory = menu.categories.data?.[0];
+      if (!firstCategory) {
+        addResult('No categories available to create menu item', false);
+        return;
+      }
+
       await menu.createItemAsync({
         name: 'Test Item ' + Date.now(),
         description: 'Test description',
-        price: 99,
-        category: 'Test Category',
-        is_available: true,
+        price: 9900,
+        category_id: firstCategory.id,
       });
       addResult('Created menu item successfully!');
     } catch (error) {

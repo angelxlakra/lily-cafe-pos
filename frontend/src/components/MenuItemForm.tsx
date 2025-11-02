@@ -3,9 +3,14 @@
 // Modal form for creating/editing menu items
 // ========================================
 
-import { useState, FormEvent, useEffect } from 'react';
-import { useCategories, useCreateMenuItem, useUpdateMenuItem, useCreateCategory } from '../hooks/useMenu';
-import type { MenuItem } from '../types';
+import { useState, FormEvent, useEffect } from "react";
+import {
+  useCategories,
+  useCreateMenuItem,
+  useUpdateMenuItem,
+  useCreateCategory,
+} from "../hooks/useMenu";
+import type { MenuItem } from "../types";
 
 interface MenuItemFormProps {
   item: MenuItem | null; // null for new item, MenuItem for edit
@@ -20,51 +25,59 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
 
   const isEditing = !!item;
 
-  // Helper to extract category name from string or object
-  const getCategoryName = (cat: string | { name: string } | undefined): string => {
-    if (!cat) return '';
-    return typeof cat === 'string' ? cat : cat.name;
-  };
-
-  const [name, setName] = useState(item?.name || '');
-  const [description, setDescription] = useState(item?.description || '');
-  const [price, setPrice] = useState(item?.price?.toString() || '');
-  const [category, setCategory] = useState(getCategoryName(item?.category));
+  const [name, setName] = useState(item?.name || "");
+  const [description, setDescription] = useState(item?.description || "");
+  const [price, setPrice] = useState(
+    item ? ((item.price ?? 0) / 100).toString() : ""
+  );
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(
+    item ? String(item.category_id) : ""
+  );
   const [isAvailable, setIsAvailable] = useState(item?.is_available ?? true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [showNewCategory, setShowNewCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryName, setNewCategoryName] = useState("");
 
   const categoryList = categories || [];
 
-  // If category doesn't exist in the list, add it (for editing existing items)
   useEffect(() => {
-    const itemCategoryName = getCategoryName(item?.category);
-    if (itemCategoryName && !categoryList.find(c => c.name === itemCategoryName)) {
-      setCategory(itemCategoryName);
+    if (item) {
+      setSelectedCategoryId(String(item.category_id));
+      setPrice((item.price / 100).toString());
     }
-  }, [item, categoryList]);
+  }, [item]);
+
+  const handleCategorySelect = (value: string) => {
+    if (value === "__new__") {
+      setShowNewCategory(true);
+      return;
+    }
+    setSelectedCategoryId(value);
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     // Validation
     if (!name.trim()) {
-      setError('Please enter item name');
+      setError("Please enter item name");
       return;
     }
 
-    const priceNum = parseInt(price, 10);
-    if (!price || isNaN(priceNum) || priceNum <= 0) {
-      setError('Please enter a valid price');
+    const priceValue = parseFloat(price);
+    if (!price || Number.isNaN(priceValue) || priceValue <= 0) {
+      setError("Please enter a valid price");
       return;
     }
 
-    if (!category.trim()) {
-      setError('Please select a category');
+    if (!selectedCategoryId) {
+      setError("Please select a category");
       return;
     }
+
+    const pricePaise = Math.round(priceValue * 100);
+    const categoryId = Number(selectedCategoryId);
 
     try {
       if (isEditing) {
@@ -74,32 +87,39 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
           data: {
             name: name.trim(),
             description: description.trim() || null,
-            price: priceNum,
-            category: category.trim(),
+            price: pricePaise,
+            category_id: categoryId,
             is_available: isAvailable,
           },
         });
       } else {
         // Create new item
-        await createMutation.mutateAsync({
+        const createdItem = await createMutation.mutateAsync({
           name: name.trim(),
           description: description.trim() || null,
-          price: priceNum,
-          category: category.trim(),
-          is_available: isAvailable,
+          price: pricePaise,
+          category_id: categoryId,
         });
+
+        // If the item should start as unavailable, apply an update after creation
+        if (!isAvailable && createdItem) {
+          await updateMutation.mutateAsync({
+            id: createdItem.id,
+            data: { is_available: false },
+          });
+        }
       }
 
       // Close modal on success
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save menu item');
+      setError(err instanceof Error ? err.message : "Failed to save menu item");
     }
   };
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) {
-      setError('Please enter category name');
+      setError("Please enter category name");
       return;
     }
 
@@ -109,11 +129,13 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
       });
 
       // Select the new category
-      setCategory(newCat.name);
-      setNewCategoryName('');
+      setSelectedCategoryId(String(newCat.id));
+      setNewCategoryName("");
       setShowNewCategory(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create category');
+      setError(
+        err instanceof Error ? err.message : "Failed to create category"
+      );
     }
   };
 
@@ -139,7 +161,7 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-neutral-border">
           <h2 className="text-xl font-bold text-neutral-text-dark">
-            {isEditing ? 'Edit Menu Item' : 'Add New Menu Item'}
+            {isEditing ? "Edit Menu Item" : "Add New Menu Item"}
           </h2>
           <button
             onClick={onClose}
@@ -156,7 +178,10 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
           <div className="space-y-5">
             {/* Name */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-neutral-text-dark mb-2">
+              <label
+                htmlFor="name"
+                className="block text-sm font-medium text-neutral-text-dark mb-2"
+              >
                 Item Name *
               </label>
               <input
@@ -175,7 +200,10 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
 
             {/* Description */}
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-neutral-text-dark mb-2">
+              <label
+                htmlFor="description"
+                className="block text-sm font-medium text-neutral-text-dark mb-2"
+              >
                 Description
               </label>
               <textarea
@@ -194,12 +222,15 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
 
             {/* Price */}
             <div>
-              <label htmlFor="price" className="block text-sm font-medium text-neutral-text-dark mb-2">
+              <label
+                htmlFor="price"
+                className="block text-sm font-medium text-neutral-text-dark mb-2"
+              >
                 Price *
               </label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-text-light">
-                  �
+                  ₹
                 </span>
                 <input
                   id="price"
@@ -222,21 +253,18 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
 
             {/* Category */}
             <div>
-              <label htmlFor="category" className="block text-sm font-medium text-neutral-text-dark mb-2">
+              <label
+                htmlFor="category"
+                className="block text-sm font-medium text-neutral-text-dark mb-2"
+              >
                 Category *
               </label>
               {!showNewCategory ? (
                 <div className="flex gap-2">
                   <select
                     id="category"
-                    value={category}
-                    onChange={(e) => {
-                      if (e.target.value === '__new__') {
-                        setShowNewCategory(true);
-                      } else {
-                        setCategory(e.target.value);
-                      }
-                    }}
+                    value={selectedCategoryId}
+                    onChange={(e) => handleCategorySelect(e.target.value)}
                     disabled={isProcessing}
                     className="flex-1 px-4 py-3 border border-neutral-border rounded-lg
                              focus:outline-none focus:ring-2 focus:ring-coffee-brown
@@ -244,7 +272,7 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
                   >
                     <option value="">Select a category</option>
                     {categoryList.map((cat) => (
-                      <option key={cat.id} value={cat.name}>
+                      <option key={cat.id} value={String(cat.id)}>
                         {cat.name}
                       </option>
                     ))}
@@ -271,14 +299,16 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
                       disabled={createCategoryMutation.isPending}
                       className="btn bg-lily-green text-white hover:bg-[#7A8C75] whitespace-nowrap"
                     >
-                      {createCategoryMutation.isPending ? 'Creating...' : 'Create'}
+                      {createCategoryMutation.isPending
+                        ? "Creating..."
+                        : "Create"}
                     </button>
                   </div>
                   <button
                     type="button"
                     onClick={() => {
                       setShowNewCategory(false);
-                      setNewCategoryName('');
+                      setNewCategoryName("");
                     }}
                     className="text-sm text-neutral-text-light hover:text-coffee-brown transition-colors"
                   >
@@ -355,8 +385,10 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
                   </svg>
                   Saving...
                 </span>
+              ) : isEditing ? (
+                "Save Changes"
               ) : (
-                isEditing ? 'Save Changes' : 'Add Item'
+                "Add Item"
               )}
             </button>
           </div>

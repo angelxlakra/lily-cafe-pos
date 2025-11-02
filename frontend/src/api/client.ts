@@ -19,8 +19,9 @@ import type {
   Order,
   CreateOrderRequest,
   UpdateOrderRequest,
+  OrderItemsUpdateRequest,
   AddPaymentRequest,
-  PaymentResponse,
+  Payment,
   QueryParams,
   AppConfig,
 } from "../types";
@@ -245,7 +246,7 @@ export const ordersApi = {
    * Create a new order or update existing order
    */
   createOrUpdateOrder: async (
-    data: CreateOrderRequest | UpdateOrderRequest
+    data: CreateOrderRequest
   ): Promise<Order> => {
     const response = await apiClient.post<Order>("/orders", data);
     return response.data;
@@ -274,7 +275,7 @@ export const ordersApi = {
    */
   updateOrder: async (
     id: number,
-    data: { items: Array<{ menu_item_id: number; quantity: number }> }
+    data: OrderItemsUpdateRequest
   ): Promise<Order> => {
     const response = await apiClient.put<Order>(`/orders/${id}`, data);
     return response.data;
@@ -296,10 +297,17 @@ export const ordersApi = {
   getOrderHistory: async (
     params?: QueryParams
   ): Promise<Order[]> => {
-    const response = await apiClient.get<Order[]>(
-      "/orders/history",
-      { params }
-    );
+    const response = await apiClient.get<Order[]>("/orders/history", {
+      params,
+    });
+    return response.data;
+  },
+
+  /**
+   * Update order status or customer name
+   */
+  patchOrder: async (id: number, data: UpdateOrderRequest): Promise<Order> => {
+    const response = await apiClient.patch<Order>(`/orders/${id}`, data);
     return response.data;
   },
 };
@@ -315,9 +323,9 @@ export const paymentsApi = {
   addPayments: async (
     orderId: number,
     data: AddPaymentRequest
-  ): Promise<PaymentResponse> => {
-    const response = await apiClient.post<PaymentResponse>(
-      `/orders/${orderId}/payments`,
+  ): Promise<Payment[]> => {
+    const response = await apiClient.post<Payment[]>(
+      `/orders/${orderId}/payments/batch`,
       data
     );
     return response.data;

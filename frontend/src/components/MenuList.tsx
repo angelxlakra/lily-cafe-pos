@@ -29,25 +29,7 @@ export default function MenuList({
     const grouped = new Map<string, MenuItem[]>();
 
     menuItems.forEach((item) => {
-      // Ensure category is always a string
-      let categoryName: string;
-      if (typeof item.category === "string") {
-        categoryName = item.category || "Other";
-      } else if (
-        item.category &&
-        typeof item.category === "object" &&
-        "name" in item.category
-      ) {
-        // Handle case where category is an object with a name property
-        categoryName = String(
-          (item.category as { name: string }).name || "Other"
-        );
-      } else {
-        categoryName = "Other";
-      }
-
-      // Ensure categoryName is always a string (safety check)
-      categoryName = String(categoryName);
+      const categoryName = item.category?.name || "Other";
 
       if (!grouped.has(categoryName)) {
         grouped.set(categoryName, []);

@@ -25,30 +25,26 @@ export interface MenuItem {
   id: number;
   name: string;
   description: string | null;
-  price: number; // Price in rupees (display value)
-  category: string | Category; // Can be string or Category object from backend
+  price: number; // Price in paise
+  category_id: number;
+  category: Category;
   is_available: boolean;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface MenuItemsResponse {
-  items: MenuItem[];
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateMenuItemRequest {
   name: string;
   description?: string | null;
-  price: number;
-  category: string;
-  is_available?: boolean;
+  price: number; // Price in paise
+  category_id: number;
 }
 
 export interface UpdateMenuItemRequest {
   name?: string;
   description?: string | null;
-  price?: number;
-  category?: string;
+  price?: number; // Price in paise
+  category_id?: number;
   is_available?: boolean;
 }
 
@@ -59,11 +55,7 @@ export interface UpdateMenuItemRequest {
 export interface Category {
   id: number;
   name: string;
-  created_at?: string;
-}
-
-export interface CategoriesResponse {
-  categories: Category[];
+  created_at: string;
 }
 
 export interface CreateCategoryRequest {
@@ -75,12 +67,12 @@ export interface CreateCategoryRequest {
 // ========================================
 
 export interface OrderItem {
-  id?: number;
-  menu_item_id?: number;
+  id: number;
+  menu_item_id: number;
   menu_item_name: string;
   quantity: number;
-  unit_price: number;
-  subtotal: number;
+  unit_price: number; // Price in paise
+  subtotal: number; // Price in paise
 }
 
 export interface Order {
@@ -94,7 +86,8 @@ export interface Order {
   gst_amount: number;
   total_amount: number;
   created_at: string;
-  updated_at?: string;
+  updated_at: string;
+  payments: Payment[];
 }
 
 export interface CreateOrderRequest {
@@ -107,25 +100,16 @@ export interface CreateOrderRequest {
 }
 
 export interface UpdateOrderRequest {
-  order_id: number;
+  status?: 'active' | 'paid' | 'canceled';
+  customer_name?: string | null;
+}
+
+export interface OrderItemsUpdateRequest {
   items: Array<{
     menu_item_id: number;
     quantity: number;
   }>;
-}
-
-export interface ActiveOrderSummary {
-  id: number;
-  order_number: string;
-  table_number: number;
-  customer_name: string | null;
-  item_count: number;
-  total_amount: number;
-  created_at: string;
-}
-
-export interface ActiveOrdersResponse {
-  orders: ActiveOrderSummary[];
+  customer_name?: string | null;
 }
 
 // ========================================
@@ -135,41 +119,24 @@ export interface ActiveOrdersResponse {
 export type PaymentMethod = 'upi' | 'cash' | 'card';
 
 export interface Payment {
-  method: PaymentMethod;
+  id: number;
+  payment_method: PaymentMethod;
+  amount: number;
+  created_at: string;
+}
+
+export interface PaymentCreateRequest {
+  payment_method: PaymentMethod;
   amount: number;
 }
 
 export interface AddPaymentRequest {
-  payments: Payment[];
-}
-
-export interface PaymentResponse {
-  order_id: number;
-  total_amount: number;
-  total_paid: number;
-  payments: Payment[];
-  status: string;
+  payments: PaymentCreateRequest[];
 }
 
 // ========================================
 // Order History Types
 // ========================================
-
-export interface OrderHistoryItem {
-  id: number;
-  order_number: string;
-  table_number: number;
-  customer_name: string | null;
-  total_amount: number;
-  payment_methods: PaymentMethod[];
-  created_at: string;
-}
-
-export interface OrderHistoryResponse {
-  orders: OrderHistoryItem[];
-  total: number;
-  date: string;
-}
 
 // ========================================
 // Configuration Types
@@ -194,9 +161,10 @@ export interface ErrorResponse {
 // ========================================
 
 export interface QueryParams {
-  category?: string;
   available_only?: boolean;
+  category_id?: number;
+  status?: 'active' | 'paid' | 'canceled';
+  table_number?: number;
+  today_only?: boolean;
   date?: string;
-  limit?: number;
-  skip?: number;
 }

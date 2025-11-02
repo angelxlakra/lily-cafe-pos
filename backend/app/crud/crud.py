@@ -130,11 +130,12 @@ def generate_order_number(db: Session) -> str:
     today = date.today()
     today_str = today.strftime("%Y%m%d")
 
-    # Get the last order created today
+    # Get the last order created today.
+    # Use the order_number prefix instead of created_at since timestamps are stored in UTC.
     last_order = (
         db.query(models.Order)
-        .filter(func.date(models.Order.created_at) == today)
-        .order_by(models.Order.created_at.desc())
+        .filter(models.Order.order_number.like(f"ORD-{today_str}-%"))
+        .order_by(models.Order.order_number.desc())
         .first()
     )
 

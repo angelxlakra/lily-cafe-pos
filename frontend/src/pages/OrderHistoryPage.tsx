@@ -60,7 +60,7 @@ export default function OrderHistoryPage() {
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
       {/* Main Content */}
-      <div className="flex-1 lg:ml-60">
+      <div className="flex-1 lg:ml-60 flex flex-col">
         {/* Header */}
         <header className="bg-off-white border-b border-neutral-border p-4 md:p-6">
           <div className="flex items-center gap-4 mb-4">
@@ -85,7 +85,7 @@ export default function OrderHistoryPage() {
           </div>
 
           {/* Date Picker */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <label className="text-sm font-medium text-neutral-text-dark">
               Date:
             </label>
@@ -94,16 +94,15 @@ export default function OrderHistoryPage() {
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               max={today}
-              className="px-4 py-2 border border-neutral-border rounded-lg
-                       focus:outline-none focus:ring-2 focus:ring-coffee-brown"
+              className="px-4 py-2 border border-neutral-border rounded-lg focus:outline-none focus:ring-2 focus:ring-coffee-brown w-full sm:w-auto"
             />
           </div>
         </header>
 
         {/* Daily Summary */}
         {!isLoading && !error && orders.length > 0 && (
-          <div className="p-6 bg-off-white border-b border-neutral-border">
-            <div className="grid grid-cols-3 gap-6">
+          <div className="p-4 sm:p-6 bg-off-white border-b border-neutral-border">
+            <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
               <div className="bg-lily-green/10 border border-lily-green rounded-lg p-4">
                 <p className="text-sm text-neutral-text-light mb-1">Total Orders</p>
                 <p className="text-2xl font-bold text-coffee-brown">
@@ -127,7 +126,7 @@ export default function OrderHistoryPage() {
         )}
 
         {/* Content */}
-        <main className="p-6">
+        <main className="p-4 sm:p-6 flex-1">
           {/* Loading State */}
           {isLoading && (
             <div className="flex items-center justify-center min-h-[400px]">
@@ -171,11 +170,13 @@ export default function OrderHistoryPage() {
           {/* Orders Table */}
           {!isLoading && orders.length > 0 && (
             <div className="bg-off-white border border-neutral-border rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-cream border-b border-neutral-border">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-dark">
-                      Order #
+              {/* Desktop Table */}
+              <div className="hidden md:block">
+                <table className="w-full">
+                  <thead className="bg-cream border-b border-neutral-border">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-dark">
+                        Order #
                     </th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-dark">
                       Table
@@ -215,7 +216,7 @@ export default function OrderHistoryPage() {
                       </td>
                       <td className="px-6 py-4">
                         <p className="text-neutral-text-dark">
-                          {order.customer_name || ''}
+                          {order.customer_name || '—'}
                         </p>
                       </td>
                       <td className="px-6 py-4">
@@ -243,6 +244,64 @@ export default function OrderHistoryPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
+
+              {/* Mobile Cards */}
+              <div className="md:hidden p-4 space-y-4">
+                {orders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="rounded-xl border border-neutral-border bg-cream/50 p-4 space-y-3"
+                  >
+                    <div className="flex flex-wrap justify-between gap-2">
+                      <div>
+                        <p className="text-xs text-neutral-text-light uppercase tracking-wide">
+                          Order #
+                        </p>
+                        <p className="font-mono text-sm text-neutral-text-dark">
+                          {order.order_number}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-neutral-text-light uppercase tracking-wide">
+                          Total
+                        </p>
+                        <p className="font-semibold text-coffee-brown">
+                          {formatCurrency(order.total_amount)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-neutral-text-light">Table</p>
+                        <p className="font-medium text-neutral-text-dark">
+                          Table {order.table_number}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-neutral-text-light">Customer</p>
+                        <p className="text-neutral-text-dark">
+                          {order.customer_name || '—'}
+                        </p>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <p className="text-neutral-text-light">Time</p>
+                        <p className="text-neutral-text-dark">
+                          {formatDateTime(order.created_at)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleViewDetails(order.id)}
+                      className="w-full px-4 py-2 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors"
+                    >
+                      View Details
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </main>
