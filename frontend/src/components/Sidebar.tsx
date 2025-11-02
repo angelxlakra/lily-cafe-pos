@@ -3,8 +3,8 @@
 // Responsive admin navigation
 // ========================================
 
-import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -17,7 +17,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const handleLogout = () => {
     logout();
-    navigate('/login', { replace: true });
+    navigate("/login", { replace: true });
   };
 
   return (
@@ -36,14 +36,21 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         className={`
           w-60 bg-coffee-dark text-cream h-screen fixed left-0 top-0 flex flex-col shadow-lg z-50
           transition-transform duration-300 ease-in-out
-          ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}
       >
         {/* Logo Section */}
         <div className="h-20 flex items-center justify-between border-b border-coffee-light px-6">
-          <div className="text-center flex-1">
-            <h1 className="text-lg font-bold">Lily Cafe</h1>
-            <p className="text-xs text-cream/70">Admin Portal</p>
+          <div className="flex items-center gap-2">
+            <img
+              src="/logos/logo_cream.png"
+              alt="Lily Cafe Logo"
+              className="w-10 h-10 object-contain"
+            />
+            <div className="text-center flex-1">
+              <h1 className="text-lg font-bold">Lily Cafe</h1>
+              <p className="text-xs text-cream/70">Admin Portal</p>
+            </div>
           </div>
           {/* Close button for mobile */}
           <button
@@ -119,8 +126,8 @@ function NavItem({ to, icon, label, onClick }: NavItemProps) {
       className={({ isActive }) =>
         `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
           isActive
-            ? 'bg-coffee-brown text-cream font-semibold'
-            : 'text-cream hover:bg-coffee-light'
+            ? "bg-coffee-brown text-cream font-semibold"
+            : "text-cream hover:bg-coffee-light"
         }`
       }
     >
