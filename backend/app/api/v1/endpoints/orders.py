@@ -51,6 +51,41 @@ def list_orders(
     )
 
 
+@router.get("/history", response_model=List[schemas.Order])
+def get_order_history(
+    date: Optional[str] = None,
+    status: Optional[OrderStatus] = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Get order history with optional date filtering.
+
+    Query parameters:
+    - date: Filter by date in YYYY-MM-DD format (e.g., "2024-11-01")
+    - status: Filter by order status (active, paid, canceled)
+
+    Returns:
+        List of orders matching the filter criteria.
+        By default, returns paid orders from the specified date.
+    """
+    try:
+        # If no status specified, only return paid orders (completed transactions)
+        # This is the expected behavior for order history
+        filter_status = status if status else OrderStatus.PAID
+
+        orders = crud.get_orders(
+            db,
+            status=filter_status,
+            date_str=date,
+        )
+        return orders
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
 @router.get("/{order_id}", response_model=schemas.Order)
 def get_order(order_id: int, db: Session = Depends(get_db)):
     """Get a single order by ID."""

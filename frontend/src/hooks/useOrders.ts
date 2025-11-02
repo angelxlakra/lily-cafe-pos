@@ -78,6 +78,14 @@ export const useOrderHistory = (params?: QueryParams) => {
     queryFn: () => ordersApi.getOrderHistory(params),
     // History data is stable, keep fresh for 5 minutes
     staleTime: 5 * 60 * 1000,
+    // Don't retry on validation errors (422)
+    retry: (failureCount, error: any) => {
+      // Don't retry on 422 Unprocessable Entity or 404 Not Found
+      if (error?.response?.status === 422 || error?.response?.status === 404) {
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 };
 

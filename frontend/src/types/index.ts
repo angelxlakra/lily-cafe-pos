@@ -26,7 +26,7 @@ export interface MenuItem {
   name: string;
   description: string | null;
   price: number; // Price in rupees (display value)
-  category: string;
+  category: string | Category; // Can be string or Category object from backend
   is_available: boolean;
   created_at?: string;
   updated_at?: string;

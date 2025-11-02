@@ -158,6 +158,7 @@ def get_orders(
     status: Optional[models.OrderStatus] = None,
     table_number: Optional[int] = None,
     today_only: bool = False,
+    date_str: Optional[str] = None,
 ) -> List[models.Order]:
     """
     Get orders with optional filtering.
@@ -167,6 +168,7 @@ def get_orders(
         status: Filter by order status
         table_number: Filter by table number
         today_only: If True, only return today's orders
+        date_str: Filter by specific date in YYYY-MM-DD format
 
     Returns:
         List of orders
@@ -182,6 +184,14 @@ def get_orders(
     if today_only:
         today = date.today()
         query = query.filter(func.date(models.Order.created_at) == today)
+
+    if date_str:
+        try:
+            from datetime import datetime
+            filter_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            query = query.filter(func.date(models.Order.created_at) == filter_date)
+        except ValueError:
+            raise ValueError(f"Invalid date format: {date_str}. Expected YYYY-MM-DD")
 
     return query.order_by(models.Order.created_at.desc()).all()
 

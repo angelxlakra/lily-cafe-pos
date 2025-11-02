@@ -3,7 +3,7 @@
 // Authentication state and operations
 // ========================================
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, QueryClient } from '@tanstack/react-query';
 import { authApi } from '../api/client';
 import type { LoginRequest, LoginResponse } from '../types';
 import { useState, useEffect } from 'react';
@@ -42,7 +42,15 @@ interface UseAuthReturn {
  * ```
  */
 export const useAuth = (): UseAuthReturn => {
-  const queryClient = useQueryClient();
+  // Get queryClient but handle case where it might not be available
+  let queryClient: QueryClient | undefined;
+  try {
+    queryClient = useQueryClient();
+  } catch (error) {
+    // QueryClient not available in context - that's ok, we'll work without it
+    console.warn('QueryClient not available in useAuth context');
+  }
+
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(authApi.isAuthenticated());
 
   // Check authentication status on mount and when localStorage changes
@@ -68,8 +76,10 @@ export const useAuth = (): UseAuthReturn => {
     onSuccess: () => {
       // Update authentication state
       setIsAuthenticated(true);
-      // Invalidate all queries to refetch with new auth
-      queryClient.invalidateQueries();
+      // Invalidate all queries to refetch with new auth (if queryClient available)
+      if (queryClient) {
+        queryClient.invalidateQueries();
+      }
     },
     onError: (error) => {
       // Error is captured in the mutation state
@@ -83,8 +93,10 @@ export const useAuth = (): UseAuthReturn => {
     authApi.logout();
     // Update authentication state
     setIsAuthenticated(false);
-    // Clear all cached data
-    queryClient.clear();
+    // Clear all cached data (if queryClient available)
+    if (queryClient) {
+      queryClient.clear();
+    }
   };
 
   return {

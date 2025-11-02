@@ -7,6 +7,11 @@ import ApiTestPage from './pages/ApiTestPage.tsx'
 import TablesPage from './pages/TablesPage.tsx'
 import OrderPage from './pages/OrderPage.tsx'
 import ActiveOrdersPage from './pages/ActiveOrdersPage.tsx'
+import LoginPage from './pages/LoginPage.tsx'
+import AdminActiveOrdersPage from './pages/AdminActiveOrdersPage.tsx'
+import MenuManagementPage from './pages/MenuManagementPage.tsx'
+import OrderHistoryPage from './pages/OrderHistoryPage.tsx'
+import ProtectedRoute from './components/ProtectedRoute.tsx'
 import './index.css'
 
 // Configure TanStack Query client
@@ -47,6 +52,35 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="/tables" element={<TablesPage />} />
           <Route path="/order/:tableNumber" element={<OrderPage />} />
           <Route path="/active-orders" element={<ActiveOrdersPage />} />
+
+          {/* Admin Authentication */}
+          <Route path="/login" element={<LoginPage />} />
+
+          {/* Admin Protected Routes */}
+          <Route
+            path="/admin/active-orders"
+            element={
+              <ProtectedRoute>
+                <AdminActiveOrdersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/menu"
+            element={
+              <ProtectedRoute>
+                <MenuManagementPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/order-history"
+            element={
+              <ProtectedRoute>
+                <OrderHistoryPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Dev/Testing Routes */}
           <Route path="/test" element={<App />} />
