@@ -67,8 +67,8 @@ export const useMenuItem = (id: number) => {
  *
  * createItem({
  *   name: 'Masala Dosa',
- *   price: 80,
- *   category: 'South Indian',
+ *   price: 8000, // price in paise
+ *   category_id: 1,
  * });
  * ```
  */
@@ -91,7 +91,7 @@ export const useCreateMenuItem = () => {
  * ```tsx
  * const { mutate: updateItem } = useUpdateMenuItem();
  *
- * updateItem({ id: 5, data: { price: 90 } });
+ * updateItem({ id: 5, data: { price: 9000 } });
  * ```
  */
 export const useUpdateMenuItem = () => {
@@ -192,11 +192,12 @@ export const useCreateCategory = () => {
  * const menu = useMenu({ available_only: true });
  *
  * // Access data
- * const items = menu.items.data?.items || [];
- * const categories = menu.categories.data?.categories || [];
+ * const items = menu.items.data || [];
+ * const categories = menu.categories.data || [];
  *
  * // Use mutations
- * menu.createItem({ name: 'New Dish', price: 100, category: 'Main Course' });
+ * menu.createItem({ name: 'New Dish', price: 10000, category_id: 2 });
+ * menu.updateItem({ id: 10, data: { price: 12000 } });
  * menu.deleteItem(5);
  * ```
  */
