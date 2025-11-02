@@ -230,22 +230,14 @@ export default function CartDrawer({
             {/* Total */}
             <div className="flex justify-between text-lg">
               <span className="font-semibold text-neutral-text-dark">Total:</span>
-              <span className="font-bold text-coffee-brown">{formatCurrency(total)}</span>
+              <span className="font-bold font-heading text-coffee-brown">{formatCurrency(total)}</span>
             </div>
 
             {/* Save Order Button */}
             <button
               onClick={onSaveOrder}
               disabled={isSaving}
-              className="
-                btn w-full h-12
-                bg-coffee-brown text-cream
-                rounded-lg font-semibold
-                hover:bg-coffee-dark
-                disabled:opacity-50 disabled:cursor-not-allowed
-                transition-all duration-200
-                active:scale-95
-              "
+              className="btn-primary w-full h-12"
             >
               {isSaving ? (
                 <span className="flex items-center justify-center gap-2">

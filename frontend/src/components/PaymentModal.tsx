@@ -4,6 +4,7 @@
 // ========================================
 
 import { useState } from "react";
+import { PixLogo, Money, CreditCard } from "@phosphor-icons/react";
 import { useOrder, useAddPayments, usePrintReceipt } from "../hooks/useOrders";
 import { formatCurrency } from "../utils/formatCurrency";
 import type {
@@ -22,10 +23,10 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
   const addPaymentsMutation = useAddPayments();
   const printReceiptMutation = usePrintReceipt();
 
-  const paymentIcons: Record<PaymentMethod, string> = {
-    upi: "📱",
-    cash: "💵",
-    card: "💳",
+  const paymentIcons: Record<PaymentMethod, JSX.Element> = {
+    upi: <PixLogo size={20} weight="duotone" />,
+    cash: <Money size={20} weight="duotone" />,
+    card: <CreditCard size={20} weight="duotone" />,
   };
 
   const [payments, setPayments] = useState<PaymentCreateRequest[]>([]);
@@ -141,7 +142,7 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
               <div className="bg-cream rounded-lg p-4">
                 <div className="flex justify-between items-center">
                   <span className="text-neutral-text-light">Total Amount:</span>
-                  <span className="text-2xl font-bold text-coffee-brown">
+                  <span className="text-2xl font-bold font-heading text-coffee-brown">
                     {formatCurrency(totalAmount)}
                   </span>
                 </div>
@@ -280,7 +281,7 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                           onClick={() =>
                             setPaymentAmount((remaining / 100).toString())
                           }
-                          className="btn bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white whitespace-nowrap"
+                          className="btn-secondary whitespace-nowrap"
                         >
                           Full Amount
                         </button>
@@ -290,7 +291,7 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                     {/* Add Button */}
                     <button
                       onClick={handleAddPayment}
-                      className="w-full btn bg-lily-green text-white hover:bg-[#7A8C75]"
+                      className="btn-success w-full"
                     >
                       + Add Payment
                     </button>
@@ -313,9 +314,7 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
           <button
             onClick={handlePrintReceipt}
             disabled={remaining !== 0 || isProcessing}
-            className="w-full btn bg-coffee-brown text-cream hover:bg-coffee-dark
-                     disabled:bg-neutral-border disabled:cursor-not-allowed
-                     h-12 text-base font-semibold"
+            className="btn-primary w-full h-12 text-base"
           >
             {isProcessing ? (
               <span className="flex items-center justify-center gap-2">

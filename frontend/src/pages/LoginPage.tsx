@@ -50,17 +50,17 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo/Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-coffee-brown mb-2">
+          <h1 className="font-heading heading-section text-coffee-brown mb-2">
             Lily Cafe POS
           </h1>
-          <p className="text-neutral-text-light">
+          <p className="text-muted">
             Admin Portal
           </p>
         </div>
 
         {/* Login Card */}
         <div className="bg-off-white border border-neutral-border rounded-lg shadow-lg p-8">
-          <h2 className="text-xl font-semibold text-neutral-text-dark mb-6">
+          <h2 className="font-heading heading-sub text-neutral-text-dark mb-6">
             Sign In
           </h2>
 
@@ -155,7 +155,7 @@ export default function LoginPage() {
 
           {/* Info Text */}
           <div className="mt-6 text-center">
-            <p className="text-sm text-neutral-text-light">
+            <p className="text-sm text-muted">
               Default credentials: <span className="font-mono font-medium text-neutral-text-dark">admin</span> / <span className="font-mono font-medium text-neutral-text-dark">changeme123</span>
             </p>
           </div>

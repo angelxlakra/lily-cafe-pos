@@ -3,7 +3,9 @@
 // Mobile navigation for waiter interface
 // ========================================
 
+import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { Table, ClipboardText } from "@phosphor-icons/react";
 
 interface BottomNavProps {
   className?: string;
@@ -13,15 +15,15 @@ export default function BottomNav({ className = "" }: BottomNavProps) {
   const location = useLocation();
   const currentPath = location.pathname;
 
-  const navItems = [
+  const navItems: { path: string; icon: ReactNode; label: string }[] = [
     {
       path: "/tables",
-      icon: "🪑",
+      icon: <Table size={24} weight="duotone" />,
       label: "Tables",
     },
     {
       path: "/active-orders",
-      icon: "📋",
+      icon: <ClipboardText size={24} weight="duotone" />,
       label: "Orders",
     },
   ];
@@ -56,7 +58,7 @@ export default function BottomNav({ className = "" }: BottomNavProps) {
                 }
               `}
             >
-              <span className="text-xl" role="img" aria-label={item.label}>
+              <span className="text-xl" aria-hidden>
                 {item.icon}
               </span>
               <span className="text-xs font-medium">{item.label}</span>

@@ -4,16 +4,20 @@
 // ========================================
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useActiveOrders, useOrder } from "../hooks/useOrders";
 import { useAppConfig } from "../hooks/useConfig";
 import { formatCurrency } from "../utils/formatCurrency";
 import { formatDateTime } from "../utils/formatDateTime";
 import BottomNav from "../components/BottomNav";
+import EmptyState from "../components/EmptyState";
+import { Tray } from "@phosphor-icons/react";
 import type { Order } from "../types";
 
 export default function ActiveOrdersPage() {
   const { data: activeOrders, isLoading, error } = useActiveOrders();
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  const navigate = useNavigate();
 
   const { data: selectedOrder, isLoading: isLoadingDetails } = useOrder(
     selectedOrderId || 0
@@ -39,58 +43,57 @@ export default function ActiveOrdersPage() {
     <div className="min-h-screen bg-neutral-background pb-16">
       {/* Header */}
       <header className="bg-coffee-brown text-cream p-4 sticky top-0 z-30 shadow-md">
-        <h1 className="text-xl font-semibold text-center">Active Orders</h1>
+        <h1 className="font-heading heading-sub text-center">Active Orders</h1>
       </header>
 
       {/* Main Content */}
-      <main className="p-4 space-y-4">
-        {/* Loading State */}
-        {isLoading && (
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <div className="animate-spin h-12 w-12 border-4 border-coffee-brown border-t-transparent rounded-full mx-auto mb-4"></div>
-              <p className="text-neutral-text-light">Loading orders...</p>
+      <main className="px-4 py-6">
+        <div className="max-w-3xl mx-auto space-y-4">
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="text-center">
+                <div className="animate-spin h-12 w-12 border-4 border-coffee-brown border-t-transparent rounded-full mx-auto mb-4"></div>
+                <p className="text-neutral-text-light">Loading orders...</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Error State */}
-        {error && (
-          <div className="bg-error/10 border border-error rounded-lg p-4">
-            <p className="text-error font-medium">
-              {error instanceof Error
-                ? error.message
-                : "Failed to load active orders"}
-            </p>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!isLoading && !error && orders.length === 0 && (
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <p className="text-neutral-text-light text-lg mb-2">
-                No active orders
-              </p>
-              <p className="text-neutral-text-light text-sm">
-                Orders will appear here once tables place them
+          {/* Error State */}
+          {error && (
+            <div className="bg-error/10 border border-error rounded-lg p-4">
+              <p className="text-error font-medium">
+                {error instanceof Error
+                  ? error.message
+                  : "Failed to load active orders"}
               </p>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Orders List */}
-        {!isLoading && orders.length > 0 && (
-          <div className="space-y-3">
-            {orders.map((order) => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                onViewDetails={() => handleViewDetails(order.id)}
-              />
-            ))}
-          </div>
-        )}
+          {/* Empty State */}
+          {!isLoading && !error && orders.length === 0 && (
+            <EmptyState
+              icon={<Tray size={32} weight="duotone" />}
+              title="No active orders"
+              description="Orders will appear here once tables place them."
+              actionLabel="Go to tables"
+              onAction={() => navigate("/tables")}
+            />
+          )}
+
+          {/* Orders List */}
+          {!isLoading && orders.length > 0 && (
+            <div className="space-y-3">
+              {orders.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  onViewDetails={() => handleViewDetails(order.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </main>
 
       {/* Bottom Navigation */}
@@ -132,7 +135,7 @@ function OrderCard({ order, onViewDetails }: OrderCardProps) {
           )}
         </div>
         <div className="text-right">
-          <p className="text-lg font-bold text-coffee-brown">
+          <p className="text-lg font-bold font-heading text-coffee-brown">
             {formatCurrency(order.total_amount)}
           </p>
         </div>
@@ -147,7 +150,7 @@ function OrderCard({ order, onViewDetails }: OrderCardProps) {
 
       <button
         onClick={onViewDetails}
-        className="btn w-full bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white"
+        className="btn-secondary w-full"
       >
         View Details
       </button>
@@ -302,7 +305,7 @@ function OrderDetailsModal({
                     <span className="font-semibold text-neutral-text-dark">
                       Total:
                     </span>
-                    <span className="font-bold text-coffee-brown">
+                    <span className="font-bold font-heading text-coffee-brown">
                       {formatCurrency(order.total_amount)}
                     </span>
                   </div>
@@ -320,7 +323,7 @@ function OrderDetailsModal({
         <div className="p-4 border-t border-neutral-border">
           <button
             onClick={onClose}
-            className="btn w-full bg-coffee-brown text-cream hover:bg-coffee-dark"
+            className="btn-primary w-full"
           >
             Close
           </button>

@@ -18,25 +18,29 @@ export default function TablesPage() {
     <div className="min-h-screen bg-neutral-background pb-16">
       {/* Header */}
       <header className="bg-coffee-brown text-cream p-4 sticky top-0 z-30 shadow-md">
-        <h1 className="text-xl font-semibold text-center">Lily Cafe - Tables</h1>
+        <h1 className="font-heading heading-sub text-center">Lily Cafe – Tables</h1>
       </header>
 
       {/* Error State */}
       {error && (
-        <div className="mx-4 mt-4 bg-error/10 border border-error rounded-lg p-4">
-          <p className="text-error font-medium">
-            {error instanceof Error ? error.message : 'Failed to load active orders'}
-          </p>
+        <div className="px-4 mt-4">
+          <div className="max-w-3xl mx-auto bg-error/10 border border-error rounded-lg p-4">
+            <p className="text-error font-medium">
+              {error instanceof Error ? error.message : 'Failed to load active orders'}
+            </p>
+          </div>
         </div>
       )}
 
       {/* Table Grid */}
-      <main>
-        <TableGrid
-          maxTables={MAX_TABLES}
-          activeOrders={orders}
-          isLoading={isLoading}
-        />
+      <main className="px-4 py-6">
+        <div className="max-w-5xl mx-auto">
+          <TableGrid
+            maxTables={MAX_TABLES}
+            activeOrders={orders}
+            isLoading={isLoading}
+          />
+        </div>
       </main>
 
       {/* Bottom Navigation */}

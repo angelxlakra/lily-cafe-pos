@@ -5,10 +5,12 @@
 
 import { useState } from 'react';
 import Sidebar from '../components/Sidebar';
+import EmptyState from '../components/EmptyState';
 import { useOrderHistory, useOrder } from '../hooks/useOrders';
 import { useAppConfig } from '../hooks/useConfig';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatDateTime } from '../utils/formatDateTime';
+import { CalendarDots } from '@phosphor-icons/react';
 
 export default function OrderHistoryPage() {
   // Get today's date for max date validation
@@ -75,10 +77,10 @@ export default function OrderHistoryPage() {
               </svg>
             </button>
             <div className="flex-1">
-              <h1 className="text-xl md:text-2xl font-bold text-coffee-brown">
+              <h1 className="font-heading heading-section text-coffee-brown">
                 Order History
               </h1>
-              <p className="text-sm text-neutral-text-light mt-1">
+              <p className="text-sm text-muted mt-1">
                 View past orders and daily sales
               </p>
             </div>
@@ -105,19 +107,19 @@ export default function OrderHistoryPage() {
             <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
               <div className="bg-lily-green/10 border border-lily-green rounded-lg p-4">
                 <p className="text-sm text-neutral-text-light mb-1">Total Orders</p>
-                <p className="text-2xl font-bold text-coffee-brown">
+                <p className="text-2xl font-bold font-heading text-coffee-brown">
                   {dailyOrderCount}
                 </p>
               </div>
               <div className="bg-coffee-light/10 border border-coffee-light rounded-lg p-4">
                 <p className="text-sm text-neutral-text-light mb-1">Daily Revenue</p>
-                <p className="text-2xl font-bold text-coffee-brown">
+                <p className="text-2xl font-bold font-heading text-coffee-brown">
                   {formatCurrency(dailyTotal)}
                 </p>
               </div>
               <div className="bg-cream border border-neutral-border rounded-lg p-4">
                 <p className="text-sm text-neutral-text-light mb-1">Average Order</p>
-                <p className="text-2xl font-bold text-coffee-brown">
+                <p className="text-2xl font-bold font-heading text-coffee-brown">
                   {formatCurrency(Math.round(dailyTotal / dailyOrderCount))}
                 </p>
               </div>
@@ -155,16 +157,13 @@ export default function OrderHistoryPage() {
 
           {/* Empty State */}
           {!isLoading && !error && orders.length === 0 && (
-            <div className="flex items-center justify-center min-h-[400px]">
-              <div className="text-center">
-                <p className="text-neutral-text-light text-lg mb-2">
-                  No orders on this date
-                </p>
-                <p className="text-neutral-text-light text-sm">
-                  Try selecting a different date
-                </p>
-              </div>
-            </div>
+            <EmptyState
+              icon={<CalendarDots size={32} weight="duotone" />}
+              title="No orders on this date"
+              description="Try picking another day or adjust your search criteria."
+              actionLabel="Jump to today"
+              onAction={() => setSelectedDate(today)}
+            />
           )}
 
           {/* Orders Table */}
@@ -461,7 +460,7 @@ function OrderDetailsModal({
                     <span className="font-semibold text-neutral-text-dark">
                       Total:
                     </span>
-                    <span className="font-bold text-coffee-brown">
+                    <span className="font-bold font-heading text-coffee-brown">
                       {formatCurrency(order.total_amount)}
                     </span>
                   </div>
@@ -479,7 +478,7 @@ function OrderDetailsModal({
         <div className="p-6 border-t border-neutral-border">
           <button
             onClick={onClose}
-            className="btn w-full bg-coffee-brown text-cream hover:bg-coffee-dark"
+            className="btn-primary w-full"
           >
             Close
           </button>

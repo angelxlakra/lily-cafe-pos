@@ -3,8 +3,16 @@
 // Responsive admin navigation
 // ========================================
 
+import type { ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import {
+  ActiveOrdersIcon,
+  OrderHistoryIcon,
+  MenuManagementIcon,
+  WaiterViewIcon,
+  LogoutIcon,
+} from "./icons/NavigationIcons";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -40,16 +48,20 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         `}
       >
         {/* Logo Section */}
-        <div className="h-20 flex items-center justify-between border-b border-coffee-light px-6">
-          <div className="flex items-center gap-2">
+        <div className="h-24 flex items-center justify-between border-b border-coffee-light px-6">
+          <div className="flex items-center gap-3">
             <img
               src="/logos/logo_cream.png"
               alt="Lily Cafe Logo"
-              className="w-10 h-10 object-contain"
+              className="w-11 h-11 object-contain shrink-0"
             />
-            <div className="text-center flex-1">
-              <h1 className="text-lg font-bold">Lily Cafe</h1>
-              <p className="text-xs text-cream/70">Admin Portal</p>
+            <div className="flex-1 text-left">
+              <span className="block font-heading text-xl tracking-[0.18em] leading-tight">
+                Lily Cafe
+              </span>
+              <span className="block text-[0.65rem] uppercase tracking-[0.3em] text-cream/70 mt-1">
+                Admin Portal
+              </span>
             </div>
           </div>
           {/* Close button for mobile */}
@@ -66,19 +78,19 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
           <NavItem
             to="/admin/active-orders"
-            icon="📊"
+            icon={<ActiveOrdersIcon />}
             label="Active Orders"
             onClick={onClose}
           />
           <NavItem
             to="/admin/order-history"
-            icon="📜"
+            icon={<OrderHistoryIcon />}
             label="Order History"
             onClick={onClose}
           />
           <NavItem
             to="/admin/menu"
-            icon="📋"
+            icon={<MenuManagementIcon />}
             label="Menu Management"
             onClick={onClose}
           />
@@ -88,7 +100,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
           <NavItem
             to="/tables"
-            icon="🏠"
+            icon={<WaiterViewIcon />}
             label="Waiter View"
             onClick={onClose}
           />
@@ -101,7 +113,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg
                      text-cream hover:bg-coffee-brown transition-colors"
           >
-            <span className="text-lg">🚪</span>
+            <span className="text-lg">
+              <LogoutIcon size={22} />
+            </span>
             <span className="font-medium">Logout</span>
           </button>
         </div>
@@ -113,7 +127,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 // Navigation Item Component
 interface NavItemProps {
   to: string;
-  icon: string;
+  icon: ReactNode;
   label: string;
   onClick: () => void;
 }
@@ -131,7 +145,7 @@ function NavItem({ to, icon, label, onClick }: NavItemProps) {
         }`
       }
     >
-      <span className="text-lg">{icon}</span>
+      <span className="text-xl text-cream/80">{icon}</span>
       <span>{label}</span>
     </NavLink>
   );

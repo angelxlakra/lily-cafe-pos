@@ -68,7 +68,7 @@ export default function TableGrid({
             `}
             aria-label={`Table ${tableNumber}${isActive ? ' - Active' : ' - Empty'}`}
           >
-            <span className="text-2xl font-semibold text-neutral-text-dark mb-1">
+            <span className="text-2xl font-semibold font-heading text-neutral-text-dark mb-1">
               Table {tableNumber}
             </span>
             <span

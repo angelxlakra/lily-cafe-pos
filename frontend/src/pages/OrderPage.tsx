@@ -13,6 +13,7 @@ import FloatingCartButton from "../components/FloatingCartButton";
 import CartDrawer from "../components/CartDrawer";
 import BottomNav from "../components/BottomNav";
 import type { MenuItem } from "../types";
+import { ArrowLeft } from "@phosphor-icons/react";
 
 export default function OrderPage() {
   const { tableNumber: tableNumberParam } = useParams<{
@@ -171,7 +172,7 @@ export default function OrderPage() {
           </p>
           <button
             onClick={() => navigate("/tables")}
-            className="btn bg-coffee-brown text-cream hover:bg-coffee-dark"
+            className="btn-primary"
           >
             Back to Tables
           </button>
@@ -190,8 +191,8 @@ export default function OrderPage() {
             className="flex items-center gap-2 hover:text-cream/80 transition-colors"
             aria-label="Back to tables"
           >
-            <span className="text-xl">🪑</span>
-            <span className="font-medium">Tables</span>
+            <ArrowLeft size={22} weight="duotone" />
+            <span className="font-medium">Back</span>
           </button>
           <h1 className="text-lg font-semibold">
             Table {tableNumber}
@@ -215,7 +216,7 @@ export default function OrderPage() {
               </p>
               <button
                 onClick={() => navigate("/tables")}
-                className="btn bg-coffee-brown text-cream hover:bg-coffee-dark"
+                className="btn-primary"
               >
                 Back to Tables
               </button>

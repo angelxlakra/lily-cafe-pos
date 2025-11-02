@@ -297,7 +297,7 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
                       type="button"
                       onClick={handleCreateCategory}
                       disabled={createCategoryMutation.isPending}
-                      className="btn bg-lily-green text-white hover:bg-[#7A8C75] whitespace-nowrap"
+                      className="btn-success whitespace-nowrap"
                     >
                       {createCategoryMutation.isPending
                         ? "Creating..."
@@ -312,7 +312,7 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
                     }}
                     className="text-sm text-neutral-text-light hover:text-coffee-brown transition-colors"
                   >
-                    � Back to select
+                    Back to select
                   </button>
                 </div>
               )}
@@ -355,15 +355,14 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
               type="button"
               onClick={onClose}
               disabled={isProcessing}
-              className="flex-1 btn bg-cream border border-neutral-border text-neutral-text-dark hover:bg-neutral-border"
+              className="btn-secondary flex-1"
             >
               Cancel
             </button>
             <button
               onClick={handleSubmit}
               disabled={isProcessing}
-              className="flex-1 btn bg-coffee-brown text-cream hover:bg-coffee-dark
-                       disabled:bg-neutral-border disabled:cursor-not-allowed"
+              className="btn-primary flex-1"
             >
               {isProcessing ? (
                 <span className="flex items-center justify-center gap-2">

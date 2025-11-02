@@ -6,9 +6,11 @@
 import { useState, useMemo } from 'react';
 import Sidebar from '../components/Sidebar';
 import MenuItemForm from '../components/MenuItemForm';
+import EmptyState from '../components/EmptyState';
 import { useMenuItems, useDeleteMenuItem } from '../hooks/useMenu';
 import { formatCurrency } from '../utils/formatCurrency';
 import type { MenuItem } from '../types';
+import { ForkKnife } from '@phosphor-icons/react';
 
 export default function MenuManagementPage() {
   const { data: menuItems, isLoading, error } = useMenuItems();
@@ -20,6 +22,7 @@ export default function MenuManagementPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const hasFilters = searchQuery !== '' || categoryFilter !== 'all';
 
   const items = menuItems || [];
 
@@ -74,6 +77,11 @@ export default function MenuManagementPage() {
     setEditingItem(null);
   };
 
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setCategoryFilter('all');
+  };
+
   return (
     <div className="flex min-h-screen bg-neutral-background">
       {/* Sidebar */}
@@ -95,16 +103,16 @@ export default function MenuManagementPage() {
               </svg>
             </button>
             <div className="flex-1">
-              <h1 className="text-xl md:text-2xl font-bold text-coffee-brown">
+              <h1 className="font-heading heading-section text-coffee-brown">
                 Menu Management
               </h1>
-              <p className="text-sm text-neutral-text-light mt-1">
+              <p className="text-sm text-muted mt-1">
                 Add, edit, and manage menu items
               </p>
             </div>
             <button
               onClick={handleAddNew}
-              className="btn bg-coffee-brown text-cream hover:bg-coffee-dark whitespace-nowrap w-full sm:w-auto"
+              className="btn-primary whitespace-nowrap w-full sm:w-auto"
             >
               + Add Item
             </button>
@@ -167,20 +175,17 @@ export default function MenuManagementPage() {
 
           {/* Empty State */}
           {!isLoading && !error && filteredItems.length === 0 && (
-            <div className="flex items-center justify-center min-h-[400px]">
-              <div className="text-center">
-                <p className="text-neutral-text-light text-lg mb-2">
-                  {searchQuery || categoryFilter !== 'all'
-                    ? 'No items found'
-                    : 'No menu items yet'}
-                </p>
-                <p className="text-neutral-text-light text-sm">
-                  {searchQuery || categoryFilter !== 'all'
-                    ? 'Try adjusting your filters'
-                    : 'Add your first menu item to get started'}
-                </p>
-              </div>
-            </div>
+            <EmptyState
+              icon={<ForkKnife size={32} weight="duotone" />}
+              title={hasFilters ? 'No menu items match' : 'No menu items yet'}
+              description={
+                hasFilters
+                  ? 'Try adjusting your search or selecting a different category.'
+                  : 'Add your first menu item to start building the cafe menu.'
+              }
+              actionLabel={hasFilters ? 'Reset filters' : 'Add menu item'}
+              onAction={hasFilters ? handleResetFilters : handleAddNew}
+            />
           )}
 
           {/* Table */}
@@ -398,14 +403,14 @@ function ConfirmDeleteModal({
           <button
             onClick={onCancel}
             disabled={isLoading}
-            className="flex-1 btn bg-cream border border-neutral-border text-neutral-text-dark hover:bg-neutral-border"
+            className="btn-secondary flex-1"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
             disabled={isLoading}
-            className="flex-1 btn bg-error text-white hover:bg-[#D32F2F]"
+            className="btn-destructive flex-1"
           >
             {isLoading ? 'Removing...' : 'Remove'}
           </button>

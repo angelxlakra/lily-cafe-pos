@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { printTestReceipt, viewTestReceipt } from './utils/printTestReceipt'
+import { Printer, Eye, Lightbulb, Flask } from '@phosphor-icons/react'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -64,10 +65,10 @@ function App() {
   return (
     <div className="min-h-screen bg-neutral-background flex items-center justify-center p-8">
       <div className="text-center">
-        <h1 className="text-4xl font-bold text-coffee-brown mb-4">
+        <h1 className="font-heading heading-display text-coffee-brown mb-4">
           Lily Cafe POS System
         </h1>
-        <p className="text-lg text-neutral-text-light mb-8">
+        <p className="text-lg text-muted mb-8">
           Welcome to Mary's Kitchen Point of Sale
         </p>
 
@@ -89,13 +90,13 @@ function App() {
         {/* Test Receipt Printing Section */}
         <div className="mt-6 bg-cream p-6 rounded-lg shadow-md border border-neutral-border">
           <div className="flex items-center justify-center gap-2 mb-3">
-            <span className="text-2xl">🖨️</span>
-            <h2 className="text-lg font-semibold text-coffee-brown">
+            <Printer size={28} weight="duotone" />
+            <h2 className="font-heading heading-sub text-coffee-brown">
               Test Receipt Printer
             </h2>
           </div>
 
-          <p className="text-sm text-neutral-text-light mb-4">
+          <p className="text-sm text-muted mb-4">
             One-click test: Create order → Process payment → Print/View receipt
           </p>
 
@@ -126,7 +127,10 @@ function App() {
                   {printStatus || 'Processing...'}
                 </span>
               ) : (
-                '🖨️ Print Receipt'
+                <span className="flex items-center gap-2">
+                  <Printer size={18} weight="duotone" />
+                  Print Receipt
+                </span>
               )}
             </button>
 
@@ -156,7 +160,10 @@ function App() {
                   {printStatus || 'Processing...'}
                 </span>
               ) : (
-                '👁️ View in Tab'
+                <span className="flex items-center gap-2">
+                  <Eye size={18} weight="duotone" />
+                  View in Tab
+                </span>
               )}
             </button>
           </div>
@@ -175,8 +182,9 @@ function App() {
             </div>
           )}
 
-          <div className="mt-4 text-xs text-neutral-text-light">
-            <p>💡 Tip: "Print" requires thermal printer connected. "View in Tab" works without printer.</p>
+          <div className="mt-4 text-xs text-muted flex items-center gap-2 justify-center">
+            <Lightbulb size={16} weight="duotone" />
+            <p>Tip: "Print" requires thermal printer connected. "View in Tab" works without printer.</p>
           </div>
         </div>
 
@@ -187,9 +195,10 @@ function App() {
           <div className="mt-6">
             <a
               href="/api-test"
-              className="inline-block px-6 py-3 bg-info text-white rounded-lg hover:bg-[#1976D2] transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-info text-white rounded-lg hover:bg-[#1976D2] transition-colors"
             >
-              🧪 Test API Client
+              <Flask size={18} weight="duotone" />
+              Test API Client
             </a>
           </div>
         </div>

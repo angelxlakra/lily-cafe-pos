@@ -6,9 +6,11 @@
 import { useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import PaymentModal from '../components/PaymentModal';
+import EmptyState from '../components/EmptyState';
 import { useActiveOrders, useCancelOrder } from '../hooks/useOrders';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatDateTime } from '../utils/formatDateTime';
+import { ClipboardText } from '@phosphor-icons/react';
 import type { Order } from '../types';
 
 export default function AdminActiveOrdersPage() {
@@ -57,8 +59,8 @@ export default function AdminActiveOrdersPage() {
               </svg>
             </button>
             <div className="flex-1">
-              <h1 className="text-xl md:text-2xl font-bold text-coffee-brown">Active Orders</h1>
-              <p className="text-sm text-neutral-text-light mt-1">
+              <h1 className="font-heading heading-section text-coffee-brown">Active Orders</h1>
+              <p className="text-sm text-muted mt-1">
                 Manage ongoing orders, generate bills, and process payments
               </p>
             </div>
@@ -88,16 +90,11 @@ export default function AdminActiveOrdersPage() {
 
           {/* Empty State */}
           {!isLoading && !error && orders.length === 0 && (
-            <div className="flex items-center justify-center min-h-[400px]">
-              <div className="text-center">
-                <p className="text-neutral-text-light text-lg mb-2">
-                  No active orders
-                </p>
-                <p className="text-neutral-text-light text-sm">
-                  Orders will appear here once tables place them
-                </p>
-              </div>
-            </div>
+            <EmptyState
+              icon={<ClipboardText size={32} weight="duotone" />}
+              title="No active orders"
+              description="Once tables send orders, you'll see them listed here ready for billing."
+            />
           )}
 
           {/* Orders Grid */}
@@ -161,7 +158,7 @@ function OrderCard({ order, onGenerateBill, onCancel }: OrderCardProps) {
           )}
         </div>
         <div className="text-right">
-          <p className="text-2xl font-bold text-coffee-brown">
+          <p className="text-2xl font-bold font-heading text-coffee-brown">
             {formatCurrency(order.total_amount)}
           </p>
         </div>
@@ -179,7 +176,7 @@ function OrderCard({ order, onGenerateBill, onCancel }: OrderCardProps) {
       <div className="flex gap-2">
         <button
           onClick={onGenerateBill}
-          className="flex-1 btn bg-lily-green text-white hover:bg-[#7A8C75]"
+          className="btn-success flex-1"
         >
           Generate Bill
         </button>
@@ -188,7 +185,7 @@ function OrderCard({ order, onGenerateBill, onCancel }: OrderCardProps) {
       {/* Cancel Button */}
       <button
         onClick={onCancel}
-        className="btn w-full mt-2 bg-error/10 border border-error text-error hover:bg-error hover:text-white"
+        className="btn-destructive w-full mt-2"
       >
         Cancel Order
       </button>
@@ -231,14 +228,14 @@ function ConfirmCancelModal({ onConfirm, onCancel, isLoading }: ConfirmCancelMod
           <button
             onClick={onCancel}
             disabled={isLoading}
-            className="flex-1 btn bg-cream border border-neutral-border text-neutral-text-dark hover:bg-neutral-border"
+            className="btn-secondary flex-1"
           >
             No, Keep It
           </button>
           <button
             onClick={onConfirm}
             disabled={isLoading}
-            className="flex-1 btn bg-error text-white hover:bg-[#D32F2F]"
+            className="btn-destructive flex-1"
           >
             {isLoading ? 'Canceling...' : 'Yes, Cancel'}
           </button>

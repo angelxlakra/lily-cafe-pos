@@ -4,6 +4,7 @@
 // ========================================
 
 import { formatCurrency } from "../utils/formatCurrency";
+import { ShoppingCartSimple } from "@phosphor-icons/react";
 
 interface FloatingCartButtonProps {
   itemCount: number;
@@ -42,9 +43,7 @@ export default function FloatingCartButton({
       )}`}
     >
       <div className="flex items-center gap-2 text-sm font-semibold">
-        <span role="img" aria-label="Shopping cart">
-          🛒
-        </span>
+        <ShoppingCartSimple size={20} weight="duotone" />
         <span>
           {itemCount} {itemCount === 1 ? "item" : "items"}
         </span>
