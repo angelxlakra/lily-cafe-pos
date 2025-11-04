@@ -40,6 +40,13 @@ dev = [
     "mypy>=1.6.0",
 ]
 
+# Printer support (thermal printers)
+printer = [
+    "pyusb>=1.2.1",  # USB printer support
+    "pyserial>=3.5",  # Serial port printer support
+    "pywin32>=306; platform_system=='Windows'",  # Windows printer support
+]
+
 # Production optimization
 prod = [
     "gunicorn>=21.2.0",  # For production WSGI server
