@@ -43,6 +43,15 @@ class Settings:
         "FEEDBACK_FORM_URL", "https://forms.gle/your-feedback-form"
     )
 
+    # Thermal Printer Configuration
+    PRINTER_ENABLED: bool = os.getenv("PRINTER_ENABLED", "false").lower() == "true"
+    PRINTER_TYPE: str = os.getenv("PRINTER_TYPE", "")  # "win32", "usb", "serial"
+    PRINTER_NAME: str = os.getenv("PRINTER_NAME", "")  # Windows printer name
+    PRINTER_VENDOR_ID: str = os.getenv("PRINTER_VENDOR_ID", "")  # USB vendor ID (hex)
+    PRINTER_PRODUCT_ID: str = os.getenv("PRINTER_PRODUCT_ID", "")  # USB product ID (hex)
+    PRINTER_PORT: str = os.getenv("PRINTER_PORT", "")  # Serial port (e.g., COM3)
+    PRINTER_BAUDRATE: int = int(os.getenv("PRINTER_BAUDRATE", "9600"))  # Serial baudrate
+
     # Admin Credentials
     ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
     ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "changeme123")

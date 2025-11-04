@@ -2,6 +2,7 @@
 Order and payment endpoints for Lily Cafe POS System.
 """
 
+import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -12,9 +13,11 @@ from app import schemas, crud
 from app.models.models import OrderStatus
 from app.api.deps import get_db, get_current_user
 from app.utils.pdf_generator import generate_receipt
+from app.utils.printer import print_receipt, print_order_chit
 from app.core.config import settings
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -102,9 +105,28 @@ def get_order(order_id: int, db: Session = Depends(get_db)):
     status_code=status.HTTP_201_CREATED,
 )
 def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
-    """Create a new order."""
+    """
+    Create a new order.
+
+    If PRINTER_ENABLED=true, automatically prints an order chit (kitchen ticket)
+    with table number, items, and space for handwritten notes.
+    """
     try:
-        return crud.create_order(db, order)
+        new_order = crud.create_order(db, order)
+
+        # Auto-print order chit if printer is enabled
+        if settings.PRINTER_ENABLED:
+            try:
+                chit_printed = print_order_chit(new_order)
+                if chit_printed:
+                    logger.info(f"Order chit printed for table {new_order.table_number}")
+                else:
+                    logger.warning(f"Failed to print order chit for table {new_order.table_number}")
+            except Exception as e:
+                # Log error but don't fail the order creation
+                logger.error(f"Error printing order chit: {e}")
+
+        return new_order
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -134,11 +156,26 @@ def admin_edit_order(
 
     Requires authentication. Replaces all items in the order.
     Used to fix order mistakes or handle customer change requests.
+
+    If PRINTER_ENABLED=true, prints an updated order chit after editing.
     """
     try:
         updated_order = crud.admin_edit_order(db, order_id, order_update)
         if not updated_order:
             raise HTTPException(status_code=404, detail="Order not found")
+
+        # Auto-print updated order chit if printer is enabled
+        if settings.PRINTER_ENABLED:
+            try:
+                chit_printed = print_order_chit(updated_order)
+                if chit_printed:
+                    logger.info(f"Updated order chit printed for table {updated_order.table_number}")
+                else:
+                    logger.warning(f"Failed to print updated order chit for table {updated_order.table_number}")
+            except Exception as e:
+                # Log error but don't fail the order update
+                logger.error(f"Error printing updated order chit: {e}")
+
         return updated_order
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -240,10 +277,14 @@ def create_payments_batch(
 @router.get("/{order_id}/receipt")
 def generate_receipt_endpoint(
     order_id: int,
+    auto_print: bool = False,
     db: Session = Depends(get_db)
 ):
     """
     Generate and return a PDF receipt for a paid order.
+
+      Query Parameters:
+          auto_print: If true, automatically print to configured thermal printer (default: false)
 
       Returns:
           PDF file formatted for 80mm thermal printer
@@ -257,6 +298,12 @@ def generate_receipt_endpoint(
 
     Note: This endpoint does NOT require authentication so waiters
     can print receipts without admin login.
+
+    When auto_print=true:
+    - Requires PRINTER_ENABLED=true in .env
+    - Requires valid printer configuration (PRINTER_TYPE, etc.)
+    - Will attempt to print to thermal printer automatically
+    - PDF is still returned regardless of print success/failure
     """
 
     order = crud.get_order(db, order_id)
@@ -274,7 +321,20 @@ def generate_receipt_endpoint(
             status_code=400,
             detail="Cannot generate receipt - no payment found!"
         )
-    
+
+    # Auto-print if requested and printer is enabled
+    if auto_print and settings.PRINTER_ENABLED:
+        try:
+            print_success = print_receipt(order)
+            if print_success:
+                print("✓ Receipt printed successfully")
+            else:
+                print("⚠ Print attempt failed - check printer configuration")
+        except Exception as e:
+            # Log error but don't fail the request - still return PDF
+            print(f"⚠ Print error: {e}")
+
+    # Generate PDF (always return PDF regardless of print status)
     pdf_buffer = BytesIO()
     # Use configured paper size (either "58mm" or "80mm")
     paper_size = settings.RECEIPT_PAPER_SIZE

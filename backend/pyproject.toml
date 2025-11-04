@@ -23,9 +23,13 @@ dependencies = [
     "reportlab>=4.0.7",
     "python-dotenv>=1.0.0",
     "httpx>=0.28.1",
-    "bcrypt>=5.0.0",
-    "python-escpos>=3.0", # ESC/POS thermal printer support
+    "bcrypt>=5.0.0", # ESC/POS thermal printer support
     "qrcode[pil]>=8.2",
+    "pywin32>=311",
+    "pyusb>=1.3.1",
+    "pyserial>=3.5",
+    "python-escpos>=3.1",
+    "tzdata>=2025.2",
 ]
 
 # Optional dependencies for different use cases

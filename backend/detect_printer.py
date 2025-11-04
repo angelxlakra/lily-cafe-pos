@@ -6,6 +6,12 @@ Based on latest python-escpos library
 
 import sys
 import platform
+import io
+
+# Fix Windows console encoding for Unicode characters
+if platform.system() == "Windows":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 print("=" * 70)
 print("ESSAE POS-60C THERMAL PRINTER DETECTION")
