@@ -19,6 +19,7 @@ class Settings:
     TOKEN_EXPIRY_HOURS: int = int(os.getenv("TOKEN_EXPIRY_HOURS", "24"))
     MAX_TABLES: int = int(os.getenv("MAX_TABLES", "15"))
     GST_RATE: float = float(os.getenv("GST_RATE", "18"))
+    TIMEZONE: str = os.getenv("TIMEZONE", "Asia/Kolkata")  # IST timezone
 
     # Restaurant Details
     RESTAURANT_NAME: str = os.getenv("RESTAURANT_NAME", "Lily Cafe by Mary's Kitchen")
@@ -32,6 +33,15 @@ class Settings:
     RESTAURANT_EMAIL: str = os.getenv("RESTAURANT_EMAIL", "info@lilycafe.com")
     RESTAURANT_GSTIN: str = os.getenv("RESTAURANT_GSTIN", "29ABCDE1234F1Z5")
     RESTAURANT_LOGO_PATH: str = os.getenv("RESTAURANT_LOGO_PATH", "")
+
+    # Receipt Configuration
+    RECEIPT_PAPER_SIZE: str = os.getenv("RECEIPT_PAPER_SIZE", "80mm")  # "58mm" or "80mm"
+    GOOGLE_REVIEW_URL: str = os.getenv(
+        "GOOGLE_REVIEW_URL", "https://g.page/r/your-business-review"
+    )
+    FEEDBACK_FORM_URL: str = os.getenv(
+        "FEEDBACK_FORM_URL", "https://forms.gle/your-feedback-form"
+    )
 
     # Admin Credentials
     ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")

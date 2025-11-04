@@ -12,6 +12,7 @@ from app import schemas, crud
 from app.models.models import OrderStatus
 from app.api.deps import get_db, get_current_user
 from app.utils.pdf_generator import generate_receipt
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -275,7 +276,11 @@ def generate_receipt_endpoint(
         )
     
     pdf_buffer = BytesIO()
-    generate_receipt(order, pdf_buffer)
+    # Use configured paper size (either "58mm" or "80mm")
+    paper_size = settings.RECEIPT_PAPER_SIZE
+    if paper_size not in ["58mm", "80mm"]:
+        paper_size = "80mm"  # Default to 80mm if invalid
+    generate_receipt(order, pdf_buffer, paper_size=paper_size)
     pdf_buffer.seek(0)
 
     return StreamingResponse(

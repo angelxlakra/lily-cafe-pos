@@ -239,23 +239,72 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                   </h3>
 
                   <div className="space-y-4">
-                    {/* Payment Method */}
+                    {/* Payment Method - Selectable Boxes */}
                     <div>
-                      <label className="block text-sm font-medium text-neutral-text-dark mb-2">
+                      <label className="block text-sm font-medium text-neutral-text-dark mb-3">
                         Payment Method
                       </label>
-                      <select
-                        value={paymentMethod}
-                        onChange={(e) =>
-                          setPaymentMethod(e.target.value as PaymentMethod)
-                        }
-                        className="w-full px-4 py-3 border border-neutral-border rounded-lg
-                                 focus:outline-none focus:ring-2 focus:ring-coffee-brown"
-                      >
-                        <option value="upi">UPI (PhonePe, GPay, etc.)</option>
-                        <option value="cash">Cash</option>
-                        <option value="card">Card</option>
-                      </select>
+                      <div className="grid grid-cols-3 gap-3">
+                        {/* UPI Option */}
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod("upi")}
+                          className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all
+                            ${paymentMethod === "upi"
+                              ? "border-coffee-brown bg-coffee-brown/10 shadow-md"
+                              : "border-neutral-border bg-white hover:border-coffee-brown/50 hover:bg-coffee-brown/5"
+                            }`}
+                        >
+                          <PixLogo
+                            size={28}
+                            weight="duotone"
+                            className={paymentMethod === "upi" ? "text-coffee-brown" : "text-neutral-text-light"}
+                          />
+                          <span className={`text-sm font-medium ${paymentMethod === "upi" ? "text-coffee-brown" : "text-neutral-text-dark"}`}>
+                            UPI
+                          </span>
+                        </button>
+
+                        {/* Cash Option */}
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod("cash")}
+                          className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all
+                            ${paymentMethod === "cash"
+                              ? "border-coffee-brown bg-coffee-brown/10 shadow-md"
+                              : "border-neutral-border bg-white hover:border-coffee-brown/50 hover:bg-coffee-brown/5"
+                            }`}
+                        >
+                          <Money
+                            size={28}
+                            weight="duotone"
+                            className={paymentMethod === "cash" ? "text-coffee-brown" : "text-neutral-text-light"}
+                          />
+                          <span className={`text-sm font-medium ${paymentMethod === "cash" ? "text-coffee-brown" : "text-neutral-text-dark"}`}>
+                            Cash
+                          </span>
+                        </button>
+
+                        {/* Card Option */}
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod("card")}
+                          className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all
+                            ${paymentMethod === "card"
+                              ? "border-coffee-brown bg-coffee-brown/10 shadow-md"
+                              : "border-neutral-border bg-white hover:border-coffee-brown/50 hover:bg-coffee-brown/5"
+                            }`}
+                        >
+                          <CreditCard
+                            size={28}
+                            weight="duotone"
+                            className={paymentMethod === "card" ? "text-coffee-brown" : "text-neutral-text-light"}
+                          />
+                          <span className={`text-sm font-medium ${paymentMethod === "card" ? "text-coffee-brown" : "text-neutral-text-dark"}`}>
+                            Card
+                          </span>
+                        </button>
+                      </div>
                     </div>
 
                     {/* Amount */}

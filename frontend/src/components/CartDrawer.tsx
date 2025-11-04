@@ -22,6 +22,8 @@ interface CartDrawerProps {
   onSaveOrder: () => void;
   isSaving?: boolean;
   gstRatePercent?: number;
+  customerName?: string;
+  onCustomerNameChange?: (name: string) => void;
 }
 
 export default function CartDrawer({
@@ -34,6 +36,8 @@ export default function CartDrawer({
   onSaveOrder,
   isSaving = false,
   gstRatePercent = 18,
+  customerName = '',
+  onCustomerNameChange,
 }: CartDrawerProps) {
   // Calculate totals
   const subtotal = cartItems.reduce(
@@ -231,6 +235,24 @@ export default function CartDrawer({
             <div className="flex justify-between text-lg">
               <span className="font-semibold text-neutral-text-dark">Total:</span>
               <span className="font-bold font-heading text-coffee-brown">{formatCurrency(total)}</span>
+            </div>
+
+            {/* Customer Name Input (Optional) */}
+            <div>
+              <label htmlFor="customer-name" className="block text-sm font-medium text-neutral-text-dark mb-2">
+                Customer Name <span className="text-neutral-text-light">(optional)</span>
+              </label>
+              <input
+                id="customer-name"
+                type="text"
+                value={customerName}
+                onChange={(e) => onCustomerNameChange?.(e.target.value)}
+                placeholder="Enter customer name..."
+                className="w-full px-4 py-2.5 border border-neutral-border rounded-lg
+                         focus:outline-none focus:ring-2 focus:ring-coffee-brown
+                         text-neutral-text-dark placeholder:text-neutral-text-light"
+                disabled={isSaving}
+              />
             </div>
 
             {/* Save Order Button */}

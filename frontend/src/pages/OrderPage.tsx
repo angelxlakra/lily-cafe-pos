@@ -25,6 +25,7 @@ export default function OrderPage() {
 
   // State
   const [cart, setCart] = useState<Map<number, number>>(new Map());
+  const [customerName, setCustomerName] = useState("");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
 
@@ -108,6 +109,7 @@ export default function OrderPage() {
 
     const orderData = {
       table_number: tableNumber,
+      customer_name: customerName.trim() || undefined, // Only include if not empty
       items: cartItems.map(({ menuItem, quantity }) => ({
         menu_item_id: menuItem.id,
         quantity,
@@ -120,8 +122,9 @@ export default function OrderPage() {
         setShowSuccessToast(true);
         setTimeout(() => setShowSuccessToast(false), 3000);
 
-        // Clear cart
+        // Clear cart and customer name
         setCart(new Map());
+        setCustomerName("");
 
         // Close drawer
         setIsDrawerOpen(false);
@@ -249,6 +252,8 @@ export default function OrderPage() {
         onSaveOrder={handleSaveOrder}
         isSaving={isSavingOrder}
         gstRatePercent={gstRatePercent}
+        customerName={customerName}
+        onCustomerNameChange={setCustomerName}
       />
 
       {/* Bottom Navigation */}

@@ -75,11 +75,12 @@ Build a comprehensive, locally-hosted restaurant management system for Lily Cafe
 1. 📦 Inventory tracking and alerts
 2. 🍳 Kitchen display system
 3. 📊 Advanced analytics and reporting
-4. 👥 Customer management
-5. 📱 Mobile app for owners
-6. ☁️ Optional cloud backup
-7. 🤖 AI-powered insights via MCP
-8. 🏪 Multi-location support
+4. 🍜 Menu item modifiers & add-ons (Extra soup, size variations, toppings)
+5. 👥 Customer management
+6. 📱 Mobile app for owners
+7. ☁️ Optional cloud backup
+8. 🤖 AI-powered insights via MCP
+9. 🏪 Multi-location support
 
 ### Critical Business Rules
 1. **One active order per table** - No duplicate orders on same table
@@ -336,7 +337,7 @@ Inactive: text-light color
 ---
 
 ### Version 0.3 - "The Business Intelligence"
-**Timeline:** 1 week  
+**Timeline:** 1-2 weeks
 **Status:** Planned
 
 **New Features:**
@@ -346,17 +347,20 @@ Inactive: text-light color
 - 📊 Data export (Excel/CSV)
 - 📊 Profit margin tracking
 - 📊 Peak hours analysis
+- 🍜 Menu item modifiers/add-ons system (optional enhancement)
 
 **Technical Additions:**
 - Pandas for data analysis
 - Chart library (recharts)
 - Report scheduling
 - Export functionality
+- Modifiers database schema (if implementing add-ons)
 
 **Success Criteria:**
 - Owner makes data-driven menu decisions
 - Easy GST filing with generated reports
 - Clear visibility into business performance
+- (Optional) Customers can customize orders with add-ons
 
 ---
 
@@ -879,6 +883,13 @@ http://192.168.1.X:5173
 - 🎁 Loyalty program
 - 📧 Email receipts
 - 💳 Online payment integration
+- 🍜 **Menu Item Modifiers/Add-ons System** (v0.3+)
+  - Customizable menu items with paid add-ons
+  - Examples: Extra soup (+₹20), Extra noodles (+₹30), Double cheese (+₹40)
+  - Size variations (Small/Medium/Large with different prices)
+  - Free customizations (Spice level: Mild/Medium/Hot)
+  - Modifier groups with min/max selections
+  - Clear display of add-on prices in cart and receipt
 
 #### Operational Features
 - 📊 Real-time dashboard
@@ -916,6 +927,314 @@ v2.0: PostgreSQL + Optional Cloud
   ↓
 v3.0: Microservices + Multi-location
 ```
+
+---
+
+## 🍜 Feature Deep Dive: Menu Item Modifiers & Add-ons
+
+**Planned Version:** v0.3 or v0.4
+**Priority:** Medium-High (Revenue enhancement feature)
+**Status:** Design phase
+
+### Business Value
+This feature enables customers to customize their orders with add-ons and modifiers, driving additional revenue through upselling while providing better customer experience.
+
+**Revenue Impact:**
+- Average order value increase: 15-25% (industry standard)
+- Common upsells: Extra ingredients, size upgrades, premium toppings
+- Example: Ramen with extra soup (+₹20) and extra noodles (+₹30) = +₹50 per order
+
+### Use Cases
+
+#### 1. Paid Add-ons (Ramen Example)
+```
+Base Item: Chicken Ramen (₹300)
+
+Available Add-ons:
+├── Extra Soup (+₹20)
+├── Extra Noodles (+₹30)
+├── Extra Vegetables (+₹25)
+└── Add Egg (+₹15)
+
+Customer selects: Extra Soup + Extra Noodles
+Final Price: ₹350
+```
+
+#### 2. Size Variations (Coffee Example)
+```
+Item: Filter Coffee
+
+Size Options:
+├── Small (₹30)  [base price]
+├── Medium (+₹10) = ₹40
+└── Large (+₹20) = ₹50
+
+Customer selects: Large
+Final Price: ₹50
+```
+
+#### 3. Free Customizations (Spice Level)
+```
+Item: Masala Dosa (₹80)
+
+Customizations (No extra cost):
+├── Spice Level: Mild / Medium / Hot
+└── Extra Chutney: Yes / No
+
+Customer selects: Hot, Extra Chutney
+Final Price: ₹80 (unchanged)
+```
+
+#### 4. Multiple Modifier Groups
+```
+Item: Pizza (₹200)
+
+Modifier Groups:
+1. Size (Required, select 1):
+   ├── Regular (included)
+   └── Large (+₹50)
+
+2. Toppings (Optional, select up to 3):
+   ├── Extra Cheese (+₹40)
+   ├── Olives (+₹30)
+   ├── Mushrooms (+₹35)
+   └── Paneer (+₹50)
+
+3. Crust (Required, select 1):
+   ├── Regular (included)
+   ├── Thin (+₹20)
+   └── Stuffed (+₹60)
+
+Customer selects: Large, Extra Cheese, Regular crust
+Final Price: ₹200 + ₹50 + ₹40 = ₹290
+```
+
+### Technical Architecture
+
+#### Database Schema
+
+```sql
+-- Modifier Groups (e.g., "Ramen Add-ons", "Pizza Toppings")
+CREATE TABLE modifier_groups (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    min_selections INTEGER DEFAULT 0,  -- 0 = optional
+    max_selections INTEGER DEFAULT 1,  -- 1 = single choice, NULL = unlimited
+    is_required BOOLEAN DEFAULT FALSE,
+    created_at DATETIME,
+    updated_at DATETIME
+);
+
+-- Link modifier groups to menu items
+CREATE TABLE menu_item_modifier_groups (
+    id INTEGER PRIMARY KEY,
+    menu_item_id INTEGER NOT NULL,
+    modifier_group_id INTEGER NOT NULL,
+    display_order INTEGER DEFAULT 0,
+    FOREIGN KEY (menu_item_id) REFERENCES menu_items(id),
+    FOREIGN KEY (modifier_group_id) REFERENCES modifier_groups(id)
+);
+
+-- Individual modifiers (e.g., "Extra Soup +₹20")
+CREATE TABLE modifiers (
+    id INTEGER PRIMARY KEY,
+    modifier_group_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    price_adjustment INTEGER NOT NULL,  -- In paise, can be 0 for free options
+    is_available BOOLEAN DEFAULT TRUE,
+    display_order INTEGER DEFAULT 0,
+    created_at DATETIME,
+    updated_at DATETIME,
+    FOREIGN KEY (modifier_group_id) REFERENCES modifier_groups(id)
+);
+
+-- Track which modifiers were selected for each order item
+CREATE TABLE order_item_modifiers (
+    id INTEGER PRIMARY KEY,
+    order_item_id INTEGER NOT NULL,
+    modifier_id INTEGER NOT NULL,
+    modifier_name TEXT NOT NULL,      -- Snapshot for history
+    price_adjustment INTEGER NOT NULL, -- Snapshot for history
+    quantity INTEGER DEFAULT 1,        -- Some modifiers can be added multiple times
+    FOREIGN KEY (order_item_id) REFERENCES order_items(id),
+    FOREIGN KEY (modifier_id) REFERENCES modifiers(id)
+);
+```
+
+#### API Endpoints
+
+```
+GET  /api/menu/{item_id}/modifiers
+     → Returns all modifier groups and options for a menu item
+
+POST /api/modifiers/groups  🔒 (Admin)
+     → Create new modifier group
+
+POST /api/modifiers  🔒 (Admin)
+     → Add modifier to a group
+
+PUT  /api/modifiers/{id}  🔒 (Admin)
+     → Update modifier (price, availability)
+
+DELETE /api/modifiers/{id}  🔒 (Admin)
+     → Soft delete modifier
+
+POST /api/orders
+     → Enhanced to accept modifiers in items array
+     Request body:
+     {
+       "table_number": 5,
+       "items": [
+         {
+           "menu_item_id": 1,
+           "quantity": 2,
+           "modifiers": [
+             {"modifier_id": 10, "quantity": 1},  // Extra Soup
+             {"modifier_id": 11, "quantity": 1}   // Extra Noodles
+           ]
+         }
+       ]
+     }
+```
+
+#### Frontend Components
+
+**New Components Needed:**
+1. `ModifierSelector.tsx` - Modal/drawer for selecting modifiers
+2. `ModifierGroup.tsx` - Single modifier group UI
+3. `ModifierOption.tsx` - Individual modifier checkbox/radio
+4. `ModifierSummary.tsx` - Display selected modifiers in cart
+5. `ModifierManagement.tsx` - Admin interface for managing modifiers
+
+**UX Flow:**
+```
+1. User adds item to cart
+2. If item has modifiers → Show ModifierSelector modal
+3. Display each modifier group with constraints
+4. Calculate total price in real-time
+5. Add to cart with selected modifiers
+6. Show modifiers in cart drawer
+7. Allow editing modifiers from cart
+```
+
+#### Receipt Display
+
+```
+================================
+    Lily Cafe by Mary's Kitchen
+================================
+
+Order #: ORD-20241030-0001
+Table: 5
+
+--------------------------------
+Item          Qty  Price   Amt
+--------------------------------
+Chicken Ramen  1   300.00  300.00
+  + Extra Soup      20.00   20.00
+  + Extra Noodles   30.00   30.00
+                           ------
+                           350.00
+
+Filter Coffee  1    50.00   50.00
+  (Large)
+--------------------------------
+              Subtotal:  400.00
+              GST(18%):   72.00
+--------------------------------
+         TOTAL:  472.00
+================================
+```
+
+### Implementation Phases
+
+#### Phase 1: Core Infrastructure (Week 1)
+- [ ] Database schema implementation
+- [ ] Backend API endpoints
+- [ ] Basic CRUD operations for modifiers
+
+#### Phase 2: Waiter Interface (Week 2)
+- [ ] Modifier selection UI (mobile-optimized)
+- [ ] Real-time price calculation
+- [ ] Cart integration with modifiers
+- [ ] Order placement with modifiers
+
+#### Phase 3: Admin Interface (Week 3)
+- [ ] Modifier management page
+- [ ] Create/edit modifier groups
+- [ ] Assign modifiers to menu items
+- [ ] Pricing configuration
+
+#### Phase 4: Polish & Testing (Week 4)
+- [ ] Receipt printing with modifiers
+- [ ] Order history with modifiers
+- [ ] Analytics for modifier performance
+- [ ] Staff training materials
+
+### Workaround for v0.1 (Current Version)
+
+Until the modifiers system is implemented, use separate menu items:
+
+**Instead of:**
+- Ramen (₹300) with add-ons
+
+**Create:**
+- Chicken Ramen - Regular (₹300)
+- Chicken Ramen - Extra Soup (₹320)
+- Chicken Ramen - Extra Noodles (₹330)
+- Chicken Ramen - Extra Both (₹350)
+
+**Pros:**
+- ✅ Works with current system
+- ✅ No code changes needed
+- ✅ Simple for staff
+
+**Cons:**
+- ❌ Menu becomes cluttered
+- ❌ Limited combinations
+- ❌ Hard to track add-on performance
+- ❌ Difficult to manage pricing
+
+### Success Metrics
+
+**Business Metrics:**
+- Average order value increase: Target +15%
+- Modifier attachment rate: Target 30% of orders
+- Most popular add-ons tracked
+- Revenue from add-ons tracked separately
+
+**Technical Metrics:**
+- Modifier selection time: <30 seconds
+- Order accuracy with modifiers: 99%+
+- No performance degradation on order page
+
+**User Satisfaction:**
+- Staff comfortable using modifier system
+- Customer complaints about incorrect modifiers: <1%
+- Kitchen receives clear modifier instructions
+
+### Future Enhancements (Post-Launch)
+
+1. **Conditional Modifiers**
+   - Show certain modifiers only if other modifiers selected
+   - Example: "Extra Cheese" only if "Cheese" is selected
+
+2. **Default Selections**
+   - Pre-select common choices (e.g., "Medium" spice level)
+   - Customer can change if desired
+
+3. **Combo Pricing**
+   - Discount when multiple add-ons selected
+   - Example: "Extra Soup + Extra Noodles" bundle at ₹45 instead of ₹50
+
+4. **Ingredient-Based Pricing**
+   - Link to inventory system (v0.2)
+   - Adjust prices based on ingredient costs
+
+5. **AI Recommendations** (v1.5+)
+   - Suggest popular add-on combinations
+   - "Customers who ordered this also added..."
 
 ---
 

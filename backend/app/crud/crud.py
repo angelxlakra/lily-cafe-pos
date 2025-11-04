@@ -10,6 +10,7 @@ from sqlalchemy import func, and_
 from app.models import models
 from app.schemas import schemas
 from app.core.config import settings
+from app.utils.rounding import round_down_to_rupee
 
 
 # ============================================================================
@@ -290,7 +291,8 @@ def create_order(db: Session, order: schemas.OrderCreate) -> models.Order:
 
         subtotal = sum(item.subtotal for item in existing_order.order_items)
         gst_amount = int(subtotal * settings.GST_RATE / 100)
-        total_amount = subtotal + gst_amount
+        # Round down total to nearest rupee (customer-friendly, no paise)
+        total_amount = round_down_to_rupee(subtotal + gst_amount)
 
         existing_order.subtotal = subtotal
         existing_order.gst_amount = gst_amount
@@ -335,7 +337,8 @@ def create_order(db: Session, order: schemas.OrderCreate) -> models.Order:
 
         # Calculate GST
         gst_amount = int(subtotal * settings.GST_RATE / 100)
-        total_amount = subtotal + gst_amount
+        # Round down total to nearest rupee (customer-friendly, no paise)
+        total_amount = round_down_to_rupee(subtotal + gst_amount)
 
         # Create order
         db_order = models.Order(
@@ -429,7 +432,8 @@ def admin_edit_order(
 
     # Recalculate totals
     gst_amount = int(subtotal * settings.GST_RATE / 100)
-    total_amount = subtotal + gst_amount
+    # Round down total to nearest rupee (customer-friendly, no paise)
+    total_amount = round_down_to_rupee(subtotal + gst_amount)
 
     db_order.subtotal = subtotal
     db_order.gst_amount = gst_amount

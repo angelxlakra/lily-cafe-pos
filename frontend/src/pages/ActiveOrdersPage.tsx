@@ -5,13 +5,13 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useActiveOrders, useOrder } from "../hooks/useOrders";
+import { useActiveOrders, useOrder, useUpdateOrder } from "../hooks/useOrders";
 import { useAppConfig } from "../hooks/useConfig";
 import { formatCurrency } from "../utils/formatCurrency";
 import { formatDateTime } from "../utils/formatDateTime";
 import BottomNav from "../components/BottomNav";
 import EmptyState from "../components/EmptyState";
-import { Tray } from "@phosphor-icons/react";
+import { Tray, PencilSimple, Check, X } from "@phosphor-icons/react";
 import type { Order } from "../types";
 
 export default function ActiveOrdersPage() {
@@ -120,18 +120,92 @@ interface OrderCardProps {
 
 function OrderCard({ order, onViewDetails }: OrderCardProps) {
   const itemCount = order.order_items?.length || 0;
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [customerName, setCustomerName] = useState(order.customer_name || "");
+  const { mutate: updateOrder, isPending } = useUpdateOrder();
+
+  const handleSaveName = () => {
+    const trimmedName = customerName.trim();
+    updateOrder(
+      {
+        id: order.id,
+        data: {
+          customer_name: trimmedName || undefined,
+          items: [], // No item changes, just updating name
+        },
+      },
+      {
+        onSuccess: () => {
+          setIsEditingName(false);
+        },
+        onError: (error) => {
+          console.error("Failed to update customer name:", error);
+          alert("Failed to update customer name");
+        },
+      }
+    );
+  };
+
+  const handleCancelEdit = () => {
+    setCustomerName(order.customer_name || "");
+    setIsEditingName(false);
+  };
 
   return (
     <div className="bg-off-white border border-neutral-border rounded-lg p-4 shadow-sm">
       <div className="flex items-start justify-between mb-3">
-        <div>
+        <div className="flex-1">
           <h3 className="text-lg font-semibold text-neutral-text-dark">
             Table {order.table_number}
           </h3>
-          {order.customer_name && (
-            <p className="text-sm text-neutral-text-light">
-              {order.customer_name}
-            </p>
+
+          {/* Customer Name - Editable */}
+          {isEditingName ? (
+            <div className="flex items-center gap-2 mt-2">
+              <input
+                type="text"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Customer name"
+                className="flex-1 px-3 py-1.5 text-sm border border-neutral-border rounded-lg
+                         focus:outline-none focus:ring-2 focus:ring-coffee-brown"
+                disabled={isPending}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveName();
+                  if (e.key === "Escape") handleCancelEdit();
+                }}
+              />
+              <button
+                onClick={handleSaveName}
+                disabled={isPending}
+                className="p-1.5 text-success hover:bg-success/10 rounded-lg transition-colors"
+                aria-label="Save name"
+              >
+                <Check size={18} weight="bold" />
+              </button>
+              <button
+                onClick={handleCancelEdit}
+                disabled={isPending}
+                className="p-1.5 text-error hover:bg-error/10 rounded-lg transition-colors"
+                aria-label="Cancel edit"
+              >
+                <X size={18} weight="bold" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-sm text-neutral-text-light">
+                {order.customer_name || "No customer name"}
+              </p>
+              <button
+                onClick={() => setIsEditingName(true)}
+                className="p-1 text-coffee-brown hover:bg-coffee-brown/10 rounded transition-colors"
+                aria-label="Edit customer name"
+              >
+                <PencilSimple size={16} weight="bold" />
+              </button>
+            </div>
           )}
         </div>
         <div className="text-right">
