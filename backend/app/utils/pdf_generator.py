@@ -607,3 +607,140 @@ def generate_receipt(
     # Save the PDF
     c.showPage()
     c.save()
+
+
+def generate_order_chit_pdf(
+    order: models.Order, output: BinaryIO, paper_size: PaperSize = "80mm"
+) -> None:
+    """
+    Generate a simple order chit (kitchen ticket) PDF.
+
+    Minimal design with:
+    - Very large table number (customizable)
+    - Order items with quantities
+    - Total amount
+    - Space for handwritten notes
+
+    Args:
+        order: Order model instance
+        output: Binary output stream for PDF
+        paper_size: Paper width - either "58mm" or "80mm" (default: "80mm")
+    """
+    config = ReceiptConfig(paper_size)
+    c = canvas.Canvas(output, pagesize=(config.receipt_width, config.receipt_height))
+
+    y_position = config.receipt_height - (config.top_margin_mm * mm)
+    x_center = config.receipt_width / 2
+
+    c.setFillColor(colors.black)
+
+    # Helper functions
+    def draw_centered(text: str, y: float, font: str = "Helvetica", size: float = 10):
+        """Draw centered text."""
+        c.setFont(font, size)
+        width = c.stringWidth(text, font, size)
+        c.drawString(x_center - width / 2, y, text)
+
+    def draw_left(text: str, y: float, font: str = "Helvetica", size: float = 9):
+        """Draw left-aligned text."""
+        c.setFont(font, size)
+        c.drawString(config.left_margin, y, text)
+
+    def draw_separator(y: float, char: str = "="):
+        """Draw a text-based separator line."""
+        c.setFont("Courier", 10)
+        width_chars = int(config.content_width / (2.5 * mm))  # Approximate char width
+        separator_line = char * width_chars
+        draw_centered(separator_line, y, "Courier", 10)
+
+    def add_spacing(mm_spacing: float):
+        """Add spacing in millimeters."""
+        nonlocal y_position
+        y_position -= mm_spacing * mm
+
+    # ============================================================================
+    # HEADER - VERY LARGE TABLE NUMBER
+    # ============================================================================
+
+    add_spacing(5)
+
+    # Draw "TABLE" label in large font
+    table_label_size = 28 if paper_size == "80mm" else 22
+    draw_centered("TABLE", y_position, "Helvetica-Bold", table_label_size)
+    add_spacing(15)
+
+    # Draw table number in VERY LARGE font (this is what we want to be huge)
+    table_number_size = 72 if paper_size == "80mm" else 56  # Much larger than ESC/POS max
+    draw_centered(str(order.table_number), y_position, "Helvetica-Bold", table_number_size)
+    add_spacing(28)
+
+    # Separator
+    draw_separator(y_position)
+    add_spacing(8)
+
+    # ============================================================================
+    # ORDER INFORMATION
+    # ============================================================================
+
+    # Order number and time
+    local_time = convert_to_local_timezone(order.created_at)
+    draw_centered(f"Order: {order.order_number}", y_position, "Helvetica", 11)
+    add_spacing(5)
+    draw_centered(f"Time: {local_time.strftime('%I:%M %p')}", y_position, "Helvetica", 11)
+    add_spacing(5)
+
+    # Customer name if present
+    if order.customer_name:
+        draw_centered(f"Name: {order.customer_name}", y_position, "Helvetica", 11)
+        add_spacing(5)
+
+    add_spacing(3)
+    draw_separator(y_position)
+    add_spacing(8)
+
+    # ============================================================================
+    # ITEMS SECTION - Large, readable text
+    # ============================================================================
+
+    for item in order.order_items:
+        # Item with large quantity and name
+        item_text = f"{item.quantity}x {item.menu_item_name}"
+        draw_left(item_text, y_position, "Helvetica-Bold", 16)
+        add_spacing(7)
+
+        # Amount below item (optional, can be removed if not needed)
+        amount_text = format_currency(item.subtotal)
+        draw_left(f"   {amount_text}", y_position, "DejaVuSansMono", 12)
+        add_spacing(8)
+
+    add_spacing(3)
+    draw_separator(y_position)
+    add_spacing(8)
+
+    # ============================================================================
+    # TOTAL
+    # ============================================================================
+
+    total_text = format_currency(order.total_amount)
+    draw_centered(f"TOTAL: {total_text}", y_position, "Helvetica-Bold", 18)
+    add_spacing(10)
+
+    # ============================================================================
+    # NOTES SECTION - Space for handwritten notes
+    # ============================================================================
+
+    draw_separator(y_position, char="-")
+    add_spacing(5)
+    draw_left("NOTES:", y_position, "Helvetica-Bold", 12)
+    add_spacing(10)
+
+    # Add blank space for notes (multiple lines)
+    for _ in range(6):
+        add_spacing(8)
+
+    draw_separator(y_position, char="-")
+    add_spacing(15)
+
+    # Save the PDF
+    c.showPage()
+    c.save()

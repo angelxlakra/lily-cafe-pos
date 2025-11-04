@@ -1,11 +1,17 @@
 """
-Thermal printer utility for direct ESC/POS printing.
+Thermal printer utility for direct ESC/POS printing and PDF-based printing.
 Supports Windows (Win32Raw), USB, and Serial connections.
+Also supports PDF-based printing for better font control.
 """
 
 import logging
+import os
+import tempfile
+import subprocess
+import platform
 from typing import Optional
 from datetime import datetime
+from io import BytesIO
 
 from app.core.config import settings
 from app.models import models
@@ -266,14 +272,143 @@ def print_receipt(order: models.Order) -> bool:
                 pass
 
 
+def print_pdf_to_printer(pdf_path: str, printer_name: str = None) -> bool:
+    """
+    Print a PDF file to a thermal printer using system commands.
+
+    This function tries multiple methods to print the PDF:
+    1. SumatraPDF (Windows) - Best for silent printing
+    2. Windows default print command
+    3. Linux CUPS (lp command)
+
+    Args:
+        pdf_path: Path to the PDF file to print
+        printer_name: Name of the printer (uses PRINTER_NAME from settings if not provided)
+
+    Returns:
+        True if printing succeeded, False otherwise
+    """
+    if printer_name is None:
+        printer_name = settings.PRINTER_NAME
+
+    if not printer_name:
+        logger.error("No printer name configured for PDF printing")
+        return False
+
+    if not os.path.exists(pdf_path):
+        logger.error(f"PDF file not found: {pdf_path}")
+        return False
+
+    system = platform.system()
+
+    try:
+        if system == "Windows":
+            # Method 1: Try SumatraPDF (best for silent printing)
+            sumatra_paths = [
+                r"C:\Program Files\SumatraPDF\SumatraPDF.exe",
+                r"C:\Program Files (x86)\SumatraPDF\SumatraPDF.exe",
+                os.path.expandvars(r"%LOCALAPPDATA%\SumatraPDF\SumatraPDF.exe"),
+            ]
+
+            for sumatra_path in sumatra_paths:
+                if os.path.exists(sumatra_path):
+                    logger.info(f"Printing PDF using SumatraPDF to {printer_name}")
+                    result = subprocess.run(
+                        [sumatra_path, "-print-to", printer_name, pdf_path],
+                        capture_output=True,
+                        timeout=30
+                    )
+                    if result.returncode == 0:
+                        logger.info("PDF printed successfully via SumatraPDF")
+                        return True
+                    else:
+                        logger.warning(f"SumatraPDF print failed: {result.stderr.decode()}")
+
+            # Method 2: Use Windows shell print command via PowerShell
+            logger.info("Trying Windows print command via PowerShell")
+            ps_command = f'''
+            $printer = Get-Printer -Name "{printer_name}" -ErrorAction SilentlyContinue
+            if ($printer) {{
+                Start-Process -FilePath "{pdf_path}" -Verb PrintTo -ArgumentList '"{printer_name}"' -WindowStyle Hidden
+                exit 0
+            }} else {{
+                exit 1
+            }}
+            '''
+            result = subprocess.run(
+                ["powershell", "-Command", ps_command],
+                capture_output=True,
+                timeout=30
+            )
+            if result.returncode == 0:
+                logger.info("PDF sent to printer via PowerShell")
+                return True
+            else:
+                logger.warning(f"PowerShell print failed: {result.stderr.decode()}")
+
+            # Method 3: Use win32print library if available
+            try:
+                import win32print
+                import win32api
+
+                logger.info("Trying win32print library")
+                win32api.ShellExecute(
+                    0,
+                    "printto",
+                    pdf_path,
+                    f'"{printer_name}"',
+                    ".",
+                    0
+                )
+                logger.info("PDF sent to printer via win32print")
+                return True
+            except ImportError:
+                logger.warning("win32print library not available")
+            except Exception as e:
+                logger.warning(f"win32print failed: {e}")
+
+        elif system == "Linux":
+            # Linux: Use CUPS lp command
+            logger.info(f"Printing PDF using lp command to {printer_name}")
+            result = subprocess.run(
+                ["lp", "-d", printer_name, pdf_path],
+                capture_output=True,
+                timeout=30
+            )
+            if result.returncode == 0:
+                logger.info("PDF printed successfully via lp")
+                return True
+            else:
+                logger.error(f"lp command failed: {result.stderr.decode()}")
+                return False
+
+        else:
+            logger.error(f"Unsupported operating system for PDF printing: {system}")
+            return False
+
+    except subprocess.TimeoutExpired:
+        logger.error("Print command timed out")
+        return False
+    except Exception as e:
+        logger.error(f"Failed to print PDF: {e}")
+        return False
+
+    # If we got here, all methods failed
+    logger.error("All PDF printing methods failed")
+    return False
+
+
 def print_order_chit(order: models.Order) -> bool:
     """
     Print a simple order chit (kitchen ticket) when order is saved.
 
+    Uses PDF-based printing for better font control and larger table numbers.
+    Falls back to ESC/POS if PDF printing is not available.
+
     Minimal design with:
-    - Large table number
+    - Very large table number (72pt font, much larger than ESC/POS 8x limit)
     - Order items with quantities
-    - Amounts
+    - Total amount
     - Space for handwritten notes
 
     No branding, no GST breakdown - just essentials for kitchen/waiters.
@@ -288,19 +423,86 @@ def print_order_chit(order: models.Order) -> bool:
         logger.info("Printer disabled - skipping order chit print")
         return False
 
+    # Get paper width from settings
+    paper_size = settings.RECEIPT_PAPER_SIZE
+    if paper_size not in ["58mm", "80mm"]:
+        paper_size = "80mm"  # Default to 80mm if invalid
+
+    temp_pdf_path = None
+
+    try:
+        # Method 1: PDF-based printing (preferred for better font control)
+        if settings.PRINTER_NAME:  # PDF printing requires printer name
+            logger.info("Attempting PDF-based chit printing for better font control")
+
+            # Generate PDF to temporary file
+            from app.utils.pdf_generator import generate_order_chit_pdf
+
+            # Create temporary file
+            temp_fd, temp_pdf_path = tempfile.mkstemp(suffix=".pdf", prefix="chit_")
+            os.close(temp_fd)  # Close the file descriptor
+
+            # Generate the PDF
+            with open(temp_pdf_path, "wb") as pdf_file:
+                generate_order_chit_pdf(order, pdf_file, paper_size=paper_size)
+
+            # Print the PDF
+            print_success = print_pdf_to_printer(temp_pdf_path, settings.PRINTER_NAME)
+
+            if print_success:
+                logger.info(f"Successfully printed PDF order chit for table {order.table_number}")
+                return True
+            else:
+                logger.warning("PDF printing failed, falling back to ESC/POS")
+
+        # Method 2: ESC/POS fallback (if PDF printing failed or not configured)
+        logger.info("Using ESC/POS fallback for chit printing")
+        return _print_order_chit_escpos(order, paper_size)
+
+    except Exception as e:
+        logger.error(f"Failed to print order chit for order {order.order_number if order else 'unknown'}: {e}")
+        # Try ESC/POS fallback on error
+        try:
+            logger.info("Attempting ESC/POS fallback after error")
+            return _print_order_chit_escpos(order, paper_size)
+        except Exception as fallback_error:
+            logger.error(f"ESC/POS fallback also failed: {fallback_error}")
+            return False
+
+    finally:
+        # Clean up temporary file
+        if temp_pdf_path and os.path.exists(temp_pdf_path):
+            try:
+                os.remove(temp_pdf_path)
+            except Exception as e:
+                logger.warning(f"Failed to remove temporary PDF file: {e}")
+
+
+def _print_order_chit_escpos(order: models.Order, paper_size: str = "80mm") -> bool:
+    """
+    Print order chit using ESC/POS commands (fallback method).
+
+    This is the original implementation that uses direct ESC/POS commands.
+    Limited to 8x font size maximum.
+
+    Args:
+        order: Order model instance
+        paper_size: Paper size (58mm or 80mm)
+
+    Returns:
+        True if printing succeeded, False otherwise
+    """
     printer = None
     try:
         printer = get_printer()
         if not printer:
-            logger.warning("No printer configured")
+            logger.warning("No printer configured for ESC/POS")
             return False
 
-        # Get paper width from settings
-        paper_size = settings.RECEIPT_PAPER_SIZE
         is_58mm = paper_size == "58mm"
 
         # ============================================================================
-        # HEADER - Maximum Size Table Number
+        # HEADER - Maximum Size Table Number (ESC/POS limit: 8x8)
         # ============================================================================
 
         printer.set(align='center', bold=True, width=8, height=8)
@@ -325,13 +527,13 @@ def print_order_chit(order: models.Order) -> bool:
         printer.text("\n")
 
         # ============================================================================
-        # ITEMS SECTION - Large, readable text (no prices)
+        # ITEMS SECTION - Large, readable text
         # ============================================================================
 
         printer.set(align='left', bold=True, width=1, height=2)
 
         for item in order.order_items:
-            # Item with large quantity (no price)
+            # Item with large quantity
             printer.text(f"{item.quantity}x {item.menu_item_name}\n")
             printer.text("\n")
 
@@ -365,11 +567,11 @@ def print_order_chit(order: models.Order) -> bool:
             # Some printers don't support cut, that's okay
             printer.text("\n\n\n")
 
-        logger.info(f"Successfully printed order chit for table {order.table_number}")
+        logger.info(f"Successfully printed ESC/POS order chit for table {order.table_number}")
         return True
 
     except Exception as e:
-        logger.error(f"Failed to print order chit for order {order.order_number if order else 'unknown'}: {e}")
+        logger.error(f"Failed to print ESC/POS order chit: {e}")
         return False
 
     finally:

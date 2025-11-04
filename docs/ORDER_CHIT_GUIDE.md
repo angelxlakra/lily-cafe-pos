@@ -16,12 +16,20 @@ An **Order Chit** (also called Kitchen Ticket or KOT - Kitchen Order Ticket) is 
 ### What's an Order Chit?
 
 It's a **minimal, readable ticket** for kitchen/service staff with:
-- 📍 **Large Table Number** - Easy to spot from distance
+- 📍 **Very Large Table Number** - 72pt font (much larger than ESC/POS limit)
 - 📋 **Menu Items** - Large text with quantities
 - 💰 **Amounts** - Item prices and total
 - ✏️ **Notes Section** - Blank space for handwritten customizations
 
 **No branding, no GST, no payment details** - just what the kitchen needs to prepare the order.
+
+### Printing Method: PDF-Based (New!)
+
+Order chits now use **PDF-based printing** instead of ESC/POS commands:
+- ✅ **Much larger table numbers** - 72pt font vs ESC/POS 8x limit
+- ✅ **Better font control** - Professional typography
+- ✅ **Automatic fallback** - Falls back to ESC/POS if PDF printing fails
+- ✅ **Same setup** - Uses existing printer configuration
 
 ---
 
@@ -61,10 +69,15 @@ NOTES:
 ```
 
 **Key Features:**
-- Large table number (3x height, 3x width)
-- Large item text (2x height) with quantities
+- **Very large table number** (72pt font in PDF mode, or 8x ESC/POS fallback)
+- **Large item text** (16pt font) with quantities
 - Regular-sized amounts
 - Space for handwritten notes ("Extra spicy", "No onions", etc.)
+
+**Printing Technology:**
+- Primary: PDF-based printing (requires `PRINTER_NAME` configured)
+- Fallback: ESC/POS direct printing
+- Automatic switching based on availability
 
 ---
 
@@ -85,7 +98,12 @@ NOTES:
    PRINTER_NAME=Essae POS-60C
    ```
 
-3. **Restart backend**:
+3. **(Optional) Install SumatraPDF for Windows** - Recommended for better PDF printing:
+   - Download from: https://www.sumatrapdfreader.org/
+   - Install to default location
+   - Provides silent PDF printing without popup dialogs
+
+4. **Restart backend**:
    ```bash
    uv run uvicorn app.main:app --reload
    ```
@@ -287,21 +305,25 @@ POST /api/v1/orders
 GET /api/v1/orders/1/receipt?auto_print=true
 ```
 
-### Issue: Text too small on chit
+### Issue: Text too small on chit (SOLVED!)
 
-The order chit uses **large text** by default:
-- Table number: 3x height, 3x width
-- Item quantities: 2x height
-- Amounts: Regular size
+**Good news!** Order chits now use **PDF-based printing** with much larger fonts:
+- Table number: **72pt font** (80mm paper) or 56pt (58mm paper)
+- This is **much larger** than the ESC/POS 8x limit
+- Item text: 16pt font
+- Professional typography with better readability
 
-If still too small, edit `backend/app/utils/printer.py`:
+**To adjust table number size further:**
+Edit `backend/app/utils/pdf_generator.py` around line 673:
 ```python
-# Line 308: Make table number even larger
-printer.set(align='center', text_type='B', width=4, height=4)  # Was 3x3
-
-# Line 333: Make items larger
-printer.set(align='left', text_type='B', width=2, height=3)  # Was 1x2
+# Change table number font size (default: 72pt for 80mm)
+table_number_size = 96  # Even larger!
+draw_centered(str(order.table_number), y_position, "Helvetica-Bold", table_number_size)
 ```
+
+**If PDF printing fails, system falls back to ESC/POS:**
+- ESC/POS limit: 8x height/width maximum
+- To ensure PDF printing works, install SumatraPDF (Windows) or ensure CUPS is configured (Linux)
 
 ### Issue: Chit prints but has encoding errors
 
@@ -315,18 +337,57 @@ This is **intentional** for maximum printer compatibility.
 
 ### Issue: Notes section too small
 
-To add more blank lines for notes, edit `backend/app/utils/printer.py` around line 370:
+To add more blank lines for notes, edit `backend/app/utils/pdf_generator.py` around line 738:
+
+```python
+# Add blank space for notes (default: 6 lines)
+for _ in range(10):  # Increase to 10 lines
+    add_spacing(8)
+```
+
+Or for ESC/POS fallback, edit `backend/app/utils/printer.py` around line 555:
 
 ```python
 printer.text("NOTES:\n")
-printer.text("\n")
-printer.text("\n")
-printer.text("\n")
-printer.text("\n")
-printer.text("\n")
-printer.text("\n")  # Add more lines
-printer.text("\n")  # Add more lines
+# Add more newlines
+for _ in range(8):  # More lines
+    printer.text("\n")
 ```
+
+---
+
+## PDF Printing Methods
+
+The system tries multiple methods to print PDFs automatically:
+
+### Windows
+
+1. **SumatraPDF** (Recommended)
+   - Silent printing without popups
+   - Reliable for thermal printers
+   - Auto-detected if installed
+   - Install from: https://www.sumatrapdfreader.org/
+
+2. **PowerShell Print Command**
+   - Built-in Windows method
+   - May show print dialog briefly
+   - Fallback if SumatraPDF not found
+
+3. **win32print Library**
+   - Python library method
+   - Requires `pywin32` package
+   - Final fallback option
+
+### Linux
+
+1. **CUPS (lp command)**
+   - Standard Linux printing
+   - Requires CUPS configured
+   - Command: `lp -d PrinterName file.pdf`
+
+### Fallback
+
+If all PDF methods fail, system automatically falls back to **ESC/POS** direct printing (original method with 8x font limit).
 
 ---
 
