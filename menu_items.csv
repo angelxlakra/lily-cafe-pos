@@ -1,0 +1,60 @@
+item_id,name,description,price,veg_non_veg,category_id
+1,MK Special Coffee,House special coffee blend with unique preparation,100,Veg,1
+2,Moka pot black coffee shot,Concentrated espresso-style shot brewed in moka pot,130,Veg,1
+3,Moka pot black coffee (Americano),Moka pot espresso diluted with hot water for a lighter coffee,130,Veg,1
+4,Moka pot coffee with milk,Moka pot brewed coffee mixed with steamed milk,160,Veg,1
+5,Black coffee (Strong),Bold concentrated black coffee with robust flavor,60,Veg,1
+6,Black coffee (Americano),Classic black coffee diluted with hot water,60,Veg,1
+7,Classic Hot chocolate,Rich creamy hot chocolate made with cocoa,230,Veg,1
+8,Nutella Hot chocolate,Decadent hot chocolate infused with Nutella hazelnut spread,280,Veg,1
+9,Lemon Mint Cooler,Refreshing blend of fresh lemon juice and mint leaves,100,Veg,2
+10,Watermelon Cooler,Fresh watermelon juice cooler (Seasonal availability),120,Veg,2
+11,Kiwi Cooler,Tangy and sweet kiwi fruit-based refreshing drink,150,Veg,2
+12,Pink Fizz,Sparkling pink-colored fruity beverage (Seasonal availability),150,Veg,2
+13,Preserved Lemon drink,Traditional drink made with preserved lemons (Seasonal availability),150,Veg,2
+14,Orange sunrise,Vibrant orange-based drink with tropical flavors,180,Veg,2
+15,Green mint,Cool and refreshing mint-based green beverage,140,Veg,2
+16,Cold Coffee,Chilled coffee blended with milk and ice,180,Veg,3
+17,Vanilla Shake,Creamy vanilla ice cream blended into a thick shake,150,Veg,3
+18,Caramel Shake,Sweet caramel-flavored milkshake with smooth texture,160,Veg,3
+19,Chocolate Shake,Rich chocolate milkshake made with chocolate ice cream,170,Veg,3
+20,Oreo Shake,Cookies and cream shake with crushed Oreo cookies,180,Veg,3
+21,Kit-Kat Shake,Chocolate wafer shake blended with Kit-Kat bars,190,Veg,3
+22,Strawberry Shake,Sweet and fruity strawberry-flavored milkshake,190,Veg,3
+23,Chicken Ramen,Whole wheat noodles in chicken broth with meatballs and assortment of toppings (*Ask for peanuts),250,Non-Veg,4
+24,Veg Glass Noodle Bowl,Glass noodles with assortment of veg toppings chilli oil tomato sesame sauce and vegetable broth,250,Veg,4
+25,Sesame Noodle Soup,Rice noodles with sesame broth and vegetable toppings,200,Veg,4
+26,Mushroom Noodle Soup,Rice noodles with mushroom broth and vegetable toppings,200,Veg,4
+27,Fried Chicken Wings in Hot Sauce,Crispy fried chicken wings tossed in spicy hot sauce (6 pieces),280,Non-Veg,5
+28,Fried Chicken Wings in Korean Sauce,Crispy fried chicken wings glazed with sweet and spicy Korean sauce (6 pieces),280,Non-Veg,5
+29,Fried Chicken Nuggets in Hot Sauce,Golden fried chicken nuggets coated in spicy hot sauce (8 pieces),250,Non-Veg,5
+30,Fried Chicken Nuggets in Korean Sauce,Crispy chicken nuggets tossed in sweet Korean glaze (8 pieces),250,Non-Veg,5
+31,Cajun Fried Chicken Wings,Spicy Cajun-seasoned fried chicken wings (6 pieces),300,Non-Veg,5
+32,Peri-peri Fried Chicken Wings,Fiery peri-peri spiced fried chicken wings (6 pieces),300,Non-Veg,5
+33,Chicken Katsu,Japanese-style breaded and fried chicken cutlet with crispy coating,280,Non-Veg,5
+34,Chicken Bao Cajun Sauce,Steamed bun with spicy Cajun-seasoned chicken (1 piece),150,Non-Veg,6
+35,Chicken Bao Curry Leaf Sauce,Steamed bun with aromatic curry leaf chicken (1 piece),150,Non-Veg,6
+36,Chicken Dumplings,Steamed chicken dumplings with juicy filling (2 pieces),150,Non-Veg,6
+37,Veg Bao Cajun Sauce,Steamed bun filled with spicy Cajun-seasoned vegetables (1 piece),130,Veg,7
+38,Veg Bao Curry Leaf Sauce,Steamed bun with aromatic curry leaf vegetable filling (1 piece),130,Veg,7
+39,Vegetable Dumpling,Steamed vegetable dumplings with fresh veggie filling (2 pieces),130,Veg,7
+40,Paneer in Hot Sauce,Crispy paneer cubes tossed in spicy hot sauce,230,Veg,8
+41,Paneer in Korean Sauce,Paneer pieces glazed with sweet and spicy Korean sauce,230,Veg,8
+42,Potato Wedges,Crispy seasoned potato wedges with herbs and spices,160,Veg,8
+43,Veg Bibimbap,Korean rice bowl with sautéed spinach carrots zucchini onion cucumber cabbage and gochujang sauce,250,Veg,9
+44,Mushroom Bibimbap,Korean rice bowl with sautéed mushrooms spinach carrot zucchini onion cucumber and gochujang sauce,270,Veg,9
+45,Chicken Bibimbap,Korean rice bowl with sautéed chicken keema spinach carrot zucchini onion cucumber gochujang sauce and fried egg,300,Non-Veg,9
+46,Chicken Bulgogi Bibimbap,Korean rice bowl with marinated chicken bulgogi sautéed spinach carrot zucchini onion cucumber gochujang sauce and fried egg,350,Non-Veg,9
+47,Veg Waffle Sandwich,Crispy waffle filled with fresh vegetables,130,Veg,10
+48,Egg and Veg Cutlet Waffle Sandwich,Waffle sandwich with egg and vegetable cutlet filling,150,Veg,10
+49,Chicken Cutlet Waffle Sandwich,Waffle sandwich with crispy chicken cutlet,160,Non-Veg,10
+50,Egg and Chicken Cutlet Waffle Sandwich,Waffle sandwich with egg and chicken cutlet,180,Non-Veg,10
+51,Chicken Katsu Waffle Sandwich,Waffle sandwich with Japanese-style breaded chicken katsu,200,Non-Veg,10
+52,Egg and Chicken Katsu Waffle Sandwich,Waffle sandwich with egg and crispy chicken katsu,220,Non-Veg,10
+53,Waffles with Honey,Classic waffles drizzled with golden honey,120,Veg,11
+54,Waffles with Blueberry Jam,Fluffy waffles topped with sweet blueberry jam,150,Veg,11
+55,Waffles with Chocolate Sauce,Waffles generously drizzled with rich chocolate sauce,200,Veg,11
+56,Waffles with Blueberry Jam and Chocolate Sauce,Waffles with a delicious combination of blueberry jam and chocolate sauce,250,Veg,11
+57,Waffles with Nutella,Decadent waffles spread with creamy Nutella,250,Veg,11
+58,Brownie,Rich fudgy chocolate brownie (contains egg),90,Veg,12
+59,Brownie with Ice-cream,Warm brownie served with a scoop of ice cream (contains egg),150,Veg,12
