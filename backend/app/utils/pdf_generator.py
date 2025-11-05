@@ -346,10 +346,15 @@ def generate_receipt(
         )
     add_small_spacing(1.3)
 
-    # GSTIN
-    draw_centered(
-        f"GSTIN: {settings.RESTAURANT_GSTIN}", y_position, "Helvetica", config.font_gstin
-    )
+    #FSSAI
+    # Draw FSSAI and GSTIN side by side
+    c.setFont("Helvetica", config.font_gstin)
+    fssai_text = f"FSSAI: {settings.RESTAURANT_FSSAI}"
+    gstin_text = f"GSTIN: {settings.RESTAURANT_GSTIN}"
+
+    c.drawCentredString(x_center, y_position, fssai_text)
+    add_small_spacing(0.8)
+    c.drawCentredString(x_center, y_position, gstin_text)
     add_spacing(1.2)
 
     # Thick separator after header
