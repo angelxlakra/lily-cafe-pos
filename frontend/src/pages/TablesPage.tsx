@@ -4,14 +4,14 @@
 // ========================================
 
 import { useActiveOrders } from '../hooks/useOrders';
+import { useAppConfig } from '../hooks/useConfig';
 import TableGrid from '../components/TableGrid';
 import BottomNav from '../components/BottomNav';
 import BackgroundPattern from '../components/BackgroundPattern';
 
-const MAX_TABLES = 15; // From config
-
 export default function TablesPage() {
   const { data: activeOrders, isLoading, error } = useActiveOrders();
+  const { data: appConfig } = useAppConfig();
 
   const orders = activeOrders || [];
 
@@ -22,7 +22,7 @@ export default function TablesPage() {
 
       {/* Header */}
       <header className="bg-gradient-primary text-cream p-6 sticky top-0 z-30 shadow-medium">
-        <h1 className="font-heading heading-sub text-center">Lily Cafe – Tables</h1>
+        <h1 className="font-heading heading-sub text-center text-cream">Lily Cafe – Tables</h1>
         <p className="text-center text-cream/80 text-sm mt-1">Select a table to take an order</p>
       </header>
 
@@ -46,7 +46,7 @@ export default function TablesPage() {
       <main className="px-2 py-6 relative z-10">
         <div className="max-w-6xl mx-auto">
           <TableGrid
-            maxTables={MAX_TABLES}
+            maxTables={appConfig?.max_tables || 15}
             activeOrders={orders}
             isLoading={isLoading}
           />
