@@ -32,9 +32,10 @@ export default function BottomNav({ className = "" }: BottomNavProps) {
     <nav
       className={`
         fixed bottom-0 left-0 right-0
-        bg-off-white border-t border-neutral-border
-        shadow-[0_-4px_6px_rgba(0,0,0,0.07)]
-        h-[60px]
+        bg-off-white/95 border-t-2 border-neutral-border/50
+        backdrop-blur-md
+        shadow-[0_-8px_16px_rgba(44,36,32,0.08)]
+        h-[64px]
         z-40
         ${className}
       `}
@@ -48,20 +49,26 @@ export default function BottomNav({ className = "" }: BottomNavProps) {
               key={item.path}
               to={item.path}
               className={`
-                flex-1 flex flex-col items-center justify-center gap-1
-                transition-colors duration-200
+                flex-1 flex flex-col items-center justify-center gap-1.5
+                smooth-transition
                 min-h-touch cursor-pointer
+                relative
                 ${
                   isActive
-                    ? "bg-coffee-brown text-cream"
-                    : "text-neutral-text-light hover:text-coffee-brown hover:bg-cream"
+                    ? "bg-gradient-primary text-cream"
+                    : "text-neutral-text-light hover:text-coffee-brown hover:bg-cream/60"
                 }
               `}
             >
-              <span className="text-xl" aria-hidden>
+              {/* Active indicator line */}
+              {isActive && (
+                <div className="absolute top-0 left-0 right-0 h-1 bg-cream rounded-b-full"></div>
+              )}
+
+              <span className={`text-2xl ${isActive ? 'scale-110' : ''} smooth-transition`} aria-hidden>
                 {item.icon}
               </span>
-              <span className="text-xs font-medium">{item.label}</span>
+              <span className="text-xs font-semibold tracking-wide">{item.label}</span>
             </Link>
           );
         })}

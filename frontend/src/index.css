@@ -222,3 +222,248 @@ p {
     color: var(--color-coffee-brown);
   }
 }
+
+/* ============================================
+   CARD & SURFACE STYLES
+   ============================================ */
+
+@utility card {
+  background-color: var(--color-off-white);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(44, 36, 32, 0.06),
+              0 4px 8px rgba(44, 36, 32, 0.04);
+  transition: box-shadow 200ms ease, transform 200ms ease;
+}
+
+@utility card-hover {
+  @apply card;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(44, 36, 32, 0.08),
+                0 8px 20px rgba(44, 36, 32, 0.06);
+    transform: translateY(-2px);
+  }
+}
+
+@utility card-interactive {
+  @apply card;
+  cursor: pointer;
+
+  &:hover {
+    box-shadow: 0 6px 16px rgba(44, 36, 32, 0.1),
+                0 12px 28px rgba(44, 36, 32, 0.08);
+    transform: translateY(-3px);
+  }
+
+  &:active {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(44, 36, 32, 0.08),
+                0 6px 14px rgba(44, 36, 32, 0.06);
+  }
+}
+
+@utility surface-glass {
+  background: rgba(250, 248, 245, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(212, 196, 176, 0.3);
+  box-shadow: 0 4px 20px rgba(44, 36, 32, 0.08);
+}
+
+/* ============================================
+   INPUT STYLES
+   ============================================ */
+
+@utility input-field {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1.5px solid var(--color-neutral-border);
+  border-radius: 0.625rem;
+  background-color: var(--color-off-white);
+  color: var(--color-neutral-text-dark);
+  font-size: 1rem;
+  transition: border-color 200ms ease, box-shadow 200ms ease, background-color 200ms ease;
+
+  &::placeholder {
+    color: var(--color-neutral-text-muted);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-coffee-brown);
+    background-color: #FFFFFF;
+    box-shadow: 0 0 0 3px rgba(111, 78, 55, 0.08),
+                0 2px 8px rgba(44, 36, 32, 0.06);
+  }
+
+  &:disabled {
+    background-color: var(--color-neutral-border);
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+/* ============================================
+   BADGE & CHIP STYLES
+   ============================================ */
+
+@utility badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+@utility chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1.5px solid var(--color-neutral-border);
+  background-color: var(--color-cream);
+  color: var(--color-neutral-text-dark);
+  cursor: pointer;
+  transition: all 200ms ease;
+  user-select: none;
+
+  &:hover {
+    background-color: var(--color-off-white);
+    border-color: var(--color-coffee-light);
+    box-shadow: 0 2px 8px rgba(44, 36, 32, 0.08);
+  }
+
+  &.active {
+    background: linear-gradient(135deg, var(--color-coffee-brown), var(--color-coffee-dark));
+    color: var(--color-cream);
+    border-color: var(--color-coffee-brown);
+    box-shadow: 0 4px 12px rgba(111, 78, 55, 0.3);
+  }
+}
+
+/* ============================================
+   ANIMATIONS & TRANSITIONS
+   ============================================ */
+
+@utility fade-in {
+  animation: fadeIn 300ms ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility slide-up {
+  animation: slideUp 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility scale-in {
+  animation: scaleIn 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@utility animate-pulse-subtle {
+  animation: pulseSubtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulseSubtle {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+/* ============================================
+   UTILITY ENHANCEMENTS
+   ============================================ */
+
+@utility smooth-transition {
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@utility shadow-soft {
+  box-shadow: 0 2px 8px rgba(44, 36, 32, 0.06),
+              0 4px 16px rgba(44, 36, 32, 0.04);
+}
+
+@utility shadow-medium {
+  box-shadow: 0 4px 12px rgba(44, 36, 32, 0.08),
+              0 8px 24px rgba(44, 36, 32, 0.06);
+}
+
+@utility shadow-strong {
+  box-shadow: 0 8px 20px rgba(44, 36, 32, 0.12),
+              0 16px 40px rgba(44, 36, 32, 0.08);
+}
+
+/* Gradient backgrounds */
+@utility bg-gradient-primary {
+  background: linear-gradient(135deg, var(--color-coffee-brown) 0%, var(--color-coffee-dark) 100%);
+}
+
+@utility bg-gradient-soft {
+  background: linear-gradient(135deg, var(--color-cream) 0%, var(--color-off-white) 100%);
+}
+
+/* ============================================
+   SCROLLBAR STYLING
+   ============================================ */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(111, 78, 55, 0.3) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(111, 78, 55, 0.3);
+  border-radius: 4px;
+  transition: background-color 200ms ease;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(111, 78, 55, 0.5);
+}

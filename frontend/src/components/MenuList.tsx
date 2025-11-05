@@ -94,16 +94,29 @@ export default function MenuList({
                   <div
                     key={item.id}
                     className={`
-                    bg-off-white border border-neutral-border rounded-lg p-4
-                    transition-all duration-200
-                    ${!isAvailable ? "opacity-50" : "hover:shadow-sm"}
+                    card p-4 fade-in
+                    ${!isAvailable ? "opacity-50" : ""}
                   `}
                   >
-                    {/* Item Header: Name and Price */}
+                    {/* Item Header: Name, Veg/Non-veg Indicator, and Price */}
                     <div className="flex items-start justify-between mb-2">
-                      <h3 className="text-base font-semibold text-neutral-text-dark flex-1">
-                        {item.name}
-                      </h3>
+                      <div className="flex items-start gap-2 flex-1">
+                        {/* Veg/Non-veg Indicator */}
+                        <div className={`mt-1 w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                          item.is_vegetarian
+                            ? "border-green-600"
+                            : "border-red-600"
+                        }`}>
+                          <div className={`w-2 h-2 rounded-full ${
+                            item.is_vegetarian
+                              ? "bg-green-600"
+                              : "bg-red-600"
+                          }`}></div>
+                        </div>
+                        <h3 className="text-base font-semibold text-neutral-text-dark">
+                          {item.name}
+                        </h3>
+                      </div>
                       <span className="text-base font-semibold text-coffee-brown ml-4">
                         {formatCurrency(item.price)}
                       </span>
@@ -119,7 +132,7 @@ export default function MenuList({
                     {/* Out of Stock Badge or Quantity Controls */}
                     <div className="flex items-center justify-end mt-3">
                       {!isAvailable ? (
-                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-error/10 text-error text-sm font-medium">
+                        <span className="badge px-4 py-2 bg-error/15 text-error border border-error/30">
                           Out of Stock
                         </span>
                       ) : (
@@ -129,14 +142,15 @@ export default function MenuList({
                             onClick={() => handleDecrement(item.id)}
                             disabled={quantity === 0}
                             className="
-                            w-10 h-10 rounded-full
+                            w-11 h-11 rounded-full
                             flex items-center justify-center
-                            bg-cream border-2 border-coffee-light
-                            text-coffee-brown font-bold text-lg
-                            transition-all duration-200
-                            hover:bg-coffee-light hover:text-white
-                            disabled:opacity-30 disabled:cursor-not-allowed
-                            active:scale-95
+                            bg-gradient-soft border-2 border-coffee-light/40
+                            text-coffee-brown font-bold text-xl
+                            shadow-soft
+                            smooth-transition
+                            hover:bg-coffee-light hover:text-white hover:border-coffee-light hover:shadow-medium
+                            disabled:opacity-30 disabled:cursor-not-allowed disabled:shadow-none
+                            active:scale-90
                           "
                             aria-label="Decrease quantity"
                           >
@@ -144,20 +158,23 @@ export default function MenuList({
                           </button>
 
                           {/* Quantity Display */}
-                          <span className="text-lg font-semibold text-neutral-text-dark w-8 text-center">
-                            {quantity}
-                          </span>
+                          <div className="min-w-[40px] h-11 flex items-center justify-center">
+                            <span className="text-xl font-bold text-coffee-brown">
+                              {quantity}
+                            </span>
+                          </div>
 
                           {/* Increment Button */}
                           <button
                             onClick={() => handleIncrement(item.id)}
                             className="
-                            w-10 h-10 rounded-full
+                            w-11 h-11 rounded-full
                             flex items-center justify-center
-                            bg-coffee-brown border-2 border-coffee-brown
-                            text-cream font-bold text-lg
-                            transition-all duration-200
-                            hover:bg-coffee-dark hover:border-coffee-dark
+                            bg-gradient-primary border-2 border-coffee-brown
+                            text-cream font-bold text-xl
+                            shadow-medium
+                            smooth-transition
+                            hover:shadow-strong hover:scale-105
                             active:scale-95
                           "
                             aria-label="Increase quantity"

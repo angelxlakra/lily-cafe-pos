@@ -19,6 +19,142 @@ from app.models import models
 logger = logging.getLogger(__name__)
 
 
+# ASCII art for digits 0-9 using hash symbols (for huge, readable table numbers)
+ASCII_DIGITS = {
+    '0': [
+        " ##### ",
+        "#     #",
+        "#     #",
+        "#     #",
+        "#     #",
+        "#     #",
+        " ##### "
+    ],
+    '1': [
+        "   #   ",
+        "  ##   ",
+        "   #   ",
+        "   #   ",
+        "   #   ",
+        "   #   ",
+        " ##### "
+    ],
+    '2': [
+        " ##### ",
+        "#     #",
+        "      #",
+        " ##### ",
+        "#      ",
+        "#      ",
+        "#######"
+    ],
+    '3': [
+        " ##### ",
+        "#     #",
+        "      #",
+        "  #### ",
+        "      #",
+        "#     #",
+        " ##### "
+    ],
+    '4': [
+        "#     #",
+        "#     #",
+        "#     #",
+        "#######",
+        "      #",
+        "      #",
+        "      #"
+    ],
+    '5': [
+        "#######",
+        "#      ",
+        "#      ",
+        "###### ",
+        "      #",
+        "#     #",
+        " ##### "
+    ],
+    '6': [
+        " ##### ",
+        "#     #",
+        "#      ",
+        "###### ",
+        "#     #",
+        "#     #",
+        " ##### "
+    ],
+    '7': [
+        "#######",
+        "      #",
+        "     # ",
+        "    #  ",
+        "   #   ",
+        "  #    ",
+        " #     "
+    ],
+    '8': [
+        " ##### ",
+        "#     #",
+        "#     #",
+        " ##### ",
+        "#     #",
+        "#     #",
+        " ##### "
+    ],
+    '9': [
+        " ##### ",
+        "#     #",
+        "#     #",
+        " ######",
+        "      #",
+        "#     #",
+        " ##### "
+    ]
+}
+
+
+def create_ascii_art_number(number: int) -> list:
+    """
+    Create ASCII art representation of a number using the number itself.
+
+    Example: Number "7" is drawn using multiple "7"s to form the shape of 7.
+
+    Args:
+        number: The number to convert (0-99)
+
+    Returns:
+        List of strings, each representing one line of the ASCII art
+    """
+    num_str = str(number)
+
+    # For single digit
+    if len(num_str) == 1:
+        # Replace '#' with the actual digit to make it self-referential
+        digit = num_str[0]
+        art = ASCII_DIGITS[digit]
+        return [line.replace('#', digit) for line in art]
+
+    # For two digits, combine them side by side
+    if len(num_str) == 2:
+        digit1_char = num_str[0]
+        digit2_char = num_str[1]
+
+        # Get art for each digit and replace # with the actual digit
+        digit1_art = [line.replace('#', digit1_char) for line in ASCII_DIGITS[digit1_char]]
+        digit2_art = [line.replace('#', digit2_char) for line in ASCII_DIGITS[digit2_char]]
+
+        # Combine side by side with spacing
+        combined = []
+        for i in range(len(digit1_art)):
+            combined.append(digit1_art[i] + "  " + digit2_art[i])
+
+        return combined
+
+    # For 3+ digits, just return the number as is
+    return [f"  {num_str}  "]
+
+
 def get_printer():
     """
     Get printer instance based on configuration.
@@ -398,20 +534,110 @@ def print_pdf_to_printer(pdf_path: str, printer_name: str = None) -> bool:
     return False
 
 
+def _auto_print_pdf(pdf_path: str, printer_name: str) -> bool:
+    """
+    Automatically print a PDF file to the specified printer.
+    Tries multiple methods to ensure printing works.
+
+    Args:
+        pdf_path: Path to the PDF file
+        printer_name: Name of the printer
+
+    Returns:
+        True if printing succeeded, False otherwise
+    """
+    if not printer_name:
+        logger.warning("No printer name provided for auto-print")
+        return False
+
+    # Method 1: Try GSPrint or Ghostscript (if installed)
+    try:
+        gsprint_paths = [
+            r"C:\Program Files\Ghostgum\gsview\gsprint.exe",
+            r"C:\Program Files (x86)\Ghostgum\gsview\gsprint.exe",
+        ]
+        for gsprint_path in gsprint_paths:
+            if os.path.exists(gsprint_path):
+                logger.info(f"Trying GSPrint: {gsprint_path}")
+                result = subprocess.run(
+                    [gsprint_path, "-printer", printer_name, pdf_path],
+                    capture_output=True,
+                    timeout=10
+                )
+                if result.returncode == 0:
+                    logger.info("✓ Printed via GSPrint")
+                    return True
+    except Exception as e:
+        logger.debug(f"GSPrint not available: {e}")
+
+    # Method 2: Try Adobe Reader command line (if installed)
+    try:
+        adobe_paths = [
+            r"C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe",
+            r"C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe",
+            r"C:\Program Files\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe",
+        ]
+        for adobe_path in adobe_paths:
+            if os.path.exists(adobe_path):
+                logger.info(f"Trying Adobe Reader: {adobe_path}")
+                result = subprocess.run(
+                    [adobe_path, "/t", pdf_path, printer_name],
+                    capture_output=True,
+                    timeout=10
+                )
+                if result.returncode == 0:
+                    logger.info("✓ Printed via Adobe Reader")
+                    return True
+    except Exception as e:
+        logger.debug(f"Adobe Reader not available: {e}")
+
+    # Method 3: Try PowerShell with Out-Printer
+    try:
+        logger.info("Trying PowerShell Out-Printer")
+        ps_command = f'Get-Content "{pdf_path}" -Raw | Out-Printer -Name "{printer_name}"'
+        result = subprocess.run(
+            ["powershell", "-Command", ps_command],
+            capture_output=True,
+            timeout=10
+        )
+        if result.returncode == 0:
+            logger.info("✓ Printed via PowerShell")
+            return True
+    except Exception as e:
+        logger.debug(f"PowerShell printing failed: {e}")
+
+    # Method 4: Try using default Windows print handler
+    try:
+        logger.info("Trying Windows ShellExecute print verb")
+        import win32api
+        win32api.ShellExecute(
+            0,
+            "print",
+            pdf_path,
+            None,
+            ".",
+            0
+        )
+        logger.info("✓ Sent to Windows print handler")
+        return True
+    except Exception as e:
+        logger.debug(f"ShellExecute print failed: {e}")
+
+    logger.error("All auto-print methods failed")
+    return False
+
+
 def print_order_chit(order: models.Order) -> bool:
     """
     Print a simple order chit (kitchen ticket) when order is saved.
 
-    Uses PDF-based printing for better font control and larger table numbers.
-    Falls back to ESC/POS if PDF printing is not available.
+    Uses ESC/POS commands for direct thermal printer communication.
+    Also saves a PDF copy for records.
 
     Minimal design with:
-    - Very large table number (72pt font, much larger than ESC/POS 8x limit)
-    - Order items with quantities
-    - Total amount
+    - Large table number (maximum ESC/POS size: 8x8)
+    - Order items with quantities (NO PRICES)
     - Space for handwritten notes
-
-    No branding, no GST breakdown - just essentials for kitchen/waiters.
 
     Args:
         order: Order model instance with order details
@@ -428,54 +654,29 @@ def print_order_chit(order: models.Order) -> bool:
     if paper_size not in ["58mm", "80mm"]:
         paper_size = "80mm"  # Default to 80mm if invalid
 
-    temp_pdf_path = None
-
     try:
-        # Method 1: PDF-based printing (preferred for better font control)
-        if settings.PRINTER_NAME:  # PDF printing requires printer name
-            logger.info("Attempting PDF-based chit printing for better font control")
+        logger.info(f"Generating order chit for table {order.table_number}, order {order.order_number}")
 
-            # Generate PDF to temporary file
+        # Generate PDF for records (saved but not printed)
+        try:
             from app.utils.pdf_generator import generate_order_chit_pdf
+            chits_dir = os.path.join(os.getcwd(), "chits")
+            os.makedirs(chits_dir, exist_ok=True)
+            pdf_filename = f"Table_{order.table_number}_{order.order_number}.pdf"
+            pdf_path = os.path.join(chits_dir, pdf_filename)
 
-            # Create temporary file
-            temp_fd, temp_pdf_path = tempfile.mkstemp(suffix=".pdf", prefix="chit_")
-            os.close(temp_fd)  # Close the file descriptor
-
-            # Generate the PDF
-            with open(temp_pdf_path, "wb") as pdf_file:
+            with open(pdf_path, "wb") as pdf_file:
                 generate_order_chit_pdf(order, pdf_file, paper_size=paper_size)
+            logger.info(f"✓ PDF saved to: {pdf_path}")
+        except Exception as e:
+            logger.warning(f"Failed to save PDF copy: {e}")
 
-            # Print the PDF
-            print_success = print_pdf_to_printer(temp_pdf_path, settings.PRINTER_NAME)
-
-            if print_success:
-                logger.info(f"Successfully printed PDF order chit for table {order.table_number}")
-                return True
-            else:
-                logger.warning("PDF printing failed, falling back to ESC/POS")
-
-        # Method 2: ESC/POS fallback (if PDF printing failed or not configured)
-        logger.info("Using ESC/POS fallback for chit printing")
+        # Print using ESC/POS commands (thermal printers understand this natively)
         return _print_order_chit_escpos(order, paper_size)
 
     except Exception as e:
-        logger.error(f"Failed to print order chit for order {order.order_number if order else 'unknown'}: {e}")
-        # Try ESC/POS fallback on error
-        try:
-            logger.info("Attempting ESC/POS fallback after error")
-            return _print_order_chit_escpos(order, paper_size)
-        except Exception as fallback_error:
-            logger.error(f"ESC/POS fallback also failed: {fallback_error}")
-            return False
-
-    finally:
-        # Clean up temporary file
-        if temp_pdf_path and os.path.exists(temp_pdf_path):
-            try:
-                os.remove(temp_pdf_path)
-            except Exception as e:
-                logger.warning(f"Failed to remove temporary PDF file: {e}")
+        logger.error(f"Failed to print order chit: {e}", exc_info=True)
+        return False
 
 
 def _print_order_chit_escpos(order: models.Order, paper_size: str = "80mm") -> bool:
@@ -502,12 +703,23 @@ def _print_order_chit_escpos(order: models.Order, paper_size: str = "80mm") -> b
         is_58mm = paper_size == "58mm"
 
         # ============================================================================
-        # HEADER - Maximum Size Table Number (ESC/POS limit: 8x8)
+        # HEADER - ASCII ART Table Number (HUGE and VISIBLE!)
         # ============================================================================
 
-        printer.set(align='center', bold=True, width=8, height=8)
-        printer.text(f"TABLE {order.table_number}\n")
-        printer.set(align='center', bold=False, width=1, height=1)
+        # Print "TABLE" label
+        printer.set(align='center', bold=True, width=1, height=1)
+        printer.text("TABLE\n")
+        printer.text("\n")
+
+        # Print table number as ASCII art (huge and impossible to miss!)
+        ascii_number = create_ascii_art_number(order.table_number)
+
+        printer.set(align='center', bold=True)
+        for line in ascii_number:
+            printer.text(f"{line}\n")
+
+        # Reset to normal
+        printer.set(bold=False, width=1, height=1)
         printer.text("\n")
 
         # Order info
@@ -527,15 +739,15 @@ def _print_order_chit_escpos(order: models.Order, paper_size: str = "80mm") -> b
         printer.text("\n")
 
         # ============================================================================
-        # ITEMS SECTION - Large, readable text
+        # ITEMS SECTION - Large, readable text (NO PRICES)
         # ============================================================================
 
-        printer.set(align='left', bold=True, width=1, height=2)
+        printer.set(align='left', bold=True, width=2, height=2)
 
         for item in order.order_items:
-            # Item with large quantity
+            # Item with large quantity (NO PRICE - kitchen doesn't need it)
             printer.text(f"{item.quantity}x {item.menu_item_name}\n")
-            printer.text("\n")
+            printer.text("\n")  # Blank line for spacing
 
         # Reset to normal
         printer.set(bold=False, width=1, height=1)

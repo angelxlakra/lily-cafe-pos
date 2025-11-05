@@ -664,15 +664,15 @@ def generate_order_chit_pdf(
 
     add_spacing(5)
 
-    # Draw "TABLE" label in large font
-    table_label_size = 28 if paper_size == "80mm" else 22
+    # Draw "TABLE" label in medium font
+    table_label_size = 24 if paper_size == "80mm" else 18
     draw_centered("TABLE", y_position, "Helvetica-Bold", table_label_size)
-    add_spacing(15)
+    add_spacing(35)  # Large spacing to prevent overlap
 
-    # Draw table number in VERY LARGE font (this is what we want to be huge)
-    table_number_size = 72 if paper_size == "80mm" else 56  # Much larger than ESC/POS max
+    # Draw table number in GIANT font (much larger than before!)
+    table_number_size = 120 if paper_size == "80mm" else 80  # MASSIVE - easily visible from across kitchen
     draw_centered(str(order.table_number), y_position, "Helvetica-Bold", table_number_size)
-    add_spacing(28)
+    add_spacing(45)  # Extra spacing after large number
 
     # Separator
     draw_separator(y_position)
@@ -703,27 +703,14 @@ def generate_order_chit_pdf(
     # ============================================================================
 
     for item in order.order_items:
-        # Item with large quantity and name
+        # Item with large quantity and name (NO PRICES - kitchen doesn't need them)
         item_text = f"{item.quantity}x {item.menu_item_name}"
         draw_left(item_text, y_position, "Helvetica-Bold", 16)
-        add_spacing(7)
-
-        # Amount below item (optional, can be removed if not needed)
-        amount_text = format_currency(item.subtotal)
-        draw_left(f"   {amount_text}", y_position, "DejaVuSansMono", 12)
-        add_spacing(8)
+        add_spacing(10)
 
     add_spacing(3)
     draw_separator(y_position)
     add_spacing(8)
-
-    # ============================================================================
-    # TOTAL
-    # ============================================================================
-
-    total_text = format_currency(order.total_amount)
-    draw_centered(f"TOTAL: {total_text}", y_position, "Helvetica-Bold", 18)
-    add_spacing(10)
 
     # ============================================================================
     # NOTES SECTION - Space for handwritten notes

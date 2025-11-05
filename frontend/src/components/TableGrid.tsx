@@ -54,32 +54,39 @@ export default function TableGrid({
             key={tableNumber}
             onClick={() => handleTableClick(tableNumber)}
             className={`
-              w-full h-[120px] rounded-lg
+              w-full h-[130px] rounded-xl
               flex flex-col items-center justify-center
-              transition-all duration-200
-              border-2
+              smooth-transition
+              relative overflow-hidden
               ${
                 isActive
-                  ? 'bg-lily-green/20 border-lily-green shadow-md hover:shadow-lg'
-                  : 'bg-cream border-neutral-border hover:border-coffee-light'
+                  ? 'bg-gradient-to-br from-lily-green/25 to-lily-green/15 border-2 border-lily-green shadow-medium hover:shadow-strong'
+                  : 'card-interactive border-2 border-transparent'
               }
-              hover:scale-105 active:scale-100
-              cursor-pointer
             `}
             aria-label={`Table ${tableNumber}${isActive ? ' - Active' : ' - Empty'}`}
           >
-            <span className="text-2xl font-semibold font-heading text-neutral-text-dark mb-1">
-              Table {tableNumber}
+            {/* Decorative background element for active tables */}
+            {isActive && (
+              <div className="absolute top-0 right-0 w-16 h-16 bg-lily-green/10 rounded-full blur-2xl"></div>
+            )}
+
+            <span className="text-3xl font-bold font-heading text-neutral-text-dark mb-2 relative z-10">
+              {tableNumber}
             </span>
-            <span
-              className={`text-sm font-medium ${
-                isActive ? 'text-lily-green' : 'text-neutral-text-light'
-              }`}
-            >
+
+            <div className={`
+              badge px-3 py-1
+              ${isActive
+                ? 'bg-lily-green text-white'
+                : 'bg-neutral-border text-neutral-text-dark'
+              }
+            `}>
               {isActive ? 'Active' : 'Empty'}
-            </span>
+            </div>
+
             {isActive && order && (
-              <span className="text-xs text-neutral-text-light mt-1">
+              <span className="text-xs text-neutral-text-light mt-2 font-medium relative z-10">
                 {order.order_items?.length || 0} {(order.order_items?.length || 0) === 1 ? 'item' : 'items'}
               </span>
             )}

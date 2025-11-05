@@ -27,28 +27,34 @@ export default function FloatingCartButton({
       onClick={onClick}
       className="
         fixed bottom-20 right-5
-        min-w-[120px] h-[60px]
-        bg-coffee-brown text-cream
-        rounded-2xl shadow-2xl
-        px-4 py-2
+        min-w-[140px] h-[68px]
+        bg-gradient-primary text-cream
+        rounded-2xl shadow-strong
+        px-5 py-3
         flex flex-col items-center justify-center
-        transition-all duration-200
-        hover:bg-coffee-dark hover:scale-105
+        smooth-transition
+        hover:shadow-[0_12px_28px_rgba(111,78,55,0.4)]
+        hover:scale-105
         active:scale-100
         z-50
         cursor-pointer
+        border-2 border-coffee-light/30
+        animate-pulse-subtle
       "
       aria-label={`View cart: ${itemCount} items, total ${formatCurrency(
         totalAmount
       )}`}
     >
-      <div className="flex items-center gap-2 text-sm font-semibold">
-        <ShoppingCartSimple size={20} weight="duotone" />
-        <span>
-          {itemCount} {itemCount === 1 ? "item" : "items"}
-        </span>
+      {/* Badge for item count */}
+      <div className="absolute -top-2 -right-2 bg-lily-green text-white rounded-full w-8 h-8 flex items-center justify-center text-xs font-bold shadow-medium border-2 border-cream">
+        {itemCount}
       </div>
-      <div className="text-sm font-bold mt-0.5">
+
+      <div className="flex items-center gap-2 text-sm font-semibold">
+        <ShoppingCartSimple size={22} weight="duotone" />
+        <span className="font-heading">View Cart</span>
+      </div>
+      <div className="text-base font-bold mt-1">
         {formatCurrency(totalAmount)}
       </div>
     </button>

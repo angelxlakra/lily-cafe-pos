@@ -33,6 +33,7 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(
     item ? String(item.category_id) : ""
   );
+  const [isVegetarian, setIsVegetarian] = useState(item?.is_vegetarian ?? true);
   const [isAvailable, setIsAvailable] = useState(item?.is_available ?? true);
   const [error, setError] = useState("");
   const [showNewCategory, setShowNewCategory] = useState(false);
@@ -89,6 +90,7 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
             description: description.trim() || null,
             price: pricePaise,
             category_id: categoryId,
+            is_vegetarian: isVegetarian,
             is_available: isAvailable,
           },
         });
@@ -99,6 +101,7 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
           description: description.trim() || null,
           price: pricePaise,
           category_id: categoryId,
+          is_vegetarian: isVegetarian,
         });
 
         // If the item should start as unavailable, apply an update after creation
@@ -316,6 +319,34 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
                   </button>
                 </div>
               )}
+            </div>
+
+            {/* Vegetarian/Non-vegetarian */}
+            <div>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isVegetarian}
+                  onChange={(e) => setIsVegetarian(e.target.checked)}
+                  disabled={isProcessing}
+                  className="w-5 h-5 border border-neutral-border rounded
+                           focus:outline-none focus:ring-2 focus:ring-coffee-brown
+                           disabled:cursor-not-allowed"
+                />
+                <span className="text-sm font-medium text-neutral-text-dark flex items-center gap-2">
+                  Vegetarian
+                  <span className={`inline-flex w-4 h-4 rounded-full border-2 items-center justify-center ${
+                    isVegetarian ? "border-green-600" : "border-red-600"
+                  }`}>
+                    <span className={`w-2 h-2 rounded-full ${
+                      isVegetarian ? "bg-green-600" : "bg-red-600"
+                    }`}></span>
+                  </span>
+                </span>
+              </label>
+              <p className="mt-1 ml-8 text-xs text-neutral-text-light">
+                {isVegetarian ? "Item is vegetarian (green indicator)" : "Item is non-vegetarian (red indicator)"}
+              </p>
             </div>
 
             {/* Availability */}

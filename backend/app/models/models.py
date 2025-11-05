@@ -50,6 +50,7 @@ class MenuItem(Base):
     # Price stored in paise (�80 = 8000 paise) to avoid float precision issues
     price = Column(Integer, nullable=False)  # Price in paise
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
+    is_vegetarian = Column(Boolean, default=True)  # True for veg, False for non-veg
     is_available = Column(Boolean, default=True)  # Soft delete flag
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

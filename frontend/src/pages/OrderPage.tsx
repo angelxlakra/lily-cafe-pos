@@ -5,15 +5,16 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useMenuItems } from "../hooks/useMenu";
+import { useMenuItems, useCategories } from "../hooks/useMenu";
 import { useActiveOrders, useCreateOrUpdateOrder } from "../hooks/useOrders";
 import { useAppConfig } from "../hooks/useConfig";
 import MenuList from "../components/MenuList";
 import FloatingCartButton from "../components/FloatingCartButton";
 import CartDrawer from "../components/CartDrawer";
 import BottomNav from "../components/BottomNav";
+import BackgroundPattern from "../components/BackgroundPattern";
 import type { MenuItem } from "../types";
-import { ArrowLeft } from "@phosphor-icons/react";
+import { ArrowLeft, MagnifyingGlass, X } from "@phosphor-icons/react";
 
 export default function OrderPage() {
   const { tableNumber: tableNumberParam } = useParams<{
@@ -28,15 +29,32 @@ export default function OrderPage() {
   const [customerName, setCustomerName] = useState("");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | undefined>(undefined);
+
+  // Debounce search query to avoid triggering API call on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300); // Wait 300ms after user stops typing
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Data fetching
   const {
     data: menuItems,
     isLoading: isLoadingMenu,
     error: menuError,
-  } = useMenuItems({ available_only: true });
+  } = useMenuItems({
+    available_only: true,
+    search: debouncedSearchQuery || undefined,
+    category_id: selectedCategoryId,
+  });
   const { data: activeOrders, isLoading: isLoadingOrders } =
     useActiveOrders();
+  const { data: categories } = useCategories();
   const { data: appConfig } = useAppConfig();
   const { mutate: createOrUpdateOrder, isPending: isSavingOrder } =
     useCreateOrUpdateOrder();
@@ -185,9 +203,12 @@ export default function OrderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-background pb-16">
+    <div className="min-h-screen bg-neutral-background pb-16 relative">
+      {/* Background Pattern */}
+      <BackgroundPattern opacity={0.04} density="light" />
+
       {/* Header */}
-      <header className="bg-coffee-brown text-cream p-4 sticky top-0 z-30 shadow-md">
+      <header className="bg-gradient-primary text-cream p-4 sticky top-0 z-30 shadow-medium">
         <div className="flex items-center justify-between">
           <button
             onClick={() => navigate("/tables")}
@@ -208,6 +229,51 @@ export default function OrderPage() {
           <div className="w-20"></div> {/* Spacer for centering */}
         </div>
       </header>
+
+      {/* Search and Filter Bar */}
+      <div className="sticky top-[60px] z-20 surface-glass p-4 space-y-3 shadow-soft">
+        {/* Search Bar */}
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search menu items..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="input-field pl-10 pr-10"
+          />
+          <MagnifyingGlass
+            size={20}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-text-light pointer-events-none"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-text-light hover:text-coffee-brown smooth-transition rounded-full p-1 hover:bg-neutral-border/30"
+            >
+              <X size={18} weight="bold" />
+            </button>
+          )}
+        </div>
+
+        {/* Category Filter Chips */}
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          <button
+            onClick={() => setSelectedCategoryId(undefined)}
+            className={`chip ${selectedCategoryId === undefined ? 'active' : ''}`}
+          >
+            All
+          </button>
+          {categories?.map((category) => (
+            <button
+              key={category.id}
+              onClick={() => setSelectedCategoryId(category.id)}
+              className={`chip ${selectedCategoryId === category.id ? 'active' : ''}`}
+            >
+              {category.name}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Menu List */}
       <main>
@@ -261,8 +327,8 @@ export default function OrderPage() {
 
       {/* Success Toast */}
       {showSuccessToast && (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] animate-slide-down">
-          <div className="bg-success text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-2">
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] scale-in">
+          <div className="bg-success text-white px-6 py-4 rounded-xl shadow-strong flex items-center gap-3">
             <span></span>
             <span className="font-medium">
               Order saved for Table {tableNumber}!
@@ -271,7 +337,7 @@ export default function OrderPage() {
         </div>
       )}
 
-      {/* Custom animations */}
+      {/* Custom animations and styles */}
       <style>{`
         @keyframes slide-down {
           from {
@@ -286,6 +352,15 @@ export default function OrderPage() {
 
         .animate-slide-down {
           animation: slide-down 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
         }
       `}</style>
     </div>

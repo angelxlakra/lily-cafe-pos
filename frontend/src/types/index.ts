@@ -28,6 +28,7 @@ export interface MenuItem {
   price: number; // Price in paise
   category_id: number;
   category: Category;
+  is_vegetarian: boolean;
   is_available: boolean;
   created_at: string;
   updated_at: string;
@@ -38,6 +39,7 @@ export interface CreateMenuItemRequest {
   description?: string | null;
   price: number; // Price in paise
   category_id: number;
+  is_vegetarian?: boolean;
 }
 
 export interface UpdateMenuItemRequest {
@@ -45,6 +47,7 @@ export interface UpdateMenuItemRequest {
   description?: string | null;
   price?: number; // Price in paise
   category_id?: number;
+  is_vegetarian?: boolean;
   is_available?: boolean;
 }
 
@@ -163,6 +166,7 @@ export interface ErrorResponse {
 export interface QueryParams {
   available_only?: boolean;
   category_id?: number;
+  search?: string;
   status?: 'active' | 'paid' | 'canceled';
   table_number?: number;
   today_only?: boolean;

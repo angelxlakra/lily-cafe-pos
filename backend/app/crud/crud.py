@@ -43,7 +43,10 @@ def create_category(db: Session, category: schemas.CategoryCreate) -> models.Cat
 
 
 def get_menu_items(
-    db: Session, available_only: bool = False, category_id: Optional[int] = None
+    db: Session,
+    available_only: bool = False,
+    category_id: Optional[int] = None,
+    search: Optional[str] = None
 ) -> List[models.MenuItem]:
     """
     Get menu items with optional filtering.
@@ -52,6 +55,7 @@ def get_menu_items(
         db: Database session
         available_only: If True, only return available items
         category_id: If provided, filter by category
+        search: If provided, search in item name and description
 
     Returns:
         List of menu items
@@ -63,6 +67,14 @@ def get_menu_items(
 
     if category_id:
         query = query.filter(models.MenuItem.category_id == category_id)
+
+    if search:
+        # Search in both name and description (case-insensitive)
+        search_term = f"%{search}%"
+        query = query.filter(
+            (models.MenuItem.name.ilike(search_term)) |
+            (models.MenuItem.description.ilike(search_term))
+        )
 
     return query.all()
 

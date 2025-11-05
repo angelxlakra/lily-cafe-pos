@@ -48,6 +48,7 @@ class MenuItemBase(BaseModel):
     description: Optional[str] = Field(None, max_length=500)
     price: int = Field(..., gt=0, description="Price in paise (�80 = 8000 paise)")
     category_id: int
+    is_vegetarian: bool = True
 
 
 class MenuItemCreate(MenuItemBase):
@@ -63,6 +64,7 @@ class MenuItemUpdate(BaseModel):
     description: Optional[str] = Field(None, max_length=500)
     price: Optional[int] = Field(None, gt=0)
     category_id: Optional[int] = None
+    is_vegetarian: Optional[bool] = None
     is_available: Optional[bool] = None
 
 

@@ -202,7 +202,7 @@ export const menuApi = {
     id: number,
     data: UpdateMenuItemRequest
   ): Promise<MenuItem> => {
-    const response = await apiClient.put<MenuItem>(`/menu/${id}`, data);
+    const response = await apiClient.patch<MenuItem>(`/menu/${id}`, data);
     return response.data;
   },
 

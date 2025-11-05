@@ -18,6 +18,7 @@ router = APIRouter()
 def list_menu_items(
     available_only: bool = True,
     category_id: Optional[int] = None,
+    search: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     """
@@ -26,8 +27,14 @@ def list_menu_items(
     Query parameters:
     - available_only: Filter only available items (default: true)
     - category_id: Filter by category ID (optional)
+    - search: Search menu items by name or description (optional)
     """
-    return crud.get_menu_items(db, available_only=available_only, category_id=category_id)
+    return crud.get_menu_items(
+        db,
+        available_only=available_only,
+        category_id=category_id,
+        search=search
+    )
 
 
 @router.get("/{item_id}", response_model=schemas.MenuItem)
