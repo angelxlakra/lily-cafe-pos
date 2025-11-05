@@ -238,7 +238,7 @@ def get_active_order_for_table(db: Session, table_number: int) -> Optional[model
     )
 
 
-def create_order(db: Session, order: schemas.OrderCreate) -> tuple[models.Order, Optional[List[models.OrderItem]]]:
+def create_order(db: Session, order: schemas.OrderCreate) -> tuple[models.Order, list[models.OrderItem]]:
     """
     Create a new order OR update existing active order (smart logic).
 
@@ -254,10 +254,9 @@ def create_order(db: Session, order: schemas.OrderCreate) -> tuple[models.Order,
         order: Order creation data
 
     Returns:
-        Tuple of (order, newly_added_items):
-        - order: Created or updated order with all items
-        - newly_added_items: List of items that were newly added (for chit printing)
-          Returns None if this is a brand new order (all items are new)
+        Tuple of (order, new_items_only) where:
+        - order: The created or updated order with all items
+        - new_items_only: List of only the newly added OrderItems (for chit printing)
 
     Raises:
         ValueError: If any menu item is not found or not available
@@ -272,8 +271,8 @@ def create_order(db: Session, order: schemas.OrderCreate) -> tuple[models.Order,
             item.menu_item_id: item for item in existing_order.order_items
         }
 
-        # Track newly added items (not quantity updates of existing items)
-        newly_added_items = []
+        # Track new items for chit printing
+        new_items_only = []
 
         # Process new items
         for item in order.items:
@@ -288,8 +287,20 @@ def create_order(db: Session, order: schemas.OrderCreate) -> tuple[models.Order,
             if menu_item.id in existing_items_map:
                 # Update quantity of existing item
                 existing_item = existing_items_map[menu_item.id]
+                old_quantity = existing_item.quantity
                 existing_item.quantity += item.quantity
                 existing_item.subtotal = existing_item.quantity * existing_item.unit_price
+
+                # Create a virtual OrderItem for the NEW quantity only (for chit printing)
+                new_item_chit = models.OrderItem(
+                    order_id=existing_order.id,
+                    menu_item_id=menu_item.id,
+                    menu_item_name=menu_item.name,
+                    quantity=item.quantity,  # Only the additional quantity
+                    unit_price=menu_item.price,
+                    subtotal=menu_item.price * item.quantity,
+                )
+                new_items_only.append(new_item_chit)
             else:
                 # Add new item to order
                 item_subtotal = menu_item.price * item.quantity
@@ -302,7 +313,7 @@ def create_order(db: Session, order: schemas.OrderCreate) -> tuple[models.Order,
                     subtotal=item_subtotal,
                 )
                 db.add(new_order_item)
-                newly_added_items.append(new_order_item)
+                new_items_only.append(new_order_item)
 
         # Recalculate totals from ALL items (old + new)
         db.flush()  # Flush to get updated items
@@ -324,16 +335,10 @@ def create_order(db: Session, order: schemas.OrderCreate) -> tuple[models.Order,
 
         db.commit()
         db.refresh(existing_order)
-
-        # Refresh newly added items to get their IDs
-        for new_item in newly_added_items:
-            db.refresh(new_item)
-
-        # Return order and list of newly added items (empty list if only quantity updates)
-        return existing_order, newly_added_items if newly_added_items else None
+        return existing_order, new_items_only
 
     else:
-        # Create new order
+        # Create new order (all items are new)
         subtotal = 0
         order_items = []
 
@@ -380,8 +385,8 @@ def create_order(db: Session, order: schemas.OrderCreate) -> tuple[models.Order,
         db.add(db_order)
         db.commit()
         db.refresh(db_order)
-        # For new orders, return None for newly_added_items (all items are new)
-        return db_order, None
+        # For new orders, all items are new
+        return db_order, db_order.order_items
 
 
 def update_order(

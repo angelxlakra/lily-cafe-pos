@@ -43,15 +43,25 @@ export default function OrderPage() {
   }, [searchQuery]);
 
   // Data fetching
+  // Fetch all available items for cart calculations (unfiltered)
   const {
-    data: menuItems,
-    isLoading: isLoadingMenu,
+    data: allMenuItems,
+    isLoading: isLoadingAllMenu,
     error: menuError,
+  } = useMenuItems({
+    available_only: true,
+  });
+
+  // Fetch filtered items for display
+  const {
+    data: filteredMenuItems,
+    isLoading: isLoadingFilteredMenu,
   } = useMenuItems({
     available_only: true,
     search: debouncedSearchQuery || undefined,
     category_id: selectedCategoryId,
   });
+
   const { data: activeOrders, isLoading: isLoadingOrders } =
     useActiveOrders();
   const { data: categories } = useCategories();
@@ -59,7 +69,9 @@ export default function OrderPage() {
   const { mutate: createOrUpdateOrder, isPending: isSavingOrder } =
     useCreateOrUpdateOrder();
 
-  const items = menuItems || [];
+  // Use all items for cart calculations, filtered items for display
+  const allItems = allMenuItems || [];
+  const items = filteredMenuItems || [];
   const orders = activeOrders || [];
 
   // Find existing order for this table
@@ -67,11 +79,11 @@ export default function OrderPage() {
     return orders.find((order) => order.table_number === tableNumber);
   }, [orders, tableNumber]);
 
-  // Calculate cart totals
+  // Calculate cart totals (use allItems so cart doesn't disappear when searching)
   const cartItems = useMemo(() => {
     return Array.from(cart.entries())
       .map(([itemId, quantity]) => {
-        const menuItem = items.find((item) => item.id === itemId);
+        const menuItem = allItems.find((item) => item.id === itemId);
         if (!menuItem || quantity === 0) return null;
         return { menuItem, quantity };
       })
@@ -79,7 +91,7 @@ export default function OrderPage() {
         (item): item is { menuItem: MenuItem; quantity: number } =>
           item !== null
       );
-  }, [cart, items]);
+  }, [cart, allItems]);
 
   const gstRatePercent = appConfig?.gst_rate ?? 18;
   const gstRate = gstRatePercent / 100;
@@ -167,7 +179,7 @@ export default function OrderPage() {
   }, [tableNumber, navigate]);
 
   // Loading state
-  if (isLoadingMenu || isLoadingOrders) {
+  if (isLoadingAllMenu || isLoadingOrders) {
     return (
       <div className="min-h-screen bg-neutral-background flex items-center justify-center">
         <div className="text-center">

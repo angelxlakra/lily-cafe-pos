@@ -111,21 +111,20 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
     If PRINTER_ENABLED=true, automatically prints an order chit (kitchen ticket)
     with table number, items, and space for handwritten notes.
 
-    For new orders: prints all items.
-    For existing orders (updates): prints only newly added items.
+    NOTE: When updating an existing order (adding items to a table with active order),
+    only the NEW items are printed on the chit, not the previous items.
     """
     try:
-        new_order, newly_added_items = crud.create_order(db, order)
+        # create_order returns (order, new_items_only)
+        new_order, new_items = crud.create_order(db, order)
 
         # Auto-print order chit if printer is enabled
+        # Only print NEW items (not items that were already in the order)
         if settings.PRINTER_ENABLED:
             try:
-                # For new orders (newly_added_items is None), print all items
-                # For updated orders (newly_added_items is a list), print only new items
-                chit_printed = print_order_chit(new_order, items_to_print=newly_added_items)
+                chit_printed = print_order_chit(new_order, items_to_print=new_items)
                 if chit_printed:
-                    items_desc = "all items" if newly_added_items is None else f"{len(newly_added_items)} new item(s)"
-                    logger.info(f"Order chit printed for table {new_order.table_number} ({items_desc})")
+                    logger.info(f"Order chit printed for table {new_order.table_number} ({len(new_items)} new items)")
                 else:
                     logger.warning(f"Failed to print order chit for table {new_order.table_number}")
             except Exception as e:

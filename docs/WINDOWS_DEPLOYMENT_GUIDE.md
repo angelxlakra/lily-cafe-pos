@@ -94,6 +94,16 @@ This will:
 - Install all Python dependencies
 - Take 1-2 minutes first time
 
+**IMPORTANT for Windows Thermal Printer Support:**
+If you plan to use thermal printer auto-printing (chits/receipts), you MUST install pywin32:
+
+```powershell
+cd C:\lily-cafe-pos\backend
+uv pip install pywin32
+```
+
+Without pywin32, the printer detection will fail with "ModuleNotFoundError: No module named 'win32print'".
+
 #### 3.2 Frontend Setup
 ```powershell
 cd C:\lily-cafe-pos\frontend
@@ -187,6 +197,110 @@ CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.100:51
 3. Change admin password
 4. Add your logo path if you have one
 5. Update CORS origins (see network setup section)
+
+---
+
+## 🖨️ Thermal Printer Setup (Optional)
+
+If you want to automatically print order chits and receipts to a thermal printer:
+
+### Prerequisites
+
+1. **Install pywin32** (if not already done):
+   ```powershell
+   cd C:\lily-cafe-pos\backend
+   uv pip install pywin32
+   ```
+
+2. **Connect your thermal printer via USB**
+
+3. **Install printer drivers** from manufacturer's website (if needed)
+
+4. **Add printer in Windows:**
+   - Open "Settings" → "Bluetooth & devices" → "Printers & scanners"
+   - Click "Add device"
+   - Select your thermal printer
+
+### Step 1: Detect Your Printer
+
+Run the detection script to find your printer:
+
+```powershell
+cd C:\lily-cafe-pos\backend
+uv run python detect_printer.py
+```
+
+The script will:
+- Search for all connected printers
+- Test print to detected thermal printers
+- Show you the configuration values to use
+
+Example output:
+```
+Found 6 Windows printer(s):
+  1. Microsoft Print to PDF
+  2. POS-60C
+  3. Fax
+
+Found potential thermal printer: 'POS-60C'
+Testing connection...
+TEST PRINT SUCCESSFUL!
+
+======================================================================
+CONFIGURATION FOR .env FILE:
+======================================================================
+PRINTER_TYPE=win32
+PRINTER_NAME=POS-60C
+======================================================================
+```
+
+### Step 2: Configure Printer in .env
+
+Add these lines to your `C:\lily-cafe-pos\backend\.env` file:
+
+```env
+# ============================================================================
+# Thermal Printer Configuration
+# ============================================================================
+PRINTER_ENABLED=true
+PRINTER_TYPE=win32
+PRINTER_NAME=POS-60C
+```
+
+Replace `POS-60C` with YOUR printer name from the detection script.
+
+### Step 3: Test Printing
+
+Restart the backend and test:
+
+1. Create an order in the POS
+2. Order chit should print automatically when saved
+3. For receipts, use the "Print Receipt" button after payment
+
+### Troubleshooting Printer Issues
+
+**Issue: "ModuleNotFoundError: No module named 'win32print'"**
+- Solution: Install pywin32:
+  ```powershell
+  cd C:\lily-cafe-pos\backend
+  uv pip install pywin32
+  ```
+
+**Issue: "No printer configured" or printing fails**
+1. Verify printer is turned ON
+2. Check USB cable is connected
+3. Re-run `detect_printer.py` to verify printer name
+4. Make sure `PRINTER_ENABLED=true` in .env
+5. Check printer name in .env matches exactly (case-sensitive)
+
+**Issue: Printer prints blank chits**
+1. Check thermal paper is loaded correctly (shiny side down)
+2. Check paper roll is not empty
+3. Clean printer head with isopropyl alcohol
+
+For more detailed printer troubleshooting, see:
+- `docs/AUTO_PRINT_SETUP_GUIDE.md`
+- `docs/THERMAL_PRINTER_TESTING.md`
 
 ---
 
@@ -540,6 +654,39 @@ pause
 3. Restore database from backup
 4. Contact support with error logs
 
+### Thermal Printer Problems
+
+**Error: "ModuleNotFoundError: No module named 'win32print'"**
+- pywin32 not installed
+- Solution:
+  ```powershell
+  cd C:\lily-cafe-pos\backend
+  uv pip install pywin32
+  ```
+
+**Error: "Printer is disabled in configuration"**
+- Set `PRINTER_ENABLED=true` in `.env`
+- Restart backend
+
+**Printer not detected by detect_printer.py**
+1. Check printer is turned ON and connected via USB
+2. Install printer drivers from manufacturer
+3. Add printer in Windows Settings → Printers & scanners
+4. Verify printer appears in Windows printer list
+5. Try running script with administrator privileges
+
+**Order chits not printing automatically**
+1. Check `PRINTER_ENABLED=true` in `.env`
+2. Verify `PRINTER_NAME` matches your printer exactly
+3. Check backend logs for error messages
+4. Test with `detect_printer.py`
+5. Ensure printer has paper and is online
+
+**Chits print but receipts don't**
+- Both use same printer configuration
+- Check backend logs when generating receipt
+- Try the `/api/v1/orders/{order_id}/receipt?auto_print=true` endpoint manually
+
 ---
 
 ## 📞 Quick Reference
@@ -601,10 +748,18 @@ Before going live:
 - [ ] UV installed and working
 - [ ] Node.js installed
 - [ ] All dependencies installed (`uv sync`, `npm install`)
+- [ ] **pywin32 installed (for thermal printers):** `uv pip install pywin32`
 - [ ] Database initialized
 - [ ] `.env` file configured with cafe details
 - [ ] Admin password changed
 - [ ] Logo added (optional)
+- [ ] **Thermal printer setup (if using):**
+  - [ ] pywin32 installed
+  - [ ] Printer connected and drivers installed
+  - [ ] `detect_printer.py` run successfully
+  - [ ] `PRINTER_ENABLED=true` in `.env`
+  - [ ] `PRINTER_NAME` configured correctly
+  - [ ] Test print successful
 - [ ] Firewall configured
 - [ ] CORS origins updated with your IP
 - [ ] Tested from waiter's phone/tablet
