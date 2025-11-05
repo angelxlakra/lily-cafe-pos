@@ -8,7 +8,7 @@ import io
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import BinaryIO, Literal
+from typing import BinaryIO, Literal, Optional
 from zoneinfo import ZoneInfo
 
 import qrcode
@@ -615,7 +615,7 @@ def generate_receipt(
 
 
 def generate_order_chit_pdf(
-    order: models.Order, output: BinaryIO, paper_size: PaperSize = "80mm"
+    order: models.Order, output: BinaryIO, paper_size: PaperSize = "80mm", items_to_print: Optional[list] = None
 ) -> None:
     """
     Generate a simple order chit (kitchen ticket) PDF.
@@ -630,6 +630,8 @@ def generate_order_chit_pdf(
         order: Order model instance
         output: Binary output stream for PDF
         paper_size: Paper width - either "58mm" or "80mm" (default: "80mm")
+        items_to_print: Optional list of specific OrderItem objects to print.
+                       If None, prints all items in the order.
     """
     config = ReceiptConfig(paper_size)
     c = canvas.Canvas(output, pagesize=(config.receipt_width, config.receipt_height))
@@ -707,7 +709,10 @@ def generate_order_chit_pdf(
     # ITEMS SECTION - Large, readable text
     # ============================================================================
 
-    for item in order.order_items:
+    # Determine which items to print
+    items = items_to_print if items_to_print is not None else order.order_items
+
+    for item in items:
         # Item with large quantity and name (NO PRICES - kitchen doesn't need them)
         item_text = f"{item.quantity}x {item.menu_item_name}"
         draw_left(item_text, y_position, "Helvetica-Bold", 16)

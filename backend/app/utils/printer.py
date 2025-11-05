@@ -627,7 +627,7 @@ def _auto_print_pdf(pdf_path: str, printer_name: str) -> bool:
     return False
 
 
-def print_order_chit(order: models.Order) -> bool:
+def print_order_chit(order: models.Order, items_to_print: Optional[list] = None) -> bool:
     """
     Print a simple order chit (kitchen ticket) when order is saved.
 
@@ -641,6 +641,9 @@ def print_order_chit(order: models.Order) -> bool:
 
     Args:
         order: Order model instance with order details
+        items_to_print: Optional list of specific OrderItem objects to print.
+                       If None, prints all items in the order.
+                       If provided, only prints these items (for incremental orders).
 
     Returns:
         True if printing succeeded, False otherwise
@@ -655,7 +658,8 @@ def print_order_chit(order: models.Order) -> bool:
         paper_size = "80mm"  # Default to 80mm if invalid
 
     try:
-        logger.info(f"Generating order chit for table {order.table_number}, order {order.order_number}")
+        items_count = len(items_to_print) if items_to_print else len(order.order_items)
+        logger.info(f"Generating order chit for table {order.table_number}, order {order.order_number} ({items_count} items)")
 
         # Generate PDF for records (saved but not printed)
         try:
@@ -666,20 +670,20 @@ def print_order_chit(order: models.Order) -> bool:
             pdf_path = os.path.join(chits_dir, pdf_filename)
 
             with open(pdf_path, "wb") as pdf_file:
-                generate_order_chit_pdf(order, pdf_file, paper_size=paper_size)
+                generate_order_chit_pdf(order, pdf_file, paper_size=paper_size, items_to_print=items_to_print)
             logger.info(f"✓ PDF saved to: {pdf_path}")
         except Exception as e:
             logger.warning(f"Failed to save PDF copy: {e}")
 
         # Print using ESC/POS commands (thermal printers understand this natively)
-        return _print_order_chit_escpos(order, paper_size)
+        return _print_order_chit_escpos(order, paper_size, items_to_print)
 
     except Exception as e:
         logger.error(f"Failed to print order chit: {e}", exc_info=True)
         return False
 
 
-def _print_order_chit_escpos(order: models.Order, paper_size: str = "80mm") -> bool:
+def _print_order_chit_escpos(order: models.Order, paper_size: str = "80mm", items_to_print: Optional[list] = None) -> bool:
     """
     Print order chit using ESC/POS commands (fallback method).
 
@@ -689,6 +693,8 @@ def _print_order_chit_escpos(order: models.Order, paper_size: str = "80mm") -> b
     Args:
         order: Order model instance
         paper_size: Paper size (58mm or 80mm)
+        items_to_print: Optional list of specific OrderItem objects to print.
+                       If None, prints all items in the order.
 
     Returns:
         True if printing succeeded, False otherwise
@@ -701,6 +707,9 @@ def _print_order_chit_escpos(order: models.Order, paper_size: str = "80mm") -> b
             return False
 
         is_58mm = paper_size == "58mm"
+
+        # Determine which items to print
+        items = items_to_print if items_to_print is not None else order.order_items
 
         # ============================================================================
         # HEADER - ASCII ART Table Number (HUGE and VISIBLE!)
@@ -744,7 +753,7 @@ def _print_order_chit_escpos(order: models.Order, paper_size: str = "80mm") -> b
 
         printer.set(align='left', bold=True, width=2, height=2)
 
-        for item in order.order_items:
+        for item in items:
             # Item with large quantity (NO PRICE - kitchen doesn't need it)
             printer.text(f"{item.quantity}x {item.menu_item_name}\n")
             printer.text("\n")  # Blank line for spacing

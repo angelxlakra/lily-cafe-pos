@@ -238,7 +238,7 @@ def get_active_order_for_table(db: Session, table_number: int) -> Optional[model
     )
 
 
-def create_order(db: Session, order: schemas.OrderCreate) -> models.Order:
+def create_order(db: Session, order: schemas.OrderCreate) -> tuple[models.Order, Optional[List[models.OrderItem]]]:
     """
     Create a new order OR update existing active order (smart logic).
 
@@ -254,7 +254,10 @@ def create_order(db: Session, order: schemas.OrderCreate) -> models.Order:
         order: Order creation data
 
     Returns:
-        Created or updated order with all items
+        Tuple of (order, newly_added_items):
+        - order: Created or updated order with all items
+        - newly_added_items: List of items that were newly added (for chit printing)
+          Returns None if this is a brand new order (all items are new)
 
     Raises:
         ValueError: If any menu item is not found or not available
@@ -268,6 +271,9 @@ def create_order(db: Session, order: schemas.OrderCreate) -> models.Order:
         existing_items_map = {
             item.menu_item_id: item for item in existing_order.order_items
         }
+
+        # Track newly added items (not quantity updates of existing items)
+        newly_added_items = []
 
         # Process new items
         for item in order.items:
@@ -296,6 +302,7 @@ def create_order(db: Session, order: schemas.OrderCreate) -> models.Order:
                     subtotal=item_subtotal,
                 )
                 db.add(new_order_item)
+                newly_added_items.append(new_order_item)
 
         # Recalculate totals from ALL items (old + new)
         db.flush()  # Flush to get updated items
@@ -317,7 +324,13 @@ def create_order(db: Session, order: schemas.OrderCreate) -> models.Order:
 
         db.commit()
         db.refresh(existing_order)
-        return existing_order
+
+        # Refresh newly added items to get their IDs
+        for new_item in newly_added_items:
+            db.refresh(new_item)
+
+        # Return order and list of newly added items (empty list if only quantity updates)
+        return existing_order, newly_added_items if newly_added_items else None
 
     else:
         # Create new order
@@ -367,7 +380,8 @@ def create_order(db: Session, order: schemas.OrderCreate) -> models.Order:
         db.add(db_order)
         db.commit()
         db.refresh(db_order)
-        return db_order
+        # For new orders, return None for newly_added_items (all items are new)
+        return db_order, None
 
 
 def update_order(
