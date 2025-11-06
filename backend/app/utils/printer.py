@@ -740,15 +740,19 @@ def _print_order_chit_escpos(order: models.Order, items_to_print: list[models.Or
         # ITEMS SECTION - Large, readable text (NO PRICES)
         # ============================================================================
 
-        printer.set(align='left', bold=True, width=2, height=2)
-
         for item in items_to_print:
+            # Format beverages differently (underlined) to distinguish from food
+            if item.is_beverage:
+                printer.set(align='left', bold=True, underline=True, width=2, height=2)
+            else:
+                printer.set(align='left', bold=True, underline=False, width=2, height=2)
+
             # Item with large quantity (NO PRICE - kitchen doesn't need it)
             printer.text(f"{item.quantity}x {item.menu_item_name}\n")
             printer.text("\n")  # Blank line for spacing
 
         # Reset to normal
-        printer.set(bold=False, width=1, height=1)
+        printer.set(bold=False, underline=False, width=1, height=1)
 
         # Separator
         printer.set(align='center')

@@ -299,6 +299,7 @@ def create_order(db: Session, order: schemas.OrderCreate) -> tuple[models.Order,
                     quantity=item.quantity,  # Only the additional quantity
                     unit_price=menu_item.price,
                     subtotal=menu_item.price * item.quantity,
+                    is_beverage=menu_item.is_beverage,
                 )
                 new_items_only.append(new_item_chit)
             else:
@@ -311,6 +312,7 @@ def create_order(db: Session, order: schemas.OrderCreate) -> tuple[models.Order,
                     quantity=item.quantity,
                     unit_price=menu_item.price,
                     subtotal=item_subtotal,
+                    is_beverage=menu_item.is_beverage,
                 )
                 db.add(new_order_item)
                 new_items_only.append(new_order_item)
@@ -362,6 +364,7 @@ def create_order(db: Session, order: schemas.OrderCreate) -> tuple[models.Order,
                     quantity=item.quantity,
                     unit_price=menu_item.price,
                     subtotal=item_subtotal,
+                    is_beverage=menu_item.is_beverage,
                 )
             )
 
@@ -458,6 +461,7 @@ def admin_edit_order(
             quantity=item.quantity,
             unit_price=menu_item.price,
             subtotal=item_subtotal,
+            is_beverage=menu_item.is_beverage,
         )
         db.add(new_order_item)
 

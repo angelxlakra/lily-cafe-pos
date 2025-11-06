@@ -92,21 +92,23 @@ def generate_order_chit_pdf(order: models.Order) -> io.BytesIO:
     # ITEMS (Large, readable text - NO PRICES)
     # ============================================================================
 
-    c.setFont("Helvetica-Bold", 24)  # Large items
-
     for item in order.order_items:
+        # Use italic font for beverages to distinguish from food
+        font_name = "Helvetica-BoldOblique" if item.is_beverage else "Helvetica-Bold"
+        c.setFont(font_name, 24)  # Large items
+
         item_text = f"{item.quantity}x {item.menu_item_name}"
 
         # Word wrap if text is too long
         max_width = receipt_width - 10 * mm
-        if c.stringWidth(item_text, "Helvetica-Bold", 24) > max_width:
+        if c.stringWidth(item_text, font_name, 24) > max_width:
             # Try to fit, if not, truncate
             words = item_text.split()
             current_line = []
 
             for word in words:
                 test_line = ' '.join(current_line + [word])
-                if c.stringWidth(test_line, "Helvetica-Bold", 24) <= max_width:
+                if c.stringWidth(test_line, font_name, 24) <= max_width:
                     current_line.append(word)
                 else:
                     # Print current line

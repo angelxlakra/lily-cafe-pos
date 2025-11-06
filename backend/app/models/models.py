@@ -51,6 +51,7 @@ class MenuItem(Base):
     price = Column(Integer, nullable=False)  # Price in paise
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
     is_vegetarian = Column(Boolean, default=True)  # True for veg, False for non-veg
+    is_beverage = Column(Boolean, default=False)  # True for beverages (tea, coffee, juice, etc.)
     is_available = Column(Boolean, default=True)  # Soft delete flag
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -95,6 +96,7 @@ class OrderItem(Base):
     quantity = Column(Integer, nullable=False)
     unit_price = Column(Integer, nullable=False)  # Price in paise at time of order
     subtotal = Column(Integer, nullable=False)  # quantity * unit_price
+    is_beverage = Column(Boolean, default=False)  # Snapshot of is_beverage at time of order
 
     # Relationships
     order = relationship("Order", back_populates="order_items")

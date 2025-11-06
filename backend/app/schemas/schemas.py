@@ -49,6 +49,7 @@ class MenuItemBase(BaseModel):
     price: int = Field(..., gt=0, description="Price in paise (�80 = 8000 paise)")
     category_id: int
     is_vegetarian: bool = True
+    is_beverage: bool = False
 
 
 class MenuItemCreate(MenuItemBase):
@@ -65,6 +66,7 @@ class MenuItemUpdate(BaseModel):
     price: Optional[int] = Field(None, gt=0)
     category_id: Optional[int] = None
     is_vegetarian: Optional[bool] = None
+    is_beverage: Optional[bool] = None
     is_available: Optional[bool] = None
 
 
@@ -108,6 +110,7 @@ class OrderItem(BaseModel):
     quantity: int
     unit_price: int  # In paise
     subtotal: int  # In paise
+    is_beverage: bool = False
 
     class Config:
         from_attributes = True
