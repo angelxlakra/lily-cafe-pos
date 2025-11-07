@@ -141,6 +141,7 @@ interface OrderCardProps {
 }
 
 function OrderCard({ order, onGenerateBill, onCancel }: OrderCardProps) {
+  const [showItems, setShowItems] = useState(false);
   const itemCount = order.order_items?.length || 0;
 
   return (
@@ -171,6 +172,50 @@ function OrderCard({ order, onGenerateBill, onCancel }: OrderCardProps) {
         </span>
         <span>{formatDateTime(order.created_at)}</span>
       </div>
+
+      {/* View Items Toggle */}
+      <button
+        onClick={() => setShowItems(!showItems)}
+        className="w-full text-left text-sm font-medium text-coffee-brown hover:text-coffee-dark mb-3 flex items-center gap-2 transition-colors"
+      >
+        <svg
+          className={`w-4 h-4 transition-transform ${showItems ? 'rotate-90' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+        {showItems ? 'Hide Items' : 'View Items'}
+      </button>
+
+      {/* Menu Items List */}
+      {showItems && (
+        <div className="mb-4 border border-neutral-border rounded-lg overflow-hidden bg-white">
+          <div className="max-h-64 overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-neutral-background border-b border-neutral-border sticky top-0">
+                <tr>
+                  <th className="text-left p-2 font-semibold text-neutral-text-dark">Item</th>
+                  <th className="text-center p-2 font-semibold text-neutral-text-dark">Qty</th>
+                  <th className="text-right p-2 font-semibold text-neutral-text-dark">Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                {order.order_items.map((item) => (
+                  <tr key={item.id} className="border-b border-neutral-border last:border-0 hover:bg-neutral-background/50 transition-colors">
+                    <td className="p-2 text-neutral-text-dark">{item.menu_item_name}</td>
+                    <td className="p-2 text-center text-neutral-text-light">{item.quantity}</td>
+                    <td className="p-2 text-right text-neutral-text-dark font-medium">
+                      {formatCurrency(item.subtotal)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Action Buttons */}
       <div className="flex gap-2">
