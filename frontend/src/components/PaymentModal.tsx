@@ -33,6 +33,7 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("upi");
   const [paymentAmount, setPaymentAmount] = useState("");
   const [error, setError] = useState("");
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
   const totalAmount = order?.total_amount || 0;
   const existingPayments = order?.payments ?? [];
@@ -147,6 +148,80 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                   </span>
                 </div>
               </div>
+
+              {/* Price Breakdown Toggle */}
+              {order && order.order_items && order.order_items.length > 0 && (
+                <div>
+                  <button
+                    onClick={() => setShowBreakdown(!showBreakdown)}
+                    className="w-full text-left text-sm font-medium text-coffee-brown hover:text-coffee-dark flex items-center gap-2 transition-colors"
+                  >
+                    <svg
+                      className={`w-4 h-4 transition-transform ${showBreakdown ? 'rotate-90' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                    {showBreakdown ? 'Hide Price Breakdown' : 'View Price Breakdown'}
+                  </button>
+
+                  {/* Menu Items Breakdown */}
+                  {showBreakdown && (
+                    <div className="mt-3 border border-neutral-border rounded-lg overflow-hidden bg-white">
+                      <div className="max-h-64 overflow-y-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-neutral-background border-b border-neutral-border sticky top-0">
+                            <tr>
+                              <th className="text-left p-2 font-semibold text-neutral-text-dark">Item</th>
+                              <th className="text-center p-2 font-semibold text-neutral-text-dark">Qty</th>
+                              <th className="text-right p-2 font-semibold text-neutral-text-dark">Price</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {order.order_items.map((item) => (
+                              <tr key={item.id} className="border-b border-neutral-border last:border-0 hover:bg-neutral-background/50 transition-colors">
+                                <td className="p-2 text-neutral-text-dark">{item.menu_item_name}</td>
+                                <td className="p-2 text-center text-neutral-text-light">{item.quantity}</td>
+                                <td className="p-2 text-right text-neutral-text-dark font-medium">
+                                  {formatCurrency(item.subtotal)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot className="bg-neutral-background border-t-2 border-neutral-border">
+                            <tr>
+                              <td colSpan={2} className="p-2 text-left font-semibold text-neutral-text-dark">
+                                Subtotal
+                              </td>
+                              <td className="p-2 text-right font-semibold text-neutral-text-dark">
+                                {formatCurrency(order.subtotal)}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td colSpan={2} className="p-2 text-left text-neutral-text-light text-xs">
+                                GST (5%)
+                              </td>
+                              <td className="p-2 text-right text-neutral-text-light text-xs">
+                                {formatCurrency(order.gst_amount)}
+                              </td>
+                            </tr>
+                            <tr className="border-t border-neutral-border">
+                              <td colSpan={2} className="p-2 text-left font-bold text-coffee-brown">
+                                Total
+                              </td>
+                              <td className="p-2 text-right font-bold text-coffee-brown">
+                                {formatCurrency(order.total_amount)}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Existing Payments */}
               {existingPayments.length > 0 && (
