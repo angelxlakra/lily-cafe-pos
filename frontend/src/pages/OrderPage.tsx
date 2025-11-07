@@ -55,7 +55,7 @@ export default function OrderPage() {
   // Fetch filtered items for display
   const {
     data: filteredMenuItems,
-    isLoading: isLoadingFilteredMenu,
+    isLoading: _isLoadingFilteredMenu,
   } = useMenuItems({
     available_only: true,
     search: debouncedSearchQuery || undefined,
