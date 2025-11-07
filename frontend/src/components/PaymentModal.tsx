@@ -396,6 +396,8 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                             type="number"
                             value={paymentAmount}
                             onChange={(e) => setPaymentAmount(e.target.value)}
+                            onWheel={(e) => e.currentTarget.blur()}
+                            min="0"
                             placeholder="0"
                             className="w-full pl-8 pr-4 py-3 border border-neutral-border rounded-lg
                                      focus:outline-none focus:ring-2 focus:ring-coffee-brown"
