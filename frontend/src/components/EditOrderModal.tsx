@@ -24,7 +24,7 @@ interface EditOrderItem {
 }
 
 export default function EditOrderModal({ order, onClose }: EditOrderModalProps) {
-  const { data: menuItems } = useMenu();
+  const menu = useMenu();
   const { data: config } = useAppConfig();
   const updateOrder = useUpdateOrder();
 
@@ -125,7 +125,7 @@ export default function EditOrderModal({ order, onClose }: EditOrderModalProps) 
     }
   };
 
-  const availableMenuItems = (menuItems || []).filter(item => item.is_available);
+  const availableMenuItems = (menu.items.data || []).filter((item: MenuItemType) => item.is_available);
 
   return (
     <>
@@ -281,7 +281,7 @@ export default function EditOrderModal({ order, onClose }: EditOrderModalProps) 
               Add Items from Menu
             </h3>
             <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto p-1">
-              {availableMenuItems.map(menuItem => (
+              {availableMenuItems.map((menuItem: MenuItemType) => (
                 <button
                   key={menuItem.id}
                   onClick={() => handleAddMenuItem(menuItem)}
