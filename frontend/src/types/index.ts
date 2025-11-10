@@ -113,6 +113,7 @@ export interface OrderItemsUpdateRequest {
     quantity: number;
   }>;
   customer_name?: string | null;
+  table_number?: number; // Optional - change table number
 }
 
 // ========================================

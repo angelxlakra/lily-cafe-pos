@@ -170,6 +170,7 @@ class OrderItemsUpdate(BaseModel):
 
     items: List[OrderItemCreate] = Field(..., min_length=1)
     customer_name: Optional[str] = Field(None, max_length=200)
+    table_number: Optional[int] = Field(None, ge=1, le=50, description="Change table number (optional)")
 
 
 class Order(BaseModel):
