@@ -161,25 +161,11 @@ def admin_edit_order(
 
     Requires authentication. Replaces all items in the order.
     Used to fix order mistakes or handle customer change requests.
-
-    If PRINTER_ENABLED=true, prints an updated order chit after editing.
     """
     try:
         updated_order = crud.admin_edit_order(db, order_id, order_update)
         if not updated_order:
             raise HTTPException(status_code=404, detail="Order not found")
-
-        # Auto-print updated order chit if printer is enabled
-        if settings.PRINTER_ENABLED:
-            try:
-                chit_printed = print_order_chit(updated_order)
-                if chit_printed:
-                    logger.info(f"Updated order chit printed for table {updated_order.table_number}")
-                else:
-                    logger.warning(f"Failed to print updated order chit for table {updated_order.table_number}")
-            except Exception as e:
-                # Log error but don't fail the order update
-                logger.error(f"Error printing updated order chit: {e}")
 
         return updated_order
     except ValueError as e:
