@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import PaymentModal from '../components/PaymentModal';
+import EditOrderModal from '../components/EditOrderModal';
 import EmptyState from '../components/EmptyState';
 import { useActiveOrders, useCancelOrder } from '../hooks/useOrders';
 import { formatCurrency } from '../utils/formatCurrency';
@@ -16,6 +17,7 @@ import type { Order } from '../types';
 export default function AdminActiveOrdersPage() {
   const { data: activeOrders, isLoading, error } = useActiveOrders();
   const [paymentOrderId, setPaymentOrderId] = useState<number | null>(null);
+  const [editOrder, setEditOrder] = useState<Order | null>(null);
   const [cancelOrderId, setCancelOrderId] = useState<number | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -104,6 +106,7 @@ export default function AdminActiveOrdersPage() {
                 <OrderCard
                   key={order.id}
                   order={order}
+                  onEdit={() => setEditOrder(order)}
                   onGenerateBill={() => handleGenerateBill(order.id)}
                   onCancel={() => setCancelOrderId(order.id)}
                 />
@@ -112,6 +115,14 @@ export default function AdminActiveOrdersPage() {
           )}
         </main>
       </div>
+
+      {/* Edit Order Modal */}
+      {editOrder && (
+        <EditOrderModal
+          order={editOrder}
+          onClose={() => setEditOrder(null)}
+        />
+      )}
 
       {/* Payment Modal */}
       {paymentOrderId && (
@@ -136,11 +147,12 @@ export default function AdminActiveOrdersPage() {
 // Order Card Component
 interface OrderCardProps {
   order: Order;
+  onEdit: () => void;
   onGenerateBill: () => void;
   onCancel: () => void;
 }
 
-function OrderCard({ order, onGenerateBill, onCancel }: OrderCardProps) {
+function OrderCard({ order, onEdit, onGenerateBill, onCancel }: OrderCardProps) {
   const [showItems, setShowItems] = useState(false);
   const itemCount = order.order_items?.length || 0;
 
@@ -219,6 +231,12 @@ function OrderCard({ order, onGenerateBill, onCancel }: OrderCardProps) {
 
       {/* Action Buttons */}
       <div className="flex gap-2">
+        <button
+          onClick={onEdit}
+          className="btn-secondary flex-1"
+        >
+          Edit
+        </button>
         <button
           onClick={onGenerateBill}
           className="btn-success flex-1"

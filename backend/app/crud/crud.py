@@ -422,17 +422,30 @@ def admin_edit_order(
     Args:
         db: Database session
         order_id: Order ID to edit
-        order_update: New order items and optional customer name
+        order_update: New order items, optional customer name, and optional table number
 
     Returns:
         Updated order with new items, or None if order not found
 
     Raises:
         ValueError: If any menu item is not found or not available
+        ValueError: If trying to move order to a table that already has an active order
     """
     db_order = get_order(db, order_id)
     if not db_order:
         return None
+
+    # Validate table number change if provided
+    if order_update.table_number is not None and order_update.table_number != db_order.table_number:
+        # Check if the new table already has an active order
+        existing_order = get_active_order_for_table(db, order_update.table_number)
+        if existing_order:
+            raise ValueError(
+                f"Cannot move order to table {order_update.table_number}: "
+                f"Table already has an active order (#{existing_order.order_number})"
+            )
+        # Update table number
+        db_order.table_number = order_update.table_number
 
     # Delete existing order items
     for old_item in db_order.order_items:

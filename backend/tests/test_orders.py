@@ -105,14 +105,14 @@ def test_order_number_generation_sequential(db: Session, sample_menu_items):
         table_number=1,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
     )
-    order1 = crud.create_order(db, order1_data)
+    order1, _ = crud.create_order(db, order1_data)
 
     # Create second order at different table
     order2_data = OrderCreate(
         table_number=2,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[1].id, quantity=1)]
     )
-    order2 = crud.create_order(db, order2_data)
+    order2, _ = crud.create_order(db, order2_data)
 
     today_str = date.today().strftime("%Y%m%d")
     assert order1.order_number == f"ORD-{today_str}-0001"
@@ -157,7 +157,7 @@ def test_create_order_new_table(db: Session, sample_menu_items):
         ]
     )
 
-    order = crud.create_order(db, order_data)
+    order, _ = crud.create_order(db, order_data)
 
     assert order.table_number == 5
     assert order.customer_name == "John Doe"
@@ -174,7 +174,7 @@ def test_create_order_updates_existing(db: Session, sample_menu_items):
         table_number=5,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
     )
-    order1 = crud.create_order(db, order_data_1)
+    order1, _ = crud.create_order(db, order_data_1)
     original_order_id = order1.id
     original_order_number = order1.order_number
 
@@ -186,7 +186,7 @@ def test_create_order_updates_existing(db: Session, sample_menu_items):
             OrderItemCreate(menu_item_id=sample_menu_items[1].id, quantity=1),
         ]
     )
-    order2 = crud.create_order(db, order_data_2)
+    order2, _ = crud.create_order(db, order_data_2)
 
     # Should be same order, updated
     assert order2.id == original_order_id
@@ -202,14 +202,14 @@ def test_create_order_replaces_items_completely(db: Session, sample_menu_items):
         table_number=5,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=2)]
     )
-    order1 = crud.create_order(db, order_data_1)
+    order1, _ = crud.create_order(db, order_data_1)
 
     # Update with Coffee only
     order_data_2 = OrderCreate(
         table_number=5,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[1].id, quantity=1)]
     )
-    order2 = crud.create_order(db, order_data_2)
+    order2, _ = crud.create_order(db, order_data_2)
 
     # Should only have Coffee now, not Dosa
     assert len(order2.order_items) == 1
@@ -227,7 +227,7 @@ def test_gst_calculation_18_percent(db: Session, sample_menu_items):
         table_number=1,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
     )
-    order = crud.create_order(db, order_data)
+    order, _ = crud.create_order(db, order_data)
 
     # Masala Dosa: ₹80 (8000 paise)
     # GST 18%: 8000 * 0.18 = 1440 paise
@@ -246,7 +246,7 @@ def test_gst_calculation_multiple_items(db: Session, sample_menu_items):
             OrderItemCreate(menu_item_id=sample_menu_items[1].id, quantity=3),  # 3 * 4000 = 12000
         ]
     )
-    order = crud.create_order(db, order_data)
+    order, _ = crud.create_order(db, order_data)
 
     # Subtotal: 16000 + 12000 = 28000
     # GST 18%: 28000 * 0.18 = 5040
@@ -263,7 +263,7 @@ def test_gst_recalculated_on_update(db: Session, sample_menu_items):
         table_number=1,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
     )
-    order1 = crud.create_order(db, order_data_1)
+    order1, _ = crud.create_order(db, order_data_1)
     initial_gst = order1.gst_amount
 
     # Update order with more items
@@ -274,7 +274,7 @@ def test_gst_recalculated_on_update(db: Session, sample_menu_items):
             OrderItemCreate(menu_item_id=sample_menu_items[1].id, quantity=1),
         ]
     )
-    order2 = crud.create_order(db, order_data_2)
+    order2, _ = crud.create_order(db, order_data_2)
 
     # GST should be recalculated
     # New subtotal: (2 * 8000) + (1 * 4000) = 20000
@@ -294,7 +294,7 @@ def test_order_item_snapshots_price(db: Session, sample_menu_items):
         table_number=1,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
     )
-    order = crud.create_order(db, order_data)
+    order, _ = crud.create_order(db, order_data)
 
     # Order item should have snapshotted the price
     assert order.order_items[0].unit_price == 8000
@@ -315,7 +315,7 @@ def test_order_item_snapshots_name(db: Session, sample_menu_items):
         table_number=1,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
     )
-    order = crud.create_order(db, order_data)
+    order, _ = crud.create_order(db, order_data)
 
     original_name = order.order_items[0].menu_item_name
     assert original_name == "Masala Dosa"
@@ -341,14 +341,14 @@ def test_get_active_orders(db: Session, sample_menu_items):
         table_number=1,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
     )
-    active_order = crud.create_order(db, order_data_1)
+    active_order, _ = crud.create_order(db, order_data_1)
 
     # Create and mark as paid
     order_data_2 = OrderCreate(
         table_number=2,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[1].id, quantity=1)]
     )
-    paid_order = crud.create_order(db, order_data_2)
+    paid_order, _ = crud.create_order(db, order_data_2)
     paid_order.status = OrderStatus.PAID
     db.commit()
 
@@ -366,7 +366,7 @@ def test_get_active_order_for_table(db: Session, sample_menu_items):
         table_number=5,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
     )
-    order = crud.create_order(db, order_data)
+    order, _ = crud.create_order(db, order_data)
 
     # Should find the order
     found_order = crud.get_active_order_for_table(db, 5)
@@ -385,14 +385,14 @@ def test_only_one_active_order_per_table(db: Session, sample_menu_items):
         table_number=5,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
     )
-    order1 = crud.create_order(db, order_data_1)
+    order1, _ = crud.create_order(db, order_data_1)
 
     # Try to create another order (should update existing)
     order_data_2 = OrderCreate(
         table_number=5,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[1].id, quantity=1)]
     )
-    order2 = crud.create_order(db, order_data_2)
+    order2, _ = crud.create_order(db, order_data_2)
 
     # Should be same order
     assert order1.id == order2.id
@@ -414,7 +414,7 @@ def test_admin_edit_order(db: Session, sample_menu_items):
         table_number=1,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
     )
-    order = crud.create_order(db, order_data)
+    order, _ = crud.create_order(db, order_data)
 
     # Admin edits order
     edit_data = OrderItemsUpdate(
@@ -438,7 +438,7 @@ def test_admin_edit_recalculates_totals(db: Session, sample_menu_items):
         table_number=1,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
     )
-    order = crud.create_order(db, order_data)
+    order, _ = crud.create_order(db, order_data)
     original_total = order.total_amount
 
     # Edit to: 2 Coffee (2 * 4000 = 8000)
@@ -469,7 +469,7 @@ def test_admin_edit_unavailable_item(db: Session, sample_menu_items):
         table_number=1,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
     )
-    order = crud.create_order(db, order_data)
+    order, _ = crud.create_order(db, order_data)
 
     # Mark item as unavailable
     sample_menu_items[1].is_available = False
@@ -485,6 +485,164 @@ def test_admin_edit_unavailable_item(db: Session, sample_menu_items):
 
 
 # ============================================================================
+# Test Table Number Changes
+# ============================================================================
+
+
+def test_admin_change_table_number(db: Session, sample_menu_items):
+    """Test admin can change table number when editing an order."""
+    # Create order on table 5
+    order_data = OrderCreate(
+        table_number=5,
+        items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
+    )
+    order, _ = crud.create_order(db, order_data)
+
+    # Change to table 7 while editing
+    edit_data = OrderItemsUpdate(
+        items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)],
+        table_number=7
+    )
+    updated_order = crud.admin_edit_order(db, order.id, edit_data)
+
+    assert updated_order is not None
+    assert updated_order.table_number == 7
+
+    # Verify old table 5 has no active order
+    old_table_order = crud.get_active_order_for_table(db, 5)
+    assert old_table_order is None
+
+    # Verify new table 7 has the order
+    new_table_order = crud.get_active_order_for_table(db, 7)
+    assert new_table_order is not None
+    assert new_table_order.id == order.id
+
+
+def test_admin_change_table_to_occupied_table_fails(db: Session, sample_menu_items):
+    """Test that changing table to an occupied table fails."""
+    # Create order on table 5
+    order1_data = OrderCreate(
+        table_number=5,
+        items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
+    )
+    order1, _ = crud.create_order(db, order1_data)
+
+    # Create order on table 7
+    order2_data = OrderCreate(
+        table_number=7,
+        items=[OrderItemCreate(menu_item_id=sample_menu_items[1].id, quantity=1)]
+    )
+    order2, _ = crud.create_order(db, order2_data)
+
+    # Try to move order from table 5 to table 7 (already occupied)
+    edit_data = OrderItemsUpdate(
+        items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)],
+        table_number=7
+    )
+
+    with pytest.raises(ValueError, match="already has an active order"):
+        crud.admin_edit_order(db, order1.id, edit_data)
+
+    # Verify both orders are still on their original tables
+    assert crud.get_active_order_for_table(db, 5).id == order1.id
+    assert crud.get_active_order_for_table(db, 7).id == order2.id
+
+
+def test_admin_change_table_number_without_changing_items(db: Session, sample_menu_items):
+    """Test admin can change only the table number without changing items."""
+    # Create order on table 3
+    order_data = OrderCreate(
+        table_number=3,
+        customer_name="John Doe",
+        items=[
+            OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=2),
+            OrderItemCreate(menu_item_id=sample_menu_items[1].id, quantity=1)
+        ]
+    )
+    order, _ = crud.create_order(db, order_data)
+    original_subtotal = order.subtotal
+    original_total = order.total_amount
+
+    # Change only the table number, keep same items
+    edit_data = OrderItemsUpdate(
+        items=[
+            OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=2),
+            OrderItemCreate(menu_item_id=sample_menu_items[1].id, quantity=1)
+        ],
+        table_number=8
+    )
+    updated_order = crud.admin_edit_order(db, order.id, edit_data)
+
+    assert updated_order.table_number == 8
+    assert updated_order.subtotal == original_subtotal
+    assert updated_order.total_amount == original_total
+    assert updated_order.customer_name == "John Doe"
+    assert len(updated_order.order_items) == 2
+
+
+def test_admin_change_table_to_same_table_number(db: Session, sample_menu_items):
+    """Test that setting table to same number doesn't cause conflicts."""
+    # Create order on table 4
+    order_data = OrderCreate(
+        table_number=4,
+        items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
+    )
+    order, _ = crud.create_order(db, order_data)
+
+    # Edit order with same table number
+    edit_data = OrderItemsUpdate(
+        items=[OrderItemCreate(menu_item_id=sample_menu_items[1].id, quantity=2)],
+        table_number=4  # Same table
+    )
+    updated_order = crud.admin_edit_order(db, order.id, edit_data)
+
+    assert updated_order is not None
+    assert updated_order.table_number == 4
+
+
+def test_admin_change_table_and_items_together(db: Session, sample_menu_items):
+    """Test admin can change both table number and items in one operation."""
+    # Create order on table 2
+    order_data = OrderCreate(
+        table_number=2,
+        items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
+    )
+    order, _ = crud.create_order(db, order_data)
+
+    # Change table and items
+    edit_data = OrderItemsUpdate(
+        items=[
+            OrderItemCreate(menu_item_id=sample_menu_items[1].id, quantity=3),
+            OrderItemCreate(menu_item_id=sample_menu_items[2].id, quantity=1)
+        ],
+        table_number=9
+    )
+    updated_order = crud.admin_edit_order(db, order.id, edit_data)
+
+    assert updated_order.table_number == 9
+    assert len(updated_order.order_items) == 2
+    assert updated_order.order_items[0].quantity == 3
+
+
+def test_admin_edit_without_table_number_keeps_original(db: Session, sample_menu_items):
+    """Test that omitting table_number keeps the original table."""
+    # Create order on table 6
+    order_data = OrderCreate(
+        table_number=6,
+        items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
+    )
+    order, _ = crud.create_order(db, order_data)
+
+    # Edit items without specifying table_number
+    edit_data = OrderItemsUpdate(
+        items=[OrderItemCreate(menu_item_id=sample_menu_items[1].id, quantity=2)]
+    )
+    updated_order = crud.admin_edit_order(db, order.id, edit_data)
+
+    assert updated_order.table_number == 6  # Should remain unchanged
+
+
+# ============================================================================
 # Test Order Cancellation
 # ============================================================================
 
@@ -496,7 +654,7 @@ def test_cancel_order(db: Session, sample_menu_items):
         table_number=1,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
     )
-    order = crud.create_order(db, order_data)
+    order, _ = crud.create_order(db, order_data)
 
     # Cancel order
     canceled_order = crud.cancel_order(db, order.id)
@@ -518,7 +676,7 @@ def test_cannot_cancel_paid_order(db: Session, sample_menu_items):
         table_number=1,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
     )
-    order = crud.create_order(db, order_data)
+    order, _ = crud.create_order(db, order_data)
     order.status = OrderStatus.PAID
     db.commit()
 
@@ -534,7 +692,7 @@ def test_canceled_order_not_in_active_list(db: Session, sample_menu_items):
         table_number=1,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
     )
-    order = crud.create_order(db, order_data)
+    order, _ = crud.create_order(db, order_data)
 
     # Cancel it
     crud.cancel_order(db, order.id)
@@ -583,7 +741,7 @@ def test_order_subtotal_calculation(db: Session, sample_menu_items):
             OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=3),
         ]
     )
-    order = crud.create_order(db, order_data)
+    order, _ = crud.create_order(db, order_data)
 
     # Item subtotal should be quantity * unit_price
     assert order.order_items[0].subtotal == 3 * 8000
@@ -597,19 +755,19 @@ def test_multiple_tables_independent(db: Session, sample_menu_items):
         table_number=1,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
     )
-    order1 = crud.create_order(db, order_data_1)
+    order1, _ = crud.create_order(db, order_data_1)
 
     order_data_2 = OrderCreate(
         table_number=2,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[1].id, quantity=2)]
     )
-    order2 = crud.create_order(db, order_data_2)
+    order2, _ = crud.create_order(db, order_data_2)
 
     order_data_3 = OrderCreate(
         table_number=3,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[2].id, quantity=3)]
     )
-    order3 = crud.create_order(db, order_data_3)
+    order3, _ = crud.create_order(db, order_data_3)
 
     # All should be different orders
     assert order1.id != order2.id != order3.id
@@ -628,7 +786,7 @@ def test_customer_name_optional(db: Session, sample_menu_items):
         table_number=1,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
     )
-    order = crud.create_order(db, order_data)
+    order, _ = crud.create_order(db, order_data)
 
     assert order.customer_name is None
 
@@ -640,7 +798,7 @@ def test_customer_name_updated(db: Session, sample_menu_items):
         table_number=1,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
     )
-    order1 = crud.create_order(db, order_data_1)
+    order1, _ = crud.create_order(db, order_data_1)
     assert order1.customer_name is None
 
     # Update order with name
@@ -649,6 +807,6 @@ def test_customer_name_updated(db: Session, sample_menu_items):
         customer_name="Jane Doe",
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=2)]
     )
-    order2 = crud.create_order(db, order_data_2)
+    order2, _ = crud.create_order(db, order_data_2)
 
     assert order2.customer_name == "Jane Doe"

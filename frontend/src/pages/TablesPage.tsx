@@ -23,7 +23,7 @@ export default function TablesPage() {
       {/* Header */}
       <header className="bg-gradient-primary text-cream p-6 sticky top-0 z-30 shadow-medium">
         <h1 className="font-heading heading-sub text-center text-cream">Lily Cafe – Tables</h1>
-        <p className="text-center text-cream/80 text-sm mt-1">Select a table to take an order</p>
+        <div className="text-center text-white text-base mt-1 font-medium">Select a table to take an order</div>
       </header>
 
       {/* Error State */}
