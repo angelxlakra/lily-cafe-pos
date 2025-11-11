@@ -215,8 +215,39 @@ export const useUpdateItemServedStatus = () => {
   return useMutation({
     mutationFn: ({ orderId, itemId, isServed }: { orderId: number; itemId: number; isServed: boolean }) =>
       ordersApi.updateItemServedStatus(orderId, itemId, isServed),
-    onSuccess: () => {
-      // Invalidate active orders to refresh the list with updated served status
+    // Optimistic update for instant feedback
+    onMutate: async ({ orderId, itemId, isServed }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ordersQueryKeys.active });
+
+      // Snapshot the previous value
+      const previousOrders = queryClient.getQueryData<Order[]>(ordersQueryKeys.active);
+
+      // Optimistically update the cache
+      queryClient.setQueryData<Order[]>(ordersQueryKeys.active, (old) => {
+        if (!old) return old;
+        return old.map((order) => {
+          if (order.id === orderId) {
+            return {
+              ...order,
+              order_items: order.order_items.map((item) =>
+                item.id === itemId ? { ...item, is_served: isServed } : item
+              ),
+            };
+          }
+          return order;
+        });
+      });
+
+      return { previousOrders };
+    },
+    // If the mutation fails, rollback
+    onError: (err, _variables, context) => {
+      queryClient.setQueryData(ordersQueryKeys.active, context?.previousOrders);
+      console.error('Failed to update served status:', err);
+    },
+    // Always refetch after error or success
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ordersQueryKeys.active });
     },
   });

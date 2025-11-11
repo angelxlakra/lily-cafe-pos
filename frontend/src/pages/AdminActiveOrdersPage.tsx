@@ -26,6 +26,21 @@ export default function AdminActiveOrdersPage() {
 
   const orders = activeOrders || [];
 
+  const handleToggleServed = (orderId: number, itemId: number, isServed: boolean) => {
+    console.log('Toggling served status:', { orderId, itemId, isServed });
+    updateServedMutation.mutate(
+      { orderId, itemId, isServed },
+      {
+        onError: (error) => {
+          console.error('Error updating served status:', error);
+        },
+        onSuccess: () => {
+          console.log('Successfully updated served status');
+        },
+      }
+    );
+  };
+
   const handleGenerateBill = (orderId: number) => {
     setPaymentOrderId(orderId);
   };
@@ -110,9 +125,7 @@ export default function AdminActiveOrdersPage() {
                   onEdit={() => setEditOrder(order)}
                   onGenerateBill={() => handleGenerateBill(order.id)}
                   onCancel={() => setCancelOrderId(order.id)}
-                  onToggleServed={(itemId, isServed) =>
-                    updateServedMutation.mutate({ orderId: order.id, itemId, isServed })
-                  }
+                  onToggleServed={(itemId, isServed) => handleToggleServed(order.id, itemId, isServed)}
                 />
               ))}
             </div>
@@ -222,11 +235,14 @@ function OrderCard({ order, onEdit, onGenerateBill, onCancel, onToggleServed }: 
               <tbody>
                 {order.order_items.map((item) => (
                   <tr key={item.id} className="border-b border-neutral-border last:border-0 hover:bg-neutral-background/50 transition-colors">
-                    <td className="p-2 text-center">
+                    <td className="p-2 text-center" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
                         checked={item.is_served || false}
-                        onChange={(e) => onToggleServed(item.id, e.target.checked)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          onToggleServed(item.id, e.target.checked);
+                        }}
                         className="w-4 h-4 rounded border-neutral-border text-coffee-brown focus:ring-coffee-brown focus:ring-offset-0 cursor-pointer"
                         aria-label={`Mark ${item.menu_item_name} as served`}
                       />
