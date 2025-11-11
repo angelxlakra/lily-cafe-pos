@@ -16,12 +16,15 @@ REM Get script directory (2 levels up from scripts/windows/)
 set SCRIPT_DIR=%~dp0..\..
 cd /d "%SCRIPT_DIR%"
 
+REM Store absolute project root path
+set PROJECT_ROOT=%CD%
+
 REM Create logs directory if it doesn't exist
 if not exist "logs" mkdir logs
 
-REM Set log file with timestamp
+REM Set log file with timestamp (absolute path)
 for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value') do set datetime=%%I
-set LOG_FILE=logs\update_%datetime:~0,8%_%datetime:~8,6%.log
+set LOG_FILE=%PROJECT_ROOT%\logs\update_%datetime:~0,8%_%datetime:~8,6%.log
 
 if %INTERACTIVE%==1 (
     echo.
@@ -126,9 +129,9 @@ if errorlevel 1 (
     echo [INFO] Updating backend dependencies... >> "%LOG_FILE%"
     if %INTERACTIVE%==1 echo [5/7] Updating backend dependencies and printer drivers...
     cd backend
-    uv sync --extra printer >> "..\%LOG_FILE%" 2>&1
+    uv sync --extra printer >> "%LOG_FILE%" 2>&1
     if errorlevel 1 (
-        echo [ERROR] Backend dependency update failed >> "..\%LOG_FILE%"
+        echo [ERROR] Backend dependency update failed >> "%LOG_FILE%"
         cd ..
         git reset --hard %OLD_COMMIT% >> "%LOG_FILE%" 2>&1
         if %INTERACTIVE%==1 (
@@ -144,18 +147,18 @@ if errorlevel 1 (
     echo [INFO] Updating and building frontend... >> "%LOG_FILE%"
     if %INTERACTIVE%==1 echo [6/7] Updating and building frontend for production...
     cd frontend
-    call npm install >> "..\%LOG_FILE%" 2>&1
+    call npm install >> "%LOG_FILE%" 2>&1
     if errorlevel 1 (
-        echo [WARNING] Frontend dependency update had issues >> "..\%LOG_FILE%"
+        echo [WARNING] Frontend dependency update had issues >> "%LOG_FILE%"
     ) else (
-        echo [INFO] Frontend dependencies updated >> "..\%LOG_FILE%"
+        echo [INFO] Frontend dependencies updated >> "%LOG_FILE%"
     )
 
     REM Build frontend for production
-    echo [INFO] Building frontend... >> "..\%LOG_FILE%"
-    call npm run build >> "..\%LOG_FILE%" 2>&1
+    echo [INFO] Building frontend... >> "%LOG_FILE%"
+    call npm run build >> "%LOG_FILE%" 2>&1
     if errorlevel 1 (
-        echo [ERROR] Frontend build failed >> "..\%LOG_FILE%"
+        echo [ERROR] Frontend build failed >> "%LOG_FILE%"
         cd ..
         git reset --hard %OLD_COMMIT% >> "%LOG_FILE%" 2>&1
         if %INTERACTIVE%==1 (
@@ -164,7 +167,7 @@ if errorlevel 1 (
         )
         exit /b 1
     )
-    echo [INFO] Frontend built successfully >> "..\%LOG_FILE%"
+    echo [INFO] Frontend built successfully >> "%LOG_FILE%"
     cd ..
 
     if %INTERACTIVE%==1 echo [7/7] Finalizing update...
@@ -221,8 +224,8 @@ echo Update check completed at %time% >> "%LOG_FILE%"
 echo. >> "%LOG_FILE%"
 
 REM Keep only last 30 log files
-for /f "skip=30 delims=" %%F in ('dir /b /o-d logs\update_*.log 2^>nul') do (
-    del "logs\%%F" 2>nul
+for /f "skip=30 delims=" %%F in ('dir /b /o-d "%PROJECT_ROOT%\logs\update_*.log" 2^>nul') do (
+    del "%PROJECT_ROOT%\logs\%%F" 2>nul
 )
 
 if %INTERACTIVE%==1 pause
