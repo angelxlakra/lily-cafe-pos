@@ -10,7 +10,8 @@ import { useOrderHistory, useOrder } from '../hooks/useOrders';
 import { useAppConfig } from '../hooks/useConfig';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatDateTime } from '../utils/formatDateTime';
-import { CalendarDots } from '@phosphor-icons/react';
+import { CalendarDots, Printer } from '@phosphor-icons/react';
+import { paymentsApi } from '../api/client';
 
 export default function OrderHistoryPage() {
   // Get today's date for max date validation
@@ -45,6 +46,15 @@ export default function OrderHistoryPage() {
 
   const handleCloseModal = () => {
     setSelectedOrderId(null);
+  };
+
+  const handlePrintReceipt = async (orderId: number) => {
+    try {
+      await paymentsApi.printReceipt(orderId);
+    } catch (error) {
+      console.error('Failed to print receipt:', error);
+      alert('Failed to print receipt. Please try again.');
+    }
   };
 
   const gstRatePercent = appConfig?.gst_rate ?? 18;
@@ -232,12 +242,22 @@ export default function OrderHistoryPage() {
                         </p>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => handleViewDetails(order.id)}
-                          className="px-3 py-1 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors"
-                        >
-                          View Details
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handlePrintReceipt(order.id)}
+                            className="px-3 py-1 text-sm bg-lily-green/10 border border-lily-green text-lily-green hover:bg-lily-green hover:text-white rounded-md transition-colors flex items-center gap-1"
+                            title="Print Receipt"
+                          >
+                            <Printer size={16} weight="bold" />
+                            <span className="hidden lg:inline">Print</span>
+                          </button>
+                          <button
+                            onClick={() => handleViewDetails(order.id)}
+                            className="px-3 py-1 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors"
+                          >
+                            View Details
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -292,12 +312,22 @@ export default function OrderHistoryPage() {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => handleViewDetails(order.id)}
-                      className="w-full px-4 py-2 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors"
-                    >
-                      View Details
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handlePrintReceipt(order.id)}
+                        className="px-4 py-2 text-sm bg-lily-green/10 border border-lily-green text-lily-green hover:bg-lily-green hover:text-white rounded-md transition-colors flex items-center justify-center gap-1"
+                        title="Print Receipt"
+                      >
+                        <Printer size={16} weight="bold" />
+                        Print
+                      </button>
+                      <button
+                        onClick={() => handleViewDetails(order.id)}
+                        className="flex-1 px-4 py-2 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors"
+                      >
+                        View Details
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -312,6 +342,7 @@ export default function OrderHistoryPage() {
           order={selectedOrder}
           isLoading={isLoadingDetails}
           onClose={handleCloseModal}
+          onPrintReceipt={handlePrintReceipt}
           gstRateLabel={gstRateLabel}
         />
       )}
@@ -324,6 +355,7 @@ interface OrderDetailsModalProps {
   order: any;
   isLoading: boolean;
   onClose: () => void;
+  onPrintReceipt: (orderId: number) => void;
   gstRateLabel: string;
 }
 
@@ -331,6 +363,7 @@ function OrderDetailsModal({
   order,
   isLoading,
   onClose,
+  onPrintReceipt,
   gstRateLabel,
 }: OrderDetailsModalProps) {
   return (
@@ -476,12 +509,22 @@ function OrderDetailsModal({
 
         {/* Footer */}
         <div className="p-6 border-t border-neutral-border">
-          <button
-            onClick={onClose}
-            className="btn-primary w-full"
-          >
-            Close
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => order && onPrintReceipt(order.id)}
+              disabled={!order}
+              className="flex-1 px-4 py-2 bg-lily-green/10 border border-lily-green text-lily-green hover:bg-lily-green hover:text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
+            >
+              <Printer size={20} weight="bold" />
+              Print Receipt
+            </button>
+            <button
+              onClick={onClose}
+              className="btn-primary flex-1"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </>
