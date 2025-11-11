@@ -529,6 +529,40 @@ def cancel_order(db: Session, order_id: int) -> Optional[models.Order]:
     return db_order
 
 
+def update_order_item_served_status(
+    db: Session, order_id: int, item_id: int, is_served: bool
+) -> Optional[models.OrderItem]:
+    """
+    Update the served status of an order item.
+
+    Args:
+        db: Database session
+        order_id: Order ID
+        item_id: Order item ID
+        is_served: True to mark as served, False to unmark
+
+    Returns:
+        Updated order item, or None if not found
+
+    Raises:
+        ValueError: If item doesn't belong to the specified order
+    """
+    # Get the order item
+    order_item = db.query(models.OrderItem).filter(models.OrderItem.id == item_id).first()
+    if not order_item:
+        return None
+
+    # Verify the item belongs to the specified order
+    if order_item.order_id != order_id:
+        raise ValueError(f"Order item {item_id} does not belong to order {order_id}")
+
+    # Update the served status
+    order_item.is_served = is_served
+    db.commit()
+    db.refresh(order_item)
+    return order_item
+
+
 # ============================================================================
 # Payment Operations
 # ============================================================================

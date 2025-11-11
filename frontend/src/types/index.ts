@@ -76,6 +76,7 @@ export interface OrderItem {
   quantity: number;
   unit_price: number; // Price in paise
   subtotal: number; // Price in paise
+  is_served: boolean;
 }
 
 export interface Order {
