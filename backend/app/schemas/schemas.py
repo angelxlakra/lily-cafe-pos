@@ -111,6 +111,7 @@ class OrderItem(BaseModel):
     unit_price: int  # In paise
     subtotal: int  # In paise
     is_beverage: bool = False
+    is_served: bool = False
 
     class Config:
         from_attributes = True

@@ -310,6 +310,20 @@ export const ordersApi = {
     const response = await apiClient.patch<Order>(`/orders/${id}`, data);
     return response.data;
   },
+
+  /**
+   * Update the served status of an order item
+   */
+  updateItemServedStatus: async (
+    orderId: number,
+    itemId: number,
+    isServed: boolean
+  ): Promise<{ message: string; item_id: number; is_served: boolean }> => {
+    const response = await apiClient.patch<{ message: string; item_id: number; is_served: boolean }>(
+      `/orders/${orderId}/items/${itemId}/served?is_served=${isServed}`
+    );
+    return response.data;
+  },
 };
 
 // ========================================

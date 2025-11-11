@@ -97,6 +97,7 @@ class OrderItem(Base):
     unit_price = Column(Integer, nullable=False)  # Price in paise at time of order
     subtotal = Column(Integer, nullable=False)  # quantity * unit_price
     is_beverage = Column(Boolean, default=False)  # Snapshot of is_beverage at time of order
+    is_served = Column(Boolean, default=False)  # Track if item has been served to customer
 
     # Relationships
     order = relationship("Order", back_populates="order_items")

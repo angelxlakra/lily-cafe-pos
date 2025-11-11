@@ -8,7 +8,7 @@ import Sidebar from '../components/Sidebar';
 import PaymentModal from '../components/PaymentModal';
 import EditOrderModal from '../components/EditOrderModal';
 import EmptyState from '../components/EmptyState';
-import { useActiveOrders, useCancelOrder } from '../hooks/useOrders';
+import { useActiveOrders, useCancelOrder, useUpdateItemServedStatus } from '../hooks/useOrders';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatDateTime } from '../utils/formatDateTime';
 import { ClipboardText } from '@phosphor-icons/react';
@@ -22,6 +22,7 @@ export default function AdminActiveOrdersPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const cancelMutation = useCancelOrder();
+  const updateServedMutation = useUpdateItemServedStatus();
 
   const orders = activeOrders || [];
 
@@ -109,6 +110,9 @@ export default function AdminActiveOrdersPage() {
                   onEdit={() => setEditOrder(order)}
                   onGenerateBill={() => handleGenerateBill(order.id)}
                   onCancel={() => setCancelOrderId(order.id)}
+                  onToggleServed={(itemId, isServed) =>
+                    updateServedMutation.mutate({ orderId: order.id, itemId, isServed })
+                  }
                 />
               ))}
             </div>
@@ -150,9 +154,10 @@ interface OrderCardProps {
   onEdit: () => void;
   onGenerateBill: () => void;
   onCancel: () => void;
+  onToggleServed: (itemId: number, isServed: boolean) => void;
 }
 
-function OrderCard({ order, onEdit, onGenerateBill, onCancel }: OrderCardProps) {
+function OrderCard({ order, onEdit, onGenerateBill, onCancel, onToggleServed }: OrderCardProps) {
   const [showItems, setShowItems] = useState(false);
   const itemCount = order.order_items?.length || 0;
 
@@ -208,6 +213,7 @@ function OrderCard({ order, onEdit, onGenerateBill, onCancel }: OrderCardProps) 
             <table className="w-full text-sm">
               <thead className="bg-neutral-background border-b border-neutral-border sticky top-0">
                 <tr>
+                  <th className="text-center p-2 font-semibold text-neutral-text-dark w-12">Served</th>
                   <th className="text-left p-2 font-semibold text-neutral-text-dark">Item</th>
                   <th className="text-center p-2 font-semibold text-neutral-text-dark">Qty</th>
                   <th className="text-right p-2 font-semibold text-neutral-text-dark">Price</th>
@@ -216,7 +222,18 @@ function OrderCard({ order, onEdit, onGenerateBill, onCancel }: OrderCardProps) 
               <tbody>
                 {order.order_items.map((item) => (
                   <tr key={item.id} className="border-b border-neutral-border last:border-0 hover:bg-neutral-background/50 transition-colors">
-                    <td className="p-2 text-neutral-text-dark">{item.menu_item_name}</td>
+                    <td className="p-2 text-center">
+                      <input
+                        type="checkbox"
+                        checked={item.is_served || false}
+                        onChange={(e) => onToggleServed(item.id, e.target.checked)}
+                        className="w-4 h-4 rounded border-neutral-border text-coffee-brown focus:ring-coffee-brown focus:ring-offset-0 cursor-pointer"
+                        aria-label={`Mark ${item.menu_item_name} as served`}
+                      />
+                    </td>
+                    <td className={`p-2 text-neutral-text-dark ${item.is_served ? 'line-through opacity-60' : ''}`}>
+                      {item.menu_item_name}
+                    </td>
                     <td className="p-2 text-center text-neutral-text-light">{item.quantity}</td>
                     <td className="p-2 text-right text-neutral-text-dark font-medium">
                       {formatCurrency(item.subtotal)}

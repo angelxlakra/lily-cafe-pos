@@ -202,6 +202,44 @@ def get_active_table_order(table_number: int, db: Session = Depends(get_db)):
 
 
 # ============================================================================
+# Order Item Routes (for marking items as served)
+# ============================================================================
+
+
+@router.patch("/{order_id}/items/{item_id}/served")
+def update_item_served_status(
+    order_id: int,
+    item_id: int,
+    is_served: bool,
+    db: Session = Depends(get_db),
+):
+    """
+    Update the served status of an order item.
+
+    Used by admin to track which items have been served to customers.
+
+    Args:
+        order_id: The order ID
+        item_id: The order item ID
+        is_served: True to mark as served, False to unmark
+
+    Returns:
+        Success message with updated item info
+    """
+    try:
+        updated_item = crud.update_order_item_served_status(db, order_id, item_id, is_served)
+        if not updated_item:
+            raise HTTPException(status_code=404, detail="Order item not found")
+        return {
+            "message": "Item served status updated successfully",
+            "item_id": item_id,
+            "is_served": is_served
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ============================================================================
 # Payment Routes (nested under orders)
 # ============================================================================
 

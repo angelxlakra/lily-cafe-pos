@@ -199,6 +199,29 @@ export const useCancelOrder = () => {
   });
 };
 
+/**
+ * Hook to update the served status of an order item
+ *
+ * @example
+ * ```tsx
+ * const { mutate: updateServedStatus } = useUpdateItemServedStatus();
+ *
+ * updateServedStatus({ orderId: 10, itemId: 5, isServed: true });
+ * ```
+ */
+export const useUpdateItemServedStatus = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ orderId, itemId, isServed }: { orderId: number; itemId: number; isServed: boolean }) =>
+      ordersApi.updateItemServedStatus(orderId, itemId, isServed),
+    onSuccess: () => {
+      // Invalidate active orders to refresh the list with updated served status
+      queryClient.invalidateQueries({ queryKey: ordersQueryKeys.active });
+    },
+  });
+};
+
 // ========================================
 // Payments Mutation Hooks
 // ========================================
