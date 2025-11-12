@@ -6,6 +6,7 @@
 import type { ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { ThemeToggle } from "./ThemeToggle";
 import {
   ActiveOrdersIcon,
   OrderHistoryIcon,
@@ -106,8 +107,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           />
         </nav>
 
-        {/* Logout Section */}
-        <div className="p-4 border-t border-coffee-light">
+        {/* Theme Toggle & Logout Section */}
+        <div className="p-4 border-t border-coffee-light space-y-3">
+          {/* Theme Toggle */}
+          <div className="flex items-center justify-center">
+            <ThemeToggle />
+          </div>
+
+          {/* Logout Button */}
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg

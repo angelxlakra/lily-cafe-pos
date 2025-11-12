@@ -8,17 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added (v0.2 - In Development)
-- Dark mode theme toggle with persistent preferences
-- Inventory categories management (add, edit, delete)
-- Inventory items management with units and thresholds
-- Purchase tracking for stock additions
-- Daily usage recording for inventory consumption
-- Physical count adjustments for inventory corrections
-- Low stock alerts on admin dashboard
-- Inventory transaction history with audit trail
-- Daily cash counter with opening/closing balance tracking
-- Owner verification system for cash counter
-- Cash variance calculations
+- ✅ **Dark mode theme toggle** with persistent preferences (localStorage)
+  - Light/Dark/System theme options
+  - Smooth 300ms transitions between themes
+  - Warm coffee-themed dark mode colors
+  - System preference detection (respects OS settings)
+  - Theme toggle in admin sidebar
+  - Floating theme toggle on waiter pages
+  - All existing components fully support dark mode
+- Inventory categories management (add, edit, delete) - _In Progress_
+- Inventory items management with units and thresholds - _Planned_
+- Purchase tracking for stock additions - _Planned_
+- Daily usage recording for inventory consumption - _Planned_
+- Physical count adjustments for inventory corrections - _Planned_
+- Low stock alerts on admin dashboard - _Planned_
+- Inventory transaction history with audit trail - _Planned_
+- Daily cash counter with opening/closing balance tracking - _Planned_
+- Owner verification system for cash counter - _Planned_
+- Cash variance calculations - _Planned_
 
 ---
 

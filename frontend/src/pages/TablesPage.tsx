@@ -8,6 +8,7 @@ import { useAppConfig } from '../hooks/useConfig';
 import TableGrid from '../components/TableGrid';
 import BottomNav from '../components/BottomNav';
 import BackgroundPattern from '../components/BackgroundPattern';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 export default function TablesPage() {
   const { data: activeOrders, isLoading, error } = useActiveOrders();
@@ -19,6 +20,11 @@ export default function TablesPage() {
     <div className="min-h-screen bg-neutral-background pb-16 relative">
       {/* Background Pattern */}
       <BackgroundPattern opacity={0.04} density="light" />
+
+      {/* Floating Theme Toggle */}
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
 
       {/* Header */}
       <header className="bg-gradient-primary text-cream p-6 sticky top-0 z-30 shadow-medium">

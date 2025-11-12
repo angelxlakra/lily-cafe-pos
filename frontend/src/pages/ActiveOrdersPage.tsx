@@ -11,6 +11,7 @@ import { formatCurrency } from "../utils/formatCurrency";
 import { formatDateTime } from "../utils/formatDateTime";
 import BottomNav from "../components/BottomNav";
 import EmptyState from "../components/EmptyState";
+import { ThemeToggle } from "../components/ThemeToggle";
 import { Tray, PencilSimple, Check, X } from "@phosphor-icons/react";
 import type { Order } from "../types";
 
@@ -41,6 +42,11 @@ export default function ActiveOrdersPage() {
 
   return (
     <div className="min-h-screen bg-neutral-background pb-16">
+      {/* Floating Theme Toggle */}
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
+
       {/* Header */}
       <header className="bg-coffee-brown text-cream p-4 sticky top-0 z-30 shadow-md">
         <h1 className="font-heading heading-sub text-center">Active Orders</h1>

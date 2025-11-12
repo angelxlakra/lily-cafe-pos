@@ -10,7 +10,7 @@
 
 /* Custom theme configuration for Lily Cafe */
 @theme {
-  /* Coffee theme colors */
+  /* Coffee theme colors - Light Mode */
   --color-coffee-brown: #6F4E37;
   --color-coffee-dark: #4A3728;
   --color-coffee-light: #A0826D;
@@ -26,7 +26,7 @@
   --color-warning: #FF9800;
   --color-info: #2196F3;
 
-  /* Neutral colors */
+  /* Neutral colors - Light Mode */
   --color-neutral-text-dark: #2C2420;
   --color-neutral-text-body: #43352D;
   --color-neutral-text-light: #6B5D54;
@@ -47,11 +47,43 @@
   --min-width-touch: 3rem;
 }
 
+/* Dark Mode Theme */
+.dark {
+  /* Coffee theme colors - Dark Mode (warmer tones) */
+  --color-coffee-brown: #B8916A;
+  --color-coffee-dark: #D4A574;
+  --color-coffee-light: #8A6E52;
+
+  --color-cream: #3A3128;
+  --color-off-white: #2A2419;
+
+  --color-lily-green: #9BAF91;
+
+  /* Functional colors - Dark Mode (slightly muted) */
+  --color-success: #66BB6A;
+  --color-error: #EF5350;
+  --color-warning: #FFA726;
+  --color-info: #42A5F5;
+
+  /* Neutral colors - Dark Mode */
+  --color-neutral-text-dark: #F5F0E8;
+  --color-neutral-text-body: #E8DFD3;
+  --color-neutral-text-light: #C5B8A8;
+  --color-neutral-text-muted: #9B8977;
+  --color-neutral-border: #4A4034;
+  --color-neutral-background: #1C1812;
+}
+
 /* Global styles */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+/* Smooth theme transitions */
+html {
+  transition: background-color 300ms ease, color 300ms ease;
 }
 
 body {
@@ -62,6 +94,17 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 300ms ease, color 300ms ease;
+}
+
+/* Smooth transitions for theme-dependent elements */
+.card,
+.btn,
+.input-field,
+[class*="bg-"],
+[class*="text-"],
+[class*="border-"] {
+  transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease;
 }
 
 h1,
@@ -449,6 +492,10 @@ p {
   scrollbar-color: rgba(111, 78, 55, 0.3) transparent;
 }
 
+.dark * {
+  scrollbar-color: rgba(184, 145, 106, 0.4) transparent;
+}
+
 *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -464,6 +511,14 @@ p {
   transition: background-color 200ms ease;
 }
 
+.dark *::-webkit-scrollbar-thumb {
+  background-color: rgba(184, 145, 106, 0.4);
+}
+
 *::-webkit-scrollbar-thumb:hover {
   background-color: rgba(111, 78, 55, 0.5);
+}
+
+.dark *::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(184, 145, 106, 0.6);
 }
