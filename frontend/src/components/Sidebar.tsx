@@ -31,8 +31,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     navigate("/login", { replace: true });
   };
 
-  // Choose logo based on theme
-  const logoSrc = resolvedTheme === 'dark' ? '/logos/logo-dark.png' : '/logos/logo_cream.png';
+  // Always use cream logo
+  const logoSrc = '/logos/logo_cream.png';
 
   return (
     <>

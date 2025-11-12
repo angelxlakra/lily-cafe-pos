@@ -87,6 +87,117 @@
   background-color: #3A3128 !important;
 }
 
+/* Dark mode: Force ALL text in headers to be light */
+.dark header.bg-gradient-primary,
+.dark header.bg-gradient-primary *,
+.dark header.bg-coffee-brown,
+.dark header.bg-coffee-brown * {
+  color: #F5F0E8 !important;
+}
+
+/* Dark mode: Force ALL text in sidebar to be light */
+.dark .bg-coffee-dark {
+  background-color: #2A2419 !important;
+}
+
+.dark .bg-coffee-dark,
+.dark .bg-coffee-dark * {
+  color: #F5F0E8 !important;
+}
+
+/* Dark mode: Override text-cream in headers and sidebar */
+.dark header .text-cream,
+.dark .bg-coffee-dark .text-cream {
+  color: #F5F0E8 !important;
+}
+
+/* Dark mode: Fix cart drawer - make footer background dark */
+.dark .bg-white {
+  background-color: #2A2419 !important;
+}
+
+/* Dark mode: Fix cart drawer text visibility on dark backgrounds */
+.dark .bg-off-white .text-neutral-text-light,
+.dark .bg-white .text-neutral-text-light {
+  color: #C5B8A8 !important;
+}
+
+.dark .bg-off-white .text-neutral-text-dark,
+.dark .bg-white .text-neutral-text-dark {
+  color: #F5F0E8 !important;
+}
+
+/* Dark mode: Fix input fields in cart */
+.dark input[type="text"]::placeholder {
+  color: #9B8977 !important;
+}
+
+/* Dark mode: Fix plus/minus button visibility in cart */
+.dark .bg-cream button {
+  background-color: rgba(184, 145, 106, 0.15) !important;
+  border-color: rgba(184, 145, 106, 0.3) !important;
+}
+
+.dark .bg-cream button:not(:disabled):hover {
+  background-color: rgba(184, 145, 106, 0.25) !important;
+}
+
+.dark .bg-cream button .text-cream,
+.dark .bg-cream button {
+  color: #B8916A !important;
+}
+
+/* Dark mode: Fix floating cart button text visibility */
+.dark .bg-gradient-primary.text-cream,
+.dark .bg-gradient-primary .text-cream,
+.dark .bg-gradient-primary * {
+  color: #F5F0E8 !important;
+}
+
+/* Dark mode: Fix bottom nav active tab visibility */
+.dark nav .bg-gradient-primary.text-cream,
+.dark nav .bg-gradient-primary * {
+  color: #F5F0E8 !important;
+}
+
+/* Dark mode: Fix menu item plus button visibility */
+.dark button.bg-gradient-primary.text-cream,
+.dark button.bg-gradient-primary .text-cream {
+  color: #F5F0E8 !important;
+}
+
+/* Dark mode: Ensure bottom nav background and indicator are visible */
+.dark nav .bg-cream {
+  background-color: #F5F0E8 !important;
+}
+
+/* Dark mode: Fix search bar and input fields - warmer, lighter background */
+.dark input.input-field,
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="password"] {
+  background-color: #3A3128 !important;
+  color: #F5F0E8 !important;
+  border-color: #4A4034 !important;
+}
+
+.dark input::placeholder {
+  color: #9B8977 !important;
+}
+
+/* Dark mode: Fix chip backgrounds */
+.dark .chip {
+  background-color: #3A3128 !important;
+  color: #F5F0E8 !important;
+  border-color: #4A4034 !important;
+}
+
+.dark .chip.active {
+  background-color: #B8916A !important;
+  color: #1C1812 !important;
+  border-color: #B8916A !important;
+}
+
 /* Global styles */
 *,
 *::before,
