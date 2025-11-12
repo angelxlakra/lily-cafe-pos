@@ -6,6 +6,8 @@
 import type { ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { useTheme } from "../contexts/ThemeContext";
+import { ThemeToggle } from "./ThemeToggle";
 import {
   ActiveOrdersIcon,
   OrderHistoryIcon,
@@ -22,11 +24,15 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const { resolvedTheme } = useTheme();
 
   const handleLogout = () => {
     logout();
     navigate("/login", { replace: true });
   };
+
+  // Always use cream logo
+  const logoSrc = '/logos/logo_cream.png';
 
   return (
     <>
@@ -51,9 +57,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="h-24 flex items-center justify-between border-b border-coffee-light px-6">
           <div className="flex items-center gap-3">
             <img
-              src="/logos/logo_cream.png"
+              src={logoSrc}
               alt="Lily Cafe Logo"
-              className="w-11 h-11 object-contain shrink-0"
+              className="w-11 h-11 object-contain shrink-0 transition-opacity duration-300"
             />
             <div className="flex-1 text-left">
               <span className="block font-heading text-xl tracking-[0.18em] leading-tight">
@@ -106,8 +112,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           />
         </nav>
 
-        {/* Logout Section */}
-        <div className="p-4 border-t border-coffee-light">
+        {/* Theme Toggle & Logout Section */}
+        <div className="p-4 border-t border-coffee-light space-y-3">
+          {/* Theme Toggle */}
+          <div className="flex items-center justify-center">
+            <ThemeToggle />
+          </div>
+
+          {/* Logout Button */}
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg

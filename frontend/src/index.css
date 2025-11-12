@@ -10,7 +10,7 @@
 
 /* Custom theme configuration for Lily Cafe */
 @theme {
-  /* Coffee theme colors */
+  /* Coffee theme colors - Light Mode */
   --color-coffee-brown: #6F4E37;
   --color-coffee-dark: #4A3728;
   --color-coffee-light: #A0826D;
@@ -26,7 +26,7 @@
   --color-warning: #FF9800;
   --color-info: #2196F3;
 
-  /* Neutral colors */
+  /* Neutral colors - Light Mode */
   --color-neutral-text-dark: #2C2420;
   --color-neutral-text-body: #43352D;
   --color-neutral-text-light: #6B5D54;
@@ -47,11 +47,167 @@
   --min-width-touch: 3rem;
 }
 
+/* Dark Mode Theme */
+.dark {
+  /* Coffee theme colors - Dark Mode (warmer tones) */
+  --color-coffee-brown: #B8916A;
+  --color-coffee-dark: #D4A574;
+  --color-coffee-light: #8A6E52;
+
+  --color-cream: #3A3128;
+  --color-off-white: #2A2419;
+
+  --color-lily-green: #9BAF91;
+
+  /* Functional colors - Dark Mode (slightly muted) */
+  --color-success: #66BB6A;
+  --color-error: #EF5350;
+  --color-warning: #FFA726;
+  --color-info: #42A5F5;
+
+  /* Neutral colors - Dark Mode */
+  --color-neutral-text-dark: #F5F0E8;
+  --color-neutral-text-body: #E8DFD3;
+  --color-neutral-text-light: #C5B8A8;
+  --color-neutral-text-muted: #9B8977;
+  --color-neutral-border: #4A4034;
+  --color-neutral-background: #1C1812;
+}
+
+/* Dark mode: Richer backgrounds for header elements */
+.dark .bg-coffee-brown {
+  background-color: #2A2419 !important;
+}
+
+.dark .bg-coffee-dark {
+  background-color: #1C1812 !important;
+}
+
+.dark .bg-cream {
+  background-color: #3A3128 !important;
+}
+
+/* Dark mode: Force ALL text in headers to be light */
+.dark header.bg-gradient-primary,
+.dark header.bg-gradient-primary *,
+.dark header.bg-coffee-brown,
+.dark header.bg-coffee-brown * {
+  color: #F5F0E8 !important;
+}
+
+/* Dark mode: Force ALL text in sidebar to be light */
+.dark .bg-coffee-dark {
+  background-color: #2A2419 !important;
+}
+
+.dark .bg-coffee-dark,
+.dark .bg-coffee-dark * {
+  color: #F5F0E8 !important;
+}
+
+/* Dark mode: Override text-cream in headers and sidebar */
+.dark header .text-cream,
+.dark .bg-coffee-dark .text-cream {
+  color: #F5F0E8 !important;
+}
+
+/* Dark mode: Fix cart drawer - make footer background dark */
+.dark .bg-white {
+  background-color: #2A2419 !important;
+}
+
+/* Dark mode: Fix cart drawer text visibility on dark backgrounds */
+.dark .bg-off-white .text-neutral-text-light,
+.dark .bg-white .text-neutral-text-light {
+  color: #C5B8A8 !important;
+}
+
+.dark .bg-off-white .text-neutral-text-dark,
+.dark .bg-white .text-neutral-text-dark {
+  color: #F5F0E8 !important;
+}
+
+/* Dark mode: Fix input fields in cart */
+.dark input[type="text"]::placeholder {
+  color: #9B8977 !important;
+}
+
+/* Dark mode: Fix plus/minus button visibility in cart */
+.dark .bg-cream button {
+  background-color: rgba(184, 145, 106, 0.15) !important;
+  border-color: rgba(184, 145, 106, 0.3) !important;
+}
+
+.dark .bg-cream button:not(:disabled):hover {
+  background-color: rgba(184, 145, 106, 0.25) !important;
+}
+
+.dark .bg-cream button .text-cream,
+.dark .bg-cream button {
+  color: #B8916A !important;
+}
+
+/* Dark mode: Fix floating cart button text visibility */
+.dark .bg-gradient-primary.text-cream,
+.dark .bg-gradient-primary .text-cream,
+.dark .bg-gradient-primary * {
+  color: #F5F0E8 !important;
+}
+
+/* Dark mode: Fix bottom nav active tab visibility */
+.dark nav .bg-gradient-primary.text-cream,
+.dark nav .bg-gradient-primary * {
+  color: #F5F0E8 !important;
+}
+
+/* Dark mode: Fix menu item plus button visibility */
+.dark button.bg-gradient-primary.text-cream,
+.dark button.bg-gradient-primary .text-cream {
+  color: #F5F0E8 !important;
+}
+
+/* Dark mode: Ensure bottom nav background and indicator are visible */
+.dark nav .bg-cream {
+  background-color: #F5F0E8 !important;
+}
+
+/* Dark mode: Fix search bar and input fields - warmer, lighter background */
+.dark input.input-field,
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="password"] {
+  background-color: #3A3128 !important;
+  color: #F5F0E8 !important;
+  border-color: #4A4034 !important;
+}
+
+.dark input::placeholder {
+  color: #9B8977 !important;
+}
+
+/* Dark mode: Fix chip backgrounds */
+.dark .chip {
+  background-color: #3A3128 !important;
+  color: #F5F0E8 !important;
+  border-color: #4A4034 !important;
+}
+
+.dark .chip.active {
+  background-color: #B8916A !important;
+  color: #1C1812 !important;
+  border-color: #B8916A !important;
+}
+
 /* Global styles */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+/* Smooth theme transitions */
+html {
+  transition: background-color 300ms ease, color 300ms ease;
 }
 
 body {
@@ -62,6 +218,17 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 300ms ease, color 300ms ease;
+}
+
+/* Smooth transitions for theme-dependent elements */
+.card,
+.btn,
+.input-field,
+[class*="bg-"],
+[class*="text-"],
+[class*="border-"] {
+  transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease;
 }
 
 h1,
@@ -233,6 +400,13 @@ p {
   box-shadow: 0 1px 3px rgba(44, 36, 32, 0.06),
               0 4px 8px rgba(44, 36, 32, 0.04);
   transition: box-shadow 200ms ease, transform 200ms ease;
+}
+
+/* Dark mode card enhancement */
+.dark .card {
+  border: 1px solid rgba(184, 145, 106, 0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2),
+              0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 @utility card-hover {
@@ -436,6 +610,11 @@ p {
   background: linear-gradient(135deg, var(--color-coffee-brown) 0%, var(--color-coffee-dark) 100%);
 }
 
+/* Dark mode: deeper, richer gradient */
+.dark .bg-gradient-primary {
+  background: linear-gradient(135deg, #2A2419 0%, #1C1812 100%);
+}
+
 @utility bg-gradient-soft {
   background: linear-gradient(135deg, var(--color-cream) 0%, var(--color-off-white) 100%);
 }
@@ -447,6 +626,10 @@ p {
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(111, 78, 55, 0.3) transparent;
+}
+
+.dark * {
+  scrollbar-color: rgba(184, 145, 106, 0.4) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -464,6 +647,14 @@ p {
   transition: background-color 200ms ease;
 }
 
+.dark *::-webkit-scrollbar-thumb {
+  background-color: rgba(184, 145, 106, 0.4);
+}
+
 *::-webkit-scrollbar-thumb:hover {
   background-color: rgba(111, 78, 55, 0.5);
+}
+
+.dark *::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(184, 145, 106, 0.6);
 }
