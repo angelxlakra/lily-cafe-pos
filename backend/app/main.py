@@ -9,12 +9,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.db.session import init_db
+from app.version import __version__, get_version_info
 
 # Create FastAPI application
 app = FastAPI(
     title="Lily Cafe POS API",
     description="Point of Sale system for Lily Cafe by Mary's Kitchen",
-    version="0.1.0",
+    version=__version__,
 )
 
 # Configure CORS
@@ -48,9 +49,15 @@ def root():
     """Root endpoint for health check."""
     return {
         "message": "Lily Cafe POS API",
-        "version": "0.1.0",
+        "version": __version__,
         "status": "running",
     }
+
+
+@app.get("/version")
+def version_info():
+    """Get detailed version information."""
+    return get_version_info()
 
 
 @app.get("/health")
