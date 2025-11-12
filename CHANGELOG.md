@@ -8,15 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added (v0.2 - In Development)
-- ✅ **Dark mode theme toggle** with persistent preferences (localStorage)
-  - Light/Dark/System theme options
-  - Smooth 300ms transitions between themes
-  - Warm coffee-themed dark mode colors
-  - System preference detection (respects OS settings)
-  - Theme toggle in admin sidebar
-  - Floating theme toggle on waiter pages
-  - All existing components fully support dark mode
-- Inventory categories management (add, edit, delete) - _In Progress_
+- Inventory categories management (add, edit, delete) - _Planned_
 - Inventory items management with units and thresholds - _Planned_
 - Purchase tracking for stock additions - _Planned_
 - Daily usage recording for inventory consumption - _Planned_
@@ -26,6 +18,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Daily cash counter with opening/closing balance tracking - _Planned_
 - Owner verification system for cash counter - _Planned_
 - Cash variance calculations - _Planned_
+
+---
+
+## [0.1.1] - 2025-01-12
+
+### Added
+- **Dark mode theme toggle** with persistent preferences (localStorage)
+  - Light/Dark/System theme options
+  - Smooth 300ms transitions between themes
+  - Warm coffee-themed dark mode colors
+  - System preference detection (respects OS settings)
+  - Theme toggle in admin sidebar
+  - Floating theme toggle on waiter pages
+  - All existing components fully support dark mode
+
+### Fixed
+- Comprehensive text visibility improvements across all dark mode interfaces
+  - Fixed header text visibility on all pages (Tables, Active Orders, Order pages)
+  - Fixed sidebar text visibility with proper contrast
+  - Fixed cart drawer text and button visibility
+  - Fixed floating cart button text visibility
+  - Fixed bottom navigation active tab visibility
+  - Fixed menu item plus/minus button visibility
+  - Fixed search bar and input field backgrounds (warmer brown instead of black)
+  - Fixed chip (category filter) backgrounds and active states
 
 ---
 
@@ -77,6 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Version History Summary
 
 - **v0.1.0** (Nov 11, 2025) - Initial MVP with core POS functionality
+- **v0.1.1** (Jan 12, 2025) - Dark mode theme toggle
 - **v0.2.0** (Planned) - Inventory management and cash counter
 
 ---
