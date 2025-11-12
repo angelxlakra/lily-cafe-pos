@@ -74,6 +74,19 @@
   --color-neutral-background: #1C1812;
 }
 
+/* Dark mode: Richer backgrounds for header elements */
+.dark .bg-coffee-brown {
+  background-color: #2A2419 !important;
+}
+
+.dark .bg-coffee-dark {
+  background-color: #1C1812 !important;
+}
+
+.dark .bg-cream {
+  background-color: #3A3128 !important;
+}
+
 /* Global styles */
 *,
 *::before,
@@ -278,6 +291,13 @@ p {
   transition: box-shadow 200ms ease, transform 200ms ease;
 }
 
+/* Dark mode card enhancement */
+.dark .card {
+  border: 1px solid rgba(184, 145, 106, 0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2),
+              0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
 @utility card-hover {
   @apply card;
 
@@ -477,6 +497,11 @@ p {
 /* Gradient backgrounds */
 @utility bg-gradient-primary {
   background: linear-gradient(135deg, var(--color-coffee-brown) 0%, var(--color-coffee-dark) 100%);
+}
+
+/* Dark mode: deeper, richer gradient */
+.dark .bg-gradient-primary {
+  background: linear-gradient(135deg, #2A2419 0%, #1C1812 100%);
 }
 
 @utility bg-gradient-soft {
