@@ -26,6 +26,11 @@ from app.schemas.schemas import (
     OrderItemsUpdate,
     Order,
     OrderSummary,
+    # Inventory Category schemas
+    InventoryCategoryBase,
+    InventoryCategoryCreate,
+    InventoryCategoryUpdate,
+    InventoryCategory,
     # Auth schemas
     LoginRequest,
     Token,
@@ -55,6 +60,11 @@ __all__ = [
     "OrderItemsUpdate",
     "Order",
     "OrderSummary",
+    # Inventory Categories
+    "InventoryCategoryBase",
+    "InventoryCategoryCreate",
+    "InventoryCategoryUpdate",
+    "InventoryCategory",
     # Auth
     "LoginRequest",
     "Token",
