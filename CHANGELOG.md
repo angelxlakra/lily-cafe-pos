@@ -8,7 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added (v0.2 - In Development)
-- Inventory categories management (add, edit, delete) - _Planned_
+- ✅ **Inventory categories backend API** (CRUD endpoints for category management)
+  - Database model with name, description, timestamps
+  - REST API endpoints: GET, POST, PATCH, DELETE
+  - Admin-only write operations
+  - Unique name validation
+  - Frontend inline management (to be implemented with inventory items page)
 - Inventory items management with units and thresholds - _Planned_
 - Purchase tracking for stock additions - _Planned_
 - Daily usage recording for inventory consumption - _Planned_
