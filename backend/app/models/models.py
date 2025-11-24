@@ -119,16 +119,3 @@ class Payment(Base):
     order = relationship("Order", back_populates="payments")
 
 
-class InventoryCategory(Base):
-    """Inventory categories for stock items (e.g., Dairy Products, Vegetables, Beverages)."""
-
-    __tablename__ = "inventory_categories"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), unique=True, nullable=False, index=True)
-    description = Column(String(500))
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # Future relationship (placeholder for when InventoryItem model is created)
-    # inventory_items = relationship("InventoryItem", back_populates="category")
