@@ -108,10 +108,10 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
         aria-hidden="true"
       />
 
-      {/* Modal */}
+      {/* Modal - Wider for two-column layout */}
       <div
         className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                   w-full max-w-lg bg-off-white rounded-2xl shadow-2xl z-70
+                   w-full max-w-5xl bg-off-white rounded-2xl shadow-2xl z-70
                    flex flex-col max-h-[90vh]"
         role="dialog"
         aria-modal="true"
@@ -131,26 +131,28 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
           </button>
         </div>
 
-        {/* Content */}
+        {/* Content - Two Column Layout */}
         <div className="flex-1 overflow-y-auto p-6">
           {isLoadingOrder ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin h-8 w-8 border-4 border-coffee-brown border-t-transparent rounded-full"></div>
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* Total Amount */}
-              <div className="bg-cream rounded-lg p-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-neutral-text-light">Total Amount:</span>
-                  <span className="text-2xl font-bold font-heading text-coffee-brown">
-                    {formatCurrency(totalAmount)}
-                  </span>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* LEFT COLUMN - Add Payment Form */}
+              <div className="space-y-6">
+                {/* Total Amount */}
+                <div className="bg-cream rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-neutral-text-light">Total Amount:</span>
+                    <span className="text-2xl font-bold font-heading text-coffee-brown">
+                      {formatCurrency(totalAmount)}
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              {/* Price Breakdown Toggle */}
-              {order && order.order_items && order.order_items.length > 0 && (
+                {/* Price Breakdown Toggle */}
+                {order && order.order_items && order.order_items.length > 0 && (
                 <div>
                   <button
                     onClick={() => setShowBreakdown(!showBreakdown)}
@@ -221,10 +223,139 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                     </div>
                   )}
                 </div>
-              )}
+                )}
 
-              {/* Existing Payments */}
-              {existingPayments.length > 0 && (
+                {/* Add Payment Section */}
+                {remaining > 0 && (
+                  <div className="border border-neutral-border rounded-lg p-4">
+                    <h3 className="font-semibold text-neutral-text-dark mb-4">
+                      Add Payment
+                    </h3>
+
+                    <div className="space-y-4">
+                      {/* Payment Method - Selectable Boxes */}
+                      <div>
+                        <label className="block text-sm font-medium text-neutral-text-dark mb-3">
+                          Payment Method
+                        </label>
+                        <div className="grid grid-cols-3 gap-3">
+                          {/* UPI Option */}
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod("upi")}
+                            className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all
+                              ${paymentMethod === "upi"
+                                ? "border-coffee-brown bg-coffee-brown/10 shadow-md"
+                                : "border-neutral-border bg-white hover:border-coffee-brown/50 hover:bg-coffee-brown/5"
+                              }`}
+                          >
+                            <PixLogo
+                              size={28}
+                              weight="duotone"
+                              className={paymentMethod === "upi" ? "text-coffee-brown" : "text-neutral-text-light"}
+                            />
+                            <span className={`text-sm font-medium ${paymentMethod === "upi" ? "text-coffee-brown" : "text-neutral-text-dark"}`}>
+                              UPI
+                            </span>
+                          </button>
+
+                          {/* Cash Option */}
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod("cash")}
+                            className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all
+                              ${paymentMethod === "cash"
+                                ? "border-coffee-brown bg-coffee-brown/10 shadow-md"
+                                : "border-neutral-border bg-white hover:border-coffee-brown/50 hover:bg-coffee-brown/5"
+                              }`}
+                          >
+                            <Money
+                              size={28}
+                              weight="duotone"
+                              className={paymentMethod === "cash" ? "text-coffee-brown" : "text-neutral-text-light"}
+                            />
+                            <span className={`text-sm font-medium ${paymentMethod === "cash" ? "text-coffee-brown" : "text-neutral-text-dark"}`}>
+                              Cash
+                            </span>
+                          </button>
+
+                          {/* Card Option */}
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod("card")}
+                            className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all
+                              ${paymentMethod === "card"
+                                ? "border-coffee-brown bg-coffee-brown/10 shadow-md"
+                                : "border-neutral-border bg-white hover:border-coffee-brown/50 hover:bg-coffee-brown/5"
+                              }`}
+                          >
+                            <CreditCard
+                              size={28}
+                              weight="duotone"
+                              className={paymentMethod === "card" ? "text-coffee-brown" : "text-neutral-text-light"}
+                            />
+                            <span className={`text-sm font-medium ${paymentMethod === "card" ? "text-coffee-brown" : "text-neutral-text-dark"}`}>
+                              Card
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Amount */}
+                      <div>
+                        <label className="block text-sm font-medium text-neutral-text-dark mb-2">
+                          Amount
+                        </label>
+                        <div className="flex gap-2">
+                          <div className="flex-1 relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-text-light">
+                              ₹
+                            </span>
+                            <input
+                              type="number"
+                              value={paymentAmount}
+                              onChange={(e) => setPaymentAmount(e.target.value)}
+                              onWheel={(e) => e.currentTarget.blur()}
+                              min="0"
+                              placeholder="0"
+                              className="w-full pl-8 pr-4 py-3 border border-neutral-border rounded-lg
+                                       focus:outline-none focus:ring-2 focus:ring-coffee-brown"
+                            />
+                          </div>
+                          <button
+                            onClick={() =>
+                              setPaymentAmount((remaining / 100).toString())
+                            }
+                            className="btn-secondary whitespace-nowrap"
+                          >
+                            Full Amount
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Add Button */}
+                      <button
+                        onClick={handleAddPayment}
+                        className="btn-success w-full"
+                      >
+                        + Add Payment
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Error Message */}
+                {error && (
+                  <div className="bg-error/10 border border-error rounded-lg p-3">
+                    <p className="text-sm text-error font-medium">{error}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* RIGHT COLUMN - Payment Summary */}
+              <div className="space-y-6">
+                {/* Existing Payments */}
+                {existingPayments.length > 0 && (
                 <div>
                   <h3 className="font-semibold text-neutral-text-dark mb-3">
                     Recorded Payments:
@@ -290,147 +421,22 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                 </div>
               )}
 
-              {/* Amount Remaining */}
-              <div className="bg-lily-green/10 border border-lily-green rounded-lg p-4">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-neutral-text-dark">
-                    Amount Remaining:
-                  </span>
-                  <span
-                    className={`text-xl font-bold ${
-                      remaining === 0 ? "text-success" : "text-coffee-brown"
-                    }`}
-                  >
-                    {formatCurrency(remaining)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Add Payment Section */}
-              {remaining > 0 && (
-                <div className="border border-neutral-border rounded-lg p-4">
-                  <h3 className="font-semibold text-neutral-text-dark mb-4">
-                    Add Payment
-                  </h3>
-
-                  <div className="space-y-4">
-                    {/* Payment Method - Selectable Boxes */}
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-text-dark mb-3">
-                        Payment Method
-                      </label>
-                      <div className="grid grid-cols-3 gap-3">
-                        {/* UPI Option */}
-                        <button
-                          type="button"
-                          onClick={() => setPaymentMethod("upi")}
-                          className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all
-                            ${paymentMethod === "upi"
-                              ? "border-coffee-brown bg-coffee-brown/10 shadow-md"
-                              : "border-neutral-border bg-white hover:border-coffee-brown/50 hover:bg-coffee-brown/5"
-                            }`}
-                        >
-                          <PixLogo
-                            size={28}
-                            weight="duotone"
-                            className={paymentMethod === "upi" ? "text-coffee-brown" : "text-neutral-text-light"}
-                          />
-                          <span className={`text-sm font-medium ${paymentMethod === "upi" ? "text-coffee-brown" : "text-neutral-text-dark"}`}>
-                            UPI
-                          </span>
-                        </button>
-
-                        {/* Cash Option */}
-                        <button
-                          type="button"
-                          onClick={() => setPaymentMethod("cash")}
-                          className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all
-                            ${paymentMethod === "cash"
-                              ? "border-coffee-brown bg-coffee-brown/10 shadow-md"
-                              : "border-neutral-border bg-white hover:border-coffee-brown/50 hover:bg-coffee-brown/5"
-                            }`}
-                        >
-                          <Money
-                            size={28}
-                            weight="duotone"
-                            className={paymentMethod === "cash" ? "text-coffee-brown" : "text-neutral-text-light"}
-                          />
-                          <span className={`text-sm font-medium ${paymentMethod === "cash" ? "text-coffee-brown" : "text-neutral-text-dark"}`}>
-                            Cash
-                          </span>
-                        </button>
-
-                        {/* Card Option */}
-                        <button
-                          type="button"
-                          onClick={() => setPaymentMethod("card")}
-                          className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all
-                            ${paymentMethod === "card"
-                              ? "border-coffee-brown bg-coffee-brown/10 shadow-md"
-                              : "border-neutral-border bg-white hover:border-coffee-brown/50 hover:bg-coffee-brown/5"
-                            }`}
-                        >
-                          <CreditCard
-                            size={28}
-                            weight="duotone"
-                            className={paymentMethod === "card" ? "text-coffee-brown" : "text-neutral-text-light"}
-                          />
-                          <span className={`text-sm font-medium ${paymentMethod === "card" ? "text-coffee-brown" : "text-neutral-text-dark"}`}>
-                            Card
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Amount */}
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-text-dark mb-2">
-                        Amount
-                      </label>
-                      <div className="flex gap-2">
-                        <div className="flex-1 relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-text-light">
-                            ₹
-                          </span>
-                          <input
-                            type="number"
-                            value={paymentAmount}
-                            onChange={(e) => setPaymentAmount(e.target.value)}
-                            onWheel={(e) => e.currentTarget.blur()}
-                            min="0"
-                            placeholder="0"
-                            className="w-full pl-8 pr-4 py-3 border border-neutral-border rounded-lg
-                                     focus:outline-none focus:ring-2 focus:ring-coffee-brown"
-                          />
-                        </div>
-                        <button
-                          onClick={() =>
-                            setPaymentAmount((remaining / 100).toString())
-                          }
-                          className="btn-secondary whitespace-nowrap"
-                        >
-                          Full Amount
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Add Button */}
-                    <button
-                      onClick={handleAddPayment}
-                      className="btn-success w-full"
+                {/* Amount Remaining */}
+                <div className="bg-lily-green/10 border border-lily-green rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-neutral-text-dark">
+                      Amount Remaining:
+                    </span>
+                    <span
+                      className={`text-xl font-bold ${
+                        remaining === 0 ? "text-success" : "text-coffee-brown"
+                      }`}
                     >
-                      + Add Payment
-                    </button>
+                      {formatCurrency(remaining)}
+                    </span>
                   </div>
                 </div>
-              )}
-
-              {/* Error Message */}
-              {error && (
-                <div className="bg-error/10 border border-error rounded-lg p-3">
-                  <p className="text-sm text-error font-medium">{error}</p>
-                </div>
-              )}
+              </div>
             </div>
           )}
         </div>

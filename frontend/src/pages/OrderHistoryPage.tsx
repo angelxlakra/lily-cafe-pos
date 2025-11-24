@@ -10,23 +10,50 @@ import { useOrderHistory, useOrder } from '../hooks/useOrders';
 import { useAppConfig } from '../hooks/useConfig';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatDateTime } from '../utils/formatDateTime';
-import { CalendarDots, Printer } from '@phosphor-icons/react';
+import { CalendarDots, Printer, PixLogo, Money, CreditCard } from '@phosphor-icons/react';
 import { paymentsApi } from '../api/client';
+import type { PaymentMethod } from '../types';
 
 export default function OrderHistoryPage() {
   // Get today's date for max date validation
   const today = new Date().toISOString().split('T')[0];
 
-  // Default to yesterday to avoid potential issues with today's date
-  const getYesterday = () => {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    return yesterday.toISOString().split('T')[0];
-  };
-
-  const [selectedDate, setSelectedDate] = useState(getYesterday());
+  const [selectedDate, setSelectedDate] = useState(today);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Payment method icons
+  const paymentIcons: Record<PaymentMethod, JSX.Element> = {
+    upi: <PixLogo size={18} weight="fill" className="text-coffee-brown" />,
+    cash: <Money size={18} weight="fill" className="text-coffee-brown" />,
+    card: <CreditCard size={18} weight="fill" className="text-coffee-brown" />,
+  };
+
+  // Helper to render payment method icons for an order
+  const renderPaymentMethods = (order: any) => {
+    if (!order.payments || order.payments.length === 0) {
+      return <span className="text-neutral-text-light text-sm">—</span>;
+    }
+
+    // Get unique payment methods
+    const uniqueMethods = Array.from(
+      new Set(order.payments.map((p: any) => p.payment_method))
+    ) as PaymentMethod[];
+
+    return (
+      <div className="flex items-center gap-1.5">
+        {uniqueMethods.map((method) => (
+          <span
+            key={method}
+            className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-coffee-brown/10 border border-coffee-brown/20"
+            title={method.toUpperCase()}
+          >
+            {paymentIcons[method]}
+          </span>
+        ))}
+      </div>
+    );
+  };
 
   const { data: orderHistory, isLoading, error } = useOrderHistory({
     date: selectedDate,
@@ -197,7 +224,7 @@ export default function OrderHistoryPage() {
                       Time
                     </th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-dark">
-                      Status
+                      Payment Mode
                     </th>
                     <th className="px-6 py-3 text-right text-sm font-semibold text-neutral-text-dark">
                       Total
@@ -234,7 +261,7 @@ export default function OrderHistoryPage() {
                         </p>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="text-sm text-neutral-text-light">—</p>
+                        {renderPaymentMethods(order)}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <p className="font-semibold text-coffee-brown">
@@ -309,6 +336,12 @@ export default function OrderHistoryPage() {
                         <p className="text-neutral-text-dark">
                           {formatDateTime(order.created_at)}
                         </p>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <p className="text-neutral-text-light">Payment Mode</p>
+                        <div className="mt-1">
+                          {renderPaymentMethods(order)}
+                        </div>
                       </div>
                     </div>
 
