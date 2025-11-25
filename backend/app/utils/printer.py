@@ -328,6 +328,7 @@ def print_receipt(order: models.Order) -> bool:
 
             if is_58mm:
                 printer.text(f"{item_text:<20} {amount_text:>11}\n")
+                
                 printer.text(f"  @ {format_currency(item.unit_price)}\n")
             else:
                 printer.text(f"{item_text:<28} {amount_text:>13}\n")

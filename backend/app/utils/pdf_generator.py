@@ -449,7 +449,7 @@ def generate_receipt(
                 "Helvetica",
                 config.font_item_name,
             )
-            add_small_spacing(0.75)
+            add_small_spacing(1.25)
             # Rate and amount on next line with indent
             rate_text = f"   @ {format_currency(item.unit_price)}"
             draw_left(rate_text, y_position, "DejaVuSansMono", config.font_amount - 1)
