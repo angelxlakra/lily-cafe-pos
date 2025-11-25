@@ -11,22 +11,52 @@ import { useAppConfig } from '../hooks/useConfig';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatDateTime } from '../utils/formatDateTime';
 import { CalendarDots, Printer } from '@phosphor-icons/react';
+import { UpiIcon, CashIcon, CardIcon } from '../components/icons/PaymentIcons';
+import DailyRevenueModal from '../components/DailyRevenueModal';
 import { paymentsApi } from '../api/client';
+import type { PaymentMethod } from '../types';
 
 export default function OrderHistoryPage() {
   // Get today's date for max date validation
   const today = new Date().toISOString().split('T')[0];
 
-  // Default to yesterday to avoid potential issues with today's date
-  const getYesterday = () => {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    return yesterday.toISOString().split('T')[0];
-  };
-
-  const [selectedDate, setSelectedDate] = useState(getYesterday());
+  const [selectedDate, setSelectedDate] = useState(today);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
+
+  // Payment method icons
+  const paymentIcons: Record<PaymentMethod, JSX.Element> = {
+    upi: <UpiIcon size={18} weight="duotone" className="text-coffee-brown" />,
+    cash: <CashIcon size={18} weight="duotone" className="text-coffee-brown" />,
+    card: <CardIcon size={18} weight="duotone" className="text-coffee-brown" />,
+  };
+
+  // Helper to render payment method icons for an order
+  const renderPaymentMethods = (order: any) => {
+    if (!order.payments || order.payments.length === 0) {
+      return <span className="text-neutral-text-light text-sm">—</span>;
+    }
+
+    // Get unique payment methods
+    const uniqueMethods = Array.from(
+      new Set(order.payments.map((p: any) => p.payment_method))
+    ) as PaymentMethod[];
+
+    return (
+      <div className="flex items-center gap-1.5">
+        {uniqueMethods.map((method) => (
+          <span
+            key={method}
+            className="inline-flex items-center justify-center w-7 h-7 rounded-md bg-coffee-brown/10 border border-coffee-brown/20"
+            title={method.toUpperCase()}
+          >
+            {paymentIcons[method]}
+          </span>
+        ))}
+      </div>
+    );
+  };
 
   const { data: orderHistory, isLoading, error } = useOrderHistory({
     date: selectedDate,
@@ -65,6 +95,21 @@ export default function OrderHistoryPage() {
   // Calculate daily totals
   const dailyTotal = orders.reduce((sum, order) => sum + order.total_amount, 0);
   const dailyOrderCount = orders.length;
+
+  // Calculate payment method breakdown
+  const paymentBreakdown = orders.reduce(
+    (acc, order) => {
+      if (order.payments) {
+        order.payments.forEach((payment: any) => {
+          if (payment.payment_method === 'cash') acc.cash += payment.amount;
+          else if (payment.payment_method === 'upi') acc.upi += payment.amount;
+          else if (payment.payment_method === 'card') acc.card += payment.amount;
+        });
+      }
+      return acc;
+    },
+    { cash: 0, upi: 0, card: 0 }
+  );
 
   return (
     <div className="flex min-h-screen bg-neutral-background">
@@ -115,23 +160,55 @@ export default function OrderHistoryPage() {
         {!isLoading && !error && orders.length > 0 && (
           <div className="p-4 sm:p-6 bg-off-white border-b border-neutral-border">
             <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
-              <div className="bg-lily-green/10 border border-lily-green rounded-lg p-4">
-                <p className="text-sm text-neutral-text-light mb-1">Total Orders</p>
-                <p className="text-2xl font-bold font-heading text-coffee-brown">
-                  {dailyOrderCount}
-                </p>
+              <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-200">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-lily-green/10 rounded-lg text-lily-green">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-neutral-text-light">Total Orders</p>
+                    <p className="text-2xl font-bold font-heading text-coffee-brown">
+                      {dailyOrderCount}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="bg-coffee-light/10 border border-coffee-light rounded-lg p-4">
-                <p className="text-sm text-neutral-text-light mb-1">Daily Revenue</p>
-                <p className="text-2xl font-bold font-heading text-coffee-brown">
-                  {formatCurrency(dailyTotal)}
-                </p>
+
+              <div 
+                onClick={() => setIsRevenueModalOpen(true)}
+                className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group hover:-translate-y-1"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-coffee-light/10 rounded-lg text-coffee-brown group-hover:bg-coffee-brown group-hover:text-white transition-colors">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-neutral-text-light group-hover:text-coffee-brown transition-colors">Daily Revenue</p>
+                    <p className="text-2xl font-bold font-heading text-coffee-brown">
+                      {formatCurrency(dailyTotal)}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="bg-cream border border-neutral-border rounded-lg p-4">
-                <p className="text-sm text-neutral-text-light mb-1">Average Order</p>
-                <p className="text-2xl font-bold font-heading text-coffee-brown">
-                  {formatCurrency(Math.round(dailyTotal / dailyOrderCount))}
-                </p>
+
+              <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-200">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-neutral-text-light">Average Order</p>
+                    <p className="text-2xl font-bold font-heading text-coffee-brown">
+                      {formatCurrency(dailyOrderCount > 0 ? Math.round(dailyTotal / dailyOrderCount) : 0)}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -197,7 +274,7 @@ export default function OrderHistoryPage() {
                       Time
                     </th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-dark">
-                      Status
+                      Payment Mode
                     </th>
                     <th className="px-6 py-3 text-right text-sm font-semibold text-neutral-text-dark">
                       Total
@@ -234,7 +311,7 @@ export default function OrderHistoryPage() {
                         </p>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="text-sm text-neutral-text-light">—</p>
+                        {renderPaymentMethods(order)}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <p className="font-semibold text-coffee-brown">
@@ -310,6 +387,12 @@ export default function OrderHistoryPage() {
                           {formatDateTime(order.created_at)}
                         </p>
                       </div>
+                      <div className="sm:col-span-2">
+                        <p className="text-neutral-text-light">Payment Mode</p>
+                        <div className="mt-1">
+                          {renderPaymentMethods(order)}
+                        </div>
+                      </div>
                     </div>
 
                     <div className="flex gap-2">
@@ -346,6 +429,17 @@ export default function OrderHistoryPage() {
           gstRateLabel={gstRateLabel}
         />
       )}
+
+      {/* Daily Revenue Modal */}
+      <DailyRevenueModal
+        isOpen={isRevenueModalOpen}
+        onClose={() => setIsRevenueModalOpen(false)}
+        data={{
+          total: dailyTotal,
+          ...paymentBreakdown
+        }}
+        date={selectedDate}
+      />
     </div>
   );
 }

@@ -3,7 +3,7 @@ SQLAlchemy database models for Lily Cafe POS System.
 Defines the schema for menu items, orders, payments, and categories.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 import enum
@@ -33,7 +33,7 @@ class Category(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), unique=True, nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     menu_items = relationship("MenuItem", back_populates="category")
@@ -53,8 +53,8 @@ class MenuItem(Base):
     is_vegetarian = Column(Boolean, default=True)  # True for veg, False for non-veg
     is_beverage = Column(Boolean, default=False)  # True for beverages (tea, coffee, juice, etc.)
     is_available = Column(Boolean, default=True)  # Soft delete flag
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     category = relationship("Category", back_populates="menu_items")
@@ -74,8 +74,8 @@ class Order(Base):
     gst_amount = Column(Integer, nullable=False)  # GST amount in paise
     total_amount = Column(Integer, nullable=False)  # Final total in paise
     status = Column(SQLEnum(OrderStatus), default=OrderStatus.ACTIVE, nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationships
     order_items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
@@ -113,7 +113,7 @@ class Payment(Base):
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
     payment_method = Column(SQLEnum(PaymentMethod), nullable=False)
     amount = Column(Integer, nullable=False)  # Amount in paise
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     order = relationship("Order", back_populates="payments")

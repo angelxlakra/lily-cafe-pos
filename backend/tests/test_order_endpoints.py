@@ -525,8 +525,8 @@ def test_order_response_includes_gst_breakdown(client: TestClient, sample_menu_i
 
     # Verify calculation: ₹80 (8000 paise)
     assert data["subtotal"] == 8000
-    assert data["gst_amount"] == 1440  # 18% of 8000
-    assert data["total_amount"] == 9440  # 8000 + 1440
+    assert data["gst_amount"] == 400  # 5% of 8000
+    assert data["total_amount"] == 8400  # 8000 + 400
 
 
 def test_order_items_include_snapshots(client: TestClient, sample_menu_items):

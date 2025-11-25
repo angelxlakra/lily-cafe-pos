@@ -192,11 +192,12 @@ def test_create_order_updates_existing(db: Session, sample_menu_items):
     assert order2.id == original_order_id
     assert order2.order_number == original_order_number
     assert len(order2.order_items) == 2
-    assert order2.order_items[0].quantity == 2
+    # Quantity should be 1 (original) + 2 (new) = 3
+    assert order2.order_items[0].quantity == 3
 
 
-def test_create_order_replaces_items_completely(db: Session, sample_menu_items):
-    """Test that updating an order replaces items (doesn't merge)."""
+def test_create_order_merges_items(db: Session, sample_menu_items):
+    """Test that updating an order merges items (upsert behavior)."""
     # Create order with Dosa
     order_data_1 = OrderCreate(
         table_number=5,
@@ -211,9 +212,13 @@ def test_create_order_replaces_items_completely(db: Session, sample_menu_items):
     )
     order2, _ = crud.create_order(db, order_data_2)
 
-    # Should only have Coffee now, not Dosa
-    assert len(order2.order_items) == 1
-    assert order2.order_items[0].menu_item_id == sample_menu_items[1].id
+    # Should have both Dosa and Coffee
+    assert len(order2.order_items) == 2
+    
+    # Verify items
+    item_ids = [item.menu_item_id for item in order2.order_items]
+    assert sample_menu_items[0].id in item_ids
+    assert sample_menu_items[1].id in item_ids
 
 
 # ============================================================================
@@ -230,11 +235,11 @@ def test_gst_calculation_18_percent(db: Session, sample_menu_items):
     order, _ = crud.create_order(db, order_data)
 
     # Masala Dosa: ₹80 (8000 paise)
-    # GST 18%: 8000 * 0.18 = 1440 paise
-    # Total: 8000 + 1440 = 9440 paise
+    # GST 5%: 8000 * 0.05 = 400 paise
+    # Total: 8000 + 400 = 8400 paise
     assert order.subtotal == 8000
-    assert order.gst_amount == 1440
-    assert order.total_amount == 9440
+    assert order.gst_amount == 400
+    assert order.total_amount == 8400
 
 
 def test_gst_calculation_multiple_items(db: Session, sample_menu_items):
@@ -249,11 +254,11 @@ def test_gst_calculation_multiple_items(db: Session, sample_menu_items):
     order, _ = crud.create_order(db, order_data)
 
     # Subtotal: 16000 + 12000 = 28000
-    # GST 18%: 28000 * 0.18 = 5040
-    # Total: 28000 + 5040 = 33040
+    # GST 5%: 28000 * 0.05 = 1400
+    # Total: 28000 + 1400 = 29400
     assert order.subtotal == 28000
-    assert order.gst_amount == 5040
-    assert order.total_amount == 33040
+    assert order.gst_amount == 1400
+    assert order.total_amount == 29400
 
 
 def test_gst_recalculated_on_update(db: Session, sample_menu_items):
@@ -277,9 +282,9 @@ def test_gst_recalculated_on_update(db: Session, sample_menu_items):
     order2, _ = crud.create_order(db, order_data_2)
 
     # GST should be recalculated
-    # New subtotal: (2 * 8000) + (1 * 4000) = 20000
-    # New GST: 20000 * 0.18 = 3600
-    assert order2.gst_amount == 3600
+    # New subtotal: (3 * 8000) + (1 * 4000) = 24000 + 4000 = 28000
+    # New GST: 28000 * 0.05 = 1400
+    assert order2.gst_amount == 1400
     assert order2.gst_amount != initial_gst
 
 
@@ -449,8 +454,8 @@ def test_admin_edit_recalculates_totals(db: Session, sample_menu_items):
 
     # Same subtotal but verify recalculation happened
     assert updated_order.subtotal == 8000
-    assert updated_order.gst_amount == 1440  # 18% of 8000
-    assert updated_order.total_amount == 9440
+    assert updated_order.gst_amount == 400  # 5% of 8000
+    assert updated_order.total_amount == 8400
 
 
 def test_admin_edit_nonexistent_order(db: Session):

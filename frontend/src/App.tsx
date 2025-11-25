@@ -104,7 +104,7 @@ function App() {
             <button
               onClick={handlePrintReceipt}
               disabled={isPrinting}
-              className="btn bg-info text-white hover:bg-[#1976D2] disabled:bg-neutral-border disabled:cursor-not-allowed"
+              className="btn bg-info text-white hover:opacity-90 disabled:bg-neutral-border disabled:cursor-not-allowed"
             >
               {isPrinting ? (
                 <span className="flex items-center gap-2">
@@ -137,7 +137,7 @@ function App() {
             <button
               onClick={handleViewReceipt}
               disabled={isPrinting}
-              className="btn bg-lily-green text-white hover:bg-[#7A8C75] disabled:bg-neutral-border disabled:cursor-not-allowed"
+              className="btn bg-lily-green text-white hover:opacity-90 disabled:bg-neutral-border disabled:cursor-not-allowed"
             >
               {isPrinting ? (
                 <span className="flex items-center gap-2">
@@ -195,7 +195,7 @@ function App() {
           <div className="mt-6">
             <a
               href="/api-test"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-info text-white rounded-lg hover:bg-[#1976D2] transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-info text-white rounded-lg hover:opacity-90 transition-colors"
             >
               <Flask size={18} weight="duotone" />
               Test API Client
