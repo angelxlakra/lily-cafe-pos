@@ -24,7 +24,7 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const { resolvedTheme } = useTheme();
+  const { } = useTheme();
 
   const handleLogout = () => {
     logout();
