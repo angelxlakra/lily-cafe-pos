@@ -155,7 +155,7 @@ export default function ApiTestPage() {
               <button
                 onClick={testLogout}
                 disabled={!auth.isAuthenticated}
-                className="btn w-full bg-error text-white hover:bg-[#d32f2f] disabled:bg-neutral-border"
+                className="btn w-full bg-error text-white hover:opacity-90 disabled:bg-neutral-border"
               >
                 Test Logout
               </button>
@@ -167,20 +167,20 @@ export default function ApiTestPage() {
               <button
                 onClick={testGetMenu}
                 disabled={menu.isLoading}
-                className="btn w-full bg-lily-green text-white hover:bg-[#7A8C75] disabled:bg-neutral-border"
+                className="btn w-full bg-lily-green text-white hover:opacity-90 disabled:bg-neutral-border"
               >
                 {menu.isLoading ? 'Loading...' : 'Get Menu Items'}
               </button>
               <button
                 onClick={testGetCategories}
-                className="btn w-full bg-lily-green text-white hover:bg-[#7A8C75] disabled:bg-neutral-border"
+                className="btn w-full bg-lily-green text-white hover:opacity-90 disabled:bg-neutral-border"
               >
                 Get Categories
               </button>
               <button
                 onClick={testCreateMenuItem}
                 disabled={!auth.isAuthenticated || menu.isMutating}
-                className="btn w-full bg-info text-white hover:bg-[#1976D2] disabled:bg-neutral-border"
+                className="btn w-full bg-info text-white hover:opacity-90 disabled:bg-neutral-border"
               >
                 {menu.isMutating ? 'Creating...' : 'Create Menu Item (Auth)'}
               </button>
@@ -192,14 +192,14 @@ export default function ApiTestPage() {
               <button
                 onClick={testGetActiveOrders}
                 disabled={orders.isLoading}
-                className="btn w-full bg-lily-green text-white hover:bg-[#7A8C75] disabled:bg-neutral-border"
+                className="btn w-full bg-lily-green text-white hover:opacity-90 disabled:bg-neutral-border"
               >
                 {orders.isLoading ? 'Loading...' : 'Get Active Orders'}
               </button>
               <button
                 onClick={testCreateOrder}
                 disabled={orders.isMutating || !menu.items.data}
-                className="btn w-full bg-info text-white hover:bg-[#1976D2] disabled:bg-neutral-border"
+                className="btn w-full bg-info text-white hover:opacity-90 disabled:bg-neutral-border"
               >
                 {orders.isMutating ? 'Creating...' : 'Create Test Order'}
               </button>
@@ -210,7 +210,7 @@ export default function ApiTestPage() {
               <h3 className="font-semibold text-coffee-brown">Controls</h3>
               <button
                 onClick={clearResults}
-                className="btn w-full bg-warning text-white hover:bg-[#F57C00]"
+                className="btn w-full bg-warning text-white hover:opacity-90"
               >
                 Clear Results
               </button>

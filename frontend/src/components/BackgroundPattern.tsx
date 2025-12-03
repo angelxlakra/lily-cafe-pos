@@ -39,7 +39,7 @@ export default function BackgroundPattern({
             height={spacing}
             patternUnits="userSpaceOnUse"
           >
-            {/* Coffee Bean - You'll replace this with your ChatGPT generated SVG */}
+            {/* Coffee Bean */}
             <g transform="translate(20, 20)">
               <ellipse
                 cx="12"
@@ -47,23 +47,23 @@ export default function BackgroundPattern({
                 rx="8"
                 ry="10"
                 fill="none"
-                stroke="#A0826D"
+                stroke="var(--color-coffee-light)"
                 strokeWidth="1.5"
               />
               <path
                 d="M 12 6 Q 8 12 12 18"
                 fill="none"
-                stroke="#A0826D"
+                stroke="var(--color-coffee-light)"
                 strokeWidth="1.5"
               />
             </g>
 
-            {/* Coffee Cup - You'll replace this with your ChatGPT generated SVG */}
+            {/* Coffee Cup */}
             <g transform="translate(60, 60)">
               <path
                 d="M 8 16 L 6 24 L 18 24 L 16 16 Z"
                 fill="none"
-                stroke="#A0826D"
+                stroke="var(--color-coffee-light)"
                 strokeWidth="1.5"
                 strokeLinejoin="round"
               />
@@ -72,21 +72,21 @@ export default function BackgroundPattern({
                 y1="16"
                 x2="18"
                 y2="16"
-                stroke="#A0826D"
+                stroke="var(--color-coffee-light)"
                 strokeWidth="1.5"
               />
               {/* Steam */}
               <path
                 d="M 9 14 Q 9 12 10 12 Q 11 12 11 10"
                 fill="none"
-                stroke="#A0826D"
+                stroke="var(--color-coffee-light)"
                 strokeWidth="1"
                 opacity="0.6"
               />
               <path
                 d="M 13 14 Q 13 12 14 12 Q 15 12 15 10"
                 fill="none"
-                stroke="#A0826D"
+                stroke="var(--color-coffee-light)"
                 strokeWidth="1"
                 opacity="0.6"
               />
