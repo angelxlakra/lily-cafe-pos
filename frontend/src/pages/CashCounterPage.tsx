@@ -135,7 +135,12 @@ function OpenCounterForm() {
     e.preventDefault();
     if (!amount) return;
     try {
-      await openCounter.mutateAsync({ opening_balance: Number(amount), notes });
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+      await openCounter.mutateAsync({
+        date: today,
+        opening_balance: Number(amount),
+        notes
+      });
     } catch (error) {
       console.error("Failed to open counter", error);
     }
@@ -191,7 +196,12 @@ function CloseCounterForm({ counter: _counter }: { counter: any }) {
     if (!amount) return;
     if (window.confirm('Are you sure you want to close the counter? This cannot be undone.')) {
       try {
-        await closeCounter.mutateAsync({ closing_balance: Number(amount), notes });
+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+        await closeCounter.mutateAsync({
+          date: today,
+          closing_balance: Number(amount),
+          notes
+        });
       } catch (error) {
         console.error("Failed to close counter", error);
       }

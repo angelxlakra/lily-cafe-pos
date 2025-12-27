@@ -17,11 +17,13 @@ export interface DailyCashCounter {
 }
 
 export interface CashCounterOpen {
+  date: string; // ISO date format (YYYY-MM-DD)
   opening_balance: number;
   notes?: string;
 }
 
 export interface CashCounterClose {
+  date: string; // ISO date format (YYYY-MM-DD)
   closing_balance: number;
   notes?: string;
 }
