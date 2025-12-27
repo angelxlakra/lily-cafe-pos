@@ -8,11 +8,12 @@ import Sidebar from '../components/Sidebar';
 import PaymentModal from '../components/PaymentModal';
 import EditOrderModal from '../components/EditOrderModal';
 import EmptyState from '../components/EmptyState';
+import PartialServeModal from '../components/PartialServeModal';
 import { useActiveOrders, useCancelOrder, useUpdateItemServedStatus } from '../hooks/useOrders';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatDateTime } from '../utils/formatDateTime';
 import { ClipboardText } from '@phosphor-icons/react';
-import type { Order } from '../types';
+import type { Order, OrderItem } from '../types';
 
 export default function AdminActiveOrdersPage() {
   const { data: activeOrders, isLoading, error } = useActiveOrders();
@@ -20,22 +21,23 @@ export default function AdminActiveOrdersPage() {
   const [editOrder, setEditOrder] = useState<Order | null>(null);
   const [cancelOrderId, setCancelOrderId] = useState<number | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [serveModalData, setServeModalData] = useState<{ item: OrderItem; orderId: number } | null>(null);
 
   const cancelMutation = useCancelOrder();
   const updateServedMutation = useUpdateItemServedStatus();
 
   const orders = activeOrders || [];
 
-  const handleToggleServed = (orderId: number, itemId: number, isServed: boolean) => {
-    console.log('Toggling served status:', { orderId, itemId, isServed });
+  const handleServeItem = (orderId: number, itemId: number, quantityToServe: number) => {
+    console.log('Serving items:', { orderId, itemId, quantityToServe });
     updateServedMutation.mutate(
-      { orderId, itemId, isServed },
+      { orderId, itemId, quantityToServe },
       {
         onError: (error) => {
-          console.error('Error updating served status:', error);
+          console.error('Error updating served quantity:', error);
         },
         onSuccess: () => {
-          console.log('Successfully updated served status');
+          console.log('Successfully updated served quantity');
         },
       }
     );
@@ -125,7 +127,7 @@ export default function AdminActiveOrdersPage() {
                   onEdit={() => setEditOrder(order)}
                   onGenerateBill={() => handleGenerateBill(order.id)}
                   onCancel={() => setCancelOrderId(order.id)}
-                  onToggleServed={(itemId, isServed) => handleToggleServed(order.id, itemId, isServed)}
+                  onOpenServeModal={(item) => setServeModalData({ item, orderId: order.id })}
                 />
               ))}
             </div>
@@ -157,6 +159,16 @@ export default function AdminActiveOrdersPage() {
           isLoading={cancelMutation.isPending}
         />
       )}
+
+      {/* Partial Serve Modal */}
+      {serveModalData && (
+        <PartialServeModal
+          item={serveModalData.item}
+          orderId={serveModalData.orderId}
+          onServe={handleServeItem}
+          onClose={() => setServeModalData(null)}
+        />
+      )}
     </div>
   );
 }
@@ -167,10 +179,10 @@ interface OrderCardProps {
   onEdit: () => void;
   onGenerateBill: () => void;
   onCancel: () => void;
-  onToggleServed: (itemId: number, isServed: boolean) => void;
+  onOpenServeModal: (item: OrderItem) => void;
 }
 
-function OrderCard({ order, onEdit, onGenerateBill, onCancel, onToggleServed }: OrderCardProps) {
+function OrderCard({ order, onEdit, onGenerateBill, onCancel, onOpenServeModal }: OrderCardProps) {
   const [showItems, setShowItems] = useState(false);
   const itemCount = order.order_items?.length || 0;
 
@@ -226,33 +238,45 @@ function OrderCard({ order, onEdit, onGenerateBill, onCancel, onToggleServed }: 
             <table className="w-full text-sm">
               <thead className="bg-neutral-background border-b border-neutral-border sticky top-0">
                 <tr>
-                  <th className="text-center p-2 font-semibold text-neutral-text-dark w-12">Served</th>
+                  <th className="text-center p-2 font-semibold text-neutral-text-dark w-16">Status</th>
                   <th className="text-left p-2 font-semibold text-neutral-text-dark">Item</th>
                   <th className="text-center p-2 font-semibold text-neutral-text-dark">Qty</th>
-                  <th className="text-right p-2 font-semibold text-neutral-text-dark">Price</th>
+                  <th className="text-center p-2 font-semibold text-neutral-text-dark w-24">Serve</th>
                 </tr>
               </thead>
               <tbody>
                 {order.order_items.map((item) => (
                   <tr key={item.id} className="border-b border-neutral-border last:border-0 hover:bg-neutral-background/50 transition-colors">
                     <td className="p-2 text-center" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={item.is_served || false}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          onToggleServed(item.id, e.target.checked);
-                        }}
-                        className="w-4 h-4 rounded border-neutral-border text-coffee-brown focus:ring-coffee-brown focus:ring-offset-0 cursor-pointer"
-                        aria-label={`Mark ${item.menu_item_name} as served`}
-                      />
+                      {item.is_served ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-lily-green px-2.5 py-1 rounded-full shadow-sm whitespace-nowrap">
+                          ✓ Done
+                        </span>
+                      ) : item.quantity_served > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-orange-800 bg-orange-100 px-2.5 py-1 rounded-full border border-orange-200 whitespace-nowrap">
+                          {item.quantity_served}/{item.quantity}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-neutral-text-light bg-neutral-background px-2.5 py-1 rounded-full border border-neutral-border whitespace-nowrap">
+                          Pending
+                        </span>
+                      )}
                     </td>
                     <td className={`p-2 text-neutral-text-dark ${item.is_served ? 'line-through opacity-60' : ''}`}>
                       {item.menu_item_name}
                     </td>
                     <td className="p-2 text-center text-neutral-text-light">{item.quantity}</td>
-                    <td className="p-2 text-right text-neutral-text-dark font-medium">
-                      {formatCurrency(item.subtotal)}
+                    <td className="p-2 text-center" onClick={(e) => e.stopPropagation()}>
+                      {!item.is_served && (
+                        <button
+                          onClick={() => onOpenServeModal(item)}
+                          className="text-xs font-medium text-coffee-brown hover:text-coffee-dark
+                                     bg-coffee-brown/10 hover:bg-coffee-brown/20 px-3 py-1.5 rounded-lg
+                                     transition-colors"
+                        >
+                          Serve
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
