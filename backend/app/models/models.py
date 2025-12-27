@@ -94,6 +94,7 @@ class OrderItem(Base):
     # Snapshot fields - preserve menu item details at time of order
     menu_item_name = Column(String(200), nullable=False)
     quantity = Column(Integer, nullable=False)
+    quantity_served = Column(Integer, default=0, nullable=False)  # Track how many items have been served
     unit_price = Column(Integer, nullable=False)  # Price in paise at time of order
     subtotal = Column(Integer, nullable=False)  # quantity * unit_price
     is_beverage = Column(Boolean, default=False)  # Snapshot of is_beverage at time of order

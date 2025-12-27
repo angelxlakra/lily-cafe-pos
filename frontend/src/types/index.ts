@@ -74,6 +74,7 @@ export interface OrderItem {
   menu_item_id: number;
   menu_item_name: string;
   quantity: number;
+  quantity_served: number;
   unit_price: number; // Price in paise
   subtotal: number; // Price in paise
   is_served: boolean;

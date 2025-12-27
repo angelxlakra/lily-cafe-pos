@@ -210,30 +210,32 @@ def get_active_table_order(table_number: int, db: Session = Depends(get_db)):
 def update_item_served_status(
     order_id: int,
     item_id: int,
-    is_served: bool,
+    quantity_to_serve: int,
     db: Session = Depends(get_db),
 ):
     """
-    Update the served status of an order item.
+    Update the served quantity of an order item.
 
-    Used by admin to track which items have been served to customers.
+    Used by admin to track how many items have been served to customers.
+    Supports partial serving (e.g., serving 2 out of 5 items).
 
     Args:
         order_id: The order ID
         item_id: The order item ID
-        is_served: True to mark as served, False to unmark
+        quantity_to_serve: Number of items to mark as served (adds to current quantity_served)
 
     Returns:
         Success message with updated item info
     """
     try:
-        updated_item = crud.update_order_item_served_status(db, order_id, item_id, is_served)
+        updated_item = crud.update_order_item_served_quantity(db, order_id, item_id, quantity_to_serve)
         if not updated_item:
             raise HTTPException(status_code=404, detail="Order item not found")
         return {
-            "message": "Item served status updated successfully",
+            "message": "Item served quantity updated successfully",
             "item_id": item_id,
-            "is_served": is_served
+            "quantity_served": updated_item.quantity_served,
+            "is_served": updated_item.is_served
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -299,6 +301,40 @@ def create_payments_batch(
 
     try:
         return crud.create_payments_batch(db, order_id, payment_batch.payments)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
+@router.put(
+    "/{order_id}/payments",
+    response_model=List[schemas.Payment],
+)
+def update_order_payments(
+    order_id: int,
+    payment_batch: schemas.PaymentBatchCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Replace all payments for an order (edit payment methods).
+
+    This endpoint allows editing payment methods for already-paid orders.
+    Useful for correcting payment method errors in order history.
+
+    - Deletes all existing payments
+    - Creates new payments with provided methods
+    - Validates total matches order total
+    - Requires authentication (admin only)
+
+    Example request:
+    {
+        "payments": [
+            {"payment_method": "cash", "amount": 23600}
+        ]
+    }
+    """
+    try:
+        return crud.replace_order_payments(db, order_id, payment_batch.payments)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 

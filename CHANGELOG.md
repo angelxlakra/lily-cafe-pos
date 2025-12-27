@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added (v0.2 - In Development)
+### Added (v0.2.0 - In Development)
 - ✅ **Inventory categories backend API** (CRUD endpoints for category management)
   - Database model with name, description, timestamps
   - REST API endpoints: GET, POST, PATCH, DELETE
@@ -23,6 +23,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Daily cash counter with opening/closing balance tracking - _Planned_
 - Owner verification system for cash counter - _Planned_
 - Cash variance calculations - _Planned_
+
+---
+
+## [0.1.2] - 2025-12-27
+
+### Added
+- **Partial serving with quantity tracking**
+  - New `quantity_served` field in OrderItem model
+  - Track how many items have been served vs ordered (e.g., 2 out of 5)
+  - Visual slider modal to select quantity to serve
+  - Quick buttons: None, Half, All
+  - Status badges show: Done (✓), Partial (X/Y), or Pending
+  - Real-time progress tracking per order item
+  - Database migration script for existing installations
+
+- **Payment method editing in order history**
+  - Edit payment modes for completed orders
+  - Replace/modify payment methods (e.g., change Cash to UPI)
+  - Split payments differently after order completion
+  - Modal with payment method selector and live validation
+  - "Add remaining" quick button for convenience
+  - Visual feedback ensures total matches order amount
+  - Admin authentication required
+
+- **Claude Code development guidelines**
+  - Added CLAUDE.md with Python environment instructions
+  - Standardized use of `uv` for all backend operations
+
+### Changed
+- Active Orders page: Replaced checkbox with status badges
+- Active Orders page: Replaced Price column with Serve button
+- Order History page: Added Edit button for payment methods
+- API endpoint `/orders/{id}/items/{item_id}/served` now accepts `quantity_to_serve` parameter
+- Payment update endpoint uses `refetchQueries` for immediate UI updates
+
+### Fixed
+- Preserved `quantity_served` count when adding duplicate items to order
+  - Previously reset to 0, now maintains serving progress
+- Status badge styling now uses lily-green theme color
+  - Replaced generic green with app's coffee shop theme
+  - Added `whitespace-nowrap` to prevent text wrapping in badges
+
+### Technical
+- Backend: New CRUD function `update_order_item_served_quantity()`
+- Backend: New CRUD function `replace_order_payments()`
+- Backend: New API endpoint `PUT /orders/{id}/payments`
+- Frontend: New component `PartialServeModal.tsx`
+- Frontend: New component `EditPaymentsModal.tsx`
+- Frontend: New React Query hook `useUpdatePayments()`
+- Database: Added `quantity_served INTEGER DEFAULT 0` column
 
 ---
 
@@ -100,6 +150,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **v0.1.0** (Nov 11, 2025) - Initial MVP with core POS functionality
 - **v0.1.1** (Jan 12, 2025) - Dark mode theme toggle
+- **v0.1.2** (Dec 27, 2025) - Partial serving & payment editing
 - **v0.2.0** (Planned) - Inventory management and cash counter
 
 ---

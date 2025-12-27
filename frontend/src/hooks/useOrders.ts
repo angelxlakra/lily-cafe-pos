@@ -213,10 +213,10 @@ export const useUpdateItemServedStatus = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ orderId, itemId, isServed }: { orderId: number; itemId: number; isServed: boolean }) =>
-      ordersApi.updateItemServedStatus(orderId, itemId, isServed),
+    mutationFn: ({ orderId, itemId, quantityToServe }: { orderId: number; itemId: number; quantityToServe: number }) =>
+      ordersApi.updateItemServedStatus(orderId, itemId, quantityToServe),
     // Optimistic update for instant feedback
-    onMutate: async ({ orderId, itemId, isServed }) => {
+    onMutate: async ({ orderId, itemId, quantityToServe }) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ordersQueryKeys.active });
 
@@ -230,9 +230,20 @@ export const useUpdateItemServedStatus = () => {
           if (order.id === orderId) {
             return {
               ...order,
-              order_items: order.order_items.map((item) =>
-                item.id === itemId ? { ...item, is_served: isServed } : item
-              ),
+              order_items: order.order_items.map((item) => {
+                if (item.id === itemId) {
+                  const newQuantityServed = Math.min(
+                    item.quantity_served + quantityToServe,
+                    item.quantity
+                  );
+                  return {
+                    ...item,
+                    quantity_served: newQuantityServed,
+                    is_served: newQuantityServed >= item.quantity,
+                  };
+                }
+                return item;
+              }),
             };
           }
           return order;
@@ -286,6 +297,38 @@ export const useAddPayments = () => {
       queryClient.invalidateQueries({ queryKey: ordersQueryKeys.history() });
       // Refresh order detail cache
       queryClient.invalidateQueries({ queryKey: ordersQueryKeys.detail(variables.orderId) });
+    },
+  });
+};
+
+/**
+ * Hook to update/replace payments for an order
+ *
+ * @example
+ * ```tsx
+ * const { mutate: updatePayments } = useUpdatePayments();
+ *
+ * updatePayments({
+ *   orderId: 10,
+ *   data: {
+ *     payments: [
+ *       { payment_method: 'cash', amount: 23600 },
+ *     ],
+ *   },
+ * });
+ * ```
+ */
+export const useUpdatePayments = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ orderId, data }: { orderId: number; data: AddPaymentRequest }) =>
+      paymentsApi.updatePayments(orderId, data),
+    onSuccess: async (_payments, variables) => {
+      // Refetch order history to refresh with updated payment methods
+      await queryClient.refetchQueries({ queryKey: ordersQueryKeys.history() });
+      // Refresh order detail cache
+      await queryClient.refetchQueries({ queryKey: ordersQueryKeys.detail(variables.orderId) });
     },
   });
 };

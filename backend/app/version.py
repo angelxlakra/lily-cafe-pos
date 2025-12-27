@@ -2,13 +2,14 @@
 Version information for Lily Cafe POS System
 """
 
-__version__ = "0.1.0"
-__version_info__ = (0, 1, 0)
+__version__ = "0.1.2"
+__version_info__ = (0, 1, 2)
 
 # Version history
 VERSION_HISTORY = {
     "0.1.0": "2025-11-11 - Initial MVP release with core POS functionality",
-    # "0.2.0": "TBD - Inventory management and cash counter",
+    "0.1.1": "2025-01-12 - Dark mode theme toggle",
+    "0.1.2": "2025-12-27 - Partial serving & payment editing",
 }
 
 def get_version() -> str:

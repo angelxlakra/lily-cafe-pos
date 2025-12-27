@@ -290,6 +290,8 @@ def create_order(db: Session, order: schemas.OrderCreate) -> tuple[models.Order,
                 old_quantity = existing_item.quantity
                 existing_item.quantity += item.quantity
                 existing_item.subtotal = existing_item.quantity * existing_item.unit_price
+                # Reset served flag when adding more items (keep quantity_served count)
+                existing_item.is_served = False
 
                 # Create a virtual OrderItem for the NEW quantity only (for chit printing)
                 new_item_chit = models.OrderItem(
@@ -563,6 +565,49 @@ def update_order_item_served_status(
     return order_item
 
 
+def update_order_item_served_quantity(
+    db: Session, order_id: int, item_id: int, quantity_to_serve: int
+) -> Optional[models.OrderItem]:
+    """
+    Update the served quantity of an order item (supports partial serving).
+
+    Args:
+        db: Database session
+        order_id: Order ID
+        item_id: Order item ID
+        quantity_to_serve: Number of items to add to quantity_served
+
+    Returns:
+        Updated order item, or None if not found
+
+    Raises:
+        ValueError: If item doesn't belong to order or quantity invalid
+    """
+    # Get the order item
+    order_item = db.query(models.OrderItem).filter(models.OrderItem.id == item_id).first()
+    if not order_item:
+        return None
+
+    # Verify the item belongs to the specified order
+    if order_item.order_id != order_id:
+        raise ValueError(f"Order item {item_id} does not belong to order {order_id}")
+
+    # Validate quantity_to_serve
+    if quantity_to_serve < 0:
+        raise ValueError("Quantity to serve cannot be negative")
+
+    # Update quantity_served (capped at total quantity)
+    new_quantity_served = order_item.quantity_served + quantity_to_serve
+    order_item.quantity_served = min(new_quantity_served, order_item.quantity)
+
+    # Update is_served flag based on whether all items are served
+    order_item.is_served = order_item.quantity_served >= order_item.quantity
+
+    db.commit()
+    db.refresh(order_item)
+    return order_item
+
+
 # ============================================================================
 # Payment Operations
 # ============================================================================
@@ -682,6 +727,70 @@ def create_payments_batch(
 
     db.commit()
 
+    for payment in created_payments:
+        db.refresh(payment)
+    db.refresh(order)
+
+    return created_payments
+
+
+def replace_order_payments(
+    db: Session, order_id: int, payments: List[schemas.PaymentCreate]
+) -> List[models.Payment]:
+    """
+    Replace all payments for an order (used to edit payment methods).
+
+    Deletes existing payments and creates new ones. Validates that:
+    1. Order exists and is paid
+    2. New payment total matches order total
+
+    Args:
+        db: Database session
+        order_id: Order ID
+        payments: List of new payments to replace existing ones
+
+    Returns:
+        List of created payments
+
+    Raises:
+        ValueError: If order not found, not paid, or total doesn't match
+    """
+    order = get_order(db, order_id)
+
+    if not order:
+        raise ValueError(f"Order {order_id} not found")
+
+    if order.status != models.OrderStatus.PAID:
+        raise ValueError("Can only edit payments for paid orders")
+
+    # Validate new payment total matches order total
+    new_payments_total = sum(p.amount for p in payments)
+
+    if new_payments_total != order.total_amount:
+        raise ValueError(
+            f"Payment total {new_payments_total} does not match order total {order.total_amount}"
+        )
+
+    # Delete existing payments
+    db.query(models.Payment).filter(models.Payment.order_id == order_id).delete()
+
+    # Create new payments
+    created_payments = []
+    for payment in payments:
+        db_payment = models.Payment(
+            order_id=order_id,
+            payment_method=payment.payment_method,
+            amount=payment.amount
+        )
+        db.add(db_payment)
+        created_payments.append(db_payment)
+
+    # Update order timestamp
+    order.updated_at = datetime.utcnow()
+
+    db.commit()
+
+    # Refresh all objects
     for payment in created_payments:
         db.refresh(payment)
     db.refresh(order)

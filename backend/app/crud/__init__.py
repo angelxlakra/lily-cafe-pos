@@ -23,10 +23,12 @@ from app.crud.crud import (
     admin_edit_order,
     cancel_order,
     update_order_item_served_status,
+    update_order_item_served_quantity,
     # Payment operations
     create_payment,
     create_payments_batch,
     get_payments_for_order,
+    replace_order_payments,
 )
 
 __all__ = [
@@ -50,8 +52,10 @@ __all__ = [
     "admin_edit_order",
     "cancel_order",
     "update_order_item_served_status",
+    "update_order_item_served_quantity",
     # Payments
     "create_payment",
     "create_payments_batch",
     "get_payments_for_order",
+    "replace_order_payments",
 ]

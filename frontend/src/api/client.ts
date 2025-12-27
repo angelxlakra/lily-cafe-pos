@@ -312,15 +312,15 @@ export const ordersApi = {
   },
 
   /**
-   * Update the served status of an order item
+   * Update the served quantity of an order item (supports partial serving)
    */
   updateItemServedStatus: async (
     orderId: number,
     itemId: number,
-    isServed: boolean
-  ): Promise<{ message: string; item_id: number; is_served: boolean }> => {
-    const response = await apiClient.patch<{ message: string; item_id: number; is_served: boolean }>(
-      `/orders/${orderId}/items/${itemId}/served?is_served=${isServed}`
+    quantityToServe: number
+  ): Promise<{ message: string; item_id: number; quantity_served: number; is_served: boolean }> => {
+    const response = await apiClient.patch<{ message: string; item_id: number; quantity_served: number; is_served: boolean }>(
+      `/orders/${orderId}/items/${itemId}/served?quantity_to_serve=${quantityToServe}`
     );
     return response.data;
   },
@@ -340,6 +340,20 @@ export const paymentsApi = {
   ): Promise<Payment[]> => {
     const response = await apiClient.post<Payment[]>(
       `/orders/${orderId}/payments/batch`,
+      data
+    );
+    return response.data;
+  },
+
+  /**
+   * Update/replace all payments for an order (requires auth)
+   */
+  updatePayments: async (
+    orderId: number,
+    data: AddPaymentRequest
+  ): Promise<Payment[]> => {
+    const response = await apiClient.put<Payment[]>(
+      `/orders/${orderId}/payments`,
       data
     );
     return response.data;
