@@ -6,15 +6,16 @@
 import { useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import EmptyState from '../components/EmptyState';
-import { useOrderHistory, useOrder } from '../hooks/useOrders';
+import { useOrderHistory, useOrder, useUpdatePayments } from '../hooks/useOrders';
 import { useAppConfig } from '../hooks/useConfig';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatDateTime } from '../utils/formatDateTime';
-import { CalendarDots, Printer } from '@phosphor-icons/react';
+import { CalendarDots, Printer, PencilSimple } from '@phosphor-icons/react';
 import { UpiIcon, CashIcon, CardIcon } from '../components/icons/PaymentIcons';
 import DailyRevenueModal from '../components/DailyRevenueModal';
+import EditPaymentsModal from '../components/EditPaymentsModal';
 import { paymentsApi } from '../api/client';
-import type { PaymentMethod } from '../types';
+import type { PaymentMethod, PaymentCreateRequest, Order } from '../types';
 
 export default function OrderHistoryPage() {
   // Get today's date for max date validation
@@ -24,6 +25,7 @@ export default function OrderHistoryPage() {
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
+  const [editPaymentsOrder, setEditPaymentsOrder] = useState<Order | null>(null);
 
   // Payment method icons
   const paymentIcons: Record<PaymentMethod, JSX.Element> = {
@@ -67,6 +69,7 @@ export default function OrderHistoryPage() {
   );
 
   const { data: appConfig } = useAppConfig();
+  const updatePaymentsMutation = useUpdatePayments();
 
   const orders = orderHistory || [];
 
@@ -76,6 +79,22 @@ export default function OrderHistoryPage() {
 
   const handleCloseModal = () => {
     setSelectedOrderId(null);
+  };
+
+  const handleEditPayments = (order: Order) => {
+    setEditPaymentsOrder(order);
+  };
+
+  const handleSavePayments = async (orderId: number, payments: PaymentCreateRequest[]) => {
+    try {
+      await updatePaymentsMutation.mutateAsync({
+        orderId,
+        data: { payments },
+      });
+      setEditPaymentsOrder(null);
+    } catch (error) {
+      console.error('Failed to update payments:', error);
+    }
   };
 
   const handlePrintReceipt = async (orderId: number) => {
@@ -329,6 +348,14 @@ export default function OrderHistoryPage() {
                             <span className="hidden lg:inline">Print</span>
                           </button>
                           <button
+                            onClick={() => handleEditPayments(order)}
+                            className="px-3 py-1 text-sm bg-coffee-brown/10 border border-coffee-brown text-coffee-brown hover:bg-coffee-brown hover:text-white rounded-md transition-colors flex items-center gap-1"
+                            title="Edit Payments"
+                          >
+                            <PencilSimple size={16} weight="bold" />
+                            <span className="hidden lg:inline">Edit</span>
+                          </button>
+                          <button
                             onClick={() => handleViewDetails(order.id)}
                             className="px-3 py-1 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors"
                           >
@@ -405,6 +432,14 @@ export default function OrderHistoryPage() {
                         Print
                       </button>
                       <button
+                        onClick={() => handleEditPayments(order)}
+                        className="px-4 py-2 text-sm bg-coffee-brown/10 border border-coffee-brown text-coffee-brown hover:bg-coffee-brown hover:text-white rounded-md transition-colors flex items-center justify-center gap-1"
+                        title="Edit Payments"
+                      >
+                        <PencilSimple size={16} weight="bold" />
+                        Edit
+                      </button>
+                      <button
                         onClick={() => handleViewDetails(order.id)}
                         className="flex-1 px-4 py-2 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors"
                       >
@@ -427,6 +462,16 @@ export default function OrderHistoryPage() {
           onClose={handleCloseModal}
           onPrintReceipt={handlePrintReceipt}
           gstRateLabel={gstRateLabel}
+        />
+      )}
+
+      {/* Edit Payments Modal */}
+      {editPaymentsOrder && (
+        <EditPaymentsModal
+          order={editPaymentsOrder}
+          onSave={handleSavePayments}
+          onClose={() => setEditPaymentsOrder(null)}
+          isSaving={updatePaymentsMutation.isPending}
         />
       )}
 
