@@ -19,6 +19,7 @@
   --color-off-white: #FAF8F5;
 
   --color-lily-green: #8B9D83;
+  --color-lily-green-light: #A8B89F;
 
   /* Functional colors */
   --color-success: #4CAF50;
@@ -657,4 +658,56 @@ p {
 
 .dark *::-webkit-scrollbar-thumb:hover {
   background-color: rgba(184, 145, 106, 0.6);
+}
+
+/* ============================================
+   INVENTORY MANAGEMENT UTILITIES
+   ============================================ */
+
+/* Touch-optimized controls for mobile inventory counting */
+@utility touch-target-large {
+  min-height: 3rem; /* 48px - WCAG AA touch target minimum */
+  min-width: 3rem;
+  padding: 0.75rem 1rem;
+}
+
+/* Mobile-optimized number input for daily count */
+@utility count-input-mobile {
+  font-size: 1.125rem;
+  font-weight: 700;
+  text-align: center;
+  width: 100%;
+  max-width: 100px;
+  -moz-appearance: textfield; /* Remove spinner in Firefox */
+
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+/* Sticky category headers for inventory sections */
+@utility sticky-category-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: var(--color-coffee-brown);
+  border-bottom: 2px solid var(--color-coffee-dark);
+  box-shadow: 0 2px 8px rgba(44, 36, 32, 0.1);
+}
+
+.dark .sticky-category-header {
+  background-color: #2A2419;
+  border-bottom-color: #1C1812;
+}
+
+/* Hide scrollbar utility */
+@utility scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }

@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { Package, Tag, ClockCounterClockwise, Plus } from '@phosphor-icons/react';
+import { Package, Tag, ClockCounterClockwise, ClipboardText } from '@phosphor-icons/react';
 import BottomNav from '../components/BottomNav';
 import Sidebar from '../components/Sidebar';
 import ThemeToggle from '../components/ThemeToggle';
+import DailyCountTab from '../components/inventory/DailyCountTab';
 import InventoryItemsTab from '../components/inventory/InventoryItemsTab';
 import InventoryCategoriesTab from '../components/inventory/InventoryCategoriesTab';
 import InventoryTransactionsTab from '../components/inventory/InventoryTransactionsTab';
 
-type Tab = 'items' | 'categories' | 'transactions';
+type Tab = 'daily-count' | 'items' | 'categories' | 'transactions';
 
 export default function InventoryPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('items');
+  const [activeTab, setActiveTab] = useState<Tab>('daily-count');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
@@ -39,20 +40,26 @@ export default function InventoryPage() {
 
         {/* Tabs */}
         <div className="flex space-x-1 mt-6 overflow-x-auto pb-1 scrollbar-hide">
-          <TabButton 
-            active={activeTab === 'items'} 
+          <TabButton
+            active={activeTab === 'daily-count'}
+            onClick={() => setActiveTab('daily-count')}
+            icon={<ClipboardText size={20} />}
+            label="Daily Count"
+          />
+          <TabButton
+            active={activeTab === 'items'}
             onClick={() => setActiveTab('items')}
             icon={<Package size={20} />}
             label="Items"
           />
-          <TabButton 
-            active={activeTab === 'categories'} 
+          <TabButton
+            active={activeTab === 'categories'}
             onClick={() => setActiveTab('categories')}
             icon={<Tag size={20} />}
             label="Categories"
           />
-          <TabButton 
-            active={activeTab === 'transactions'} 
+          <TabButton
+            active={activeTab === 'transactions'}
             onClick={() => setActiveTab('transactions')}
             icon={<ClockCounterClockwise size={20} />}
             label="History"
@@ -61,6 +68,7 @@ export default function InventoryPage() {
       </header>
 
       <main className="p-4 lg:p-6 max-w-7xl mx-auto">
+        {activeTab === 'daily-count' && <DailyCountTab />}
         {activeTab === 'items' && <InventoryItemsTab />}
         {activeTab === 'categories' && <InventoryCategoriesTab />}
         {activeTab === 'transactions' && <InventoryTransactionsTab />}
