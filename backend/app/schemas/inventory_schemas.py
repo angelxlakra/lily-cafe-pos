@@ -71,6 +71,17 @@ class AdjustmentCreate(BaseModel):
     new_quantity: Decimal = Field(..., ge=0)
     notes: str = Field(..., min_length=1, max_length=500)
 
+class AdjustmentItem(BaseModel):
+    """Single item adjustment for batch operations."""
+    item_id: int
+    new_quantity: Decimal = Field(..., ge=0)
+    notes: Optional[str] = Field(None, max_length=500)
+
+class BatchAdjustmentCreate(BaseModel):
+    """Batch adjustment for daily inventory count."""
+    adjustments: List[AdjustmentItem]
+    recorded_by: str = Field(..., min_length=1, max_length=100)
+
 class InventoryTransaction(BaseModel):
     id: int
     item_id: int

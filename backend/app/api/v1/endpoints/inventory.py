@@ -368,6 +368,85 @@ def record_adjustment(adjustment: inventory_schemas.AdjustmentCreate, db: Sessio
         "created_at": transaction.created_at
     }
 
+@router.post("/transactions/batch-adjustment", status_code=status.HTTP_201_CREATED)
+def record_batch_adjustment(
+    batch: inventory_schemas.BatchAdjustmentCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Record multiple inventory adjustments at once (daily count).
+
+    This endpoint is optimized for end-of-day inventory counts where
+    staff updates quantities for many items at once. All adjustments
+    are processed atomically - either all succeed or all fail.
+    """
+    # Validate all items exist first
+    item_ids = [adj.item_id for adj in batch.adjustments]
+    items = db.query(InventoryItem).filter(InventoryItem.id.in_(item_ids)).all()
+
+    if len(items) != len(set(item_ids)):
+        raise HTTPException(
+            status_code=404,
+            detail="One or more items not found"
+        )
+
+    # Create a map for quick lookup
+    items_map = {item.id: item for item in items}
+
+    # Process all adjustments
+    created_transactions = []
+    updated_items = []
+
+    for adjustment in batch.adjustments:
+        item = items_map.get(adjustment.item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail=f"Item {adjustment.item_id} not found")
+
+        previous_qty = item.current_quantity
+        new_qty = adjustment.new_quantity
+        diff = new_qty - previous_qty
+
+        # Skip if quantity hasn't changed
+        if diff == 0:
+            continue
+
+        # Update item quantity
+        item.current_quantity = new_qty
+        updated_items.append(item)
+
+        # Create transaction record
+        notes = adjustment.notes or f"Daily count: {previous_qty} → {new_qty}"
+        transaction = InventoryTransaction(
+            item_id=item.id,
+            transaction_type=TransactionType.ADJUSTMENT,
+            quantity=diff,
+            notes=notes,
+            recorded_by=batch.recorded_by,
+            previous_quantity=previous_qty,
+            new_quantity=new_qty
+        )
+        db.add(transaction)
+        created_transactions.append({
+            "item_id": item.id,
+            "item_name": item.name,
+            "previous_quantity": float(previous_qty),
+            "new_quantity": float(new_qty),
+            "difference": float(diff)
+        })
+
+    # Commit all changes atomically
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Updated {len(created_transactions)} items",
+        "total_items_processed": len(batch.adjustments),
+        "items_changed": len(created_transactions),
+        "items_unchanged": len(batch.adjustments) - len(created_transactions),
+        "recorded_by": batch.recorded_by,
+        "changes": created_transactions
+    }
+
 @router.get("/transactions", response_model=dict)
 def get_transactions(
     item_id: Optional[int] = None,
