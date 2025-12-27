@@ -108,6 +108,7 @@ class OrderItem(BaseModel):
     menu_item_id: int
     menu_item_name: str
     quantity: int
+    quantity_served: int = 0
     unit_price: int  # In paise
     subtotal: int  # In paise
     is_beverage: bool = False
