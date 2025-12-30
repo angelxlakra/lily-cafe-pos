@@ -99,7 +99,7 @@ def get_items(
     low_stock_count = 0
     for item in items:
         # Convert ORM model to Pydantic model using v2 syntax
-        item_model = inventory_schemas.InventoryItem.model_validate(item)
+        item_model = inventory_schemas.InventoryItem.model_validate(item, from_attributes=True)
         # Convert to dict to add computed fields
         item_dict = item_model.model_dump()
         if item.category:
@@ -127,7 +127,7 @@ def get_low_stock_items(db: Session = Depends(get_db)):
             if item.min_threshold > 0:
                 percentage = (item.current_quantity / item.min_threshold) * 100
             
-            item_model = inventory_schemas.LowStockItem.model_validate(item)
+            item_model = inventory_schemas.LowStockItem.model_validate(item, from_attributes=True)
             item_dict = item_model.model_dump()
             if item.category:
                 item_dict['category_name'] = item.category.name
@@ -149,7 +149,7 @@ def get_item(item_id: int, db: Session = Depends(get_db)):
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     
-    item_model = inventory_schemas.InventoryItem.model_validate(item)
+    item_model = inventory_schemas.InventoryItem.model_validate(item, from_attributes=True)
     item_dict = item_model.model_dump()
     if item.category:
         item_dict['category_name'] = item.category.name
@@ -181,7 +181,7 @@ def create_item(item: inventory_schemas.InventoryItemCreate, db: Session = Depen
     db.refresh(new_item)
     
     # Return with computed fields - Convert ORM model to Pydantic model using v2 syntax
-    item_model = inventory_schemas.InventoryItem.model_validate(new_item)
+    item_model = inventory_schemas.InventoryItem.model_validate(new_item, from_attributes=True)
     # Convert to dict to add computed fields
     item_dict = item_model.model_dump()
     if new_item.category:
@@ -203,7 +203,7 @@ def update_item(item_id: int, item_update: inventory_schemas.InventoryItemUpdate
     db.commit()
     db.refresh(item)
     
-    item_model = inventory_schemas.InventoryItem.model_validate(item)
+    item_model = inventory_schemas.InventoryItem.model_validate(item, from_attributes=True)
     item_dict = item_model.model_dump()
     if item.category:
         item_dict['category_name'] = item.category.name
@@ -478,7 +478,7 @@ def get_transactions(
     result_transactions = []
     for t in transactions:
         # Convert ORM model to Pydantic model using v2 syntax
-        t_model = inventory_schemas.InventoryTransaction.model_validate(t)
+        t_model = inventory_schemas.InventoryTransaction.model_validate(t, from_attributes=True)
         # Convert to dict to add item_name field
         t_dict = t_model.model_dump()
         if t.item:
