@@ -324,6 +324,20 @@ export const ordersApi = {
     );
     return response.data;
   },
+
+  /**
+   * Set the absolute served quantity of an order item
+   */
+  setItemServedQuantity: async (
+    orderId: number,
+    itemId: number,
+    quantityServed: number
+  ): Promise<{ message: string; item_id: number; quantity_served: number; is_served: boolean }> => {
+    const response = await apiClient.put<{ message: string; item_id: number; quantity_served: number; is_served: boolean }>(
+      `/orders/${orderId}/items/${itemId}/served-quantity?quantity_served=${quantityServed}`
+    );
+    return response.data;
+  },
 };
 
 // ========================================
