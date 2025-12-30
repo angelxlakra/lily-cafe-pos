@@ -608,6 +608,51 @@ def update_order_item_served_quantity(
     return order_item
 
 
+def set_order_item_served_quantity(
+    db: Session, order_id: int, item_id: int, quantity_served: int
+) -> Optional[models.OrderItem]:
+    """
+    Set the absolute served quantity of an order item.
+
+    Args:
+        db: Database session
+        order_id: Order ID
+        item_id: Order item ID
+        quantity_served: Absolute number of items served (0 to total quantity)
+
+    Returns:
+        Updated order item, or None if not found
+
+    Raises:
+        ValueError: If item doesn't belong to order or quantity invalid
+    """
+    # Get the order item
+    order_item = db.query(models.OrderItem).filter(models.OrderItem.id == item_id).first()
+    if not order_item:
+        return None
+
+    # Verify the item belongs to the specified order
+    if order_item.order_id != order_id:
+        raise ValueError(f"Order item {item_id} does not belong to order {order_id}")
+
+    # Validate quantity_served
+    if quantity_served < 0:
+        raise ValueError("Quantity served cannot be negative")
+
+    if quantity_served > order_item.quantity:
+        raise ValueError(f"Quantity served ({quantity_served}) cannot exceed total quantity ({order_item.quantity})")
+
+    # Set the absolute quantity_served
+    order_item.quantity_served = quantity_served
+
+    # Update is_served flag based on whether all items are served
+    order_item.is_served = order_item.quantity_served >= order_item.quantity
+
+    db.commit()
+    db.refresh(order_item)
+    return order_item
+
+
 # ============================================================================
 # Payment Operations
 # ============================================================================

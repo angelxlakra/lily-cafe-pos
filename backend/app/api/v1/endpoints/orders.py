@@ -241,6 +241,41 @@ def update_item_served_status(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.put("/{order_id}/items/{item_id}/served-quantity")
+def set_item_served_quantity(
+    order_id: int,
+    item_id: int,
+    quantity_served: int,
+    db: Session = Depends(get_db),
+):
+    """
+    Set the absolute served quantity of an order item.
+
+    Used by admin to edit/correct the number of items served.
+    Unlike PATCH /served which adds to the current value, this sets the absolute value.
+
+    Args:
+        order_id: The order ID
+        item_id: The order item ID
+        quantity_served: The absolute number of items served (0 to total quantity)
+
+    Returns:
+        Success message with updated item info
+    """
+    try:
+        updated_item = crud.set_order_item_served_quantity(db, order_id, item_id, quantity_served)
+        if not updated_item:
+            raise HTTPException(status_code=404, detail="Order item not found")
+        return {
+            "message": "Item served quantity set successfully",
+            "item_id": item_id,
+            "quantity_served": updated_item.quantity_served,
+            "is_served": updated_item.is_served
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 # ============================================================================
 # Payment Routes (nested under orders)
 # ============================================================================

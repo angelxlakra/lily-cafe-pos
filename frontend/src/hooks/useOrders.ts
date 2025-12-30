@@ -264,6 +264,60 @@ export const useUpdateItemServedStatus = () => {
   });
 };
 
+/**
+ * Hook to set the absolute served quantity of an order item
+ */
+export const useSetItemServedQuantity = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ orderId, itemId, quantityServed }: { orderId: number; itemId: number; quantityServed: number }) =>
+      ordersApi.setItemServedQuantity(orderId, itemId, quantityServed),
+    // Optimistic update for instant feedback
+    onMutate: async ({ orderId, itemId, quantityServed }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ordersQueryKeys.active });
+
+      // Snapshot the previous value
+      const previousOrders = queryClient.getQueryData<Order[]>(ordersQueryKeys.active);
+
+      // Optimistically update the cache
+      queryClient.setQueryData<Order[]>(ordersQueryKeys.active, (old) => {
+        if (!old) return old;
+        return old.map((order) => {
+          if (order.id === orderId) {
+            return {
+              ...order,
+              order_items: order.order_items.map((item) => {
+                if (item.id === itemId) {
+                  return {
+                    ...item,
+                    quantity_served: quantityServed,
+                    is_served: quantityServed >= item.quantity,
+                  };
+                }
+                return item;
+              }),
+            };
+          }
+          return order;
+        });
+      });
+
+      return { previousOrders };
+    },
+    // If the mutation fails, rollback
+    onError: (err, _variables, context) => {
+      queryClient.setQueryData(ordersQueryKeys.active, context?.previousOrders);
+      console.error('Failed to set served quantity:', err);
+    },
+    // Always refetch after error or success
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ordersQueryKeys.active });
+    },
+  });
+};
+
 // ========================================
 // Payments Mutation Hooks
 // ========================================

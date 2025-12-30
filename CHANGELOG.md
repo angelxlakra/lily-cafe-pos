@@ -232,6 +232,29 @@ CREATE TABLE daily_cash_counter (
 
 ---
 
+## [0.1.3] - 2025-12-30
+
+### Added
+- **Edit served quantity by clicking status badge**
+  - Admins can now click on order item status badges (Done, Partial, or Pending) to edit the absolute number of items served
+  - New modal interface with slider to set exact quantity served
+  - Direct editing capability alongside incremental "Serve" button
+  - Status badges now have hover effects indicating they're clickable
+  - Validates quantity is between 0 and total ordered quantity
+
+### Changed
+- Status badges on Active Orders page are now clickable for direct quantity editing
+- "Serve" button remains available for incremental serving workflow
+
+### Technical
+- Backend: New CRUD function `set_order_item_served_quantity()`
+- Backend: New API endpoint `PUT /orders/{order_id}/items/{item_id}/served-quantity`
+- Frontend: New component `EditServedQuantityModal.tsx`
+- Frontend: New React Query hook `useSetItemServedQuantity()` with optimistic updates
+- Frontend: New API client method `setItemServedQuantity()`
+
+---
+
 ## [0.1.2] - 2025-12-27
 
 ### Added
@@ -357,6 +380,7 @@ CREATE TABLE daily_cash_counter (
 - **v0.1.0** (Nov 11, 2025) - Initial MVP with core POS functionality
 - **v0.1.1** (Jan 12, 2025) - Dark mode theme toggle
 - **v0.1.2** (Dec 27, 2025) - Partial serving & payment editing
+- **v0.1.3** (Dec 30, 2025) - Edit served quantity via status badge click
 - **v0.2.0** (Dec 30, 2025) - Inventory management & cash counter system
 
 ---
