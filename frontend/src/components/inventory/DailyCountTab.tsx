@@ -164,7 +164,10 @@ export default function DailyCountTab() {
     );
   }
 
-  if (!categorizedItems || Object.keys(categorizedItems).length === 0) {
+  // Check if there are actually any items across all categories
+  const hasItems = categorizedItems && Object.values(categorizedItems).some(({ items }) => items.length > 0);
+
+  if (!hasItems) {
     return (
       <>
         <div className="card p-8 text-center">
