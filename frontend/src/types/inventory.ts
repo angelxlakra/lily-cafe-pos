@@ -92,6 +92,40 @@ export interface AdjustmentCreate {
   notes: string;
 }
 
+export interface AdjustmentItem {
+  item_id: number;
+  new_quantity: number;
+  notes?: string;
+}
+
+export interface BatchAdjustmentCreate {
+  adjustments: AdjustmentItem[];
+  recorded_by: string;
+}
+
+export interface BatchAdjustmentResponse {
+  success: boolean;
+  message: string;
+  total_items_processed: number;
+  items_changed: number;
+  items_unchanged: number;
+  recorded_by: string;
+  changes: Array<{
+    item_id: number;
+    item_name: string;
+    previous_quantity: number;
+    new_quantity: number;
+    difference: number;
+  }>;
+}
+
+export interface CategorizedItems {
+  [categoryId: number]: {
+    category: InventoryCategory | null;
+    items: InventoryItem[];
+  };
+}
+
 export interface InventoryItemsResponse {
   items: InventoryItem[];
   total: number;

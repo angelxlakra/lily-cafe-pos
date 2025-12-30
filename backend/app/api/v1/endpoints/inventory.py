@@ -22,11 +22,18 @@ def get_categories(db: Session = Depends(get_db)):
 @router.post("/categories", response_model=inventory_schemas.InventoryCategory, status_code=status.HTTP_201_CREATED)
 def create_category(category: inventory_schemas.InventoryCategoryCreate, db: Session = Depends(get_db)):
     """Create a new inventory category."""
+    from datetime import datetime
+
     db_category = db.query(InventoryCategory).filter(InventoryCategory.name == category.name).first()
     if db_category:
         raise HTTPException(status_code=400, detail="Category name already exists")
-    
-    new_category = InventoryCategory(name=category.name)
+
+    now = datetime.now()
+    new_category = InventoryCategory(
+        name=category.name,
+        created_at=now,
+        updated_at=now
+    )
     db.add(new_category)
     db.commit()
     db.refresh(new_category)

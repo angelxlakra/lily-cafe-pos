@@ -11,6 +11,9 @@ import type {
   PurchaseCreate,
   UsageCreate,
   AdjustmentCreate,
+  BatchAdjustmentCreate,
+  BatchAdjustmentResponse,
+  CategorizedItems,
   TransactionsResponse,
   TransactionType
 } from '../types/inventory';
@@ -87,6 +90,43 @@ export const inventoryApi = {
   recordAdjustment: async (data: AdjustmentCreate): Promise<any> => {
     const response = await apiClient.post('/inventory/transactions/adjustment', data);
     return response.data;
+  },
+
+  recordBatchAdjustment: async (data: BatchAdjustmentCreate): Promise<BatchAdjustmentResponse> => {
+    const response = await apiClient.post<BatchAdjustmentResponse>('/inventory/transactions/batch-adjustment', data);
+    return response.data;
+  },
+
+  getItemsByCategory: async (): Promise<CategorizedItems> => {
+    const itemsResponse = await inventoryApi.getItems({ is_active: true });
+    const categories = await inventoryApi.getCategories();
+
+    // Group items by category
+    const grouped: CategorizedItems = {};
+
+    // Add uncategorized category
+    grouped[0] = {
+      category: null,
+      items: []
+    };
+
+    // Create category entries
+    categories.forEach(cat => {
+      grouped[cat.id] = {
+        category: cat,
+        items: []
+      };
+    });
+
+    // Group items
+    itemsResponse.items.forEach(item => {
+      const catId = item.category_id || 0;
+      if (grouped[catId]) {
+        grouped[catId].items.push(item);
+      }
+    });
+
+    return grouped;
   },
 
   getTransactions: async (params?: {

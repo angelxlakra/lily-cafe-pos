@@ -69,7 +69,7 @@ class UsageCreate(BaseModel):
 class AdjustmentCreate(BaseModel):
     item_id: int
     new_quantity: Decimal = Field(..., ge=0)
-    notes: str = Field(..., min_length=1, max_length=500)
+    notes: Optional[str] = Field(None, max_length=500)
 
 class AdjustmentItem(BaseModel):
     """Single item adjustment for batch operations."""
