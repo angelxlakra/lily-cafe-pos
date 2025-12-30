@@ -93,6 +93,7 @@ class OrderItemBase(BaseModel):
 
     menu_item_id: int
     quantity: int = Field(..., gt=0)
+    is_parcel: bool = Field(default=False, description="True if this item is for parcel/takeaway")
 
 
 class OrderItemCreate(OrderItemBase):
@@ -113,6 +114,7 @@ class OrderItem(BaseModel):
     subtotal: int  # In paise
     is_beverage: bool = False
     is_served: bool = False
+    is_parcel: bool = False
 
     class Config:
         from_attributes = True

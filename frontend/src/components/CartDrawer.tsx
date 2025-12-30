@@ -10,6 +10,7 @@ import { formatCurrency } from '../utils/formatCurrency';
 interface CartItem {
   menuItem: MenuItem;
   quantity: number;
+  is_parcel: boolean;
 }
 
 interface CartDrawerProps {
@@ -18,6 +19,7 @@ interface CartDrawerProps {
   tableNumber: number;
   cartItems: CartItem[];
   onQuantityChange: (itemId: number, newQuantity: number) => void;
+  onParcelChange: (itemId: number, isParcel: boolean) => void;
   onRemoveItem: (itemId: number) => void;
   onSaveOrder: () => void;
   isSaving?: boolean;
@@ -32,6 +34,7 @@ export default function CartDrawer({
   tableNumber,
   cartItems,
   onQuantityChange,
+  onParcelChange,
   onRemoveItem,
   onSaveOrder,
   isSaving = false,
@@ -129,7 +132,7 @@ export default function CartDrawer({
               <p className="text-neutral-text-light">Your cart is empty</p>
             </div>
           ) : (
-            cartItems.map(({ menuItem, quantity }) => (
+            cartItems.map(({ menuItem, quantity, is_parcel }) => (
               <div
                 key={menuItem.id}
                 className="bg-cream border border-neutral-border rounded-lg p-3"
@@ -138,6 +141,9 @@ export default function CartDrawer({
                 <div className="flex items-start justify-between mb-2">
                   <h3 className="text-base font-medium text-neutral-text-dark flex-1">
                     {menuItem.name}
+                    {is_parcel && (
+                      <span className="ml-2 text-sm text-coffee-brown">(Parcel)</span>
+                    )}
                   </h3>
                   <button
                     onClick={() => onRemoveItem(menuItem.id)}
@@ -146,6 +152,26 @@ export default function CartDrawer({
                   >
                     <span className="text-xl" aria-hidden="true">&times;</span>
                   </button>
+                </div>
+
+                {/* Parcel Checkbox */}
+                <div className="flex items-center gap-2 mb-3 p-2 bg-white border border-neutral-border rounded-lg">
+                  <input
+                    id={`parcel-${menuItem.id}`}
+                    type="checkbox"
+                    checked={is_parcel}
+                    onChange={(e) => onParcelChange(menuItem.id, e.target.checked)}
+                    disabled={isSaving}
+                    className="w-4 h-4 text-coffee-brown border-neutral-border rounded
+                             focus:ring-2 focus:ring-coffee-brown cursor-pointer
+                             disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                  <label
+                    htmlFor={`parcel-${menuItem.id}`}
+                    className="flex-1 text-sm font-medium text-neutral-text-dark cursor-pointer select-none"
+                  >
+                    Mark as Parcel
+                  </label>
                 </div>
 
                 {/* Quantity Controls and Subtotal */}

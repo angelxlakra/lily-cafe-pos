@@ -9,7 +9,7 @@ import { formatCurrency } from "../utils/formatCurrency";
 
 interface MenuListProps {
   menuItems: MenuItem[] | undefined;
-  cart: Map<number, number>; // Map of menu_item_id to quantity
+  cart: Map<number, { quantity: number; is_parcel: boolean }>; // Map of menu_item_id to { quantity, is_parcel }
   onQuantityChange: (itemId: number, newQuantity: number) => void;
   isLoading?: boolean;
 }
@@ -41,12 +41,14 @@ export default function MenuList({
   }, [menuItems]);
 
   const handleIncrement = (itemId: number) => {
-    const currentQty = cart.get(itemId) || 0;
+    const current = cart.get(itemId);
+    const currentQty = current?.quantity || 0;
     onQuantityChange(itemId, currentQty + 1);
   };
 
   const handleDecrement = (itemId: number) => {
-    const currentQty = cart.get(itemId) || 0;
+    const current = cart.get(itemId);
+    const currentQty = current?.quantity || 0;
     if (currentQty > 0) {
       onQuantityChange(itemId, currentQty - 1);
     }
@@ -87,7 +89,8 @@ export default function MenuList({
             {/* Category Items */}
             <div className="space-y-3">
               {items.map((item) => {
-                const quantity = cart.get(item.id) || 0;
+                const cartData = cart.get(item.id);
+                const quantity = cartData?.quantity || 0;
                 const isAvailable = item.is_available;
 
                 return (

@@ -21,6 +21,7 @@ interface EditOrderItem {
   menu_item_name: string;
   quantity: number;
   unit_price: number;
+  is_parcel: boolean;
 }
 
 export default function EditOrderModal({ order, onClose }: EditOrderModalProps) {
@@ -40,6 +41,7 @@ export default function EditOrderModal({ order, onClose }: EditOrderModalProps) 
       menu_item_name: item.menu_item_name,
       quantity: item.quantity,
       unit_price: item.unit_price,
+      is_parcel: item.is_parcel || false,
     }));
     setItems(initialItems);
   }, [order]);
@@ -111,6 +113,7 @@ export default function EditOrderModal({ order, onClose }: EditOrderModalProps) 
           items: items.map(item => ({
             menu_item_id: item.menu_item_id,
             quantity: item.quantity,
+            is_parcel: item.is_parcel,
           })),
           customer_name: customerName || null,
           table_number: tableNumber !== order.table_number ? tableNumber : undefined,
@@ -225,11 +228,42 @@ export default function EditOrderModal({ order, onClose }: EditOrderModalProps) 
                 {items.map((item, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between bg-white border border-neutral-border rounded-lg p-4"
+                    className={`flex flex-col bg-white border rounded-lg p-4 ${
+                      item.is_parcel ? 'border-coffee-brown/30' : 'border-neutral-border'
+                    }`}
                   >
-                    <div className="flex-1">
-                      <p className="font-medium text-neutral-text-dark">{item.menu_item_name}</p>
-                      <p className="text-sm text-muted">{formatCurrency(item.unit_price)} each</p>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex-1">
+                        <p className="font-medium text-neutral-text-dark">
+                          {item.menu_item_name}
+                          {item.is_parcel && (
+                            <span className="ml-2 text-sm text-coffee-brown">(Parcel)</span>
+                          )}
+                        </p>
+                        <p className="text-sm text-muted">{formatCurrency(item.unit_price)} each</p>
+                      </div>
+                    </div>
+
+                    {/* Parcel Checkbox */}
+                    <div className="flex items-center gap-2 mb-3 p-2 bg-cream border border-neutral-border rounded-lg">
+                      <input
+                        id={`edit-parcel-${index}`}
+                        type="checkbox"
+                        checked={item.is_parcel}
+                        onChange={(e) => {
+                          const newItems = [...items];
+                          newItems[index] = { ...newItems[index], is_parcel: e.target.checked };
+                          setItems(newItems);
+                        }}
+                        className="w-4 h-4 text-coffee-brown border-neutral-border rounded
+                                 focus:ring-2 focus:ring-coffee-brown cursor-pointer"
+                      />
+                      <label
+                        htmlFor={`edit-parcel-${index}`}
+                        className="flex-1 text-sm font-medium text-neutral-text-dark cursor-pointer select-none"
+                      >
+                        Mark as Parcel
+                      </label>
                     </div>
 
                     <div className="flex items-center gap-3">

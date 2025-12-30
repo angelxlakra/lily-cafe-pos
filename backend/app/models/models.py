@@ -99,6 +99,7 @@ class OrderItem(Base):
     subtotal = Column(Integer, nullable=False)  # quantity * unit_price
     is_beverage = Column(Boolean, default=False)  # Snapshot of is_beverage at time of order
     is_served = Column(Boolean, default=False)  # Track if item has been served to customer
+    is_parcel = Column(Boolean, default=False, nullable=False)  # True if this item is for parcel/takeaway
 
     # Relationships
     order = relationship("Order", back_populates="order_items")
