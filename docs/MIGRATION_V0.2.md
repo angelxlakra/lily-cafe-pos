@@ -165,27 +165,46 @@ uv run python --version  # Should be 3.11+
 
 ### 4.2 Run Database Migration
 
-**Critical Step:** This creates the new tables.
+**Critical Step:** This creates the new tables and columns.
 
 ```bash
-# Run migration script
-uv run python scripts/migrate_v02_add_inventory_and_cash_tables.py
+# Run unified migration script (handles all v0.2.0 changes)
+uv run python scripts/migrate_v01x_to_v020.py
 ```
 
 **Expected output:**
 ```
-✅ Migration started: v0.2.0 - Inventory & Cash Counter Tables
+======================================================================
+  Lily Cafe POS - Database Migration v0.1.x → v0.2.0
+======================================================================
+Database: sqlite:///./restaurant.db
 
-Creating tables:
-  - inventory_categories
-  - inventory_items
-  - inventory_transactions
-  - daily_cash_counter
+PART 1: Parcel Feature
+----------------------------------------------------------------------
+Adding 'is_parcel' column to order_items table...
+✓ Added 'is_parcel' column to order_items
 
-✅ All tables created successfully!
+PART 2: Inventory Management System
+----------------------------------------------------------------------
+Creating 'inventory_categories' table...
+✓ Created 'inventory_categories' table
+Creating 'inventory_items' table...
+✓ Created 'inventory_items' table with indexes
+Creating 'inventory_transactions' table...
+✓ Created 'inventory_transactions' table with indexes
 
-Migration completed successfully!
+PART 3: Cash Counter System
+----------------------------------------------------------------------
+Creating 'daily_cash_counter' table...
+✓ Created 'daily_cash_counter' table with indexes
+
+======================================================================
+✓ Migration completed successfully!
+  Applied 5 database change(s)
+======================================================================
 ```
+
+**Note:** The script is idempotent - safe to run multiple times. If tables/columns already exist, it will skip them.
 
 **If migration fails:**
 - Check error message carefully

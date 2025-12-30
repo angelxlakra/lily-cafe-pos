@@ -120,8 +120,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Proper datetime validation for all timestamps
 
 - **Database Migration Script**
-  - `migrate_v02_add_inventory_and_cash_tables.py`
-  - Creates 4 new tables with proper constraints
+  - `migrate_v01x_to_v020.py` - Unified migration script for all v0.2.0 changes
+  - Adds `is_parcel` column to order_items (parcel feature)
+  - Creates 4 new inventory/cash tables with proper constraints
+  - Idempotent (safe to run multiple times)
   - Preserves existing data
   - Rollback-safe
 
@@ -157,6 +159,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Database Schema Changes
 ```sql
+-- Modified Tables (v0.1.3 feature included)
+ALTER TABLE order_items ADD COLUMN is_parcel BOOLEAN DEFAULT 0 NOT NULL;
+
 -- New Tables
 CREATE TABLE inventory_categories (
   id INTEGER PRIMARY KEY,
@@ -212,11 +217,11 @@ CREATE TABLE daily_cash_counter (
 1. **Backup database**: `cp restaurant.db restaurant_pre_v0.2.0_backup.db`
 2. **Checkout code**: `git checkout v0.2.0`
 3. **Backend dependencies**: `cd backend && uv sync`
-4. **Run migration**: `uv run python scripts/migrate_v02_add_inventory_and_cash_tables.py`
+4. **Run migration**: `uv run python scripts/migrate_v01x_to_v020.py`
 5. **Frontend dependencies**: `cd ../frontend && npm install`
 6. **Build frontend**: `npm run build`
 7. **Restart services**: Restart backend and frontend servers
-8. **Verify**: Check that all 4 new tables exist and API is accessible
+8. **Verify**: Check that new tables and columns exist, API is accessible
 
 ### Breaking Changes
 - None (fully backward compatible)
@@ -234,6 +239,8 @@ CREATE TABLE daily_cash_counter (
 
 ## [0.1.3] - 2025-12-30
 
+**Note:** All v0.1.3 features are included in v0.2.0. If upgrading from v0.1.2, you can skip directly to v0.2.0.
+
 ### Added
 - **Edit served quantity by clicking status badge**
   - Admins can now click on order item status badges (Done, Partial, or Pending) to edit the absolute number of items served
@@ -242,6 +249,11 @@ CREATE TABLE daily_cash_counter (
   - Status badges now have hover effects indicating they're clickable
   - Validates quantity is between 0 and total ordered quantity
 
+- **Item-level parcel marking**
+  - Individual order items can now be marked as parcel/takeaway
+  - Parcel items print on separate kitchen chits
+  - Visual indicator for parcel items in order view
+
 ### Changed
 - Status badges on Active Orders page are now clickable for direct quantity editing
 - "Serve" button remains available for incremental serving workflow
@@ -249,9 +261,15 @@ CREATE TABLE daily_cash_counter (
 ### Technical
 - Backend: New CRUD function `set_order_item_served_quantity()`
 - Backend: New API endpoint `PUT /orders/{order_id}/items/{item_id}/served-quantity`
+- Backend: Added `is_parcel` column to `order_items` table
 - Frontend: New component `EditServedQuantityModal.tsx`
 - Frontend: New React Query hook `useSetItemServedQuantity()` with optimistic updates
 - Frontend: New API client method `setItemServedQuantity()`
+
+### Database Changes
+```sql
+ALTER TABLE order_items ADD COLUMN is_parcel BOOLEAN DEFAULT 0 NOT NULL;
+```
 
 ---
 
