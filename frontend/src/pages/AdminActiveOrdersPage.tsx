@@ -9,7 +9,8 @@ import PaymentModal from '../components/PaymentModal';
 import EditOrderModal from '../components/EditOrderModal';
 import EmptyState from '../components/EmptyState';
 import PartialServeModal from '../components/PartialServeModal';
-import { useActiveOrders, useCancelOrder, useUpdateItemServedStatus } from '../hooks/useOrders';
+import EditServedQuantityModal from '../components/EditServedQuantityModal';
+import { useActiveOrders, useCancelOrder, useUpdateItemServedStatus, useSetItemServedQuantity } from '../hooks/useOrders';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatDateTime } from '../utils/formatDateTime';
 import { ClipboardText } from '@phosphor-icons/react';
@@ -22,9 +23,11 @@ export default function AdminActiveOrdersPage() {
   const [cancelOrderId, setCancelOrderId] = useState<number | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [serveModalData, setServeModalData] = useState<{ item: OrderItem; orderId: number } | null>(null);
+  const [editModalData, setEditModalData] = useState<{ item: OrderItem; orderId: number } | null>(null);
 
   const cancelMutation = useCancelOrder();
   const updateServedMutation = useUpdateItemServedStatus();
+  const setServedQuantityMutation = useSetItemServedQuantity();
 
   const orders = activeOrders || [];
 
@@ -38,6 +41,21 @@ export default function AdminActiveOrdersPage() {
         },
         onSuccess: () => {
           console.log('Successfully updated served quantity');
+        },
+      }
+    );
+  };
+
+  const handleEditServedQuantity = (orderId: number, itemId: number, quantityServed: number) => {
+    console.log('Editing served quantity:', { orderId, itemId, quantityServed });
+    setServedQuantityMutation.mutate(
+      { orderId, itemId, quantityServed },
+      {
+        onError: (error) => {
+          console.error('Error setting served quantity:', error);
+        },
+        onSuccess: () => {
+          console.log('Successfully set served quantity');
         },
       }
     );
@@ -128,6 +146,7 @@ export default function AdminActiveOrdersPage() {
                   onGenerateBill={() => handleGenerateBill(order.id)}
                   onCancel={() => setCancelOrderId(order.id)}
                   onOpenServeModal={(item) => setServeModalData({ item, orderId: order.id })}
+                  onOpenEditModal={(item) => setEditModalData({ item, orderId: order.id })}
                 />
               ))}
             </div>
@@ -169,6 +188,16 @@ export default function AdminActiveOrdersPage() {
           onClose={() => setServeModalData(null)}
         />
       )}
+
+      {/* Edit Served Quantity Modal */}
+      {editModalData && (
+        <EditServedQuantityModal
+          item={editModalData.item}
+          orderId={editModalData.orderId}
+          onEdit={handleEditServedQuantity}
+          onClose={() => setEditModalData(null)}
+        />
+      )}
     </div>
   );
 }
@@ -180,9 +209,10 @@ interface OrderCardProps {
   onGenerateBill: () => void;
   onCancel: () => void;
   onOpenServeModal: (item: OrderItem) => void;
+  onOpenEditModal: (item: OrderItem) => void;
 }
 
-function OrderCard({ order, onEdit, onGenerateBill, onCancel, onOpenServeModal }: OrderCardProps) {
+function OrderCard({ order, onEdit, onGenerateBill, onCancel, onOpenServeModal, onOpenEditModal }: OrderCardProps) {
   const [showItems, setShowItems] = useState(false);
   const itemCount = order.order_items?.length || 0;
 
@@ -249,15 +279,27 @@ function OrderCard({ order, onEdit, onGenerateBill, onCancel, onOpenServeModal }
                   <tr key={item.id} className="border-b border-neutral-border last:border-0 hover:bg-neutral-background/50 transition-colors">
                     <td className="p-2 text-center" onClick={(e) => e.stopPropagation()}>
                       {item.is_served ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-lily-green px-2.5 py-1 rounded-full shadow-sm whitespace-nowrap">
+                        <span
+                          onClick={() => onOpenEditModal(item)}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-lily-green px-2.5 py-1 rounded-full shadow-sm whitespace-nowrap cursor-pointer hover:bg-lily-green/90 transition-colors"
+                          title="Click to edit served quantity"
+                        >
                           ✓ Done
                         </span>
                       ) : item.quantity_served > 0 ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-orange-800 bg-orange-100 px-2.5 py-1 rounded-full border border-orange-200 whitespace-nowrap">
+                        <span
+                          onClick={() => onOpenEditModal(item)}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-orange-800 bg-orange-100 px-2.5 py-1 rounded-full border border-orange-200 whitespace-nowrap cursor-pointer hover:bg-orange-200 transition-colors"
+                          title="Click to edit served quantity"
+                        >
                           {item.quantity_served}/{item.quantity}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-neutral-text-light bg-neutral-background px-2.5 py-1 rounded-full border border-neutral-border whitespace-nowrap">
+                        <span
+                          onClick={() => onOpenEditModal(item)}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-neutral-text-light bg-neutral-background px-2.5 py-1 rounded-full border border-neutral-border whitespace-nowrap cursor-pointer hover:bg-neutral-border/30 transition-colors"
+                          title="Click to edit served quantity"
+                        >
                           Pending
                         </span>
                       )}

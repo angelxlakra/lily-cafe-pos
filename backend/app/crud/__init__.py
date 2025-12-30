@@ -24,6 +24,7 @@ from app.crud.crud import (
     cancel_order,
     update_order_item_served_status,
     update_order_item_served_quantity,
+    set_order_item_served_quantity,
     # Payment operations
     create_payment,
     create_payments_batch,
@@ -53,6 +54,7 @@ __all__ = [
     "cancel_order",
     "update_order_item_served_status",
     "update_order_item_served_quantity",
+    "set_order_item_served_quantity",
     # Payments
     "create_payment",
     "create_payments_batch",
