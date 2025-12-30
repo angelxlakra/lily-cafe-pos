@@ -35,7 +35,7 @@ class DailyCashCounter(DailyCashCounterBase):
     cash_payments_total: Optional[Decimal] = None # Computed for response
 
     class Config:
-        orm_mode = True
+        from_attributes = True  # Pydantic v2 syntax (was orm_mode in v1)
 
 class CashCounterSummary(BaseModel):
     total_variance: Decimal

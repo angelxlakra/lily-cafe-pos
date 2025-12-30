@@ -124,10 +124,14 @@ def get_today_counter(db: Session = Depends(get_db)):
             func.date(Payment.created_at) == str(today)
         ).scalar() or 0
         cash_payments_rupees = Decimal(cash_payments) / 100
-        
-        counter_dict = cash_schemas.DailyCashCounter.from_orm(counter)
-        counter_dict.cash_payments_total = cash_payments_rupees
-        return counter_dict
+
+        # Convert ORM model to Pydantic model
+        counter_model = cash_schemas.DailyCashCounter.model_validate(counter)
+
+        # Convert to dict and add cash_payments_total
+        counter_data = counter_model.model_dump()
+        counter_data['cash_payments_total'] = float(cash_payments_rupees)
+        return counter_data
     else:
         # Suggest opening balance from yesterday's closing
         yesterday_counter = db.query(DailyCashCounter).order_by(desc(DailyCashCounter.date)).first()
