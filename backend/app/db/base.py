@@ -13,5 +13,26 @@ from app.models.models import (  # noqa
     OrderStatus,
     PaymentMethod,
 )
+from app.models.inventory_models import (  # noqa
+    InventoryCategory,
+    InventoryItem,
+    InventoryTransaction,
+    TransactionType,
+)
+from app.models.cash_models import DailyCashCounter  # noqa
 
-__all__ = ["Base", "Category", "MenuItem", "Order", "OrderItem", "Payment", "OrderStatus", "PaymentMethod"]
+__all__ = [
+    "Base",
+    "Category",
+    "MenuItem",
+    "Order",
+    "OrderItem",
+    "Payment",
+    "OrderStatus",
+    "PaymentMethod",
+    "InventoryCategory",
+    "InventoryItem",
+    "InventoryTransaction",
+    "TransactionType",
+    "DailyCashCounter",
+]

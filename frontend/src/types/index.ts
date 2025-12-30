@@ -78,6 +78,7 @@ export interface OrderItem {
   unit_price: number; // Price in paise
   subtotal: number; // Price in paise
   is_served: boolean;
+  is_parcel: boolean;
 }
 
 export interface Order {
@@ -101,6 +102,7 @@ export interface CreateOrderRequest {
   items: Array<{
     menu_item_id: number;
     quantity: number;
+    is_parcel?: boolean;
   }>;
 }
 
@@ -113,6 +115,7 @@ export interface OrderItemsUpdateRequest {
   items: Array<{
     menu_item_id: number;
     quantity: number;
+    is_parcel?: boolean;
   }>;
   customer_name?: string | null;
   table_number?: number; // Optional - change table number

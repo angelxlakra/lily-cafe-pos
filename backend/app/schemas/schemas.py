@@ -93,6 +93,7 @@ class OrderItemBase(BaseModel):
 
     menu_item_id: int
     quantity: int = Field(..., gt=0)
+    is_parcel: bool = Field(default=False, description="True if this item is for parcel/takeaway")
 
 
 class OrderItemCreate(OrderItemBase):
@@ -113,6 +114,7 @@ class OrderItem(BaseModel):
     subtotal: int  # In paise
     is_beverage: bool = False
     is_served: bool = False
+    is_parcel: bool = False
 
     class Config:
         from_attributes = True
@@ -219,7 +221,38 @@ class AppConfig(BaseModel):
     restaurant_name: str
     max_tables: int
     gst_rate: float
-    
+
+
+# ============================================================================
+# Inventory Category Schemas
+# ============================================================================
+class InventoryCategoryBase(BaseModel):
+    """Base schema for inventory categories."""
+    name: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
+
+
+class InventoryCategoryCreate(InventoryCategoryBase):
+    """Schema for creating a new inventory category."""
+    pass
+
+
+class InventoryCategoryUpdate(BaseModel):
+    """Schema for updating an inventory category (all fields optional)."""
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    description: Optional[str] = None
+
+
+class InventoryCategory(InventoryCategoryBase):
+    """Schema for inventory category responses."""
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 # ============================================================================
 # Authentication Schemas
 # ============================================================================

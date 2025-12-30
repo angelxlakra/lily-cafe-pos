@@ -2,7 +2,7 @@
 
 [project]
 name = "lily-cafe-pos"
-version = "0.1.2"
+version = "0.2.0"
 description = "Point of Sale system for Lily Cafe by Mary's Kitchen - Local-first restaurant management"
 requires-python = ">=3.11"
 license = {text = "MIT"}

@@ -6,7 +6,6 @@
 import type { ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { useTheme } from "../contexts/ThemeContext";
 import { ThemeToggle } from "./ThemeToggle";
 import {
   ActiveOrdersIcon,
@@ -15,6 +14,7 @@ import {
   WaiterViewIcon,
   LogoutIcon,
 } from "./icons/NavigationIcons";
+import { Package, CurrencyInr } from "@phosphor-icons/react";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -24,7 +24,6 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const { } = useTheme();
 
   const handleLogout = () => {
     logout();
@@ -92,6 +91,18 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             to="/admin/order-history"
             icon={<OrderHistoryIcon />}
             label="Order History"
+            onClick={onClose}
+          />
+          <NavItem
+            to="/admin/cash-counter"
+            icon={<CurrencyInr size={24} />}
+            label="Cash Counter"
+            onClick={onClose}
+          />
+          <NavItem
+            to="/admin/inventory"
+            icon={<Package size={24} />}
+            label="Inventory"
             onClick={onClose}
           />
           <NavItem

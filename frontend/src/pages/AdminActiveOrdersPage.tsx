@@ -263,19 +263,25 @@ function OrderCard({ order, onEdit, onGenerateBill, onCancel, onOpenServeModal, 
 
       {/* Menu Items List */}
       {showItems && (
-        <div className="mb-4 border border-neutral-border rounded-lg overflow-hidden bg-white">
-          <div className="max-h-64 overflow-y-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-neutral-background border-b border-neutral-border sticky top-0">
-                <tr>
-                  <th className="text-center p-2 font-semibold text-neutral-text-dark w-16">Status</th>
-                  <th className="text-left p-2 font-semibold text-neutral-text-dark">Item</th>
-                  <th className="text-center p-2 font-semibold text-neutral-text-dark">Qty</th>
-                  <th className="text-center p-2 font-semibold text-neutral-text-dark w-24">Serve</th>
-                </tr>
-              </thead>
-              <tbody>
-                {order.order_items.map((item) => (
+        <div className="mb-4 space-y-3">
+          {/* Dine-in Items */}
+          {order.order_items.filter(item => !item.is_parcel).length > 0 && (
+            <div className="border border-neutral-border rounded-lg overflow-hidden bg-white">
+              <div className="bg-neutral-background px-3 py-2 border-b border-neutral-border">
+                <h4 className="text-sm font-semibold text-neutral-text-dark">DINE-IN:</h4>
+              </div>
+              <div className="max-h-64 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-neutral-background border-b border-neutral-border sticky top-0">
+                    <tr>
+                      <th className="text-center p-2 font-semibold text-neutral-text-dark w-16">Status</th>
+                      <th className="text-left p-2 font-semibold text-neutral-text-dark">Item</th>
+                      <th className="text-center p-2 font-semibold text-neutral-text-dark">Qty</th>
+                      <th className="text-center p-2 font-semibold text-neutral-text-dark w-24">Serve</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {order.order_items.filter(item => !item.is_parcel).map((item) => (
                   <tr key={item.id} className="border-b border-neutral-border last:border-0 hover:bg-neutral-background/50 transition-colors">
                     <td className="p-2 text-center" onClick={(e) => e.stopPropagation()}>
                       {item.is_served ? (
@@ -325,6 +331,78 @@ function OrderCard({ order, onEdit, onGenerateBill, onCancel, onOpenServeModal, 
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+          {/* Parcel Items */}
+          {order.order_items.filter(item => item.is_parcel).length > 0 && (
+            <div className="border border-coffee-brown/30 rounded-lg overflow-hidden bg-white">
+              <div className="bg-coffee-brown/10 px-3 py-2 border-b border-coffee-brown/30">
+                <h4 className="text-sm font-semibold text-coffee-brown">PARCEL:</h4>
+              </div>
+              <div className="max-h-64 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-neutral-background border-b border-neutral-border sticky top-0">
+                    <tr>
+                      <th className="text-center p-2 font-semibold text-neutral-text-dark w-16">Status</th>
+                      <th className="text-left p-2 font-semibold text-neutral-text-dark">Item</th>
+                      <th className="text-center p-2 font-semibold text-neutral-text-dark">Qty</th>
+                      <th className="text-center p-2 font-semibold text-neutral-text-dark w-24">Serve</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {order.order_items.filter(item => item.is_parcel).map((item) => (
+                      <tr key={item.id} className="border-b border-neutral-border last:border-0 hover:bg-neutral-background/50 transition-colors">
+                        <td className="p-2 text-center" onClick={(e) => e.stopPropagation()}>
+                          {item.is_served ? (
+                            <span
+                              onClick={() => onOpenEditModal(item)}
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-lily-green px-2.5 py-1 rounded-full shadow-sm whitespace-nowrap cursor-pointer hover:bg-lily-green/90 transition-colors"
+                              title="Click to edit served quantity"
+                            >
+                              ✓ Done
+                            </span>
+                          ) : item.quantity_served > 0 ? (
+                            <span
+                              onClick={() => onOpenEditModal(item)}
+                              className="inline-flex items-center gap-1 text-xs font-semibold text-orange-800 bg-orange-100 px-2.5 py-1 rounded-full border border-orange-200 whitespace-nowrap cursor-pointer hover:bg-orange-200 transition-colors"
+                              title="Click to edit served quantity"
+                            >
+                              {item.quantity_served}/{item.quantity}
+                            </span>
+                          ) : (
+                            <span
+                              onClick={() => onOpenEditModal(item)}
+                              className="inline-flex items-center gap-1 text-xs font-medium text-neutral-text-light bg-neutral-background px-2.5 py-1 rounded-full border border-neutral-border whitespace-nowrap cursor-pointer hover:bg-neutral-border/30 transition-colors"
+                              title="Click to edit served quantity"
+                            >
+                              Pending
+                            </span>
+                          )}
+                        </td>
+                        <td className={`p-2 text-neutral-text-dark ${item.is_served ? 'line-through opacity-60' : ''}`}>
+                          {item.menu_item_name}
+                        </td>
+                        <td className="p-2 text-center text-neutral-text-light">{item.quantity}</td>
+                        <td className="p-2 text-center" onClick={(e) => e.stopPropagation()}>
+                          {!item.is_served && (
+                            <button
+                              onClick={() => onOpenServeModal(item)}
+                              className="text-xs font-medium text-coffee-brown hover:text-coffee-dark
+                                       bg-coffee-brown/10 hover:bg-coffee-brown/20 px-3 py-1.5 rounded-lg
+                                       transition-colors"
+                            >
+                              Serve
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

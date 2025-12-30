@@ -302,6 +302,7 @@ def create_order(db: Session, order: schemas.OrderCreate) -> tuple[models.Order,
                     unit_price=menu_item.price,
                     subtotal=menu_item.price * item.quantity,
                     is_beverage=menu_item.is_beverage,
+                    is_parcel=getattr(item, 'is_parcel', False),
                 )
                 new_items_only.append(new_item_chit)
             else:
@@ -315,6 +316,7 @@ def create_order(db: Session, order: schemas.OrderCreate) -> tuple[models.Order,
                     unit_price=menu_item.price,
                     subtotal=item_subtotal,
                     is_beverage=menu_item.is_beverage,
+                    is_parcel=getattr(item, 'is_parcel', False),
                 )
                 db.add(new_order_item)
                 new_items_only.append(new_order_item)
@@ -367,6 +369,7 @@ def create_order(db: Session, order: schemas.OrderCreate) -> tuple[models.Order,
                     unit_price=menu_item.price,
                     subtotal=item_subtotal,
                     is_beverage=menu_item.is_beverage,
+                    is_parcel=getattr(item, 'is_parcel', False),
                 )
             )
 
@@ -477,6 +480,7 @@ def admin_edit_order(
             unit_price=menu_item.price,
             subtotal=item_subtotal,
             is_beverage=menu_item.is_beverage,
+            is_parcel=getattr(item, 'is_parcel', False),
         )
         db.add(new_order_item)
 
@@ -841,3 +845,9 @@ def replace_order_payments(
     db.refresh(order)
 
     return created_payments
+
+
+# ============================================================================
+# Inventory Category CRUD Operations
+# ============================================================================
+

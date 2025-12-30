@@ -615,7 +615,7 @@ def generate_receipt(
 
 
 def generate_order_chit_pdf(
-    order: models.Order, output: BinaryIO, paper_size: PaperSize = "80mm", items_to_print: Optional[list] = None
+    order: models.Order, output: BinaryIO, paper_size: PaperSize = "80mm", items_to_print: Optional[list] = None, is_parcel: bool = False
 ) -> None:
     """
     Generate a simple order chit (kitchen ticket) PDF.
@@ -736,7 +736,19 @@ def generate_order_chit_pdf(
         add_spacing(8)
 
     draw_separator(y_position, char="-")
-    add_spacing(15)
+    add_spacing(10)
+
+    # ============================================================================
+    # PARCEL IDENTIFIER - Show at bottom if this is a parcel chit
+    # ============================================================================
+    if is_parcel:
+        add_spacing(5)
+        draw_centered("═══════════════════════", y_position, "Courier", 12)
+        add_spacing(5)
+        draw_centered("PARCEL", y_position, "Helvetica-Bold", 20)
+        add_spacing(5)
+        draw_centered("═══════════════════════", y_position, "Courier", 12)
+        add_spacing(10)
 
     # Save the PDF
     c.showPage()

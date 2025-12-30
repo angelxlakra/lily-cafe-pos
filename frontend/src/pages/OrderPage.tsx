@@ -24,8 +24,8 @@ export default function OrderPage() {
 
   const tableNumber = parseInt(tableNumberParam || "0", 10);
 
-  // State
-  const [cart, setCart] = useState<Map<number, number>>(new Map());
+  // State - cart maps menu_item_id to { quantity, is_parcel }
+  const [cart, setCart] = useState<Map<number, { quantity: number; is_parcel: boolean }>>(new Map());
   const [customerName, setCustomerName] = useState("");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
@@ -82,13 +82,13 @@ export default function OrderPage() {
   // Calculate cart totals (use allItems so cart doesn't disappear when searching)
   const cartItems = useMemo(() => {
     return Array.from(cart.entries())
-      .map(([itemId, quantity]) => {
+      .map(([itemId, cartData]) => {
         const menuItem = allItems.find((item) => item.id === itemId);
-        if (!menuItem || quantity === 0) return null;
-        return { menuItem, quantity };
+        if (!menuItem || cartData.quantity === 0) return null;
+        return { menuItem, quantity: cartData.quantity, is_parcel: cartData.is_parcel };
       })
       .filter(
-        (item): item is { menuItem: MenuItem; quantity: number } =>
+        (item): item is { menuItem: MenuItem; quantity: number; is_parcel: boolean } =>
           item !== null
       );
   }, [cart, allItems]);
@@ -107,10 +107,28 @@ export default function OrderPage() {
   const handleQuantityChange = (itemId: number, newQuantity: number) => {
     setCart((prev) => {
       const updated = new Map(prev);
+      const current = prev.get(itemId);
       if (newQuantity <= 0) {
         updated.delete(itemId);
       } else {
-        updated.set(itemId, newQuantity);
+        updated.set(itemId, {
+          quantity: newQuantity,
+          is_parcel: current?.is_parcel || false,
+        });
+      }
+      return updated;
+    });
+  };
+
+  const handleParcelChange = (itemId: number, isParcel: boolean) => {
+    setCart((prev) => {
+      const updated = new Map(prev);
+      const current = prev.get(itemId);
+      if (current) {
+        updated.set(itemId, {
+          quantity: current.quantity,
+          is_parcel: isParcel,
+        });
       }
       return updated;
     });
@@ -140,9 +158,10 @@ export default function OrderPage() {
     const orderData = {
       table_number: tableNumber,
       customer_name: customerName.trim() || undefined, // Only include if not empty
-      items: cartItems.map(({ menuItem, quantity }) => ({
+      items: cartItems.map(({ menuItem, quantity, is_parcel }) => ({
         menu_item_id: menuItem.id,
         quantity,
+        is_parcel,
       })),
     };
 
@@ -326,6 +345,7 @@ export default function OrderPage() {
         tableNumber={tableNumber}
         cartItems={cartItems}
         onQuantityChange={handleQuantityChange}
+        onParcelChange={handleParcelChange}
         onRemoveItem={handleRemoveItem}
         onSaveOrder={handleSaveOrder}
         isSaving={isSavingOrder}
