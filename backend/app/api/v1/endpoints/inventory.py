@@ -98,14 +98,17 @@ def get_items(
     result_items = []
     low_stock_count = 0
     for item in items:
-        item_dict = inventory_schemas.InventoryItem.from_orm(item)
+        # Convert ORM model to Pydantic model using v2 syntax
+        item_model = inventory_schemas.InventoryItem.model_validate(item)
+        # Convert to dict to add computed fields
+        item_dict = item_model.model_dump()
         if item.category:
-            item_dict.category_name = item.category.name
-        item_dict.is_low_stock = item.is_low_stock
+            item_dict['category_name'] = item.category.name
+        item_dict['is_low_stock'] = item.is_low_stock
         result_items.append(item_dict)
         if item.is_low_stock:
             low_stock_count += 1
-            
+
     return {
         "items": result_items,
         "total": len(result_items),
@@ -124,14 +127,15 @@ def get_low_stock_items(db: Session = Depends(get_db)):
             if item.min_threshold > 0:
                 percentage = (item.current_quantity / item.min_threshold) * 100
             
-            item_dict = inventory_schemas.LowStockItem.from_orm(item)
+            item_model = inventory_schemas.LowStockItem.model_validate(item)
+            item_dict = item_model.model_dump()
             if item.category:
-                item_dict.category_name = item.category.name
-            item_dict.percentage_remaining = percentage
+                item_dict['category_name'] = item.category.name
+            item_dict['percentage_remaining'] = percentage
             low_stock_items.append(item_dict)
             
     # Sort by percentage remaining (ascending)
-    low_stock_items.sort(key=lambda x: x.percentage_remaining)
+    low_stock_items.sort(key=lambda x: x['percentage_remaining'])
     
     return {
         "low_stock_items": low_stock_items,
@@ -145,10 +149,11 @@ def get_item(item_id: int, db: Session = Depends(get_db)):
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     
-    item_dict = inventory_schemas.InventoryItem.from_orm(item)
+    item_model = inventory_schemas.InventoryItem.model_validate(item)
+    item_dict = item_model.model_dump()
     if item.category:
-        item_dict.category_name = item.category.name
-    item_dict.is_low_stock = item.is_low_stock
+        item_dict['category_name'] = item.category.name
+    item_dict['is_low_stock'] = item.is_low_stock
     return item_dict
 
 @router.post("/items", response_model=inventory_schemas.InventoryItem, status_code=status.HTTP_201_CREATED)
@@ -175,11 +180,13 @@ def create_item(item: inventory_schemas.InventoryItemCreate, db: Session = Depen
     db.commit()
     db.refresh(new_item)
     
-    # Return with computed fields
-    item_dict = inventory_schemas.InventoryItem.from_orm(new_item)
+    # Return with computed fields - Convert ORM model to Pydantic model using v2 syntax
+    item_model = inventory_schemas.InventoryItem.model_validate(new_item)
+    # Convert to dict to add computed fields
+    item_dict = item_model.model_dump()
     if new_item.category:
-        item_dict.category_name = new_item.category.name
-    item_dict.is_low_stock = new_item.is_low_stock
+        item_dict['category_name'] = new_item.category.name
+    item_dict['is_low_stock'] = new_item.is_low_stock
     return item_dict
 
 @router.patch("/items/{item_id}", response_model=inventory_schemas.InventoryItem)
@@ -196,10 +203,11 @@ def update_item(item_id: int, item_update: inventory_schemas.InventoryItemUpdate
     db.commit()
     db.refresh(item)
     
-    item_dict = inventory_schemas.InventoryItem.from_orm(item)
+    item_model = inventory_schemas.InventoryItem.model_validate(item)
+    item_dict = item_model.model_dump()
     if item.category:
-        item_dict.category_name = item.category.name
-    item_dict.is_low_stock = item.is_low_stock
+        item_dict['category_name'] = item.category.name
+    item_dict['is_low_stock'] = item.is_low_stock
     return item_dict
 
 @router.delete("/items/{item_id}")
@@ -469,9 +477,12 @@ def get_transactions(
     
     result_transactions = []
     for t in transactions:
-        t_dict = inventory_schemas.InventoryTransaction.from_orm(t)
+        # Convert ORM model to Pydantic model using v2 syntax
+        t_model = inventory_schemas.InventoryTransaction.model_validate(t)
+        # Convert to dict to add item_name field
+        t_dict = t_model.model_dump()
         if t.item:
-            t_dict.item_name = t.item.name
+            t_dict['item_name'] = t.item.name
         result_transactions.append(t_dict)
         
     return {
