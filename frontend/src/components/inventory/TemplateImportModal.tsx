@@ -209,11 +209,12 @@ Rice - YES
                   Supported Formats:
                 </h3>
                 <ul className="text-xs text-neutral-text-muted space-y-1">
+                  <li>• Items: ITEM NAME QUANTITY or ITEM NAME : QUANTITY</li>
+                  <li>• Categories: *CATEGORY* or _#CATEGORY#_</li>
                   <li>• Numbers: 5, 10.5</li>
                   <li>• Fractions: ½, ¼, ¾</li>
                   <li>• Weights: 50g, 4kg, 500ml, 1L</li>
                   <li>• YES/NO: Converts to 1/0</li>
-                  <li>• Categories: Lines starting with *CATEGORY NAME*</li>
                 </ul>
               </div>
             </div>
