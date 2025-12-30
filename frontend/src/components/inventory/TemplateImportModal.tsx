@@ -145,28 +145,28 @@ export default function TemplateImportModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-coffee-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white dark:bg-coffee-dark rounded-lg shadow-xl max-w-4xl w-full my-8 flex flex-col max-h-[calc(100vh-4rem)]">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-neutral-border">
+        <div className="flex items-center justify-between p-4 md:p-6 border-b border-neutral-border flex-shrink-0">
           <div>
-            <h2 className="text-xl font-heading text-neutral-text-dark dark:text-cream">
+            <h2 className="text-lg md:text-xl font-heading text-neutral-text-dark dark:text-cream">
               Import from WhatsApp Template
             </h2>
-            <p className="text-sm text-neutral-text-muted mt-1">
+            <p className="text-xs md:text-sm text-neutral-text-muted mt-1">
               Paste your WhatsApp inventory template to bulk import items
             </p>
           </div>
           <button
             onClick={handleClose}
-            className="p-2 hover:bg-neutral-background rounded-lg transition-colors"
+            className="p-2 hover:bg-neutral-background rounded-lg transition-colors flex-shrink-0"
           >
             <X size={24} className="text-neutral-text-muted" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+        <div className="p-4 md:p-6 overflow-y-auto flex-1">
           {/* Errors */}
           {errors.length > 0 && (
             <div className="mb-4 p-4 bg-error/10 border border-error rounded-lg">
@@ -199,7 +199,7 @@ Salt - 1
 Sugar - 5kg
 Rice - YES
 ..."
-                  className="input-field w-full h-96 font-mono text-sm"
+                  className="input-field w-full h-64 md:h-96 font-mono text-sm"
                   autoFocus
                 />
               </div>
@@ -345,13 +345,13 @@ Rice - YES
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between gap-3 p-6 border-t border-neutral-border">
+        <div className="flex items-center justify-between gap-3 p-4 md:p-6 border-t border-neutral-border flex-shrink-0 bg-white dark:bg-coffee-dark">
           {step === 'input' && (
             <>
-              <button onClick={handleClose} className="btn-ghost">
+              <button onClick={handleClose} className="btn-ghost text-sm md:text-base">
                 Cancel
               </button>
-              <button onClick={handleParse} className="btn-primary">
+              <button onClick={handleParse} className="btn-primary text-sm md:text-base">
                 Parse Template
               </button>
             </>
@@ -359,12 +359,12 @@ Rice - YES
 
           {step === 'preview' && (
             <>
-              <button onClick={() => setStep('input')} className="btn-ghost">
+              <button onClick={() => setStep('input')} className="btn-ghost text-sm md:text-base">
                 Back to Edit
               </button>
               <button
                 onClick={handleImport}
-                className="btn-primary flex items-center gap-2"
+                className="btn-primary flex items-center gap-2 text-sm md:text-base"
               >
                 <Upload size={20} weight="fill" />
                 Import {parsedItems.length} Items
@@ -374,10 +374,10 @@ Rice - YES
 
           {step === 'complete' && (
             <>
-              <button onClick={handleReset} className="btn-ghost">
+              <button onClick={handleReset} className="btn-ghost text-sm md:text-base">
                 Import Another Template
               </button>
-              <button onClick={handleClose} className="btn-primary">
+              <button onClick={handleClose} className="btn-primary text-sm md:text-base">
                 Done
               </button>
             </>
