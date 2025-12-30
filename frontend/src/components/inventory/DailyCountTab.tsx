@@ -11,7 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { inventoryApi } from '../../api/inventory';
 import CategorySection from './CategorySection';
 import TemplateImportModal from './TemplateImportModal';
-import type { InventoryItem, AdjustmentItem } from '../../types/inventory';
+import type { AdjustmentItem, InventoryItem } from '../../types/inventory';
 
 export default function DailyCountTab() {
   const queryClient = useQueryClient();
@@ -38,7 +38,7 @@ export default function DailyCountTab() {
     if (categorizedItems) {
       const initialCounts: Record<number, number> = {};
       Object.values(categorizedItems).forEach(({ items }) => {
-        items.forEach(item => {
+        items.forEach((item: InventoryItem) => {
           initialCounts[item.id] = item.current_quantity;
         });
       });
@@ -109,7 +109,7 @@ export default function DailyCountTab() {
     let originalQuantity = 0;
     if (categorizedItems) {
       Object.values(categorizedItems).forEach(({ items }) => {
-        const item = items.find(i => i.id === itemId);
+        const item = items.find((i: InventoryItem) => i.id === itemId);
         if (item) {
           originalQuantity = item.current_quantity;
         }
@@ -135,7 +135,7 @@ export default function DailyCountTab() {
       if (categorizedItems) {
         const resetCounts: Record<number, number> = {};
         Object.values(categorizedItems).forEach(({ items }) => {
-          items.forEach(item => {
+          items.forEach((item: InventoryItem) => {
             resetCounts[item.id] = item.current_quantity;
           });
         });

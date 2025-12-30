@@ -94,6 +94,7 @@ export default function EditOrderModal({ order, onClose }: EditOrderModalProps) 
         menu_item_name: menuItem.name,
         quantity: 1,
         unit_price: menuItem.price,
+        is_parcel: false,
       }];
     });
   };

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Package, Tag, ClockCounterClockwise, ClipboardText } from '@phosphor-icons/react';
 import BottomNav from '../components/BottomNav';
 import Sidebar from '../components/Sidebar';
-import ThemeToggle from '../components/ThemeToggle';
 import DailyCountTab from '../components/inventory/DailyCountTab';
 import InventoryItemsTab from '../components/inventory/InventoryItemsTab';
 import InventoryCategoriesTab from '../components/inventory/InventoryCategoriesTab';
