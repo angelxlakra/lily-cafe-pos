@@ -20,7 +20,7 @@ class InventoryCategory(InventoryCategoryBase):
     updated_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Item Schemas
 class InventoryItemBase(BaseModel):
@@ -51,7 +51,7 @@ class InventoryItem(InventoryItemBase):
     is_low_stock: bool # Computed property
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Transaction Schemas
 class InventoryTransactionBase(BaseModel):
@@ -95,7 +95,7 @@ class InventoryTransaction(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class LowStockItem(InventoryItem):
     percentage_remaining: float
