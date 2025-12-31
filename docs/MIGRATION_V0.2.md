@@ -168,43 +168,43 @@ uv run python --version  # Should be 3.11+
 **Critical Step:** This creates the new tables and columns.
 
 ```bash
-# Run unified migration script (handles all v0.2.0 changes)
-uv run python scripts/migrate_v01x_to_v020.py
+# Run comprehensive migration script (handles all database schema updates)
+uv run python scripts/migrate_database.py
 ```
 
 **Expected output:**
 ```
-======================================================================
-  Lily Cafe POS - Database Migration v0.1.x → v0.2.0
-======================================================================
+================================================================================
+  Lily Cafe POS - Comprehensive Database Migration
+================================================================================
 Database: sqlite:///./restaurant.db
 
-PART 1: Parcel Feature
-----------------------------------------------------------------------
-Adding 'is_parcel' column to order_items table...
-✓ Added 'is_parcel' column to order_items
+📊 SCHEMA VALIDATION & MIGRATION
+--------------------------------------------------------------------------------
 
-PART 2: Inventory Management System
-----------------------------------------------------------------------
-Creating 'inventory_categories' table...
-✓ Created 'inventory_categories' table
-Creating 'inventory_items' table...
-✓ Created 'inventory_items' table with indexes
-Creating 'inventory_transactions' table...
-✓ Created 'inventory_transactions' table with indexes
+Checking table: categories
+  ✓ All columns present
+  ✓ All indexes present
 
-PART 3: Cash Counter System
-----------------------------------------------------------------------
-Creating 'daily_cash_counter' table...
-✓ Created 'daily_cash_counter' table with indexes
+Checking table: order_items
+  ⚠️  Missing 2 column(s) - adding...
+    ✓ Added column 'order_items.quantity_served'
+    ✓ Added column 'order_items.is_parcel'
+  ✓ All indexes present
 
-======================================================================
-✓ Migration completed successfully!
-  Applied 5 database change(s)
-======================================================================
+Checking table: inventory_categories
+  ⚠️  Table 'inventory_categories' does not exist - creating...
+    ✓ Created table 'inventory_categories'
+
+... (similar for inventory_items, inventory_transactions, daily_cash_counter)
+
+================================================================================
+✅ MIGRATION COMPLETED SUCCESSFULLY!
+   Applied 6 schema change(s)
+================================================================================
 ```
 
-**Note:** The script is idempotent - safe to run multiple times. If tables/columns already exist, it will skip them.
+**Note:** The script is idempotent - safe to run multiple times. It checks ALL schema elements and applies only missing changes.
 
 **If migration fails:**
 - Check error message carefully
