@@ -5,11 +5,12 @@ This script performs all database changes needed to upgrade from any v0.1.x vers
 to v0.2.0 in a single run. It is idempotent and safe to run multiple times.
 
 Database changes:
-1. Add is_parcel column to order_items table (parcel feature)
-2. Create inventory_categories table
-3. Create inventory_items table
-4. Create inventory_transactions table
-5. Create daily_cash_counter table
+1. Add quantity_served column to order_items table (v0.1.2 - partial serving)
+2. Add is_parcel column to order_items table (v0.1.3 - parcel feature)
+3. Create inventory_categories table (v0.2.0)
+4. Create inventory_items table (v0.2.0)
+5. Create inventory_transactions table (v0.2.0)
+6. Create daily_cash_counter table (v0.2.0)
 
 Run this script after updating code to v0.2.0:
     uv run python scripts/migrate_v01x_to_v020.py
@@ -54,12 +55,24 @@ def migrate():
     with engine.connect() as conn:
 
         # =====================================================================
-        # PART 1: Parcel Feature (order_items.is_parcel)
+        # PART 1: Order Items Enhancements (v0.1.2 & v0.1.3)
         # =====================================================================
-        print("PART 1: Parcel Feature")
+        print("PART 1: Order Items Enhancements (v0.1.2 & v0.1.3)")
         print("-" * 70)
 
-        # Check if order_items has is_parcel column
+        # 1.1 Check for quantity_served column (v0.1.2 - Partial serving)
+        if check_column_exists(conn, 'order_items', 'quantity_served'):
+            print("✓ Column 'order_items.quantity_served' already exists.")
+        else:
+            print("Adding 'quantity_served' column to order_items table...")
+            conn.execute(text(
+                "ALTER TABLE order_items ADD COLUMN quantity_served INTEGER DEFAULT 0 NOT NULL"
+            ))
+            conn.commit()
+            migration_count += 1
+            print("✓ Added 'quantity_served' column to order_items")
+
+        # 1.2 Check for is_parcel column (v0.1.3 - Parcel feature)
         if check_column_exists(conn, 'order_items', 'is_parcel'):
             print("✓ Column 'order_items.is_parcel' already exists.")
         else:
@@ -217,11 +230,12 @@ def migrate():
 
         print("")
         print("Database schema now includes:")
-        print("  ✓ order_items.is_parcel column (item-level parcel marking)")
-        print("  ✓ inventory_categories table (inventory categories)")
-        print("  ✓ inventory_items table (inventory items with units)")
-        print("  ✓ inventory_transactions table (purchase/usage/adjustment audit trail)")
-        print("  ✓ daily_cash_counter table (daily cash counter records)")
+        print("  ✓ order_items.quantity_served column (v0.1.2 - partial serving)")
+        print("  ✓ order_items.is_parcel column (v0.1.3 - item-level parcel marking)")
+        print("  ✓ inventory_categories table (v0.2.0 - inventory categories)")
+        print("  ✓ inventory_items table (v0.2.0 - inventory items with units)")
+        print("  ✓ inventory_transactions table (v0.2.0 - purchase/usage/adjustment audit trail)")
+        print("  ✓ daily_cash_counter table (v0.2.0 - daily cash counter records)")
         print("")
         print("Next steps:")
         print("  1. Restart backend: uv run uvicorn app.main:app --reload")

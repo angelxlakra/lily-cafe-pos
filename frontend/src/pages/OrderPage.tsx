@@ -8,11 +8,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useMenuItems, useCategories } from "../hooks/useMenu";
 import { useActiveOrders, useCreateOrUpdateOrder } from "../hooks/useOrders";
 import { useAppConfig } from "../hooks/useConfig";
+import { useKeyboardShortcut } from "../hooks/useKeyboardShortcut";
 import MenuList from "../components/MenuList";
 import FloatingCartButton from "../components/FloatingCartButton";
 import CartDrawer from "../components/CartDrawer";
 import BottomNav from "../components/BottomNav";
 import BackgroundPattern from "../components/BackgroundPattern";
+import KeyboardShortcutsHelp from "../components/KeyboardShortcutsHelp";
+import { toast } from "../utils/toast";
 import type { MenuItem } from "../types";
 import { ArrowLeft, MagnifyingGlass, X } from "@phosphor-icons/react";
 
@@ -28,7 +31,6 @@ export default function OrderPage() {
   const [cart, setCart] = useState<Map<number, { quantity: number; is_parcel: boolean }>>(new Map());
   const [customerName, setCustomerName] = useState("");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | undefined>(undefined);
@@ -135,11 +137,33 @@ export default function OrderPage() {
   };
 
   const handleRemoveItem = (itemId: number) => {
+    // Get the item details before removing
+    const removedItemData = cart.get(itemId);
+    const removedItem = cartItems.find(item => item.menuItem.id === itemId);
+
     setCart((prev) => {
       const updated = new Map(prev);
       updated.delete(itemId);
       return updated;
     });
+
+    // Show undo toast if we have the item details
+    if (removedItemData && removedItem) {
+      toast.success(`${removedItem.menuItem.name} removed from cart`, {
+        duration: 5000,
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            setCart((prev) => {
+              const updated = new Map(prev);
+              updated.set(itemId, removedItemData);
+              return updated;
+            });
+            toast.success('Item restored to cart');
+          }
+        }
+      });
+    }
   };
 
   const handleOpenDrawer = () => {
@@ -152,6 +176,9 @@ export default function OrderPage() {
 
   const handleSaveOrder = () => {
     if (cartItems.length === 0) {
+      toast.warning("Cart is empty", {
+        description: "Please add items to the cart before saving the order."
+      });
       return;
     }
 
@@ -168,8 +195,9 @@ export default function OrderPage() {
     createOrUpdateOrder(orderData, {
       onSuccess: () => {
         // Show success toast
-        setShowSuccessToast(true);
-        setTimeout(() => setShowSuccessToast(false), 3000);
+        toast.success("Order saved successfully!", {
+          description: `Table ${tableNumber} order has been sent to the kitchen.`
+        });
 
         // Clear cart and customer name
         setCart(new Map());
@@ -185,10 +213,28 @@ export default function OrderPage() {
       },
       onError: (error) => {
         console.error("Failed to save order:", error);
-        alert("Failed to save order. Please try again.");
+        toast.error("Failed to save order", {
+          description: error instanceof Error ? error.message : "Please try again."
+        });
       },
     });
   };
+
+  // Keyboard shortcuts
+  useKeyboardShortcut('s', () => {
+    if (cartItems.length > 0 && !isDrawerOpen) {
+      setIsDrawerOpen(true);
+      toast.info("Cart opened", { duration: 1500 });
+    }
+  }, { ctrl: true });
+
+  useKeyboardShortcut('/', () => {
+    const searchInput = document.querySelector<HTMLInputElement>('input[placeholder*="Search"]');
+    if (searchInput) {
+      searchInput.focus();
+      toast.info("Search focused", { duration: 1500 });
+    }
+  }, { preventDefault: true });
 
   // Redirect if invalid table number
   useEffect(() => {
@@ -357,17 +403,8 @@ export default function OrderPage() {
       {/* Bottom Navigation */}
       <BottomNav />
 
-      {/* Success Toast */}
-      {showSuccessToast && (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] scale-in">
-          <div className="bg-success text-white px-6 py-4 rounded-xl shadow-strong flex items-center gap-3">
-            <span></span>
-            <span className="font-medium">
-              Order saved for Table {tableNumber}!
-            </span>
-          </div>
-        </div>
-      )}
+      {/* Keyboard Shortcuts Help */}
+      <KeyboardShortcutsHelp />
 
       {/* Custom animations and styles */}
       <style>{`

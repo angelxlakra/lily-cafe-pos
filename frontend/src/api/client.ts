@@ -23,6 +23,7 @@ import type {
   AddPaymentRequest,
   Payment,
   QueryParams,
+  PaginatedResponse,
   AppConfig,
 } from "../types";
 
@@ -296,8 +297,8 @@ export const ordersApi = {
    */
   getOrderHistory: async (
     params?: QueryParams
-  ): Promise<Order[]> => {
-    const response = await apiClient.get<Order[]>("/orders/history", {
+  ): Promise<PaginatedResponse<Order>> => {
+    const response = await apiClient.get<PaginatedResponse<Order>>("/orders/history", {
       params,
     });
     return response.data;

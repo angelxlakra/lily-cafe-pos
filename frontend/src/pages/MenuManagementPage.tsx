@@ -7,8 +7,12 @@ import { useState, useMemo } from 'react';
 import Sidebar from '../components/Sidebar';
 import MenuItemForm from '../components/MenuItemForm';
 import EmptyState from '../components/EmptyState';
+import ConfirmDialog from '../components/ConfirmDialog';
+import SortableTableHeader from '../components/SortableTableHeader';
 import { useMenuItems, useDeleteMenuItem } from '../hooks/useMenu';
+import { useSortableTable } from '../hooks/useSortableTable';
 import { formatCurrency } from '../utils/formatCurrency';
+import { toast } from '../utils/toast';
 import type { MenuItem } from '../types';
 import { ForkKnife } from '@phosphor-icons/react';
 
@@ -51,6 +55,13 @@ export default function MenuManagementPage() {
     });
   }, [items, searchQuery, categoryFilter]);
 
+  // Add sorting to filtered items
+  const { sortedData: sortedItems, sortConfig, requestSort } = useSortableTable(
+    filteredItems,
+    'name' as keyof MenuItem,
+    'asc'
+  );
+
   const handleAddNew = () => {
     setEditingItem(null);
     setIsFormOpen(true);
@@ -66,9 +77,13 @@ export default function MenuManagementPage() {
 
     try {
       await deleteMutation.mutateAsync(deleteItemId);
+      toast.success("Menu item removed successfully");
       setDeleteItemId(null);
     } catch (error) {
       console.error('Failed to delete menu item:', error);
+      toast.error("Failed to remove menu item", {
+        description: error instanceof Error ? error.message : "Please try again."
+      });
     }
   };
 
@@ -103,7 +118,7 @@ export default function MenuManagementPage() {
               </svg>
             </button>
             <div className="flex-1">
-              <h1 className="font-heading heading-section text-coffee-brown">
+              <h1 className="font-heading heading-section text-neutral-text-dark">
                 Menu Management
               </h1>
               <p className="text-sm text-muted mt-1">
@@ -196,28 +211,48 @@ export default function MenuManagementPage() {
                 <table className="w-full">
                   <thead className="bg-cream border-b border-neutral-border">
                     <tr>
-                      <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-dark">
-                        Name
-                      </th>
-                      <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-dark">
+                      <SortableTableHeader
+                        label="Name"
+                        sortKey={'name' as keyof MenuItem}
+                        currentSortKey={sortConfig.key as keyof MenuItem}
+                        sortDirection={sortConfig.direction}
+                        onSort={requestSort}
+                        align="left"
+                      />
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-light uppercase tracking-wider">
                         Description
                       </th>
-                      <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-dark">
-                        Category
-                      </th>
-                      <th className="px-6 py-3 text-right text-sm font-semibold text-neutral-text-dark">
-                        Price
-                      </th>
-                      <th className="px-6 py-3 text-center text-sm font-semibold text-neutral-text-dark">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-right text-sm font-semibold text-neutral-text-dark">
+                      <SortableTableHeader
+                        label="Category"
+                        sortKey={'category' as keyof MenuItem}
+                        currentSortKey={sortConfig.key as keyof MenuItem}
+                        sortDirection={sortConfig.direction}
+                        onSort={requestSort}
+                        align="left"
+                      />
+                      <SortableTableHeader
+                        label="Price"
+                        sortKey={'price' as keyof MenuItem}
+                        currentSortKey={sortConfig.key as keyof MenuItem}
+                        sortDirection={sortConfig.direction}
+                        onSort={requestSort}
+                        align="right"
+                      />
+                      <SortableTableHeader
+                        label="Status"
+                        sortKey={'is_available' as keyof MenuItem}
+                        currentSortKey={sortConfig.key as keyof MenuItem}
+                        sortDirection={sortConfig.direction}
+                        onSort={requestSort}
+                        align="center"
+                      />
+                      <th className="px-6 py-3 text-right text-sm font-semibold text-neutral-text-light uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-border">
-                    {filteredItems.map((item) => (
+                    {sortedItems.map((item) => (
                       <tr
                         key={item.id}
                         className="hover:bg-cream/50 transition-colors"
@@ -277,7 +312,7 @@ export default function MenuManagementPage() {
 
               {/* Mobile Cards */}
               <div className="md:hidden p-4 space-y-4">
-                {filteredItems.map((item) => (
+                {sortedItems.map((item) => (
                   <div
                     key={item.id}
                     className="rounded-xl border border-neutral-border bg-cream/50 p-4 space-y-3"
@@ -352,11 +387,17 @@ export default function MenuManagementPage() {
         <MenuItemForm item={editingItem} onClose={handleFormClose} />
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation Dialog */}
       {deleteItemId && (
-        <ConfirmDeleteModal
+        <ConfirmDialog
+          isOpen={true}
+          onClose={() => setDeleteItemId(null)}
           onConfirm={handleDelete}
-          onCancel={() => setDeleteItemId(null)}
+          title="Remove Menu Item?"
+          message={`This will mark "${items.find(i => i.id === deleteItemId)?.name || 'this item'}" as unavailable. It won't delete past orders. Are you sure?`}
+          confirmText="Yes, Remove"
+          cancelText="Cancel"
+          variant="danger"
           isLoading={deleteMutation.isPending}
         />
       )}
@@ -364,58 +405,3 @@ export default function MenuManagementPage() {
   );
 }
 
-// Confirm Delete Modal
-interface ConfirmDeleteModalProps {
-  onConfirm: () => void;
-  onCancel: () => void;
-  isLoading: boolean;
-}
-
-function ConfirmDeleteModal({
-  onConfirm,
-  onCancel,
-  isLoading,
-}: ConfirmDeleteModalProps) {
-  return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/50 z-[60]"
-        onClick={onCancel}
-        aria-hidden="true"
-      />
-
-      {/* Modal */}
-      <div
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                   w-full max-w-md bg-off-white rounded-2xl shadow-2xl z-[70] p-6"
-        role="dialog"
-        aria-modal="true"
-      >
-        <h2 className="text-xl font-bold text-neutral-text-dark mb-4">
-          Remove Menu Item?
-        </h2>
-        <p className="text-neutral-text-light mb-6">
-          This will mark the item as unavailable. It won't delete past orders. Are you sure?
-        </p>
-
-        <div className="flex gap-3">
-          <button
-            onClick={onCancel}
-            disabled={isLoading}
-            className="btn-secondary flex-1"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={isLoading}
-            className="btn-destructive flex-1"
-          >
-            {isLoading ? 'Removing...' : 'Remove'}
-          </button>
-        </div>
-      </div>
-    </>
-  );
-}

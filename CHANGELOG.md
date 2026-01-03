@@ -119,13 +119,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Schema Config uses `from_attributes` instead of `orm_mode`
   - Proper datetime validation for all timestamps
 
-- **Database Migration Script**
-  - `migrate_v01x_to_v020.py` - Unified migration script for all v0.2.0 changes
-  - Adds `is_parcel` column to order_items (parcel feature)
-  - Creates 4 new inventory/cash tables with proper constraints
+- **Comprehensive Database Migration System**
+  - `migrate_database.py` - Single master migration script for all schema changes
+  - Schema-driven approach with complete target schema definitions
+  - Automatically detects and applies missing tables, columns, and indexes
   - Idempotent (safe to run multiple times)
   - Preserves existing data
+  - Easy to extend for future schema changes
   - Rollback-safe
+  - Legacy scripts deprecated in favor of comprehensive approach
 
 #### Frontend
 - **New Components**
@@ -217,11 +219,13 @@ CREATE TABLE daily_cash_counter (
 1. **Backup database**: `cp restaurant.db restaurant_pre_v0.2.0_backup.db`
 2. **Checkout code**: `git checkout v0.2.0`
 3. **Backend dependencies**: `cd backend && uv sync`
-4. **Run migration**: `uv run python scripts/migrate_v01x_to_v020.py`
+4. **Run migration**: `uv run python scripts/migrate_database.py`
 5. **Frontend dependencies**: `cd ../frontend && npm install`
 6. **Build frontend**: `npm run build`
 7. **Restart services**: Restart backend and frontend servers
 8. **Verify**: Check that new tables and columns exist, API is accessible
+
+**Note**: The new `migrate_database.py` script automatically checks and applies ALL schema changes. It's safe to run multiple times and will only apply missing changes.
 
 ### Breaking Changes
 - None (fully backward compatible)

@@ -57,6 +57,10 @@ class Settings:
     ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
     ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "changeme123")
 
+    # Owner Password Hash (for cash counter verification)
+    # Generate hash using: python -c "from passlib.context import CryptContext; print(CryptContext(schemes=['bcrypt']).hash('your_password'))"
+    OWNER_PASSWORD_HASH: str = os.getenv("OWNER_PASSWORD_HASH", "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW")  # Default: "owner123"
+
     # Database
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./restaurant.db")
 

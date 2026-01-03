@@ -10,9 +10,11 @@ import EditOrderModal from '../components/EditOrderModal';
 import EmptyState from '../components/EmptyState';
 import PartialServeModal from '../components/PartialServeModal';
 import EditServedQuantityModal from '../components/EditServedQuantityModal';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { useActiveOrders, useCancelOrder, useUpdateItemServedStatus, useSetItemServedQuantity } from '../hooks/useOrders';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatDateTime } from '../utils/formatDateTime';
+import { toast } from '../utils/toast';
 import { ClipboardText } from '@phosphor-icons/react';
 import type { Order, OrderItem } from '../types';
 
@@ -32,30 +34,34 @@ export default function AdminActiveOrdersPage() {
   const orders = activeOrders || [];
 
   const handleServeItem = (orderId: number, itemId: number, quantityToServe: number) => {
-    console.log('Serving items:', { orderId, itemId, quantityToServe });
     updateServedMutation.mutate(
       { orderId, itemId, quantityToServe },
       {
         onError: (error) => {
           console.error('Error updating served quantity:', error);
+          toast.error("Failed to update served quantity", {
+            description: error instanceof Error ? error.message : "Please try again."
+          });
         },
         onSuccess: () => {
-          console.log('Successfully updated served quantity');
+          toast.success("Served quantity updated successfully");
         },
       }
     );
   };
 
   const handleEditServedQuantity = (orderId: number, itemId: number, quantityServed: number) => {
-    console.log('Editing served quantity:', { orderId, itemId, quantityServed });
     setServedQuantityMutation.mutate(
       { orderId, itemId, quantityServed },
       {
         onError: (error) => {
           console.error('Error setting served quantity:', error);
+          toast.error("Failed to update served quantity", {
+            description: error instanceof Error ? error.message : "Please try again."
+          });
         },
         onSuccess: () => {
-          console.log('Successfully set served quantity');
+          toast.success("Served quantity updated successfully");
         },
       }
     );
@@ -70,9 +76,13 @@ export default function AdminActiveOrdersPage() {
 
     try {
       await cancelMutation.mutateAsync(cancelOrderId);
+      toast.success("Order cancelled successfully");
       setCancelOrderId(null);
     } catch (error) {
       console.error('Failed to cancel order:', error);
+      toast.error("Failed to cancel order", {
+        description: error instanceof Error ? error.message : "Please try again."
+      });
     }
   };
 
@@ -97,7 +107,7 @@ export default function AdminActiveOrdersPage() {
               </svg>
             </button>
             <div className="flex-1">
-              <h1 className="font-heading heading-section text-coffee-brown">Active Orders</h1>
+              <h1 className="font-heading heading-section text-neutral-text-dark">Active Orders</h1>
               <p className="text-sm text-muted mt-1">
                 Manage ongoing orders, generate bills, and process payments
               </p>
@@ -170,11 +180,17 @@ export default function AdminActiveOrdersPage() {
         />
       )}
 
-      {/* Cancel Confirmation Modal */}
+      {/* Cancel Confirmation Dialog */}
       {cancelOrderId && (
-        <ConfirmCancelModal
+        <ConfirmDialog
+          isOpen={true}
+          onClose={() => setCancelOrderId(null)}
           onConfirm={handleCancelOrder}
-          onCancel={() => setCancelOrderId(null)}
+          title="Cancel Order?"
+          message={`Are you sure you want to cancel ${orders.find(o => o.id === cancelOrderId) ? `Table ${orders.find(o => o.id === cancelOrderId)!.table_number}'s order (${formatCurrency(orders.find(o => o.id === cancelOrderId)!.total_amount)})` : 'this order'}? This action cannot be undone.`}
+          confirmText="Yes, Cancel Order"
+          cancelText="No, Keep It"
+          variant="danger"
           isLoading={cancelMutation.isPending}
         />
       )}
@@ -433,54 +449,3 @@ function OrderCard({ order, onEdit, onGenerateBill, onCancel, onOpenServeModal, 
   );
 }
 
-// Confirm Cancel Modal
-interface ConfirmCancelModalProps {
-  onConfirm: () => void;
-  onCancel: () => void;
-  isLoading: boolean;
-}
-
-function ConfirmCancelModal({ onConfirm, onCancel, isLoading }: ConfirmCancelModalProps) {
-  return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/50 z-[60]"
-        onClick={onCancel}
-        aria-hidden="true"
-      />
-
-      {/* Modal */}
-      <div
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                   w-full max-w-md bg-off-white rounded-2xl shadow-2xl z-[70] p-6"
-        role="dialog"
-        aria-modal="true"
-      >
-        <h2 className="text-xl font-bold text-neutral-text-dark mb-4">
-          Cancel Order?
-        </h2>
-        <p className="text-neutral-text-light mb-6">
-          Are you sure you want to cancel this order? This action cannot be undone.
-        </p>
-
-        <div className="flex gap-3">
-          <button
-            onClick={onCancel}
-            disabled={isLoading}
-            className="btn-secondary flex-1"
-          >
-            No, Keep It
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={isLoading}
-            className="btn-destructive flex-1"
-          >
-            {isLoading ? 'Canceling...' : 'Yes, Cancel'}
-          </button>
-        </div>
-      </div>
-    </>
-  );
-}

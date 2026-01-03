@@ -173,7 +173,7 @@ export default function DailyCountTab() {
         <div className="card p-8 text-center">
           <div className="mb-4">
             <Upload size={48} className="mx-auto text-neutral-text-muted mb-3" />
-            <h3 className="text-lg font-heading text-neutral-text-dark dark:text-cream mb-2">
+            <h3 className="text-lg font-heading text-neutral-text-dark mb-2">
               No Inventory Items
             </h3>
             <p className="text-neutral-text-muted mb-6">
@@ -204,7 +204,7 @@ export default function DailyCountTab() {
       <div className="card p-4 sticky top-0 z-20 shadow-md">
         <div className="flex items-center justify-between gap-4 mb-3">
           <div>
-            <h2 className="text-lg font-heading text-neutral-text-dark dark:text-cream">
+            <h2 className="text-lg font-heading text-neutral-text-dark">
               Daily Inventory Count
             </h2>
             <p className="text-sm text-neutral-text-muted mt-1">

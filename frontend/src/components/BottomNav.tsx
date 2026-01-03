@@ -15,7 +15,7 @@ interface BottomNavProps {
 export default function BottomNav({ className = "" }: BottomNavProps) {
   const location = useLocation();
   const currentPath = location.pathname;
-  const { toggleTheme, resolvedTheme } = useTheme();
+  const { toggleTheme, theme } = useTheme();
 
   const navItems: { path: string; icon: ReactNode; label: string }[] = [
     {
@@ -81,7 +81,7 @@ export default function BottomNav({ className = "" }: BottomNavProps) {
           className="flex-1 flex flex-col items-center justify-center gap-1.5 smooth-transition min-h-touch cursor-pointer text-neutral-text-light hover:text-coffee-brown hover:bg-cream/60"
         >
           <span className="text-2xl">
-            {resolvedTheme === 'dark' ? <Moon size={24} weight="duotone" /> : <Sun size={24} weight="duotone" />}
+            {theme === 'dark' ? <Moon size={24} weight="duotone" /> : <Sun size={24} weight="duotone" />}
           </span>
           <span className="text-xs font-semibold tracking-wide">Theme</span>
         </button>

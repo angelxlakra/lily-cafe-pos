@@ -213,6 +213,17 @@ class OrderSummary(BaseModel):
         from_attributes = True
 
 
+class PaginatedOrders(BaseModel):
+    """Schema for paginated order response."""
+
+    items: List[Order]
+    total: int
+    page: int
+    size: int
+    pages: int
+
+
+
 # ============================================================================
 # App Config Schema
 # ============================================================================

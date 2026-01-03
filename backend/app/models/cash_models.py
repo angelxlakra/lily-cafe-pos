@@ -20,6 +20,22 @@ class DailyCashCounter(Base):
     verified_at = Column(DateTime(timezone=True), nullable=True)
     is_verified = Column(Boolean, nullable=False, default=False, index=True)
 
+    # v0.2 Patch - Denomination counting for opening balance
+    opening_500s = Column(Integer, nullable=False, default=0)
+    opening_200s = Column(Integer, nullable=False, default=0)
+    opening_100s = Column(Integer, nullable=False, default=0)
+    opening_50s = Column(Integer, nullable=False, default=0)
+    opening_20s = Column(Integer, nullable=False, default=0)
+    opening_10s = Column(Integer, nullable=False, default=0)
+
+    # v0.2 Patch - Denomination counting for closing balance
+    closing_500s = Column(Integer, nullable=True)
+    closing_200s = Column(Integer, nullable=True)
+    closing_100s = Column(Integer, nullable=True)
+    closing_50s = Column(Integer, nullable=True)
+    closing_20s = Column(Integer, nullable=True)
+    closing_10s = Column(Integer, nullable=True)
+
     @property
     def status(self) -> str:
         if self.is_verified:

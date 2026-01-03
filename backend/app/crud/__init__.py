@@ -16,6 +16,7 @@ from app.crud.crud import (
     # Order operations
     generate_order_number,
     get_orders,
+    get_orders_paginated,
     get_order,
     get_active_order_for_table,
     create_order,
@@ -46,6 +47,7 @@ __all__ = [
     # Orders
     "generate_order_number",
     "get_orders",
+    "get_orders_paginated",
     "get_order",
     "get_active_order_for_table",
     "create_order",

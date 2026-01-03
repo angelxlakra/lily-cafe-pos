@@ -26,6 +26,9 @@ from app.schemas.schemas import (
     OrderItemsUpdate,
     Order,
     OrderSummary,
+    PaginatedOrders,
+    # App Config schemas
+    AppConfig,
     # Inventory Category schemas
     InventoryCategoryBase,
     InventoryCategoryCreate,
@@ -60,6 +63,9 @@ __all__ = [
     "OrderItemsUpdate",
     "Order",
     "OrderSummary",
+    "PaginatedOrders",
+    # App Config
+    "AppConfig",
     # Inventory Categories
     "InventoryCategoryBase",
     "InventoryCategoryCreate",

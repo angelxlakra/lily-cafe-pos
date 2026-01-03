@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { Toaster } from 'sonner'
 import { ThemeProvider } from './contexts/ThemeContext.tsx'
 import App from './App.tsx'
 import ApiTestPage from './pages/ApiTestPage.tsx'
@@ -48,6 +49,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <BrowserRouter>
+          <Toaster
+            position="top-center"
+            expand={false}
+            richColors
+            closeButton
+            duration={3000}
+          />
           <Routes>
             {/* Redirect root to tables page */}
             <Route path="/" element={<Navigate to="/tables" replace />} />

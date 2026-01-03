@@ -177,4 +177,16 @@ export interface QueryParams {
   table_number?: number;
   today_only?: boolean;
   date?: string;
+  start_date?: string;
+  end_date?: string;
+  page?: number;
+  size?: number;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  size: number;
+  pages: number;
 }
