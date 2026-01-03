@@ -155,12 +155,15 @@ export default function OrderHistoryPage() {
     ? String(gstRatePercent)
     : gstRatePercent.toFixed(2);
 
-  // Calculate daily totals
-  const dailyTotal = orders.reduce((sum, order) => sum + order.total_amount, 0);
-  const dailyOrderCount = orders.length;
+  // Calculate stats based on server data (for the full period)
+  const periodTotalRevenue = orderHistoryData?.total_revenue || 0;
+  const periodTotalOrders = orderHistoryData?.total || 0;
+  const isSingleDay = dateRange.start === dateRange.end;
+  const revenueLabel = isSingleDay ? "Daily Revenue" : "Total Revenue";
 
   // Calculate payment method breakdown
-  const paymentBreakdown = orders.reduce(
+  // Prefer server-side breakdown if available, otherwise fallback to local (though local is only current page)
+  const paymentBreakdown = orderHistoryData?.payment_breakdown || orders.reduce(
     (acc, order) => {
       if (order.payments) {
         order.payments.forEach((payment: any) => {
@@ -207,7 +210,6 @@ export default function OrderHistoryPage() {
           {/* Date Picker and Search */}
           <div className="space-y-4">
             {/* Date Picker with Quick Filters */}
-            {/* Date Picker with Quick Filters */}
             <DatePickerWithQuickFilters
               startDate={dateRange.start}
               endDate={dateRange.end}
@@ -247,7 +249,7 @@ export default function OrderHistoryPage() {
         </header>
 
         {/* Daily Summary */}
-        {!isLoading && !error && orders.length > 0 && (
+        {!isLoading && !error && (
           <div className="p-4 sm:p-6 bg-off-white border-b border-neutral-border">
             <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
               <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-200">
@@ -277,9 +279,11 @@ export default function OrderHistoryPage() {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-neutral-text-light dark:text-neutral-text-light group-hover:text-coffee-brown dark:group-hover:text-cream transition-colors">Daily Revenue</p>
+                    <p className="text-sm font-medium text-neutral-text-light dark:text-neutral-text-light group-hover:text-coffee-brown dark:group-hover:text-cream transition-colors">
+                      {revenueLabel}
+                    </p>
                     <p className="text-2xl font-bold font-heading text-coffee-brown dark:text-cream">
-                      {formatCurrency(dailyTotal)}
+                      {formatCurrency(periodTotalRevenue)}
                     </p>
                   </div>
                 </div>
@@ -295,7 +299,7 @@ export default function OrderHistoryPage() {
                   <div>
                     <p className="text-sm font-medium text-neutral-text-light dark:text-neutral-text-light">Average Order</p>
                     <p className="text-2xl font-bold font-heading text-coffee-brown dark:text-cream">
-                      {formatCurrency(dailyOrderCount > 0 ? Math.round(dailyTotal / dailyOrderCount) : 0)}
+                      {formatCurrency(periodTotalOrders > 0 ? Math.round(periodTotalRevenue / periodTotalOrders) : 0)}
                     </p>
                   </div>
                 </div>
@@ -609,7 +613,7 @@ export default function OrderHistoryPage() {
         isOpen={isRevenueModalOpen}
         onClose={() => setIsRevenueModalOpen(false)}
         data={{
-          total: dailyTotal,
+          total: periodTotalRevenue,
           ...paymentBreakdown
         }}
         date={dateRange.start}

@@ -246,19 +246,77 @@ def get_orders_paginated(
     end_date: Optional[str] = None,
     skip: int = 0,
     limit: int = 50,
-) -> tuple[List[models.Order], int]:
+) -> tuple[List[models.Order], int, int, dict]:
     """
     Get paginated orders matching filters.
 
     Returns:
-        Tuple of (list of orders, total count)
+        Tuple of (list of orders, total count, total revenue, payment breakdown)
     """
     query = _get_orders_query(
         db, status, table_number, today_only, date_str, start_date, end_date
     )
     total = query.count()
+    
+    # Calculate total revenue for the filtered period
+    total_revenue = query.with_entities(func.sum(models.Order.total_amount)).scalar() or 0
+    
+    # Calculate payment breakdown for the filtered period
+    # We need to join with Payment table and filter by the same criteria as orders
+    breakdown_query = (
+        db.query(
+            models.Payment.payment_method,
+            func.sum(models.Payment.amount).label("total")
+        )
+        .join(models.Order, models.Payment.order_id == models.Order.id)
+    )
+    
+    # Apply the same filters as _get_orders_query manually since we need to filter on the joined Order table
+    if status:
+        breakdown_query = breakdown_query.filter(models.Order.status == status)
+    if table_number:
+        breakdown_query = breakdown_query.filter(models.Order.table_number == table_number)
+    if today_only:
+        today = date.today()
+        breakdown_query = breakdown_query.filter(func.date(models.Order.created_at) == today)
+    if date_str:
+        try:
+            from datetime import datetime
+            filter_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            breakdown_query = breakdown_query.filter(func.date(models.Order.created_at) == filter_date)
+        except ValueError:
+            pass
+    if start_date:
+        try:
+            from datetime import datetime
+            start = datetime.strptime(start_date, "%Y-%m-%d").date()
+            breakdown_query = breakdown_query.filter(func.date(models.Order.created_at) >= start)
+        except ValueError:
+            pass
+    if end_date:
+        try:
+            from datetime import datetime
+            end = datetime.strptime(end_date, "%Y-%m-%d").date()
+            breakdown_query = breakdown_query.filter(func.date(models.Order.created_at) <= end)
+        except ValueError:
+            pass
+            
+    breakdown_results = breakdown_query.group_by(models.Payment.payment_method).all()
+    
+    # Initialize breakdown with 0s
+    payment_breakdown = {
+        "cash": 0,
+        "upi": 0,
+        "card": 0
+    }
+    
+    # Populate with actual values
+    for method, amount in breakdown_results:
+        if method in payment_breakdown:
+            payment_breakdown[method] = amount or 0
+            
     items = query.order_by(models.Order.created_at.desc()).offset(skip).limit(limit).all()
-    return items, total
+    return items, total, total_revenue, payment_breakdown
 
 
 def get_order(db: Session, order_id: int) -> Optional[models.Order]:

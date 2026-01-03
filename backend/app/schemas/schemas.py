@@ -213,6 +213,12 @@ class OrderSummary(BaseModel):
         from_attributes = True
 
 
+class PaymentBreakdown(BaseModel):
+    cash: int
+    upi: int
+    card: int
+
+
 class PaginatedOrders(BaseModel):
     """Schema for paginated order response."""
 
@@ -221,6 +227,8 @@ class PaginatedOrders(BaseModel):
     page: int
     size: int
     pages: int
+    total_revenue: Optional[int] = 0
+    payment_breakdown: Optional[PaymentBreakdown] = None
 
 
 
