@@ -167,25 +167,17 @@ def generate_order_number(db: Session) -> str:
     return f"ORD-{today_str}-{new_seq:04d}"
 
 
-def get_orders(
+def _get_orders_query(
     db: Session,
     status: Optional[models.OrderStatus] = None,
     table_number: Optional[int] = None,
     today_only: bool = False,
     date_str: Optional[str] = None,
-) -> List[models.Order]:
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+):
     """
-    Get orders with optional filtering.
-
-    Args:
-        db: Database session
-        status: Filter by order status
-        table_number: Filter by table number
-        today_only: If True, only return today's orders
-        date_str: Filter by specific date in YYYY-MM-DD format
-
-    Returns:
-        List of orders
+    Helper to build order query with filters.
     """
     query = db.query(models.Order)
 
@@ -207,7 +199,66 @@ def get_orders(
         except ValueError:
             raise ValueError(f"Invalid date format: {date_str}. Expected YYYY-MM-DD")
 
+    if start_date:
+        try:
+            from datetime import datetime
+            start = datetime.strptime(start_date, "%Y-%m-%d").date()
+            query = query.filter(func.date(models.Order.created_at) >= start)
+        except ValueError:
+            raise ValueError(f"Invalid start_date format: {start_date}. Expected YYYY-MM-DD")
+
+    if end_date:
+        try:
+            from datetime import datetime
+            end = datetime.strptime(end_date, "%Y-%m-%d").date()
+            query = query.filter(func.date(models.Order.created_at) <= end)
+        except ValueError:
+            raise ValueError(f"Invalid end_date format: {end_date}. Expected YYYY-MM-DD")
+
+    return query
+
+
+def get_orders(
+    db: Session,
+    status: Optional[models.OrderStatus] = None,
+    table_number: Optional[int] = None,
+    today_only: bool = False,
+    date_str: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+) -> List[models.Order]:
+    """
+    Get all orders matching filters.
+    """
+    query = _get_orders_query(
+        db, status, table_number, today_only, date_str, start_date, end_date
+    )
     return query.order_by(models.Order.created_at.desc()).all()
+
+
+def get_orders_paginated(
+    db: Session,
+    status: Optional[models.OrderStatus] = None,
+    table_number: Optional[int] = None,
+    today_only: bool = False,
+    date_str: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 50,
+) -> tuple[List[models.Order], int]:
+    """
+    Get paginated orders matching filters.
+
+    Returns:
+        Tuple of (list of orders, total count)
+    """
+    query = _get_orders_query(
+        db, status, table_number, today_only, date_str, start_date, end_date
+    )
+    total = query.count()
+    items = query.order_by(models.Order.created_at.desc()).offset(skip).limit(limit).all()
+    return items, total
 
 
 def get_order(db: Session, order_id: int) -> Optional[models.Order]:
@@ -452,6 +503,13 @@ def admin_edit_order(
         # Update table number
         db_order.table_number = order_update.table_number
 
+    # Create a map of existing items to preserve their served status
+    # Key: menu_item_id, Value: quantity_served
+    existing_items_status = {
+        item.menu_item_id: item.quantity_served
+        for item in db_order.order_items
+    }
+
     # Delete existing order items
     for old_item in db_order.order_items:
         db.delete(old_item)
@@ -471,15 +529,28 @@ def admin_edit_order(
         item_subtotal = menu_item.price * item.quantity
         subtotal += item_subtotal
 
+        # Determine served status from existing items
+        quantity_served = 0
+        is_served = False
+        
+        if menu_item.id in existing_items_status:
+            old_qty_served = existing_items_status[menu_item.id]
+            # Preserve served quantity, capped at new quantity
+            quantity_served = min(old_qty_served, item.quantity)
+            # Recalculate is_served
+            is_served = quantity_served >= item.quantity
+
         # Create new order item
         new_order_item = models.OrderItem(
             order_id=db_order.id,
             menu_item_id=menu_item.id,
             menu_item_name=menu_item.name,
             quantity=item.quantity,
+            quantity_served=quantity_served,
             unit_price=menu_item.price,
             subtotal=item_subtotal,
             is_beverage=menu_item.is_beverage,
+            is_served=is_served,
             is_parcel=getattr(item, 'is_parcel', False),
         )
         db.add(new_order_item)

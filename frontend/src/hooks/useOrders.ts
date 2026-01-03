@@ -3,7 +3,7 @@
 // Orders management with optimistic updates
 // ========================================
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { ordersApi, paymentsApi } from '../api/client';
 import type {
   CreateOrderRequest,
@@ -86,6 +86,7 @@ export const useOrderHistory = (params?: QueryParams) => {
       }
       return failureCount < 3;
     },
+    placeholderData: keepPreviousData,
   });
 };
 

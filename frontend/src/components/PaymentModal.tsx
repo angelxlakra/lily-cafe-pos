@@ -7,6 +7,7 @@ import { useState } from "react";
 import { UpiIcon, CashIcon, CardIcon } from "./icons/PaymentIcons";
 import { useOrder, useAddPayments, usePrintReceipt } from "../hooks/useOrders";
 import { formatCurrency } from "../utils/formatCurrency";
+import { toast } from "../utils/toast";
 import type {
   PaymentMethod,
   PaymentCreateRequest,
@@ -63,12 +64,33 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
   };
 
   const handleRemovePayment = (index: number) => {
-    setPayments(payments.filter((_, i) => i !== index));
+    const removedPayment = payments[index];
+    const newPayments = payments.filter((_, i) => i !== index);
+    setPayments(newPayments);
+
+    // Show undo toast
+    toast.success(`${removedPayment.payment_method.toUpperCase()} payment removed`, {
+      duration: 5000,
+      description: formatCurrency(removedPayment.amount),
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          // Restore the payment at the same index
+          const restored = [...newPayments];
+          restored.splice(index, 0, removedPayment);
+          setPayments(restored);
+          toast.success('Payment restored');
+        }
+      }
+    });
   };
 
   const handlePrintReceipt = async () => {
     if (remaining !== 0) {
       setError("Please add payments to cover the full amount");
+      toast.warning("Incomplete payment", {
+        description: "Please add payments to cover the full amount before completing the order."
+      });
       return;
     }
 
@@ -86,12 +108,19 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
       // Then, print the receipt
       await printReceiptMutation.mutateAsync(orderId);
 
+      // Show success toast
+      toast.success("Order completed successfully!", {
+        description: "Receipt has been generated and sent to printer."
+      });
+
       // Close modal on success
       onClose();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to process payment"
-      );
+      const errorMessage = err instanceof Error ? err.message : "Failed to process payment";
+      setError(errorMessage);
+      toast.error("Failed to complete order", {
+        description: errorMessage
+      });
     }
   };
 
@@ -262,11 +291,14 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                <h3 className="text-lg font-bold text-coffee-dark mb-3">Add Payment</h3>
                
                {/* Payment Methods - Compact Grid */}
-               <div className="grid grid-cols-3 gap-3 mb-4">
+               <div className="grid grid-cols-3 gap-3 mb-4" role="radiogroup" aria-label="Payment method">
                   {(['upi', 'cash', 'card'] as PaymentMethod[]).map((method) => (
                      <button
                         key={method}
                         onClick={() => setPaymentMethod(method)}
+                        role="radio"
+                        aria-checked={paymentMethod === method}
+                        aria-label={`Pay with ${method.toUpperCase()}`}
                         className={`
                            relative flex flex-col items-center justify-center gap-2 p-3 rounded-xl border-2 transition-all duration-200
                            ${paymentMethod === method
@@ -278,14 +310,14 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                         <div className={`
                            w-8 h-8 rounded-full flex items-center justify-center text-lg
                            ${paymentMethod !== method ? 'bg-coffee-brown text-cream' : 'bg-cream text-coffee-brown'}
-                        `}>
+                        `} aria-hidden="true">
                            {paymentIcons[method]}
                         </div>
                         <span className={`text-xs font-bold ${paymentMethod === method ? 'text-coffee-brown' : 'text-neutral-text-light'}`}>
                            {method.toUpperCase()}
                         </span>
                         {paymentMethod === method && (
-                           <div className="absolute top-1 right-1 text-coffee-brown">
+                           <div className="absolute top-1 right-1 text-coffee-brown" aria-hidden="true">
                               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                               </svg>
@@ -296,20 +328,37 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                </div>
 
                <div className="mb-4">
+                  <label htmlFor="payment-amount" className="block text-sm font-medium text-neutral-text-dark mb-2">
+                     Payment Amount
+                  </label>
                   <div className="flex gap-3">
                      <div className="relative flex-1">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-text-light font-bold text-lg">₹</span>
                         <input
+                           id="payment-amount"
                            type="number"
                            value={paymentAmount}
-                           onChange={(e) => setPaymentAmount(e.target.value)}
-                           className="w-full pl-10 pr-4 py-3 border-2 border-neutral-border rounded-xl text-xl font-bold text-coffee-dark bg-neutral-background focus:border-coffee-brown focus:outline-none transition-colors"
+                           onChange={(e) => {
+                              setPaymentAmount(e.target.value);
+                              setError('');
+                           }}
+                           className={`w-full pl-10 pr-4 py-3 border-2 rounded-xl text-xl font-bold text-coffee-dark bg-neutral-background focus:outline-none transition-colors ${
+                              error
+                                 ? 'border-error focus:border-error'
+                                 : 'border-neutral-border focus:border-coffee-brown'
+                           }`}
                            placeholder="0"
+                           aria-invalid={error ? 'true' : 'false'}
+                           aria-describedby={error ? 'payment-amount-error' : undefined}
                         />
                      </div>
                      <button
-                        onClick={() => setPaymentAmount((remaining / 100).toString())}
+                        onClick={() => {
+                           setPaymentAmount((remaining / 100).toString());
+                           setError('');
+                        }}
                         className="px-4 py-2 bg-cream text-coffee-brown font-bold rounded-xl hover:bg-neutral-border transition-colors border-2 border-neutral-border whitespace-nowrap"
+                        aria-label="Set payment amount to full remaining amount"
                      >
                         Full Amount
                      </button>
@@ -317,8 +366,12 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                </div>
 
                {error && (
-                  <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl flex items-center gap-2 text-sm">
-                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div
+                     id="payment-amount-error"
+                     className="mb-4 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl flex items-center gap-2 text-sm"
+                     role="alert"
+                  >
+                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                      </svg>
                      {error}

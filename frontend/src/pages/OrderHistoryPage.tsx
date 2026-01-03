@@ -3,14 +3,17 @@
 // View past orders with date filtering
 // ========================================
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Sidebar from '../components/Sidebar';
 import EmptyState from '../components/EmptyState';
+import DatePickerWithQuickFilters from '../components/DatePickerWithQuickFilters';
+import SortableTableHeader from '../components/SortableTableHeader';
 import { useOrderHistory, useOrder, useUpdatePayments } from '../hooks/useOrders';
 import { useAppConfig } from '../hooks/useConfig';
+import { useSortableTable } from '../hooks/useSortableTable';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatDateTime } from '../utils/formatDateTime';
-import { CalendarDots, Printer, PencilSimple } from '@phosphor-icons/react';
+import { CalendarDots, Printer, PencilSimple, MagnifyingGlass, X, CaretLeft, CaretRight } from '@phosphor-icons/react';
 import { UpiIcon, CashIcon, CardIcon } from '../components/icons/PaymentIcons';
 import DailyRevenueModal from '../components/DailyRevenueModal';
 import EditPaymentsModal from '../components/EditPaymentsModal';
@@ -21,11 +24,15 @@ export default function OrderHistoryPage() {
   // Get today's date for max date validation
   const today = new Date().toISOString().split('T')[0];
 
-  const [selectedDate, setSelectedDate] = useState(today);
+
+  const [dateRange, setDateRange] = useState({ start: today, end: today });
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(20);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
   const [editPaymentsOrder, setEditPaymentsOrder] = useState<Order | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Payment method icons
   const paymentIcons: Record<PaymentMethod, JSX.Element> = {
@@ -60,9 +67,16 @@ export default function OrderHistoryPage() {
     );
   };
 
-  const { data: orderHistory, isLoading, error } = useOrderHistory({
-    date: selectedDate,
+  const { data: orderHistoryData, isLoading, error } = useOrderHistory({
+    start_date: dateRange.start,
+    end_date: dateRange.end,
+    page,
+    size: pageSize,
   });
+
+  const allOrders = orderHistoryData?.items || [];
+  const totalOrders = orderHistoryData?.total || 0;
+  const totalPages = orderHistoryData?.pages || 0;
 
   const { data: selectedOrder, isLoading: isLoadingDetails } = useOrder(
     selectedOrderId || 0
@@ -71,7 +85,37 @@ export default function OrderHistoryPage() {
   const { data: appConfig } = useAppConfig();
   const updatePaymentsMutation = useUpdatePayments();
 
-  const orders = orderHistory || [];
+
+
+  // Filter orders based on search query
+  const filteredOrders = useMemo(() => {
+    if (!searchQuery.trim()) return allOrders;
+
+    const query = searchQuery.toLowerCase();
+    return allOrders.filter(order => {
+      // Search by table number
+      if (order.table_number.toString().includes(query)) return true;
+
+      // Search by customer name
+      if (order.customer_name?.toLowerCase().includes(query)) return true;
+
+      // Search by order ID
+      if (order.id.toString().includes(query)) return true;
+
+      // Search by amount (convert to rupees for better UX)
+      const amountInRupees = (order.total_amount / 100).toString();
+      if (amountInRupees.includes(query)) return true;
+
+      return false;
+    });
+  }, [allOrders, searchQuery]);
+
+  // Add sorting to filtered orders
+  const { sortedData: orders, sortConfig, requestSort } = useSortableTable(
+    filteredOrders,
+    'created_at' as keyof Order,
+    'desc'
+  );
 
   const handleViewDetails = (orderId: number) => {
     setSelectedOrderId(orderId);
@@ -151,27 +195,54 @@ export default function OrderHistoryPage() {
               </svg>
             </button>
             <div className="flex-1">
-              <h1 className="font-heading heading-section text-coffee-brown">
+              <h1 className="font-heading heading-section text-neutral-text-dark">
                 Order History
               </h1>
-              <p className="text-sm text-muted mt-1">
+              <p className="text-sm text-muted dark:text-neutral-text-light mt-1">
                 View past orders and daily sales
               </p>
             </div>
           </div>
 
-          {/* Date Picker */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <label className="text-sm font-medium text-neutral-text-dark">
-              Date:
-            </label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+          {/* Date Picker and Search */}
+          <div className="space-y-4">
+            {/* Date Picker with Quick Filters */}
+            {/* Date Picker with Quick Filters */}
+            <DatePickerWithQuickFilters
+              startDate={dateRange.start}
+              endDate={dateRange.end}
+              onChange={(start, end) => {
+                setDateRange({ start, end });
+                setPage(1);
+              }}
               max={today}
-              className="px-4 py-2 border border-neutral-border rounded-lg focus:outline-none focus:ring-2 focus:ring-coffee-brown w-full sm:w-auto"
             />
+
+            {/* Search Bar */}
+            <div className="relative">
+              <MagnifyingGlass
+                size={20}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-text-light"
+                aria-hidden="true"
+              />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by table, customer, order ID, or amount..."
+                className="w-full pl-10 pr-10 py-2 border border-neutral-border dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 text-neutral-text-dark dark:text-neutral-text-light focus:outline-none focus:ring-2 focus:ring-coffee-brown"
+                aria-label="Search orders"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-text-light hover:text-neutral-text-dark dark:hover:text-white transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X size={18} aria-hidden="true" />
+                </button>
+              )}
+            </div>
           </div>
         </header>
 
@@ -181,33 +252,33 @@ export default function OrderHistoryPage() {
             <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
               <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-200">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-lily-green/10 rounded-lg text-lily-green">
+                  <div className="p-3 bg-lily-green/10 dark:bg-lily-green/20 rounded-lg text-lily-green dark:text-lily-green-light">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-neutral-text-light">Total Orders</p>
-                    <p className="text-2xl font-bold font-heading text-coffee-brown">
-                      {dailyOrderCount}
+                    <p className="text-sm font-medium text-neutral-text-light dark:text-neutral-text-light">Total Orders</p>
+                    <p className="text-2xl font-bold font-heading text-neutral-text-dark">
+                      {totalOrders}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div 
+              <div
                 onClick={() => setIsRevenueModalOpen(true)}
                 className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group hover:-translate-y-1"
               >
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-coffee-light/10 rounded-lg text-coffee-brown group-hover:bg-coffee-brown group-hover:text-white transition-colors">
+                  <div className="p-3 bg-coffee-light/10 dark:bg-coffee-light/20 rounded-lg text-coffee-brown dark:text-coffee-light group-hover:bg-coffee-brown group-hover:text-white dark:group-hover:text-white transition-colors">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-neutral-text-light group-hover:text-coffee-brown transition-colors">Daily Revenue</p>
-                    <p className="text-2xl font-bold font-heading text-coffee-brown">
+                    <p className="text-sm font-medium text-neutral-text-light dark:text-neutral-text-light group-hover:text-coffee-brown dark:group-hover:text-cream transition-colors">Daily Revenue</p>
+                    <p className="text-2xl font-bold font-heading text-coffee-brown dark:text-cream">
                       {formatCurrency(dailyTotal)}
                     </p>
                   </div>
@@ -216,14 +287,14 @@ export default function OrderHistoryPage() {
 
               <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-200">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-neutral-text-light">Average Order</p>
-                    <p className="text-2xl font-bold font-heading text-coffee-brown">
+                    <p className="text-sm font-medium text-neutral-text-light dark:text-neutral-text-light">Average Order</p>
+                    <p className="text-2xl font-bold font-heading text-coffee-brown dark:text-cream">
                       {formatCurrency(dailyOrderCount > 0 ? Math.round(dailyTotal / dailyOrderCount) : 0)}
                     </p>
                   </div>
@@ -264,11 +335,17 @@ export default function OrderHistoryPage() {
           {/* Empty State */}
           {!isLoading && !error && orders.length === 0 && (
             <EmptyState
-              icon={<CalendarDots size={32} weight="duotone" />}
-              title="No orders on this date"
-              description="Try picking another day or adjust your search criteria."
-              actionLabel="Jump to today"
-              onAction={() => setSelectedDate(today)}
+              icon={searchQuery ? <MagnifyingGlass size={32} weight="duotone" /> : <CalendarDots size={32} weight="duotone" />}
+              title={searchQuery ? "No matching orders" : "No orders in this period"}
+              description={
+                searchQuery
+                  ? `No orders found matching "${searchQuery}". Try a different search term.`
+                  : "No orders were placed on this date. Try picking another day."
+              }
+              actionLabel={searchQuery ? "Clear search" : "Jump to today"}
+              onAction={() => searchQuery ? setSearchQuery('') : setDateRange({ start: today, end: today })}
+              secondaryActionLabel={searchQuery ? "Jump to today" : undefined}
+              onSecondaryAction={searchQuery ? () => setDateRange({ start: today, end: today }) : undefined}
             />
           )}
 
@@ -280,29 +357,54 @@ export default function OrderHistoryPage() {
                 <table className="w-full">
                   <thead className="bg-cream border-b border-neutral-border">
                     <tr>
-                      <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-dark">
-                        Order #
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-dark">
-                      Table
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-dark">
-                      Customer
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-dark">
-                      Time
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-dark">
-                      Payment Mode
-                    </th>
-                    <th className="px-6 py-3 text-right text-sm font-semibold text-neutral-text-dark">
-                      Total
-                    </th>
-                    <th className="px-6 py-3 text-right text-sm font-semibold text-neutral-text-dark">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
+                      <SortableTableHeader
+                        label="Order #"
+                        sortKey={'id' as keyof Order}
+                        currentSortKey={sortConfig.key as keyof Order}
+                        sortDirection={sortConfig.direction}
+                        onSort={requestSort}
+                        align="left"
+                      />
+                      <SortableTableHeader
+                        label="Table"
+                        sortKey={'table_number' as keyof Order}
+                        currentSortKey={sortConfig.key as keyof Order}
+                        sortDirection={sortConfig.direction}
+                        onSort={requestSort}
+                        align="left"
+                      />
+                      <SortableTableHeader
+                        label="Customer"
+                        sortKey={'customer_name' as keyof Order}
+                        currentSortKey={sortConfig.key as keyof Order}
+                        sortDirection={sortConfig.direction}
+                        onSort={requestSort}
+                        align="left"
+                      />
+                      <SortableTableHeader
+                        label="Time"
+                        sortKey={'created_at' as keyof Order}
+                        currentSortKey={sortConfig.key as keyof Order}
+                        sortDirection={sortConfig.direction}
+                        onSort={requestSort}
+                        align="left"
+                      />
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-text-light uppercase tracking-wider">
+                        Payment Mode
+                      </th>
+                      <SortableTableHeader
+                        label="Total"
+                        sortKey={'total_amount' as keyof Order}
+                        currentSortKey={sortConfig.key as keyof Order}
+                        sortDirection={sortConfig.direction}
+                        onSort={requestSort}
+                        align="right"
+                      />
+                      <th className="px-4 py-3 text-right text-sm font-semibold text-neutral-text-light uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
                 <tbody className="divide-y divide-neutral-border">
                   {orders.map((order) => (
                     <tr
@@ -357,7 +459,7 @@ export default function OrderHistoryPage() {
                           </button>
                           <button
                             onClick={() => handleViewDetails(order.id)}
-                            className="px-3 py-1 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors"
+                            className="px-3 py-1 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors whitespace-nowrap"
                           >
                             View Details
                           </button>
@@ -451,6 +553,33 @@ export default function OrderHistoryPage() {
               </div>
             </div>
           )}
+          {/* Pagination */}
+          {!isLoading && totalPages > 1 && (
+            <div className="flex items-center justify-between p-4 mt-4 border-t border-neutral-border bg-white dark:bg-neutral-800 rounded-lg shadow-sm">
+              <p className="text-sm text-neutral-text-light">
+                Page <span className="font-medium text-neutral-text-dark">{page}</span> of{' '}
+                <span className="font-medium text-neutral-text-dark">{totalPages}</span>
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-3 py-1.5 text-sm bg-white dark:bg-neutral-700 border border-neutral-border dark:border-neutral-600 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
+                >
+                  <CaretLeft size={16} />
+                  Previous
+                </button>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="px-3 py-1.5 text-sm bg-white dark:bg-neutral-700 border border-neutral-border dark:border-neutral-600 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
+                >
+                  Next
+                  <CaretRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </main>
       </div>
 
@@ -483,7 +612,7 @@ export default function OrderHistoryPage() {
           total: dailyTotal,
           ...paymentBreakdown
         }}
-        date={selectedDate}
+        date={dateRange.start}
       />
     </div>
   );

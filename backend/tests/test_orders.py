@@ -815,3 +815,71 @@ def test_customer_name_updated(db: Session, sample_menu_items):
     order2, _ = crud.create_order(db, order_data_2)
 
     assert order2.customer_name == "Jane Doe"
+
+
+# ============================================================================
+# Test Pagination and Date Ranges
+# ============================================================================
+
+
+def test_get_orders_paginated_and_date_range(db: Session, sample_menu_items):
+    """Test pagination and date range filtering."""
+    # Create orders on different dates manually to control created_at
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+    
+    # Order 1: Yesterday
+    order1 = Order(
+        order_number=f"ORD-{yesterday.strftime('%Y%m%d')}-001",
+        table_number=1,
+        subtotal=1000, gst_amount=50, total_amount=1050,
+        status=OrderStatus.PAID,
+        created_at=datetime.combine(yesterday, datetime.min.time()),
+        updated_at=datetime.combine(yesterday, datetime.min.time())
+    )
+    db.add(order1)
+    
+    # Order 2: Today
+    order2 = Order(
+        order_number=f"ORD-{today.strftime('%Y%m%d')}-001",
+        table_number=2,
+        subtotal=2000, gst_amount=100, total_amount=2100,
+        status=OrderStatus.PAID,
+        created_at=datetime.combine(today, datetime.min.time()),
+        updated_at=datetime.combine(today, datetime.min.time())
+    )
+    db.add(order2)
+    db.commit()
+    
+    # Test pagination (Page 1, Limit 1)
+    items, total = crud.get_orders_paginated(db, status=OrderStatus.PAID, limit=1)
+    assert len(items) == 1
+    assert total == 2
+    # Should return newest first (Today's order)
+    assert items[0].id == order2.id
+    
+    # Test pagination (Page 2, Limit 1) -> Skip 1
+    items_p2, total_p2 = crud.get_orders_paginated(db, status=OrderStatus.PAID, skip=1, limit=1)
+    assert len(items_p2) == 1
+    assert items_p2[0].id == order1.id
+    
+    # Test date range (Today only)
+    items_today, total_today = crud.get_orders_paginated(
+        db, 
+        status=OrderStatus.PAID,
+        start_date=today.strftime("%Y-%m-%d"),
+        end_date=today.strftime("%Y-%m-%d")
+    )
+    assert len(items_today) == 1
+    assert items_today[0].id == order2.id
+    assert total_today == 1
+    
+    # Test date range (Yesterday only)
+    items_yesterday, total_yesterday = crud.get_orders_paginated(
+        db, 
+        status=OrderStatus.PAID,
+        start_date=yesterday.strftime("%Y-%m-%d"),
+        end_date=yesterday.strftime("%Y-%m-%d")
+    )
+    assert len(items_yesterday) == 1
+    assert items_yesterday[0].id == order1.id

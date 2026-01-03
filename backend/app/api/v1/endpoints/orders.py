@@ -55,34 +55,57 @@ def list_orders(
     )
 
 
-@router.get("/history", response_model=List[schemas.Order])
+@router.get("/history", response_model=schemas.PaginatedOrders)
 def get_order_history(
     date: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
     status: Optional[OrderStatus] = None,
+    page: int = 1,
+    size: int = 50,
     db: Session = Depends(get_db),
 ):
     """
-    Get order history with optional date filtering.
+    Get order history with optional date filtering and pagination.
 
     Query parameters:
-    - date: Filter by date in YYYY-MM-DD format (e.g., "2024-11-01")
-    - status: Filter by order status (active, paid, canceled)
-
-    Returns:
-        List of orders matching the filter criteria.
-        By default, returns paid orders from the specified date.
+    - date: Filter by specific date (legacy support)
+    - start_date: Start date (YYYY-MM-DD)
+    - end_date: End date (YYYY-MM-DD)
+    - status: Filter by order status
+    - page: Page number (default: 1)
+    - size: Items per page (default: 50)
     """
     try:
-        # If no status specified, only return paid orders (completed transactions)
-        # This is the expected behavior for order history
+        # If no filters specified at all, default to showing only PAID orders
+        # Only apply default PAID filter if NO status is explicitly requested
         filter_status = status if status else OrderStatus.PAID
+        
+        # Legacy support: if `date` is provided, treat it as start=end
+        if date and not start_date and not end_date:
+            start_date = date
+            end_date = date
+            
+        skip = (page - 1) * size
 
-        orders = crud.get_orders(
+        items, total = crud.get_orders_paginated(
             db,
             status=filter_status,
-            date_str=date,
+            start_date=start_date,
+            end_date=end_date,
+            skip=skip,
+            limit=size,
         )
-        return orders
+        
+        pages = (total + size - 1) // size if size > 0 else 0
+        
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "size": size,
+            "pages": pages
+        }
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -124,9 +147,9 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
             try:
                 chit_printed = print_order_chit(new_order, items_to_print=new_items)
                 if chit_printed:
-                    logger.info(f"Order chit printed for table {new_order.table_number} ({len(new_items)} new items)")
+                    logger.info(f"Order chit printed for table {int(new_order.table_number)} ({len(new_items)} new items)")
                 else:
-                    logger.warning(f"Failed to print order chit for table {new_order.table_number}")
+                    logger.warning(f"Failed to print order chit for table {int(new_order.table_number)}")
             except Exception as e:
                 # Log error but don't fail the order creation
                 logger.error(f"Error printing order chit: {e}")
