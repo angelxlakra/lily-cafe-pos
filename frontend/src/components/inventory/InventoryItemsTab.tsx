@@ -197,7 +197,7 @@ function ItemFormModal({ categories, item, onClose }: { categories: any[], item:
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
       <div className="card w-full max-w-md p-6 shadow-strong animate-scale-in" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-heading text-coffee-brown dark:text-cream">
+          <h3 className="text-xl font-heading text-neutral-text-dark">
             {item ? 'Edit Item' : 'New Item'}
           </h3>
           <button onClick={onClose} className="text-neutral-text-muted hover:text-neutral-text-dark">

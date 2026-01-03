@@ -47,7 +47,7 @@ export default function ItemCountRow({ item, count, onChange, isChanged }: ItemC
         {/* Item Name & Unit */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
-            <h4 className="font-medium text-neutral-text-dark dark:text-cream">
+            <h4 className="font-medium text-neutral-text-dark dark:text-neutral-text-dark">
               {item.name}
             </h4>
             <div className="flex items-center gap-2 mt-1">
@@ -67,7 +67,7 @@ export default function ItemCountRow({ item, count, onChange, isChanged }: ItemC
         {/* Current vs New Quantity */}
         <div className="flex items-center gap-2 mb-3 text-sm">
           <span className="text-neutral-text-muted">
-            Current: <span className="font-mono font-medium text-neutral-text-dark dark:text-cream">{item.current_quantity}</span>
+            Current: <span className="font-mono font-medium text-neutral-text-dark dark:text-neutral-text-dark">{item.current_quantity}</span>
           </span>
           {isChanged && (
             <>

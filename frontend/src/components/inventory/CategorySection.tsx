@@ -48,17 +48,17 @@ export default function CategorySection({
         >
           <div className="flex items-center gap-3 flex-1">
             {/* Expand/Collapse Icon */}
-            <span className="text-cream">
+            <span className="text-white">
               {isExpanded ? <CaretDown size={20} weight="bold" /> : <CaretRight size={20} weight="bold" />}
             </span>
 
             {/* Category Name */}
-            <h3 className="font-heading text-lg text-cream">
+            <h3 className="font-heading text-lg text-white">
               {categoryName}
             </h3>
 
             {/* Item Count Badge */}
-            <span className="badge bg-cream/20 text-cream text-sm">
+            <span className="badge bg-white/20 text-white text-sm">
               {totalItems} items
             </span>
 
@@ -78,7 +78,7 @@ export default function CategorySection({
                 style={{ width: `${progressPercentage}%` }}
               />
             </div>
-            <span className="text-cream/80 text-sm font-medium min-w-[3rem] text-right">
+            <span className="text-white/80 text-sm font-medium min-w-[3rem] text-right">
               {Math.round(progressPercentage)}%
             </span>
           </div>
@@ -93,7 +93,7 @@ export default function CategorySection({
                 style={{ width: `${progressPercentage}%` }}
               />
             </div>
-            <span className="text-cream/80 text-sm font-medium min-w-[3rem]">
+            <span className="text-white/80 text-sm font-medium min-w-[3rem]">
               {Math.round(progressPercentage)}%
             </span>
           </div>

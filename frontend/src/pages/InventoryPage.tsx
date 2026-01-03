@@ -18,16 +18,16 @@ export default function InventoryPage() {
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
       {/* Header */}
-      <header className="bg-gradient-primary text-cream p-6 sticky top-0 z-30 shadow-medium">
+      <header className="bg-off-white border-b border-neutral-border p-4 md:p-6 sticky top-0 z-30 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-heading heading-sub text-cream">Inventory Management</h1>
-            <div className="text-cream/80 text-sm mt-1 font-medium">Track stock, purchases, and usage</div>
+            <h1 className="font-heading heading-section text-neutral-text-dark">Inventory Management</h1>
+            <div className="text-muted text-sm mt-1 font-medium">Track stock, purchases, and usage</div>
           </div>
           <div className="lg:hidden">
             <button 
               onClick={() => setIsSidebarOpen(true)}
-              className="p-2 text-cream hover:bg-white/10 rounded-lg"
+              className="p-2 text-coffee-brown hover:bg-neutral-border/50 rounded-lg transition-colors"
             >
               <span className="sr-only">Open Menu</span>
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -38,7 +38,7 @@ export default function InventoryPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex space-x-1 mt-6 overflow-x-auto pb-1 scrollbar-hide">
+        <div className="flex space-x-1 mt-6 overflow-x-auto pb-1 scrollbar-hide border-b border-neutral-border/50">
           <TabButton
             active={activeTab === 'daily-count'}
             onClick={() => setActiveTab('daily-count')}
@@ -85,10 +85,10 @@ function TabButton({ active, onClick, icon, label }: { active: boolean; onClick:
     <button
       onClick={onClick}
       className={`
-        flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all
+        flex items-center gap-2 px-4 py-2 rounded-t-lg text-sm font-medium whitespace-nowrap transition-all border-b-2
         ${active 
-          ? 'bg-cream text-coffee-brown shadow-sm' 
-          : 'text-cream/70 hover:bg-white/10 hover:text-cream'
+          ? 'border-coffee-brown text-coffee-brown bg-coffee-brown/5' 
+          : 'border-transparent text-neutral-text-light hover:text-coffee-brown hover:bg-neutral-border/30'
         }
       `}
     >
