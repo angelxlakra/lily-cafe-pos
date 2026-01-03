@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Override dark mode to use class selector instead of system preference */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @font-face {
   font-family: "Quesha";
   src: url("/fonts/Quesha.ttf") format("truetype");
@@ -583,6 +586,75 @@ p {
   }
 }
 
+/* Success animations */
+@utility animate-success {
+  animation: successBounce 600ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes successBounce {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@utility animate-checkmark {
+  animation: checkmark 400ms ease-in-out;
+}
+
+@keyframes checkmark {
+  0% {
+    stroke-dashoffset: 100;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@utility animate-slide-in-right {
+  animation: slideInRight 400ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@utility animate-bounce-in {
+  animation: bounceIn 500ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 /* ============================================
    UTILITY ENHANCEMENTS
    ============================================ */
@@ -618,6 +690,11 @@ p {
 
 @utility bg-gradient-soft {
   background: linear-gradient(135deg, var(--color-cream) 0%, var(--color-off-white) 100%);
+}
+
+/* Fix bg-off-white to use CSS variable for dark mode support */
+.bg-off-white {
+  background-color: var(--color-off-white) !important;
 }
 
 /* ============================================
