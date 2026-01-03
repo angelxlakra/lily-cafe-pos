@@ -288,7 +288,7 @@ function OrderCard({ order, onEdit, onGenerateBill, onCancel, onOpenServeModal, 
               </div>
               <div className="max-h-64 overflow-y-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-neutral-background border-b border-neutral-border sticky top-0">
+                  <thead className="bg-white border-b border-neutral-border sticky top-0 z-10">
                     <tr>
                       <th className="text-center p-2 font-semibold text-neutral-text-dark w-16">Status</th>
                       <th className="text-left p-2 font-semibold text-neutral-text-dark">Item</th>
@@ -358,7 +358,7 @@ function OrderCard({ order, onEdit, onGenerateBill, onCancel, onOpenServeModal, 
               </div>
               <div className="max-h-64 overflow-y-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-neutral-background border-b border-neutral-border sticky top-0">
+                  <thead className="bg-white border-b border-neutral-border sticky top-0 z-10">
                     <tr>
                       <th className="text-center p-2 font-semibold text-neutral-text-dark w-16">Status</th>
                       <th className="text-left p-2 font-semibold text-neutral-text-dark">Item</th>
