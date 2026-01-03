@@ -88,7 +88,7 @@ def get_order_history(
             
         skip = (page - 1) * size
 
-        items, total = crud.get_orders_paginated(
+        items, total, total_revenue, payment_breakdown = crud.get_orders_paginated(
             db,
             status=filter_status,
             start_date=start_date,
@@ -104,7 +104,9 @@ def get_order_history(
             "total": total,
             "page": page,
             "size": size,
-            "pages": pages
+            "pages": pages,
+            "total_revenue": total_revenue,
+            "payment_breakdown": payment_breakdown
         }
     except ValueError as e:
         raise HTTPException(

@@ -183,10 +183,18 @@ export interface QueryParams {
   size?: number;
 }
 
+export interface PaymentBreakdown {
+  cash: number;
+  upi: number;
+  card: number;
+}
+
 export interface PaginatedResponse<T> {
   items: T[];
   total: number;
   page: number;
   size: number;
   pages: number;
+  total_revenue?: number;
+  payment_breakdown?: PaymentBreakdown;
 }
