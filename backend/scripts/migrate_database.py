@@ -523,6 +523,22 @@ SCHEMA_DEFINITIONS = {
             ("closed_at", "DATETIME", ""),  # When counter was closed
             ("verified_at", "DATETIME", ""),  # When owner verified
             ("is_verified", "BOOLEAN", "NOT NULL DEFAULT 0"),  # Owner verification status
+
+            # v0.2 Patch - Denomination counting for opening balance
+            ("opening_500s", "INTEGER", "NOT NULL DEFAULT 0"),  # Count of ₹500 notes at opening
+            ("opening_200s", "INTEGER", "NOT NULL DEFAULT 0"),  # Count of ₹200 notes at opening
+            ("opening_100s", "INTEGER", "NOT NULL DEFAULT 0"),  # Count of ₹100 notes at opening
+            ("opening_50s", "INTEGER", "NOT NULL DEFAULT 0"),  # Count of ₹50 notes at opening
+            ("opening_20s", "INTEGER", "NOT NULL DEFAULT 0"),  # Count of ₹20 notes at opening
+            ("opening_10s", "INTEGER", "NOT NULL DEFAULT 0"),  # Count of ₹10 notes at opening
+
+            # v0.2 Patch - Denomination counting for closing balance
+            ("closing_500s", "INTEGER", ""),  # Count of ₹500 notes at closing (nullable until closed)
+            ("closing_200s", "INTEGER", ""),  # Count of ₹200 notes at closing (nullable until closed)
+            ("closing_100s", "INTEGER", ""),  # Count of ₹100 notes at closing (nullable until closed)
+            ("closing_50s", "INTEGER", ""),  # Count of ₹50 notes at closing (nullable until closed)
+            ("closing_20s", "INTEGER", ""),  # Count of ₹20 notes at closing (nullable until closed)
+            ("closing_10s", "INTEGER", ""),  # Count of ₹10 notes at closing (nullable until closed)
         ],
         "indexes": [
             ("ix_daily_cash_counter_id", ["id"]),
@@ -632,7 +648,8 @@ def create_table(conn, table_name: str, definition: Dict) -> bool:
             foreign_keys_sql.append(fk_sql)
 
     all_constraints = columns_sql + foreign_keys_sql
-    create_sql = f"CREATE TABLE {table_name} (\n    {',\n    '.join(all_constraints)}\n)"
+    join_str = ',\n    '
+    create_sql = f"CREATE TABLE {table_name} (\n    {join_str.join(all_constraints)}\n)"
 
     try:
         conn.execute(text(create_sql))

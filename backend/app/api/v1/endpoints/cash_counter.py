@@ -11,11 +11,9 @@ from app.models.cash_models import DailyCashCounter
 from app.models.models import Payment, PaymentMethod
 from app.schemas import cash_schemas
 from app.core.config import settings
+from app.core.security import verify_password
 
 router = APIRouter()
-
-# TODO: Move to env/config
-OWNER_PASSWORD_HASH = "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW" # "owner123"
 
 @router.post("/open", response_model=cash_schemas.DailyCashCounter, status_code=status.HTTP_201_CREATED)
 def open_cash_counter(data: cash_schemas.DailyCashCounterOpen, db: Session = Depends(get_db)):
@@ -24,13 +22,29 @@ def open_cash_counter(data: cash_schemas.DailyCashCounterOpen, db: Session = Dep
     existing = db.query(DailyCashCounter).filter(DailyCashCounter.date == data.date).first()
     if existing:
         raise HTTPException(status_code=400, detail="Counter already open for this date")
-        
+
     if data.date > date.today():
         raise HTTPException(status_code=400, detail="Date cannot be in the future")
-        
+
+    # v0.2 Patch - Calculate opening_balance from denomination counts
+    opening_balance = Decimal(
+        data.opening_500s * 500 +
+        data.opening_200s * 200 +
+        data.opening_100s * 100 +
+        data.opening_50s * 50 +
+        data.opening_20s * 20 +
+        data.opening_10s * 10
+    )
+
     counter = DailyCashCounter(
         date=data.date,
-        opening_balance=data.opening_balance,
+        opening_balance=opening_balance,
+        opening_500s=data.opening_500s,
+        opening_200s=data.opening_200s,
+        opening_100s=data.opening_100s,
+        opening_50s=data.opening_50s,
+        opening_20s=data.opening_20s,
+        opening_10s=data.opening_10s,
         notes=data.notes,
         opened_by="admin" # TODO: Get from auth
     )
@@ -45,43 +59,53 @@ def close_cash_counter(data: cash_schemas.DailyCashCounterClose, db: Session = D
     counter = db.query(DailyCashCounter).filter(DailyCashCounter.date == data.date).first()
     if not counter:
         raise HTTPException(status_code=404, detail="Counter not found for this date")
-        
+
     if counter.closing_balance is not None:
         raise HTTPException(status_code=400, detail="Counter already closed")
-        
-    # Calculate expected closing balance
-    # expected = opening + cash payments
-    
+
+    # v0.2 Patch - Calculate closing_balance from denomination counts
+    closing_balance = Decimal(
+        data.closing_500s * 500 +
+        data.closing_200s * 200 +
+        data.closing_100s * 100 +
+        data.closing_50s * 50 +
+        data.closing_20s * 20 +
+        data.closing_10s * 10
+    )
+
     # Get total cash payments for the day
-    # Note: This assumes Payment model has created_at which is datetime
-    # We need to filter by date part of created_at
-    
     # SQLite specific date filtering
     cash_payments = db.query(func.sum(Payment.amount)).filter(
         Payment.payment_method == PaymentMethod.CASH,
         func.date(Payment.created_at) == str(data.date)
     ).scalar() or 0
-    
+
     # Payment amount is in paise (integer), convert to decimal rupees
     cash_payments_rupees = Decimal(cash_payments) / 100
-    
+
     expected_closing = counter.opening_balance + cash_payments_rupees
-    variance = data.closing_balance - expected_closing
-    
-    counter.closing_balance = data.closing_balance
+    variance = closing_balance - expected_closing
+
+    counter.closing_balance = closing_balance
+    counter.closing_500s = data.closing_500s
+    counter.closing_200s = data.closing_200s
+    counter.closing_100s = data.closing_100s
+    counter.closing_50s = data.closing_50s
+    counter.closing_20s = data.closing_20s
+    counter.closing_10s = data.closing_10s
     counter.expected_closing = expected_closing
     counter.variance = variance
     counter.notes = data.notes
     counter.closed_by = "admin" # TODO: Get from auth
     counter.closed_at = datetime.now()
-    
+
     db.commit()
     db.refresh(counter)
-    
+
     # Add computed field for response
     counter_dict = cash_schemas.DailyCashCounter.from_orm(counter)
     counter_dict.cash_payments_total = cash_payments_rupees
-    
+
     return counter_dict
 
 @router.post("/verify/{counter_id}", response_model=cash_schemas.DailyCashCounter)
@@ -96,11 +120,9 @@ def verify_cash_counter(counter_id: int, verify_data: cash_schemas.DailyCashCoun
         
     if counter.is_verified:
         raise HTTPException(status_code=400, detail="Counter already verified")
-        
-    # Verify password (simple check for now, use bcrypt in real app)
-    # In a real app, we would use passlib to verify hash
-    # For now, hardcoded check against "owner123"
-    if verify_data.owner_password != "owner123":
+
+    # Verify owner password using bcrypt hash
+    if not verify_password(verify_data.owner_password, settings.OWNER_PASSWORD_HASH):
         raise HTTPException(status_code=401, detail="Incorrect owner password")
         
     counter.is_verified = True
@@ -181,3 +203,51 @@ def get_history(
             "unverified_count": unverified_count
         }
     }
+
+@router.post("/reopen/{counter_id}", response_model=cash_schemas.DailyCashCounter)
+def reopen_cash_counter(counter_id: int, reopen_data: cash_schemas.DailyCashCounterVerify, db: Session = Depends(get_db)):
+    """Reopen a closed cash counter (Owner only)."""
+    counter = db.query(DailyCashCounter).filter(DailyCashCounter.id == counter_id).first()
+    if not counter:
+        raise HTTPException(status_code=404, detail="Counter not found")
+
+    # Can only reopen closed counters (not verified ones)
+    if counter.status not in ['closed_pending_verification']:
+        raise HTTPException(status_code=400, detail="Can only reopen counters pending verification")
+
+    # Verify owner password using bcrypt hash
+    if not verify_password(reopen_data.owner_password, settings.OWNER_PASSWORD_HASH):
+        raise HTTPException(status_code=401, detail="Incorrect owner password")
+
+    # Reset counter to "open" state - clear closing data
+    counter.closing_balance = None
+    counter.closing_500s = None
+    counter.closing_200s = None
+    counter.closing_100s = None
+    counter.closing_50s = None
+    counter.closing_20s = None
+    counter.closing_10s = None
+    counter.expected_closing = None
+    counter.variance = None
+    counter.closed_by = None
+    counter.closed_at = None
+    counter.is_verified = False
+    counter.verified_by = None
+    counter.verified_at = None
+
+    db.commit()
+    db.refresh(counter)
+
+    # Calculate cash payments for response
+    cash_payments = db.query(func.sum(Payment.amount)).filter(
+        Payment.payment_method == PaymentMethod.CASH,
+        func.date(Payment.created_at) == str(counter.date)
+    ).scalar() or 0
+    cash_payments_rupees = Decimal(cash_payments) / 100
+
+    # Convert to dict and add cash_payments_total
+    counter_model = cash_schemas.DailyCashCounter.model_validate(counter)
+    counter_data = counter_model.model_dump()
+    counter_data['cash_payments_total'] = float(cash_payments_rupees)
+
+    return counter_data

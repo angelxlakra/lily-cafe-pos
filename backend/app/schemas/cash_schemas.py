@@ -8,15 +8,27 @@ class DailyCashCounterBase(BaseModel):
     notes: Optional[str] = Field(None, max_length=500)
 
 class DailyCashCounterOpen(DailyCashCounterBase):
-    opening_balance: Decimal = Field(..., ge=0)
+    # v0.2 Patch - Denomination counting replaces single balance input
+    opening_500s: int = Field(..., ge=0)
+    opening_200s: int = Field(..., ge=0)
+    opening_100s: int = Field(..., ge=0)
+    opening_50s: int = Field(..., ge=0)
+    opening_20s: int = Field(..., ge=0)
+    opening_10s: int = Field(..., ge=0)
 
 class DailyCashCounterClose(BaseModel):
     date: date
-    closing_balance: Decimal = Field(..., ge=0)
+    # v0.2 Patch - Denomination counting replaces single balance input
+    closing_500s: int = Field(..., ge=0)
+    closing_200s: int = Field(..., ge=0)
+    closing_100s: int = Field(..., ge=0)
+    closing_50s: int = Field(..., ge=0)
+    closing_20s: int = Field(..., ge=0)
+    closing_10s: int = Field(..., ge=0)
     notes: Optional[str] = Field(None, max_length=500)
 
 class DailyCashCounterVerify(BaseModel):
-    owner_password: str
+    owner_password: str = Field(..., max_length=72)
 
 class DailyCashCounter(DailyCashCounterBase):
     id: int
@@ -33,6 +45,20 @@ class DailyCashCounter(DailyCashCounterBase):
     is_verified: bool
     status: str # Computed property
     cash_payments_total: Optional[Decimal] = None # Computed for response
+
+    # v0.2 Patch - Denomination counts
+    opening_500s: int
+    opening_200s: int
+    opening_100s: int
+    opening_50s: int
+    opening_20s: int
+    opening_10s: int
+    closing_500s: Optional[int] = None
+    closing_200s: Optional[int] = None
+    closing_100s: Optional[int] = None
+    closing_50s: Optional[int] = None
+    closing_20s: Optional[int] = None
+    closing_10s: Optional[int] = None
 
     class Config:
         from_attributes = True  # Pydantic v2 syntax (was orm_mode in v1)

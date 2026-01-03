@@ -34,7 +34,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         True if passwords match, False otherwise
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except ValueError:
+        # bcrypt handles max 72 bytes and raises ValueError if exceeded
+        return False
 
 
 def get_password_hash(password: str) -> str:
