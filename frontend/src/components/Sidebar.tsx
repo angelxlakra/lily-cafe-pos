@@ -14,7 +14,7 @@ import {
   WaiterViewIcon,
   LogoutIcon,
 } from "./icons/NavigationIcons";
-import { Package, CurrencyInr } from "@phosphor-icons/react";
+import { Package, CurrencyInr, ChartLine } from "@phosphor-icons/react";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -91,6 +91,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             to="/admin/order-history"
             icon={<OrderHistoryIcon />}
             label="Order History"
+            onClick={onClose}
+          />
+          <NavItem
+            to="/admin/analytics"
+            icon={<ChartLine size={24} weight="duotone" />}
+            label="Analytics"
             onClick={onClose}
           />
           <NavItem

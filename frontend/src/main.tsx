@@ -15,6 +15,7 @@ import MenuManagementPage from './pages/MenuManagementPage.tsx'
 import OrderHistoryPage from './pages/OrderHistoryPage.tsx'
 import InventoryPage from './pages/InventoryPage.tsx'
 import CashCounterPage from './pages/CashCounterPage.tsx'
+import AnalyticsPage from './pages/AnalyticsPage.tsx'
 import ProtectedRoute from './components/ProtectedRoute.tsx'
 import './index.css'
 
@@ -106,6 +107,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               element={
                 <ProtectedRoute>
                   <CashCounterPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/analytics"
+              element={
+                <ProtectedRoute>
+                  <AnalyticsPage />
                 </ProtectedRoute>
               }
             />

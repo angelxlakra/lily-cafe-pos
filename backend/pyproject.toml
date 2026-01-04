@@ -31,6 +31,7 @@ dependencies = [
     "tzdata>=2025.2",
     "pdf2image>=1.17.0",
     "pillow>=12.0.0",
+    "openai>=2.14.0",
 ]
 
 # Optional dependencies for different use cases

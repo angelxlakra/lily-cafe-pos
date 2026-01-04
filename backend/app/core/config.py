@@ -72,6 +72,9 @@ class Settings:
     # API Configuration
     API_V1_PREFIX: str = "/api/v1"
 
+    # Thesys C1 Configuration
+    THESYS_API_KEY: str = os.getenv("THESYS_API_KEY", "")
+
 
 # Create a singleton instance
 settings = Settings()

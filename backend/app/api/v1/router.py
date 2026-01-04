@@ -12,7 +12,8 @@ from app.api.v1.endpoints import (
     admin,
     config,
     inventory,
-    cash_counter
+    cash_counter,
+    analytics
 )
 
 api_router = APIRouter()
@@ -26,3 +27,4 @@ api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(config.router, prefix="/config", tags=["config"])
 api_router.include_router(inventory.router, prefix="/inventory", tags=["inventory"])
 api_router.include_router(cash_counter.router, prefix="/cash-counter", tags=["cash-counter"])
+api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])

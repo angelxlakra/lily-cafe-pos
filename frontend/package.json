@@ -13,10 +13,13 @@
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
     "@tanstack/react-query": "^5.17.0",
+    "@thesysai/genui-sdk": "^0.7.15",
     "axios": "^1.6.2",
+    "date-fns": "^4.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.21.0",
+    "recharts": "^3.6.0",
     "sonner": "^2.0.7"
   },
   "devDependencies": {
