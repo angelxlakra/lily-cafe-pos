@@ -86,7 +86,7 @@ export default function AnalyticsPage() {
     <div className="flex min-h-screen bg-neutral-background">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-      <div className="flex-1 p-6 md:p-8">
+      <div className="flex-1 p-6 md:p-8 lg:ml-60">
         {/* Header */}
         <div className="mb-6">
           <h1 className="font-heading heading-display text-coffee-brown mb-2">
