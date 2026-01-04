@@ -147,53 +147,53 @@ export default function AnalyticsPage() {
               </div>
 
               {/* Total Orders Card */}
-              <div className="bg-white p-6 rounded-lg shadow-md border border-neutral-border">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-neutral-text-light">Total Orders</h3>
+                  <h3 className="text-sm font-medium text-neutral-text-light dark:text-gray-300">Total Orders</h3>
                   <Receipt size={24} weight="duotone" className="text-info" />
                 </div>
-                <p className="text-3xl font-bold text-coffee-brown mb-1">
+                <p className="text-3xl font-bold text-coffee-brown dark:text-white mb-1">
                   {orderStats?.completed_orders || 0}
                 </p>
-                <p className="text-sm text-neutral-text-light">
+                <p className="text-sm text-neutral-text-light dark:text-gray-400">
                   {orderStats?.active_orders || 0} active orders
                 </p>
               </div>
 
               {/* Average Order Value Card */}
-              <div className="bg-white p-6 rounded-lg shadow-md border border-neutral-border">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-neutral-text-light">Avg Order Value</h3>
+                  <h3 className="text-sm font-medium text-neutral-text-light dark:text-gray-300">Avg Order Value</h3>
                   <ChartLine size={24} weight="duotone" className="text-lily-green" />
                 </div>
-                <p className="text-3xl font-bold text-coffee-brown mb-1">
+                <p className="text-3xl font-bold text-coffee-brown dark:text-white mb-1">
                   {formatCurrency(orderStats?.average_order_value || 0)}
                 </p>
-                <p className="text-sm text-neutral-text-light">
+                <p className="text-sm text-neutral-text-light dark:text-gray-400">
                   Per completed order
                 </p>
               </div>
 
               {/* Peak Hour Card */}
-              <div className="bg-white p-6 rounded-lg shadow-md border border-neutral-border">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-neutral-text-light">Peak Hour</h3>
+                  <h3 className="text-sm font-medium text-neutral-text-light dark:text-gray-300">Peak Hour</h3>
                   <Clock size={24} weight="duotone" className="text-warning" />
                 </div>
-                <p className="text-3xl font-bold text-coffee-brown mb-1">
+                <p className="text-3xl font-bold text-coffee-brown dark:text-white mb-1">
                   {orderStats?.peak_hours?.[0]?.hour || 0}:00
                 </p>
-                <p className="text-sm text-neutral-text-light">
+                <p className="text-sm text-neutral-text-light dark:text-gray-400">
                   {orderStats?.peak_hours?.[0]?.order_count || 0} orders
                 </p>
               </div>
             </div>
 
             {/* Revenue Trend Chart */}
-            <div className="bg-white p-6 rounded-lg shadow-md border border-neutral-border">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
               <div className="flex items-center gap-2 mb-4">
-                <ChartLine size={24} weight="duotone" className="text-coffee-brown" />
-                <h2 className="font-heading text-xl text-coffee-brown">Revenue Trend</h2>
+                <ChartLine size={24} weight="duotone" className="text-coffee-brown dark:text-gray-300" />
+                <h2 className="font-heading text-xl text-coffee-brown dark:text-white">Revenue Trend</h2>
               </div>
 
               {revenueTrendData.length > 0 ? (
@@ -232,7 +232,7 @@ export default function AnalyticsPage() {
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-64 text-neutral-text-light">
+                <div className="flex items-center justify-center h-64 text-neutral-text-light dark:text-gray-400">
                   <p>No revenue data for selected period</p>
                 </div>
               )}
@@ -240,10 +240,10 @@ export default function AnalyticsPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Top Products Table */}
-              <div className="bg-white p-6 rounded-lg shadow-md border border-neutral-border">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
                 <div className="flex items-center gap-2 mb-4">
-                  <Package size={24} weight="duotone" className="text-coffee-brown" />
-                  <h2 className="font-heading text-xl text-coffee-brown">Top Products</h2>
+                  <Package size={24} weight="duotone" className="text-coffee-brown dark:text-gray-300" />
+                  <h2 className="font-heading text-xl text-coffee-brown dark:text-white">Top Products</h2>
                 </div>
 
                 {productData?.top_products && productData.top_products.length > 0 ? (
@@ -251,13 +251,13 @@ export default function AnalyticsPage() {
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-neutral-border">
-                          <th className="text-left py-2 px-2 text-sm font-medium text-neutral-text-light">
+                          <th className="text-left py-2 px-2 text-sm font-medium text-neutral-text-light dark:text-gray-400">
                             Product
                           </th>
-                          <th className="text-right py-2 px-2 text-sm font-medium text-neutral-text-light">
+                          <th className="text-right py-2 px-2 text-sm font-medium text-neutral-text-light dark:text-gray-400">
                             Qty
                           </th>
-                          <th className="text-right py-2 px-2 text-sm font-medium text-neutral-text-light">
+                          <th className="text-right py-2 px-2 text-sm font-medium text-neutral-text-light dark:text-gray-400">
                             Revenue
                           </th>
                         </tr>
@@ -265,13 +265,13 @@ export default function AnalyticsPage() {
                       <tbody>
                         {productData.top_products.map((product, index) => (
                           <tr key={index} className="border-b border-neutral-border last:border-0">
-                            <td className="py-3 px-2 text-sm text-coffee-brown font-medium">
+                            <td className="py-3 px-2 text-sm text-coffee-brown dark:text-gray-200 font-medium">
                               {product.name}
                             </td>
-                            <td className="py-3 px-2 text-sm text-right text-neutral-text-dark">
+                            <td className="py-3 px-2 text-sm text-right text-neutral-text-dark dark:text-gray-300">
                               {product.quantity_sold}
                             </td>
-                            <td className="py-3 px-2 text-sm text-right text-coffee-brown font-medium">
+                            <td className="py-3 px-2 text-sm text-right text-coffee-brown dark:text-gray-200 font-medium">
                               {formatCurrency(product.revenue)}
                             </td>
                           </tr>
@@ -280,17 +280,17 @@ export default function AnalyticsPage() {
                     </table>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center h-64 text-neutral-text-light">
+                  <div className="flex items-center justify-center h-64 text-neutral-text-light dark:text-gray-400">
                     <p>No product data for selected period</p>
                   </div>
                 )}
               </div>
 
               {/* Revenue by Category Chart */}
-              <div className="bg-white p-6 rounded-lg shadow-md border border-neutral-border">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
                 <div className="flex items-center gap-2 mb-4">
-                  <ChartBar size={24} weight="duotone" className="text-coffee-brown" />
-                  <h2 className="font-heading text-xl text-coffee-brown">Revenue by Category</h2>
+                  <ChartBar size={24} weight="duotone" className="text-coffee-brown dark:text-gray-300" />
+                  <h2 className="font-heading text-xl text-coffee-brown dark:text-white">Revenue by Category</h2>
                 </div>
 
                 {categoryRevenueData.length > 0 ? (
@@ -326,7 +326,7 @@ export default function AnalyticsPage() {
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-64 text-neutral-text-light">
+                  <div className="flex items-center justify-center h-64 text-neutral-text-light dark:text-gray-400">
                     <p>No category data for selected period</p>
                   </div>
                 )}
@@ -334,8 +334,8 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Revenue by Payment Method */}
-            <div className="bg-white p-6 rounded-lg shadow-md border border-neutral-border">
-              <h2 className="font-heading text-xl text-coffee-brown mb-4">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
+              <h2 className="font-heading text-xl text-coffee-brown dark:text-white mb-4">
                 Revenue by Payment Method
               </h2>
 
@@ -344,15 +344,15 @@ export default function AnalyticsPage() {
                   {Object.entries(revenueData.revenue_by_payment_method).map(([method, amount]) => (
                     <div
                       key={method}
-                      className="flex items-center justify-between p-4 rounded-lg bg-neutral-background border border-neutral-border"
+                      className="flex items-center justify-between p-4 rounded-lg bg-neutral-background dark:bg-gray-700 border border-neutral-border"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-coffee-brown/10 flex items-center justify-center text-coffee-brown">
+                        <div className="w-12 h-12 rounded-full bg-coffee-brown/10 dark:bg-gray-600 flex items-center justify-center text-coffee-brown dark:text-gray-300">
                           {paymentIcons[method] || method.toUpperCase()}
                         </div>
                         <div>
-                          <p className="text-sm text-neutral-text-light capitalize">{method}</p>
-                          <p className="text-lg font-bold text-coffee-brown">
+                          <p className="text-sm text-neutral-text-light dark:text-gray-400 capitalize">{method}</p>
+                          <p className="text-lg font-bold text-coffee-brown dark:text-white">
                             {formatCurrency(amount)}
                           </p>
                         </div>
@@ -361,21 +361,21 @@ export default function AnalyticsPage() {
                   ))}
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-32 text-neutral-text-light">
+                <div className="flex items-center justify-center h-32 text-neutral-text-light dark:text-gray-400">
                   <p>No payment data for selected period</p>
                 </div>
               )}
             </div>
 
             {/* Thesys C1 Conversational Interface - Coming Soon */}
-            <div className="bg-gradient-to-br from-lily-green/10 to-info/10 p-6 rounded-lg border border-lily-green/30">
-              <h2 className="font-heading text-xl text-coffee-brown mb-2">
+            <div className="bg-gradient-to-br from-lily-green/10 to-info/10 dark:from-lily-green/20 dark:to-info/20 p-6 rounded-lg border border-lily-green/30 dark:border-lily-green/50">
+              <h2 className="font-heading text-xl text-coffee-brown dark:text-white mb-2">
                 Ask Questions About Your Data
               </h2>
-              <p className="text-neutral-text-light mb-4">
+              <p className="text-neutral-text-light dark:text-gray-300 mb-4">
                 Thesys C1 Conversational Analytics - Coming in next update
               </p>
-              <p className="text-sm text-neutral-text-light italic">
+              <p className="text-sm text-neutral-text-light dark:text-gray-400 italic">
                 Ask natural language questions like "Show me sales trends for last month" or
                 "Which products perform best on weekends?"
               </p>
