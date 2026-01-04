@@ -130,16 +130,16 @@ export default function AnalyticsPage() {
             {/* Order Statistics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Total Revenue Card */}
-              <div className="bg-gradient-to-br from-coffee-brown to-coffee-dark text-white p-6 rounded-lg shadow-md">
+              <div className="bg-gradient-to-br from-coffee-brown to-coffee-dark p-6 rounded-lg shadow-md">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium opacity-90">Total Revenue</h3>
-                  <Wallet size={24} weight="duotone" className="opacity-80" />
+                  <h3 className="text-sm font-medium" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Total Revenue</h3>
+                  <Wallet size={24} weight="duotone" style={{ color: 'rgba(255, 255, 255, 0.8)' }} />
                 </div>
-                <p className="text-3xl font-bold mb-1 text-white">
+                <p className="text-3xl font-bold mb-1" style={{ color: '#ffffff' }}>
                   {formatCurrency(revenueData?.total_revenue || 0)}
                 </p>
                 {revenueChange !== 0 && (
-                  <p className={`text-sm flex items-center gap-1 ${revenueChange > 0 ? 'text-green-300' : 'text-red-300'}`}>
+                  <p className="text-sm flex items-center gap-1" style={{ color: revenueChange > 0 ? '#86efac' : '#fca5a5' }}>
                     <TrendUp size={16} weight="bold" className={revenueChange < 0 ? 'rotate-180' : ''} />
                     {Math.abs(revenueChange).toFixed(1)}% vs previous
                   </p>
