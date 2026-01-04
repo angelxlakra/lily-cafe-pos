@@ -9,6 +9,7 @@ import Sidebar from '../components/Sidebar';
 import DatePickerWithQuickFilters from '../components/DatePickerWithQuickFilters';
 import { useRevenue, useProductPerformance, useOrderStatistics } from '../hooks/useAnalytics';
 import { formatCurrency } from '../utils/formatCurrency';
+import { useTheme } from '../contexts/ThemeContext';
 import {
   ChartLine,
   Package,
@@ -24,6 +25,7 @@ export default function AnalyticsPage() {
   const today = new Date().toISOString().split('T')[0];
   const [dateRange, setDateRange] = useState({ start: today, end: today });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { theme } = useTheme();
 
   // Fetch analytics data
   const { data: revenueData, isLoading: isLoadingRevenue } = useRevenue({
@@ -43,6 +45,15 @@ export default function AnalyticsPage() {
   });
 
   const isLoading = isLoadingRevenue || isLoadingProducts || isLoadingOrders;
+
+  // Theme-aware colors for charts
+  const chartColors = {
+    grid: theme === 'dark' ? '#374151' : '#e5e5e5',
+    axis: theme === 'dark' ? '#9ca3af' : '#6b7280',
+    tooltipBg: theme === 'dark' ? '#1f2937' : '#ffffff',
+    tooltipBorder: theme === 'dark' ? '#374151' : '#e5e5e5',
+    tooltipText: theme === 'dark' ? '#f3f4f6' : '#111827',
+  };
 
   // Payment method icons
   const paymentIcons: Record<string, JSX.Element> = {
@@ -188,23 +199,24 @@ export default function AnalyticsPage() {
               {revenueTrendData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={revenueTrendData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
                     <XAxis
                       dataKey="date"
-                      stroke="#6b7280"
+                      stroke={chartColors.axis}
                       style={{ fontSize: '12px' }}
                     />
                     <YAxis
-                      stroke="#6b7280"
+                      stroke={chartColors.axis}
                       style={{ fontSize: '12px' }}
                       tickFormatter={(value) => `₹${value}`}
                     />
                     <Tooltip
                       formatter={(value: number | undefined) => value !== undefined ? [`₹${value.toFixed(2)}`, 'Revenue'] : ['', '']}
                       contentStyle={{
-                        backgroundColor: '#fff',
-                        border: '1px solid #e5e5e5',
-                        borderRadius: '8px'
+                        backgroundColor: chartColors.tooltipBg,
+                        border: `1px solid ${chartColors.tooltipBorder}`,
+                        borderRadius: '8px',
+                        color: chartColors.tooltipText
                       }}
                     />
                     <Legend />
@@ -284,23 +296,24 @@ export default function AnalyticsPage() {
                 {categoryRevenueData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={categoryRevenueData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+                      <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
                       <XAxis
                         dataKey="name"
-                        stroke="#6b7280"
+                        stroke={chartColors.axis}
                         style={{ fontSize: '12px' }}
                       />
                       <YAxis
-                        stroke="#6b7280"
+                        stroke={chartColors.axis}
                         style={{ fontSize: '12px' }}
                         tickFormatter={(value) => `₹${value}`}
                       />
                       <Tooltip
                         formatter={(value: number | undefined) => value !== undefined ? [`₹${value.toFixed(2)}`, 'Revenue'] : ['', '']}
                         contentStyle={{
-                          backgroundColor: '#fff',
-                          border: '1px solid #e5e5e5',
-                          borderRadius: '8px'
+                          backgroundColor: chartColors.tooltipBg,
+                          border: `1px solid ${chartColors.tooltipBorder}`,
+                          borderRadius: '8px',
+                          color: chartColors.tooltipText
                         }}
                       />
                       <Legend />
