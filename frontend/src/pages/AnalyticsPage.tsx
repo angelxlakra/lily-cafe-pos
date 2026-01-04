@@ -135,11 +135,11 @@ export default function AnalyticsPage() {
                   <h3 className="text-sm font-medium opacity-90">Total Revenue</h3>
                   <Wallet size={24} weight="duotone" className="opacity-80" />
                 </div>
-                <p className="text-3xl font-bold mb-1">
+                <p className="text-3xl font-bold mb-1 text-white">
                   {formatCurrency(revenueData?.total_revenue || 0)}
                 </p>
                 {revenueChange !== 0 && (
-                  <p className={`text-sm flex items-center gap-1 ${revenueChange > 0 ? 'text-lily-green' : 'text-red-300'}`}>
+                  <p className={`text-sm flex items-center gap-1 ${revenueChange > 0 ? 'text-green-300' : 'text-red-300'}`}>
                     <TrendUp size={16} weight="bold" className={revenueChange < 0 ? 'rotate-180' : ''} />
                     {Math.abs(revenueChange).toFixed(1)}% vs previous
                   </p>
