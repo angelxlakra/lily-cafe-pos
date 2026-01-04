@@ -149,13 +149,13 @@ export default function AnalyticsPage() {
               {/* Total Orders Card */}
               <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-neutral-text-light dark:text-gray-300">Total Orders</h3>
+                  <h3 className="text-sm font-medium" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : '#6b7280' }}>Total Orders</h3>
                   <Receipt size={24} weight="duotone" className="text-info" />
                 </div>
-                <p className="text-3xl font-bold text-coffee-brown dark:text-white mb-1">
+                <p className="text-3xl font-bold mb-1" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
                   {orderStats?.completed_orders || 0}
                 </p>
-                <p className="text-sm text-neutral-text-light dark:text-gray-400">
+                <p className="text-sm" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
                   {orderStats?.active_orders || 0} active orders
                 </p>
               </div>
@@ -163,13 +163,13 @@ export default function AnalyticsPage() {
               {/* Average Order Value Card */}
               <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-neutral-text-light dark:text-gray-300">Avg Order Value</h3>
+                  <h3 className="text-sm font-medium" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : '#6b7280' }}>Avg Order Value</h3>
                   <ChartLine size={24} weight="duotone" className="text-lily-green" />
                 </div>
-                <p className="text-3xl font-bold text-coffee-brown dark:text-white mb-1">
+                <p className="text-3xl font-bold mb-1" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
                   {formatCurrency(orderStats?.average_order_value || 0)}
                 </p>
-                <p className="text-sm text-neutral-text-light dark:text-gray-400">
+                <p className="text-sm" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
                   Per completed order
                 </p>
               </div>
@@ -177,13 +177,13 @@ export default function AnalyticsPage() {
               {/* Peak Hour Card */}
               <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium text-neutral-text-light dark:text-gray-300">Peak Hour</h3>
+                  <h3 className="text-sm font-medium" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : '#6b7280' }}>Peak Hour</h3>
                   <Clock size={24} weight="duotone" className="text-warning" />
                 </div>
-                <p className="text-3xl font-bold text-coffee-brown dark:text-white mb-1">
+                <p className="text-3xl font-bold mb-1" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
                   {orderStats?.peak_hours?.[0]?.hour || 0}:00
                 </p>
-                <p className="text-sm text-neutral-text-light dark:text-gray-400">
+                <p className="text-sm" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
                   {orderStats?.peak_hours?.[0]?.order_count || 0} orders
                 </p>
               </div>
@@ -193,7 +193,7 @@ export default function AnalyticsPage() {
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
               <div className="flex items-center gap-2 mb-4">
                 <ChartLine size={24} weight="duotone" className="text-coffee-brown dark:text-gray-300" />
-                <h2 className="font-heading text-xl text-coffee-brown dark:text-white">Revenue Trend</h2>
+                <h2 className="font-heading text-xl" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>Revenue Trend</h2>
               </div>
 
               {revenueTrendData.length > 0 ? (
@@ -232,7 +232,7 @@ export default function AnalyticsPage() {
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-64 text-neutral-text-light dark:text-gray-400">
+                <div className="flex items-center justify-center h-64" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
                   <p>No revenue data for selected period</p>
                 </div>
               )}
@@ -243,7 +243,7 @@ export default function AnalyticsPage() {
               <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
                 <div className="flex items-center gap-2 mb-4">
                   <Package size={24} weight="duotone" className="text-coffee-brown dark:text-gray-300" />
-                  <h2 className="font-heading text-xl text-coffee-brown dark:text-white">Top Products</h2>
+                  <h2 className="font-heading text-xl" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>Top Products</h2>
                 </div>
 
                 {productData?.top_products && productData.top_products.length > 0 ? (
@@ -251,13 +251,13 @@ export default function AnalyticsPage() {
                     <table className="w-full">
                       <thead>
                         <tr className="border-b border-neutral-border">
-                          <th className="text-left py-2 px-2 text-sm font-medium text-neutral-text-light dark:text-gray-400">
+                          <th className="text-left py-2 px-2 text-sm font-medium" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
                             Product
                           </th>
-                          <th className="text-right py-2 px-2 text-sm font-medium text-neutral-text-light dark:text-gray-400">
+                          <th className="text-right py-2 px-2 text-sm font-medium" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
                             Qty
                           </th>
-                          <th className="text-right py-2 px-2 text-sm font-medium text-neutral-text-light dark:text-gray-400">
+                          <th className="text-right py-2 px-2 text-sm font-medium" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
                             Revenue
                           </th>
                         </tr>
@@ -265,13 +265,13 @@ export default function AnalyticsPage() {
                       <tbody>
                         {productData.top_products.map((product, index) => (
                           <tr key={index} className="border-b border-neutral-border last:border-0">
-                            <td className="py-3 px-2 text-sm text-coffee-brown dark:text-gray-200 font-medium">
+                            <td className="py-3 px-2 text-sm font-medium" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
                               {product.name}
                             </td>
-                            <td className="py-3 px-2 text-sm text-right text-neutral-text-dark dark:text-gray-300">
+                            <td className="py-3 px-2 text-sm text-right" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.8)' : '#1f2937' }}>
                               {product.quantity_sold}
                             </td>
-                            <td className="py-3 px-2 text-sm text-right text-coffee-brown dark:text-gray-200 font-medium">
+                            <td className="py-3 px-2 text-sm text-right font-medium" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
                               {formatCurrency(product.revenue)}
                             </td>
                           </tr>
@@ -280,7 +280,7 @@ export default function AnalyticsPage() {
                     </table>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center h-64 text-neutral-text-light dark:text-gray-400">
+                  <div className="flex items-center justify-center h-64" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
                     <p>No product data for selected period</p>
                   </div>
                 )}
@@ -290,7 +290,7 @@ export default function AnalyticsPage() {
               <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
                 <div className="flex items-center gap-2 mb-4">
                   <ChartBar size={24} weight="duotone" className="text-coffee-brown dark:text-gray-300" />
-                  <h2 className="font-heading text-xl text-coffee-brown dark:text-white">Revenue by Category</h2>
+                  <h2 className="font-heading text-xl" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>Revenue by Category</h2>
                 </div>
 
                 {categoryRevenueData.length > 0 ? (
@@ -326,7 +326,7 @@ export default function AnalyticsPage() {
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-64 text-neutral-text-light dark:text-gray-400">
+                  <div className="flex items-center justify-center h-64" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
                     <p>No category data for selected period</p>
                   </div>
                 )}
@@ -335,7 +335,7 @@ export default function AnalyticsPage() {
 
             {/* Revenue by Payment Method */}
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
-              <h2 className="font-heading text-xl text-coffee-brown dark:text-white mb-4">
+              <h2 className="font-heading text-xl mb-4" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
                 Revenue by Payment Method
               </h2>
 
@@ -351,8 +351,8 @@ export default function AnalyticsPage() {
                           {paymentIcons[method] || method.toUpperCase()}
                         </div>
                         <div>
-                          <p className="text-sm text-neutral-text-light dark:text-gray-400 capitalize">{method}</p>
-                          <p className="text-lg font-bold text-coffee-brown dark:text-white">
+                          <p className="text-sm capitalize" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>{method}</p>
+                          <p className="text-lg font-bold" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
                             {formatCurrency(amount)}
                           </p>
                         </div>
@@ -361,7 +361,7 @@ export default function AnalyticsPage() {
                   ))}
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-32 text-neutral-text-light dark:text-gray-400">
+                <div className="flex items-center justify-center h-32" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
                   <p>No payment data for selected period</p>
                 </div>
               )}
@@ -369,13 +369,13 @@ export default function AnalyticsPage() {
 
             {/* Thesys C1 Conversational Interface - Coming Soon */}
             <div className="bg-gradient-to-br from-lily-green/10 to-info/10 dark:from-lily-green/20 dark:to-info/20 p-6 rounded-lg border border-lily-green/30 dark:border-lily-green/50">
-              <h2 className="font-heading text-xl text-coffee-brown dark:text-white mb-2">
+              <h2 className="font-heading text-xl mb-2" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
                 Ask Questions About Your Data
               </h2>
-              <p className="text-neutral-text-light dark:text-gray-300 mb-4">
+              <p className="mb-4" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.8)' : '#6b7280' }}>
                 Thesys C1 Conversational Analytics - Coming in next update
               </p>
-              <p className="text-sm text-neutral-text-light dark:text-gray-400 italic">
+              <p className="text-sm italic" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
                 Ask natural language questions like "Show me sales trends for last month" or
                 "Which products perform best on weekends?"
               </p>
