@@ -109,7 +109,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Date Range Picker */}
-        <div className="mb-6 bg-white p-4 rounded-lg border border-neutral-border">
+        <div className="mb-6 p-4 rounded-lg border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
           <DatePickerWithQuickFilters
             startDate={dateRange.start}
             endDate={dateRange.end}
@@ -147,7 +147,7 @@ export default function AnalyticsPage() {
               </div>
 
               {/* Total Orders Card */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
+              <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-medium" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : '#6b7280' }}>Total Orders</h3>
                   <Receipt size={24} weight="duotone" className="text-info" />
@@ -161,7 +161,7 @@ export default function AnalyticsPage() {
               </div>
 
               {/* Average Order Value Card */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
+              <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-medium" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : '#6b7280' }}>Avg Order Value</h3>
                   <ChartLine size={24} weight="duotone" className="text-lily-green" />
@@ -175,7 +175,7 @@ export default function AnalyticsPage() {
               </div>
 
               {/* Peak Hour Card */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
+              <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-medium" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : '#6b7280' }}>Peak Hour</h3>
                   <Clock size={24} weight="duotone" className="text-warning" />
@@ -190,7 +190,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Revenue Trend Chart */}
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
+            <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
               <div className="flex items-center gap-2 mb-4">
                 <ChartLine size={24} weight="duotone" className="text-coffee-brown dark:text-gray-300" />
                 <h2 className="font-heading text-xl" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>Revenue Trend</h2>
@@ -240,7 +240,7 @@ export default function AnalyticsPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Top Products Table */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
+              <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
                 <div className="flex items-center gap-2 mb-4">
                   <Package size={24} weight="duotone" className="text-coffee-brown dark:text-gray-300" />
                   <h2 className="font-heading text-xl" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>Top Products</h2>
@@ -287,7 +287,7 @@ export default function AnalyticsPage() {
               </div>
 
               {/* Revenue by Category Chart */}
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
+              <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
                 <div className="flex items-center gap-2 mb-4">
                   <ChartBar size={24} weight="duotone" className="text-coffee-brown dark:text-gray-300" />
                   <h2 className="font-heading text-xl" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>Revenue by Category</h2>
@@ -334,7 +334,7 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Revenue by Payment Method */}
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border border-neutral-border">
+            <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
               <h2 className="font-heading text-xl mb-4" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
                 Revenue by Payment Method
               </h2>
@@ -344,10 +344,11 @@ export default function AnalyticsPage() {
                   {Object.entries(revenueData.revenue_by_payment_method).map(([method, amount]) => (
                     <div
                       key={method}
-                      className="flex items-center justify-between p-4 rounded-lg bg-neutral-background dark:bg-gray-700 border border-neutral-border"
+                      className="flex items-center justify-between p-4 rounded-lg border border-neutral-border"
+                      style={{ backgroundColor: theme === 'dark' ? '#374151' : '#f5f5f5' }}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-coffee-brown/10 dark:bg-gray-600 flex items-center justify-center text-coffee-brown dark:text-gray-300">
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center text-coffee-brown dark:text-gray-300" style={{ backgroundColor: theme === 'dark' ? '#4b5563' : 'rgba(92, 61, 46, 0.1)' }}>
                           {paymentIcons[method] || method.toUpperCase()}
                         </div>
                         <div>
