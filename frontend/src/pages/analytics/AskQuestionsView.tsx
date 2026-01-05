@@ -70,37 +70,28 @@ export default function AskQuestionsView() {
   });
 
   return (
-    <div className="flex flex-col h-full w-full max-w-full">
-      <div className="mb-4">
-        <h2 className="font-heading text-xl mb-2" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
-          Ask Questions About Your Data
-        </h2>
-        <p className="text-sm" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : '#6b7280' }}>
-          Use natural language to explore your data.
-        </p>
-      </div>
-
+    <div className="w-full h-full flex flex-col">
+      {/* Removed extra padding and headers - C1Chat has its own header */}
       <div
-        className="flex-1 rounded-lg border border-neutral-border w-full"
+        className="w-full rounded-lg border border-neutral-border"
         style={{
           backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
-          height: 'calc(100vh - 280px)', // Account for header, navbar, padding
-          minHeight: '500px',
-          maxWidth: '100%',
-          overflow: 'hidden',
-          position: 'relative'
+          height: 'calc(100vh - 200px)', // More height for the chat
+          minHeight: '650px',
+          maxHeight: 'calc(100vh - 200px)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'auto'
         }}
       >
-        <div style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
-          <ThemeProvider mode={theme === 'dark' ? 'dark' : 'light'}>
-            <C1Chat
-                threadManager={threadManager}
-                threadListManager={threadListManager}
-                agentName="Lily Cafe Analytics"
-                formFactor="full-page"
-            />
-          </ThemeProvider>
-        </div>
+        <ThemeProvider mode={theme === 'dark' ? 'dark' : 'light'}>
+          <C1Chat
+              threadManager={threadManager}
+              threadListManager={threadListManager}
+              agentName="Lily Cafe Analytics"
+              formFactor="full-page"
+          />
+        </ThemeProvider>
       </div>
     </div>
   );
