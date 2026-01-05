@@ -92,6 +92,7 @@ export default function InventoryItemsTab() {
                 <th className="p-4 font-medium">Item Name</th>
                 <th className="p-4 font-medium">Category</th>
                 <th className="p-4 font-medium text-right">Stock Level</th>
+                <th className="p-4 font-medium text-right">Min Limit</th>
                 <th className="p-4 font-medium text-right">Unit</th>
                 <th className="p-4 font-medium text-right">Actions</th>
               </tr>
@@ -99,11 +100,11 @@ export default function InventoryItemsTab() {
             <tbody className="divide-y divide-neutral-border">
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-neutral-text-muted">Loading items...</td>
+                  <td colSpan={6} className="p-8 text-center text-neutral-text-muted">Loading items...</td>
                 </tr>
               ) : !itemsData?.items || itemsData.items.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-neutral-text-muted">No items found matching your filters.</td>
+                  <td colSpan={6} className="p-8 text-center text-neutral-text-muted">No items found matching your filters.</td>
                 </tr>
               ) : (
                 itemsData.items.map((item) => (
@@ -126,6 +127,9 @@ export default function InventoryItemsTab() {
                       <span className={`font-mono font-medium ${item.is_low_stock ? 'text-error' : 'text-success'}`}>
                         {item.current_quantity}
                       </span>
+                    </td>
+                    <td className="p-4 text-right text-neutral-text-muted font-mono">
+                      {item.min_threshold}
                     </td>
                     <td className="p-4 text-right text-neutral-text-muted text-sm">{item.unit}</td>
                     <td className="p-4 text-right">

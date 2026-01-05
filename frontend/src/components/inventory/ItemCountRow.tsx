@@ -11,26 +11,34 @@ import type { InventoryItem } from '../../types/inventory';
 
 interface ItemCountRowProps {
   item: InventoryItem;
-  count: number;
-  onChange: (itemId: number, newCount: number) => void;
+  count: number | null;
+  onChange: (itemId: number, newCount: number | null) => void;
   isChanged: boolean;
 }
 
 export default function ItemCountRow({ item, count, onChange, isChanged }: ItemCountRowProps) {
   const [isFocused, setIsFocused] = useState(false);
 
+
+
   const handleIncrement = (amount: number) => {
-    const newCount = Math.max(0, count + amount);
+    // If count is null, start from current_quantity
+    // Ensure we treat the value as a number to avoid string concatenation
+    const base = Number(count ?? item.current_quantity);
+    const newCount = Math.max(0, base + amount);
     onChange(item.id, newCount);
   };
 
   const handleDirectInput = (value: string) => {
+    if (value === '') {
+      onChange(item.id, null);
+      return;
+    }
+    
     // Allow decimal input
     const parsed = parseFloat(value);
     if (!isNaN(parsed) && parsed >= 0) {
       onChange(item.id, parsed);
-    } else if (value === '' || value === '0') {
-      onChange(item.id, 0);
     }
   };
 
@@ -69,7 +77,7 @@ export default function ItemCountRow({ item, count, onChange, isChanged }: ItemC
           <span className="text-neutral-text-muted">
             Current: <span className="font-mono font-medium text-neutral-text-dark dark:text-neutral-text-dark">{item.current_quantity}</span>
           </span>
-          {isChanged && (
+          {isChanged && count !== null && (
             <>
               <span className="text-neutral-text-muted">→</span>
               <span className="text-lily-green dark:text-lily-green-light">
@@ -101,7 +109,8 @@ export default function ItemCountRow({ item, count, onChange, isChanged }: ItemC
           <input
             type="number"
             inputMode="decimal"
-            value={count}
+            value={count ?? ''}
+            placeholder={item.current_quantity.toString()}
             onChange={(e) => handleDirectInput(e.target.value)}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
@@ -133,7 +142,7 @@ export default function ItemCountRow({ item, count, onChange, isChanged }: ItemC
         </div>
 
         {/* Change Indicator */}
-        {isChanged && (
+        {isChanged && count !== null && (
           <div className="mt-3 text-xs text-lily-green dark:text-lily-green-light font-medium">
             Changed: {count > item.current_quantity ? '+' : ''}{(count - item.current_quantity).toFixed(2)} {item.unit}
           </div>

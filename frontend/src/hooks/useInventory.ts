@@ -96,9 +96,52 @@ export function useUpdateItem() {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: InventoryItemUpdate }) => 
       inventoryApi.updateItem(id, data),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.items() });
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.item(data.id) });
+    onMutate: async ({ id, data }) => {
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await queryClient.cancelQueries({ queryKey: ['inventory', 'items'] });
+      await queryClient.cancelQueries({ queryKey: inventoryKeys.item(id) });
+
+      // Snapshot the previous value
+      const previousItems = queryClient.getQueriesData({ queryKey: ['inventory', 'items'] });
+      const previousItem = queryClient.getQueryData(inventoryKeys.item(id));
+
+      // Optimistically update the items list
+      queryClient.setQueriesData({ queryKey: ['inventory', 'items'] }, (old: any) => {
+        if (!old?.items) return old;
+        return {
+          ...old,
+          items: old.items.map((item: any) => 
+            item.id === id ? { ...item, ...data } : item
+          )
+        };
+      });
+
+      // Optimistically update the individual item
+      queryClient.setQueryData(inventoryKeys.item(id), (old: any) => {
+        if (!old) return old;
+        return { ...old, ...data };
+      });
+
+      // Return a context object with the snapshotted value
+      return { previousItems, previousItem };
+    },
+    onError: (_err, newTodo, context) => {
+      // Rollback on error
+      if (context?.previousItems) {
+        context.previousItems.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+      if (context?.previousItem) {
+        queryClient.setQueryData(inventoryKeys.item(newTodo.id), context.previousItem);
+      }
+    },
+    onSettled: (data) => {
+      // Always refetch after error or success
+      queryClient.invalidateQueries({ queryKey: ['inventory', 'items'] });
+      if (data) {
+        queryClient.invalidateQueries({ queryKey: inventoryKeys.item(data.id) });
+      }
       queryClient.invalidateQueries({ queryKey: inventoryKeys.lowStock() });
     },
   });
