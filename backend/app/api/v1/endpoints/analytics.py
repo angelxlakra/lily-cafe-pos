@@ -57,6 +57,8 @@ class OrderStatistics(BaseModel):
 class C1QueryRequest(BaseModel):
     """Request for Thesys C1 conversational query."""
     prompt: str
+    threadId: Optional[str] = None
+    responseId: Optional[str] = None
     c1_response: Optional[str] = ""
 
 
@@ -328,6 +330,8 @@ async def conversational_query(
     - "Compare revenue from last week vs this week"
     """
     try:
+        from fastapi.responses import StreamingResponse
+
         client = get_c1_client()
 
         # Prepare system context with available data
@@ -342,17 +346,30 @@ Available data endpoints:
 When users ask questions, generate appropriate charts, tables, or cards to visualize the data.
 Use interactive components like line charts for trends, bar charts for comparisons, and tables for detailed lists."""
 
-        # Make API call to Thesys C1
+        # Make API call to Thesys C1 with streaming
         completion = client.chat.completions.create(
-            model="c1-model-name",
+            model="c1/anthropic/claude-sonnet-4/v-20250815",
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": request.prompt}
             ],
+            stream=True
         )
 
-        assistant_response = completion.choices[0].message
-        return {"content": assistant_response.content}
+        # Stream the response
+        async def generate():
+            for chunk in completion:
+                if chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+
+        return StreamingResponse(
+            generate(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache, no-transform",
+                "Connection": "keep-alive",
+            }
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error querying Thesys C1: {str(e)}")
