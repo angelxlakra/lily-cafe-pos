@@ -15,7 +15,7 @@
  * formatCurrency(123456) // "₹1,234.56"
 */
 export function formatCurrency(amount: number): string {
-  return `₹${(amount / 100).toLocaleString("en-IN", {
+  return `₹${(amount).toLocaleString("en-IN", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   })}`;

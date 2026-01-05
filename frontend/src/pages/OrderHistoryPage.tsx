@@ -4,7 +4,7 @@
 // ========================================
 
 import { useState, useMemo } from 'react';
-import Sidebar from '../components/Sidebar';
+import { useSidebar } from '../context/SidebarContext';
 import EmptyState from '../components/EmptyState';
 import DatePickerWithQuickFilters from '../components/DatePickerWithQuickFilters';
 import SortableTableHeader from '../components/SortableTableHeader';
@@ -29,10 +29,10 @@ export default function OrderHistoryPage() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
   const [editPaymentsOrder, setEditPaymentsOrder] = useState<Order | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const { setMobileOpen } = useSidebar();
 
   // Payment method icons
   const paymentIcons: Record<PaymentMethod, JSX.Element> = {
@@ -178,18 +178,15 @@ export default function OrderHistoryPage() {
   );
 
   return (
-    <div className="flex min-h-screen bg-neutral-background">
-      {/* Sidebar */}
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
+    <div className="flex flex-col h-full bg-neutral-background">
       {/* Main Content */}
-      <div className="flex-1 lg:ml-60 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="bg-off-white border-b border-neutral-border p-4 md:p-6">
           <div className="flex items-center gap-4 mb-4">
             {/* Hamburger Menu Button */}
             <button
-              onClick={() => setIsSidebarOpen(true)}
+              onClick={() => setMobileOpen(true)}
               className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg bg-coffee-brown text-cream hover:bg-coffee-dark transition-colors"
               aria-label="Open menu"
             >
@@ -723,7 +720,7 @@ function OrderDetailsModal({
                           {item.menu_item_name}
                         </p>
                         <p className="text-sm text-neutral-text-light">
-                          Qty: {item.quantity} � {formatCurrency(item.unit_price)}
+                          Qty: {item.quantity}  {formatCurrency(item.unit_price)}
                         </p>
                       </div>
                       <p className="font-semibold text-coffee-brown">

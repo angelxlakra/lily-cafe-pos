@@ -1,27 +1,27 @@
 import { useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { LockOpen, LockKey, CheckCircle, ClockCounterClockwise, Info } from '@phosphor-icons/react';
-import Sidebar from '../components/Sidebar';
+import { LockOpen, LockKey, CheckCircle, Info } from '@phosphor-icons/react';
+import { useSidebar } from '../context/SidebarContext';
 import BottomNav from '../components/BottomNav';
 import DenominationCounter, { Denominations } from '../components/DenominationCounter';
 import { useCashCounterToday, useOpenCashCounter, useCloseCashCounter, useVerifyCashCounter, useCashCounterHistory } from '../hooks/useCashCounter';
 import { toast } from '../utils/toast';
 import { formatCurrency } from '../utils/formatCurrency';
+import { formatDateTime } from '../utils/formatDateTime';
 
 export default function CashCounterPage() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { data: todayCounter, isLoading } = useCashCounterToday();
+  const { setMobileOpen } = useSidebar();
 
   return (
-    <div className="min-h-screen bg-neutral-background pb-16 lg:pb-0 lg:pl-60 transition-all duration-300">
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+    <div className="flex flex-col h-full bg-neutral-background">
 
       {/* Header */}
-      <header className="bg-off-white border-b border-neutral-border p-4 md:p-6">
+      <header className="bg-off-white border-b border-neutral-border p-4 md:p-6 flex-shrink-0">
         <div className="flex items-center gap-4">
           {/* Hamburger Menu Button */}
           <button
-            onClick={() => setIsSidebarOpen(true)}
+            onClick={() => setMobileOpen(true)}
             className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg bg-coffee-brown text-cream hover:bg-coffee-dark transition-colors"
             aria-label="Open menu"
           >
@@ -40,7 +40,7 @@ export default function CashCounterPage() {
         </div>
       </header>
 
-      <main className="p-4 lg:p-6 max-w-7xl mx-auto">
+      <main className="p-4 lg:p-6 max-w-7xl mx-auto w-full flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="text-center py-12 text-neutral-text-muted">Loading counter status...</div>
         ) : (
@@ -802,8 +802,8 @@ function ReopenCounterModal({ isOpen, onClose, counter }: ReopenCounterModalProp
               }}
             />
           </div>
-
-          <div className="flex gap-3">
+          
+          <div className="flex gap-3 w-full">
             <button
               onClick={onClose}
               disabled={isReopening}
@@ -814,16 +814,12 @@ function ReopenCounterModal({ isOpen, onClose, counter }: ReopenCounterModalProp
             <button
               onClick={handleReopen}
               disabled={isReopening || !password}
-              className="flex-1 py-2.5 px-4 rounded-xl font-bold bg-warning text-coffee-dark hover:bg-warning/90 transition-colors disabled:opacity-50 shadow-lg shadow-warning/20"
+              className="flex-1 py-2.5 px-4 rounded-xl font-bold bg-warning text-coffee-dark hover:bg-warning/90 transition-colors disabled:opacity-50 shadow-lg shadow-warning/20 flex items-center justify-center gap-2"
             >
-              {isReopening ? (
-                <span className="flex items-center justify-center gap-2">
-                  <div className="animate-spin h-4 w-4 border-2 border-coffee-dark border-t-transparent rounded-full" />
-                  Reopening...
-                </span>
-              ) : (
-                'Yes, Reopen Counter'
+              {isReopening && (
+                <div className="animate-spin h-4 w-4 border-2 border-coffee-dark border-t-transparent rounded-full" />
               )}
+              Reopen
             </button>
           </div>
         </div>
@@ -833,61 +829,66 @@ function ReopenCounterModal({ isOpen, onClose, counter }: ReopenCounterModalProp
 }
 
 function CashCounterHistory() {
-  const { data, isLoading } = useCashCounterHistory({ limit: 10 });
+  const { data, isLoading } = useCashCounterHistory();
+  const history = data?.history || [];
+
+  if (isLoading) {
+    return (
+      <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-border p-6 shadow-sm animate-pulse">
+        <div className="h-6 w-32 bg-neutral-200 dark:bg-neutral-700 rounded mb-4"></div>
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-10 bg-neutral-100 dark:bg-neutral-700/50 rounded"></div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!history || history.length === 0) {
+    return (
+      <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-border p-6 shadow-sm text-center">
+        <p className="text-neutral-text-muted">No history available</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="card overflow-hidden mt-8">
-      <div className="p-4 border-b border-neutral-border">
-        <h3 className="font-heading text-lg text-neutral-text-dark flex items-center gap-2">
-          <ClockCounterClockwise size={20} />
-          Recent History
-        </h3>
-      </div>
+    <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-border p-6 shadow-sm">
+      <h3 className="font-heading font-semibold text-lg mb-4 text-neutral-text-dark">History</h3>
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-neutral-background border-b border-neutral-border text-neutral-text-muted text-sm uppercase tracking-wider">
-              <th className="p-4 font-medium">Date</th>
-              <th className="p-4 font-medium text-right">Opening</th>
-              <th className="p-4 font-medium text-right">Closing</th>
-              <th className="p-4 font-medium text-right">Variance</th>
-              <th className="p-4 font-medium">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-border">
-            {isLoading ? (
-              <tr><td colSpan={5} className="p-8 text-center text-neutral-text-muted">Loading history...</td></tr>
-            ) : !data?.history || data.history.length === 0 ? (
-              <tr><td colSpan={5} className="p-8 text-center text-neutral-text-muted">No history found.</td></tr>
-            ) : (
-              data.history.map((item) => (
-                <tr key={item.id} className="hover:bg-neutral-background/50">
-                  <td className="p-4 text-sm text-neutral-text-body">
-                    {new Date(item.date).toLocaleDateString()}
-                  </td>
-                  <td className="p-4 text-right font-mono text-sm">₹{item.opening_balance}</td>
-                  <td className="p-4 text-right font-mono text-sm">
-                    {item.closing_balance !== null ? `₹${item.closing_balance}` : '-'}
-                  </td>
-                  <td className={`p-4 text-right font-mono text-sm ${
-                    !item.variance ? 'text-neutral-text-muted' :
-                    item.variance === 0 ? 'text-success' : 'text-error'
-                  }`}>
-                    {item.variance !== null ? (item.variance > 0 ? `+₹${item.variance}` : `₹${item.variance}`) : '-'}
-                  </td>
-                  <td className="p-4">
-                    <span className={`badge ${
-                      item.status === 'verified' ? 'bg-info/10 text-info' :
-                      item.status === 'closed_pending_verification' ? 'bg-warning/10 text-warning-dark' :
-                      'bg-success/10 text-success'
-                    }`}>
-                      {item.status === 'closed_pending_verification' ? 'Pending' : item.status}
-                    </span>
-                  </td>
+        <table className="w-full text-sm text-left">
+           <thead>
+             <tr className="border-b border-neutral-border text-neutral-text-muted">
+               <th className="py-2 px-2">Date</th>
+               <th className="py-2 px-2">Status</th>
+               <th className="py-2 px-2 text-right">Opening</th>
+               <th className="py-2 px-2 text-right">Closing</th>
+               <th className="py-2 px-2 text-right">Diff</th>
+             </tr>
+           </thead>
+           <tbody className="divide-y divide-neutral-border/50">
+             {history.map((entry: any) => (
+                <tr key={entry.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors">
+                   <td className="py-3 px-2 text-neutral-text-dark">{formatDateTime(entry.created_at || entry.date)}</td>
+                   <td className="py-3 px-2">
+                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize
+                       ${entry.status === 'open' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                         entry.status === 'closed' || entry.status === 'verified' ? 'bg-neutral-100 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-300' :
+                         'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'}`}>
+                       {entry.status.replace(/_/g, ' ')}
+                     </span>
+                   </td>
+                   <td className="py-3 px-2 text-right text-neutral-text-dark font-mono">{formatCurrency(entry.opening_balance)}</td>
+                   <td className="py-3 px-2 text-right text-neutral-text-dark font-mono">{entry.closing_balance ? formatCurrency(entry.closing_balance) : '—'}</td>
+                   <td className={`py-3 px-2 text-right font-mono font-medium ${
+                     (entry.difference || 0) < 0 ? 'text-error' : (entry.difference || 0) > 0 ? 'text-success' : 'text-neutral-text-muted'
+                   }`}>
+                     {entry.difference ? formatCurrency(entry.difference) : '—'}
+                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
+             ))}
+           </tbody>
         </table>
       </div>
     </div>
