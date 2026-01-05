@@ -13,9 +13,9 @@ import ItemCountRow from './ItemCountRow';
 interface CategorySectionProps {
   categoryName: string;
   items: InventoryItem[];
-  counts: Record<number, number>;
+  counts: Record<number, number | null>;
   changedItems: Set<number>;
-  onCountChange: (itemId: number, newCount: number) => void;
+  onCountChange: (itemId: number, newCount: number | null) => void;
   defaultExpanded?: boolean;
 }
 
@@ -112,7 +112,7 @@ export default function CategorySection({
               <ItemCountRow
                 key={item.id}
                 item={item}
-                count={counts[item.id] ?? item.current_quantity}
+                count={counts[item.id] ?? null}
                 onChange={onCountChange}
                 isChanged={changedItems.has(item.id)}
               />

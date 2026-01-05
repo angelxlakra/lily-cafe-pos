@@ -5,7 +5,7 @@
  * Mobile-first design optimized for quick counting workflow.
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { FloppyDisk, CheckCircle, X, Upload } from '@phosphor-icons/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { inventoryApi } from '../../api/inventory';
@@ -29,22 +29,12 @@ export default function DailyCountTab() {
     queryFn: inventoryApi.getCategories,
   });
 
-  // Local state for counts
-  const [counts, setCounts] = useState<Record<number, number>>({});
+  // Local state for counts (null means not yet counted/touched, so use placeholder)
+  const [counts, setCounts] = useState<Record<number, number | null>>({});
   const [changedItems, setChangedItems] = useState<Set<number>>(new Set());
 
-  // Initialize counts when items load
-  useEffect(() => {
-    if (categorizedItems) {
-      const initialCounts: Record<number, number> = {};
-      Object.values(categorizedItems).forEach(({ items }) => {
-        items.forEach((item: InventoryItem) => {
-          initialCounts[item.id] = item.current_quantity;
-        });
-      });
-      setCounts(initialCounts);
-    }
-  }, [categorizedItems]);
+  // We no longer auto-initialize counts, we let them remain undefined/null to show placeholder
+
 
   // Calculate totals
   const { totalItems, countedItems } = useMemo(() => {
@@ -69,7 +59,8 @@ export default function DailyCountTab() {
       // Collect all changed items
       changedItems.forEach(itemId => {
         const newQuantity = counts[itemId];
-        if (newQuantity !== undefined) {
+        // Only include if we have a valid number
+        if (newQuantity !== undefined && newQuantity !== null) {
           adjustments.push({
             item_id: itemId,
             new_quantity: newQuantity,
@@ -102,7 +93,7 @@ export default function DailyCountTab() {
     }
   });
 
-  const handleCountChange = (itemId: number, newCount: number) => {
+  const handleCountChange = (itemId: number, newCount: number | null) => {
     setCounts(prev => ({ ...prev, [itemId]: newCount }));
 
     // Find original quantity
@@ -117,7 +108,14 @@ export default function DailyCountTab() {
     }
 
     // Track if changed
-    const isChanged = newCount !== originalQuantity;
+    // It's changed if newCount is not null and differs from original
+    // If we clear the input (newCount === null), we treat it as "unchanged" relative to the save operation?
+    // Or if we clear it, we just remove it from changed items if we haven't typed anything else.
+    // The user requirement "do it from the previous value itself" implies we are EDITING.
+    // If I explicitly clear it, I probably meant "I didn't mean to count this".
+    
+    const isChanged = newCount !== null && newCount !== undefined && newCount !== originalQuantity;
+    
     setChangedItems(prev => {
       const next = new Set(prev);
       if (isChanged) {
@@ -131,16 +129,8 @@ export default function DailyCountTab() {
 
   const handleReset = () => {
     if (confirm('Are you sure you want to reset all changes?')) {
-      // Reset to original quantities
-      if (categorizedItems) {
-        const resetCounts: Record<number, number> = {};
-        Object.values(categorizedItems).forEach(({ items }) => {
-          items.forEach((item: InventoryItem) => {
-            resetCounts[item.id] = item.current_quantity;
-          });
-        });
-        setCounts(resetCounts);
-      }
+      // Clear all manual counts to revert to placeholders
+      setCounts({});
       setChangedItems(new Set());
     }
   };
