@@ -70,20 +70,31 @@ export default function AskQuestionsView() {
   });
 
   return (
-    <div className="p-6 rounded-lg shadow-md border border-neutral-border flex flex-col h-[700px]" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
-      <h2 className="font-heading text-xl mb-4" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
-        Ask Questions About Your Data
-      </h2>
-      <p className="mb-6 text-sm" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : '#6b7280' }}>
-        Use natural language to explore your data.
-      </p>
+    <div className="flex flex-col h-full w-full max-w-full">
+      <div className="mb-4">
+        <h2 className="font-heading text-xl mb-2" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
+          Ask Questions About Your Data
+        </h2>
+        <p className="text-sm" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.7)' : '#6b7280' }}>
+          Use natural language to explore your data.
+        </p>
+      </div>
 
-      <div className="flex-1 min-h-0 border rounded-lg overflow-hidden border-neutral-border bg-neutral-background">
+      <div
+        className="flex-1 rounded-lg border border-neutral-border overflow-hidden w-full"
+        style={{
+          backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
+          height: 'calc(100vh - 280px)', // Account for header, navbar, padding
+          minHeight: '500px',
+          maxWidth: '100%'
+        }}
+      >
         <ThemeProvider mode={theme === 'dark' ? 'dark' : 'light'}>
           <C1Chat
               threadManager={threadManager}
               threadListManager={threadListManager}
               agentName="Lily Cafe Analytics"
+              formFactor="full-page"
           />
         </ThemeProvider>
       </div>
