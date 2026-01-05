@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Calendar, ArrowRight } from '@phosphor-icons/react'
 
 interface DatePickerWithQuickFiltersProps {
@@ -12,12 +13,20 @@ type QuickFilter = {
   getRange: () => { start: string; end: string }
 }
 
-const quickFilters: QuickFilter[] = [
+const getLocalYYYYMMDD = (date: Date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+export const quickFilters: QuickFilter[] = [
   {
     label: 'Today',
     getRange: () => {
-      const today = new Date().toISOString().split('T')[0]
-      return { start: today, end: today }
+      const today = new Date()
+      const dateStr = getLocalYYYYMMDD(today)
+      return { start: dateStr, end: dateStr }
     },
   },
   {
@@ -25,24 +34,26 @@ const quickFilters: QuickFilter[] = [
     getRange: () => {
       const date = new Date()
       date.setDate(date.getDate() - 1)
-      const yesterday = date.toISOString().split('T')[0]
+      const yesterday = getLocalYYYYMMDD(date)
       return { start: yesterday, end: yesterday }
     },
   },
   {
     label: 'This Week',
     getRange: () => {
-      const date = new Date()
-      // Adjust to Monday
-      const day = date.getDay()
-      const diff = date.getDate() - day + (day === 0 ? -6 : 1)
-      const start = new Date(date)
-      start.setDate(diff)
-      
-      const today = new Date().toISOString().split('T')[0]
-      return { 
-        start: start.toISOString().split('T')[0], 
-        end: today 
+      const today = new Date()
+      const dayOfWeek = today.getDay()
+
+      // Calculate days to subtract to get to Monday
+      // If Sunday (0), go back 6 days; otherwise go back (dayOfWeek - 1) days
+      const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+
+      const start = new Date(today)
+      start.setDate(today.getDate() - daysToSubtract)
+
+      return {
+        start: getLocalYYYYMMDD(start),
+        end: getLocalYYYYMMDD(today)
       }
     },
   },
@@ -50,12 +61,26 @@ const quickFilters: QuickFilter[] = [
     label: 'This Month',
     getRange: () => {
       const date = new Date()
-      const today = date.toISOString().split('T')[0]
+      const end = getLocalYYYYMMDD(date)
       
       date.setDate(1)
       return { 
-        start: date.toISOString().split('T')[0], 
-        end: today 
+        start: getLocalYYYYMMDD(date), 
+        end: end
+      }
+    },
+  },
+  {
+    label: 'All Time',
+    getRange: () => {
+      const end = new Date()
+      const start = new Date(end)
+      // Default to last 3 months as per requirement ("whichever is lower")
+      start.setMonth(start.getMonth() - 3)
+      
+      return { 
+        start: getLocalYYYYMMDD(start), 
+        end: getLocalYYYYMMDD(end)
       }
     },
   },
@@ -71,13 +96,21 @@ export default function DatePickerWithQuickFilters({
   onChange,
   max,
 }: DatePickerWithQuickFiltersProps) {
+  const [activeFilter, setActiveFilter] = useState<string | null>(null)
+
   const handleQuickFilter = (filter: QuickFilter) => {
     const { start, end } = filter.getRange()
+    setActiveFilter(filter.label)
     onChange(start, end)
   }
 
-  // Check if current selection matches a quick filter
-  const activeFilterLabel = quickFilters.find(filter => {
+  const handleManualDateChange = (start: string, end: string) => {
+    setActiveFilter(null)
+    onChange(start, end)
+  }
+
+  // Check if current selection matches a quick filter (only if no active filter is set)
+  const activeFilterLabel = activeFilter || quickFilters.find(filter => {
     const { start, end } = filter.getRange()
     return start === startDate && end === endDate
   })?.label
@@ -120,7 +153,7 @@ export default function DatePickerWithQuickFilters({
             <input
               type="date"
               value={startDate}
-              onChange={(e) => onChange(e.target.value, endDate < e.target.value ? e.target.value : endDate)}
+              onChange={(e) => handleManualDateChange(e.target.value, endDate < e.target.value ? e.target.value : endDate)}
               max={max}
               className="
                 w-full pl-9 pr-3 py-2
@@ -154,7 +187,7 @@ export default function DatePickerWithQuickFilters({
             <input
               type="date"
               value={endDate}
-              onChange={(e) => onChange(startDate > e.target.value ? e.target.value : startDate, e.target.value)}
+              onChange={(e) => handleManualDateChange(startDate > e.target.value ? e.target.value : startDate, e.target.value)}
               max={max}
               min={startDate}
               className="

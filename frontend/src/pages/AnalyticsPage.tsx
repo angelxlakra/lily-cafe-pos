@@ -5,7 +5,7 @@
 // ========================================
 
 import { useState } from 'react';
-import Sidebar from '../components/Sidebar';
+import { useSidebar } from '../context/SidebarContext';
 import { useTheme } from '../contexts/ThemeContext';
 import AnalyticsDashboard from './analytics/AnalyticsDashboard';
 import AskQuestionsView from './analytics/AskQuestionsView';
@@ -14,26 +14,37 @@ import { ChartLine, ChatCircleDots } from '@phosphor-icons/react';
 type ViewMode = 'dashboard' | 'ask';
 
 export default function AnalyticsPage() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('dashboard');
   const { theme } = useTheme();
+  const { setMobileOpen } = useSidebar();
 
   return (
-    <div className="flex min-h-screen bg-neutral-background">
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+    <div className="flex flex-col h-full bg-neutral-background">
 
-      <div className="flex-1 flex flex-col p-6 md:p-8 lg:ml-60 h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col p-6 md:p-8 overflow-hidden">
         {/* Header */}
         <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
-          <div>
-            <h1 className="font-heading heading-display text-coffee-brown mb-2">
-              {viewMode === 'dashboard' ? 'Analytics Dashboard' : 'Ask Questions'}
-            </h1>
-            <p className="text-neutral-text-light">
-              {viewMode === 'dashboard'
-                ? 'View sales, revenue, and performance metrics'
-                : 'Interactive conversational analytics powered by Thesys C1'}
-            </p>
+          <div className="flex items-start gap-4">
+             {/* Hamburger Menu Button for Mobile */}
+             <button
+              onClick={() => setMobileOpen(true)}
+              className="lg:hidden mt-1 w-10 h-10 flex items-center justify-center rounded-lg bg-coffee-brown text-cream hover:bg-coffee-dark transition-colors flex-shrink-0"
+              aria-label="Open menu"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <div>
+              <h1 className="font-heading heading-display text-coffee-brown mb-2">
+                {viewMode === 'dashboard' ? 'Analytics Dashboard' : 'Ask Questions'}
+              </h1>
+              <p className="text-neutral-text-light">
+                {viewMode === 'dashboard'
+                  ? 'View sales, revenue, and performance metrics'
+                  : 'Interactive conversational analytics powered by Thesys C1'}
+              </p>
+            </div>
           </div>
 
           {/* View Toggle */}
