@@ -81,22 +81,26 @@ export default function AskQuestionsView() {
       </div>
 
       <div
-        className="flex-1 rounded-lg border border-neutral-border overflow-hidden w-full"
+        className="flex-1 rounded-lg border border-neutral-border w-full"
         style={{
           backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
           height: 'calc(100vh - 280px)', // Account for header, navbar, padding
           minHeight: '500px',
-          maxWidth: '100%'
+          maxWidth: '100%',
+          overflow: 'hidden',
+          position: 'relative'
         }}
       >
-        <ThemeProvider mode={theme === 'dark' ? 'dark' : 'light'}>
-          <C1Chat
-              threadManager={threadManager}
-              threadListManager={threadListManager}
-              agentName="Lily Cafe Analytics"
-              formFactor="full-page"
-          />
-        </ThemeProvider>
+        <div style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+          <ThemeProvider mode={theme === 'dark' ? 'dark' : 'light'}>
+            <C1Chat
+                threadManager={threadManager}
+                threadListManager={threadListManager}
+                agentName="Lily Cafe Analytics"
+                formFactor="full-page"
+            />
+          </ThemeProvider>
+        </div>
       </div>
     </div>
   );
