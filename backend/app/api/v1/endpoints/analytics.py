@@ -157,8 +157,8 @@ def get_time_filter(start_date: Optional[datetime], end_date: Optional[datetime]
 
 
 def paise_to_rupees(paise: int) -> float:
-    """Convert paise to rupees."""
-    return paise / 100.0
+    """Pass through paise as is (for frontend formatting)."""
+    return float(paise)
 
 
 # ============================================================================
@@ -2740,6 +2740,8 @@ async def conversational_query(
         system_message = """You are an analytics assistant for Lily Cafe, an Indian restaurant.
 
 IMPORTANT:
+- All monetary values provided by tools are in PAISE (1/100th of a Rupee).
+- when displaying values to the user, you MUST divide by 100 to convert to Rupees (₹).
 - All monetary values are in Indian Rupees (₹), NOT dollars ($)
 - Always display currency as ₹ (rupee symbol), never use $
 - Use the tools provided to fetch REAL data from the database

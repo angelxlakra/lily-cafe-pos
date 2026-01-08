@@ -3,6 +3,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, Cartes
 import { useRevenueWaterfall } from '../../../hooks/useAnalytics';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { AnalyticsQueryParams } from '../../../api/analytics';
+import { formatCurrency } from '../../../utils/formatCurrency';
 
 interface RevenueWaterfallProps {
   date?: string; // Single date usually
@@ -50,10 +51,10 @@ const RevenueWaterfall: React.FC<RevenueWaterfallProps> = ({ date }) => {
         <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
           <XAxis dataKey="name" stroke={theme === 'dark' ? '#9ca3af' : '#4b5563'} fontSize={12} />
-          <YAxis stroke={theme === 'dark' ? '#9ca3af' : '#4b5563'} />
+          <YAxis stroke={theme === 'dark' ? '#9ca3af' : '#4b5563'} tickFormatter={formatCurrency} />
           <Tooltip 
              cursor={{fill: 'transparent'}}
-             formatter={(_value: any, _name: any, props: any) => [`₹${props.payload.value}`, 'Amount']}
+             formatter={(_value: any, _name: any, props: any) => [formatCurrency(props.payload.value), 'Amount']}
              contentStyle={{
                  backgroundColor: theme === 'dark' ? '#1f2937' : '#fff',
                  borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',

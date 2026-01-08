@@ -196,6 +196,8 @@ export const useCancelOrder = () => {
     onSuccess: () => {
       // Invalidate active orders to remove the canceled order
       queryClient.invalidateQueries({ queryKey: ordersQueryKeys.active });
+      // Invalidate order history to show the cancelled order
+      queryClient.invalidateQueries({ queryKey: ordersQueryKeys.history() });
     },
   });
 };

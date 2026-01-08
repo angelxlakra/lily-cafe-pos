@@ -373,10 +373,10 @@ export default function AnalyticsDashboard() {
                       <YAxis
                         stroke={chartColors.axis}
                         style={{ fontSize: '12px' }}
-                        tickFormatter={(value) => `₹${value}`}
+                        tickFormatter={formatCurrency}
                       />
                       <Tooltip
-                        formatter={(value: number | undefined) => value !== undefined ? [`₹${value.toFixed(2)}`, 'Revenue'] : ['', '']}
+                        formatter={(value: number | undefined) => value !== undefined ? [formatCurrency(value), 'Revenue'] : ['', '']}
                         contentStyle={{
                           backgroundColor: chartColors.tooltipBg,
                           border: `1px solid ${chartColors.tooltipBorder}`,
@@ -530,7 +530,7 @@ export default function AnalyticsDashboard() {
                             <Tooltip
                               formatter={(value: number | undefined, name: any) => {
                                 if (name === 'Quantity') return [value, 'Quantity Sold'];
-                                return value !== undefined ? [`₹${value.toFixed(2)}`, 'Revenue'] : ['', ''];
+                                return value !== undefined ? [formatCurrency(value), 'Revenue'] : ['', ''];
                               }}
                               contentStyle={{
                                 backgroundColor: chartColors.tooltipBg,
@@ -584,7 +584,7 @@ export default function AnalyticsDashboard() {
                                 ))}
                               </Pie>
                               <Tooltip
-                                formatter={(value: number | undefined) => value !== undefined ? [`₹${value.toFixed(2)}`, 'Revenue'] : ['', '']}
+                                formatter={(value: number | undefined) => value !== undefined ? [formatCurrency(value), 'Revenue'] : ['', '']}
                                 contentStyle={{
                                   backgroundColor: chartColors.tooltipBg,
                                   border: `1px solid ${chartColors.tooltipBorder}`,
