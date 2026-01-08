@@ -110,10 +110,28 @@ export default function OrderHistoryPage() {
     });
   }, [allOrders, searchQuery]);
 
+  // Add display_time to orders based on payment time or created_at
+  const processedOrders = useMemo(() => {
+    return filteredOrders.map(order => {
+      let displayTime = order.created_at;
+      if (order.payments && order.payments.length > 0) {
+        // Find latest payment time
+        const latestPayment = order.payments.reduce((prev, current) => {
+          return new Date(prev.created_at) > new Date(current.created_at) ? prev : current;
+        });
+        displayTime = latestPayment.created_at;
+      }
+      return {
+        ...order,
+        display_time: displayTime
+      };
+    });
+  }, [filteredOrders]);
+
   // Add sorting to filtered orders
   const { sortedData: orders, sortConfig, requestSort } = useSortableTable(
-    filteredOrders,
-    'created_at' as keyof Order,
+    processedOrders,
+    'display_time' as keyof typeof processedOrders[0], // Use dynamic key
     'desc'
   );
 
@@ -361,47 +379,47 @@ export default function OrderHistoryPage() {
                 <table className="w-full">
                   <thead className="bg-cream border-b border-neutral-border">
                     <tr>
-                      <SortableTableHeader
+                      <SortableTableHeader<any>
                         label="Order #"
-                        sortKey={'id' as keyof Order}
-                        currentSortKey={sortConfig.key as keyof Order}
+                        sortKey={'id' as any}
+                        currentSortKey={sortConfig.key as any}
                         sortDirection={sortConfig.direction}
-                        onSort={requestSort}
+                        onSort={requestSort as any}
                         align="left"
                       />
-                      <SortableTableHeader
+                      <SortableTableHeader<any>
                         label="Table"
-                        sortKey={'table_number' as keyof Order}
-                        currentSortKey={sortConfig.key as keyof Order}
+                        sortKey={'table_number' as any}
+                        currentSortKey={sortConfig.key as any}
                         sortDirection={sortConfig.direction}
-                        onSort={requestSort}
+                        onSort={requestSort as any}
                         align="left"
                       />
-                      <SortableTableHeader
+                      <SortableTableHeader<any>
                         label="Customer"
-                        sortKey={'customer_name' as keyof Order}
-                        currentSortKey={sortConfig.key as keyof Order}
+                        sortKey={'customer_name' as any}
+                        currentSortKey={sortConfig.key as any}
                         sortDirection={sortConfig.direction}
-                        onSort={requestSort}
+                        onSort={requestSort as any}
                         align="left"
                       />
-                      <SortableTableHeader
+                      <SortableTableHeader<any>
                         label="Time"
-                        sortKey={'created_at' as keyof Order}
-                        currentSortKey={sortConfig.key as keyof Order}
+                        sortKey={'display_time' as any}
+                        currentSortKey={sortConfig.key as any}
                         sortDirection={sortConfig.direction}
-                        onSort={requestSort}
+                        onSort={requestSort as any}
                         align="left"
                       />
                       <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-text-light uppercase tracking-wider">
                         Payment Mode
                       </th>
-                      <SortableTableHeader
+                      <SortableTableHeader<any>
                         label="Total"
-                        sortKey={'total_amount' as keyof Order}
-                        currentSortKey={sortConfig.key as keyof Order}
+                        sortKey={'total_amount' as any}
+                        currentSortKey={sortConfig.key as any}
                         sortDirection={sortConfig.direction}
-                        onSort={requestSort}
+                        onSort={requestSort as any}
                         align="right"
                       />
                       <th className="px-4 py-3 text-right text-sm font-semibold text-neutral-text-light uppercase tracking-wider">
@@ -432,7 +450,7 @@ export default function OrderHistoryPage() {
                       </td>
                       <td className="px-6 py-4">
                         <p className="text-sm text-neutral-text-light">
-                          {formatDateTime(order.created_at)}
+                          {formatDateTime((order as any).display_time)}
                         </p>
                       </td>
                       <td className="px-6 py-4">
@@ -517,7 +535,7 @@ export default function OrderHistoryPage() {
                       <div className="sm:col-span-2">
                         <p className="text-neutral-text-light">Time</p>
                         <p className="text-neutral-text-dark">
-                          {formatDateTime(order.created_at)}
+                          {formatDateTime((order as any).display_time)}
                         </p>
                       </div>
                       <div className="sm:col-span-2">
