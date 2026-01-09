@@ -12,9 +12,10 @@ from sqlalchemy import func, and_
 from pydantic import BaseModel
 from openai import OpenAI
 
-from app.api.deps import get_db
+from app.api.deps import get_db, get_current_owner
 from app.core.config import settings
 from app.models.models import Order, OrderItem, Payment, PaymentMethod, OrderStatus, MenuItem
+from app import schemas
 from app.schemas.schemas import (
     CategoryPerformanceResponse,
     InventoryStatusResponse,
@@ -1815,7 +1816,8 @@ tools = [
 def get_revenue_analytics(
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """
     Get revenue analytics for specified time range.
@@ -1926,7 +1928,8 @@ def get_product_performance(
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     limit: int = 10,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """
     Get product performance analytics.
@@ -1991,7 +1994,8 @@ def get_product_performance(
 def get_order_statistics(
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """
     Get order statistics.
@@ -2052,7 +2056,8 @@ def get_order_statistics(
 def get_heatmap_analytics(
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """
     Get heatmap analytics (orders by day of week and hour).
@@ -2110,7 +2115,8 @@ def get_heatmap_analytics(
 def get_calendar_heatmap(
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """
     Get calendar heatmap analytics (daily revenue/orders).
@@ -2155,7 +2161,8 @@ def get_calendar_heatmap(
 def get_category_performance(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """Get detailed category performance."""
     result_json = get_category_performance_tool(db, start_date, end_date)
@@ -2164,7 +2171,8 @@ def get_category_performance(
 
 @router.get("/inventory-valuation", response_model=InventoryStatusResponse)
 def get_inventory_valuation(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """Get inventory status and valuation."""
     result_json = get_inventory_status_tool(db)
@@ -2175,7 +2183,8 @@ def get_inventory_valuation(
 def get_detailed_product_performance(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """Get detailed product performance (top items)."""
     # Reuse existing tool but maybe we need more items or specific logic?
@@ -2189,7 +2198,8 @@ def get_detailed_product_performance(
 def get_payment_trends(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """Get payment method trends."""
     result_json = get_payment_method_trends_tool(db, start_date, end_date)
@@ -2200,7 +2210,8 @@ def get_payment_trends(
 def get_detailed_order_stats(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """Get detailed order statistics including conversion rates."""
     result_json = get_order_stats_tool(db, start_date, end_date)
@@ -2224,7 +2235,8 @@ def get_detailed_order_stats(
 def get_revenue_composition(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """Get revenue composition by category over time."""
     from app.models.models import Category
@@ -2257,7 +2269,8 @@ def get_revenue_composition(
 def get_order_status_flow(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """Get order status counts over time."""
     start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00')) if start_date else None
@@ -2285,7 +2298,8 @@ def get_order_status_flow(
 def get_day_of_week_stats(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """Get stats aggregated by day of week."""
     from sqlalchemy import extract
@@ -2376,7 +2390,8 @@ def get_order_value_distribution(
     group_by: str = "day_of_week", # day_of_week, payment_method
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """Get box plot stats for order values."""
     from sqlalchemy import extract
@@ -2422,7 +2437,8 @@ def get_order_value_distribution(
 def get_item_quantity_distribution(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """Get box plot stats for item quantities per order (bulk vs single)."""
     start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00')) if start_date else None
@@ -2458,7 +2474,8 @@ def get_item_quantity_distribution(
 def get_order_flow(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """Get order flow Sankey data: Category -> MenuItem -> Payment."""
     from app.models.models import Category
@@ -2532,7 +2549,8 @@ def get_order_flow(
 @router.get("/revenue-waterfall", response_model=WaterfallResponse)
 def get_revenue_waterfall(
     date: Optional[str] = None, # Single date focus usually
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """Get daily revenue waterfall breakdown."""
     from app.models.models import Category
@@ -2590,7 +2608,8 @@ def get_revenue_waterfall(
 @router.get("/inventory-waterfall", response_model=WaterfallResponse)
 def get_inventory_waterfall(
     date: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """Get inventory value flow for a day: Opening -> Purchases -> Usage -> Closing."""
     from app.models.inventory_models import InventoryTransaction, TransactionType, InventoryItem
@@ -2667,7 +2686,8 @@ def get_inventory_waterfall(
 @router.get("/order-timeline", response_model=OrdersTimelineResponse)
 def get_order_timeline(
     date: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """Get timeline of orders for a specific day."""
     if date:
@@ -2718,7 +2738,8 @@ def get_order_timeline(
 @router.post("/query")
 async def conversational_query(
     request: C1QueryRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """
     Thesys C1 conversational analytics query endpoint with tool calling.

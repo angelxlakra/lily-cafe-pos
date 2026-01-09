@@ -122,7 +122,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route
                 path="/admin/analytics"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute requiredRole="owner">
                     <AnalyticsPage />
                   </ProtectedRoute>
                 }

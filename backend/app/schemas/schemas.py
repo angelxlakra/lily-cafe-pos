@@ -4,6 +4,7 @@ These schemas define the shape of data sent to and received from the API.
 """
 
 from datetime import datetime
+from enum import Enum
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 from app.models.models import OrderStatus, PaymentMethod
@@ -277,6 +278,13 @@ class InventoryCategory(InventoryCategoryBase):
 # ============================================================================
 
 
+class UserRole(str, Enum):
+    """User roles for role-based access control."""
+
+    OWNER = "owner"
+    ADMIN = "admin"
+
+
 class LoginRequest(BaseModel):
     """Schema for admin login request."""
 
@@ -295,6 +303,7 @@ class TokenData(BaseModel):
     """Schema for decoded token data."""
 
     username: Optional[str] = None
+    role: Optional[UserRole] = None
 
 class HeatmapPoint(BaseModel):
     """Data point for heatmap."""

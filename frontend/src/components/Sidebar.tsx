@@ -14,7 +14,7 @@ import type { ReactNode } from "react";
 
 export default function Sidebar() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, role } = useAuth();
   const { isCollapsed, toggleCollapse, isMobileOpen, setMobileOpen } = useSidebar();
 
   const handleLogout = () => {
@@ -103,13 +103,15 @@ export default function Sidebar() {
             onClick={handleCloseMobile}
             isCollapsed={isCollapsed}
           />
-          <NavItem
-            to="/admin/analytics"
-            icon={<ChartLine size={24} weight="duotone" />}
-            label="Analytics"
-            onClick={handleCloseMobile}
-            isCollapsed={isCollapsed}
-          />
+          {role === 'owner' && (
+            <NavItem
+              to="/admin/analytics"
+              icon={<ChartLine size={24} weight="duotone" />}
+              label="Analytics"
+              onClick={handleCloseMobile}
+              isCollapsed={isCollapsed}
+            />
+          )}
           <NavItem
             to="/admin/cash-counter"
             icon={<CurrencyInr size={24} />}

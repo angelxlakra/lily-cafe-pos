@@ -7,6 +7,14 @@
 // Authentication Types
 // ========================================
 
+export type UserRole = 'owner' | 'admin';
+
+export interface User {
+  username: string;
+  role: UserRole;
+  authenticated: boolean;
+}
+
 export interface LoginRequest {
   username: string;
   password: string;

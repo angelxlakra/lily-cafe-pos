@@ -3,26 +3,7 @@
 // Lily Cafe POS System - Frontend
 // ========================================
 
-import axios from 'axios';
-
-// Get API base URL
-const getApiBaseUrl = (): string => {
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
-  }
-
-  const currentHost =
-    typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-
-  const backendHost =
-    currentHost === '127.0.0.1' || currentHost === 'localhost'
-      ? 'localhost'
-      : currentHost;
-
-  return `http://${backendHost}:8000`;
-};
-
-const API_BASE_URL = getApiBaseUrl();
+import apiClient from './client';
 
 // ========================================
 // Types
@@ -283,7 +264,7 @@ export const analyticsApi = {
    * Get revenue analytics
    */
   async getRevenue(params?: AnalyticsQueryParams): Promise<RevenueData> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/analytics/revenue`, {
+    const response = await apiClient.get(`/analytics/revenue`, {
       params,
     });
     return response.data;
@@ -293,7 +274,7 @@ export const analyticsApi = {
    * Get product performance analytics
    */
   async getProducts(params?: AnalyticsQueryParams): Promise<ProductPerformance> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/analytics/products`, {
+    const response = await apiClient.get(`/analytics/products`, {
       params,
     });
     return response.data;
@@ -303,7 +284,7 @@ export const analyticsApi = {
    * Get order statistics
    */
   async getOrderStats(params?: AnalyticsQueryParams): Promise<OrderStatistics> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/analytics/orders`, {
+    const response = await apiClient.get(`/analytics/orders`, {
       params,
     });
     return response.data;
@@ -313,7 +294,7 @@ export const analyticsApi = {
    * Get heatmap analytics
    */
   async getHeatmap(params?: AnalyticsQueryParams): Promise<HeatmapResponse> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/analytics/heatmap`, {
+    const response = await apiClient.get(`/analytics/heatmap`, {
       params,
     });
     return response.data;
@@ -323,7 +304,7 @@ export const analyticsApi = {
    * Get calendar heatmap analytics
    */
   async getCalendarHeatmap(params?: AnalyticsQueryParams): Promise<CalendarHeatmapResponse> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/analytics/calendar-heatmap`, {
+    const response = await apiClient.get(`/analytics/calendar-heatmap`, {
       params,
     });
     return response.data;
@@ -331,63 +312,63 @@ export const analyticsApi = {
 
   // Group 1
   async getCategoryPerformance(params?: AnalyticsQueryParams): Promise<CategoryPerformanceResponse> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/analytics/category-performance`, { params });
+    const response = await apiClient.get(`/analytics/category-performance`, { params });
     return response.data;
   },
   async getInventoryValuation(params?: AnalyticsQueryParams): Promise<InventoryStatusResponse> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/analytics/inventory-valuation`, { params });
+    const response = await apiClient.get(`/analytics/inventory-valuation`, { params });
     return response.data;
   },
   async getProductPerformanceDetailed(params?: AnalyticsQueryParams): Promise<ProductPerformanceDetailedResponse> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/analytics/product-performance-detailed`, { params });
+    const response = await apiClient.get(`/analytics/product-performance-detailed`, { params });
     return response.data;
   },
   async getPaymentTrends(params?: AnalyticsQueryParams): Promise<PaymentTrendsResponse> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/analytics/payment-trends`, { params });
+    const response = await apiClient.get(`/analytics/payment-trends`, { params });
     return response.data;
   },
   async getOrderStatsDetailed(params?: AnalyticsQueryParams): Promise<OrderStatsDetailedResponse> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/analytics/order-stats-detailed`, { params });
+    const response = await apiClient.get(`/analytics/order-stats-detailed`, { params });
     return response.data;
   },
 
   // Group 2
   async getRevenueComposition(params?: AnalyticsQueryParams): Promise<RevenueCompositionResponse> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/analytics/revenue-composition`, { params });
+    const response = await apiClient.get(`/analytics/revenue-composition`, { params });
     return response.data;
   },
   async getOrderStatusFlow(params?: AnalyticsQueryParams): Promise<OrderStatusFlowResponse> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/analytics/order-status-flow`, { params });
+    const response = await apiClient.get(`/analytics/order-status-flow`, { params });
     return response.data;
   },
   async getDayOfWeekStats(params?: AnalyticsQueryParams): Promise<DayOfWeekStatsResponse> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/analytics/day-of-week-stats`, { params });
+    const response = await apiClient.get(`/analytics/day-of-week-stats`, { params });
     return response.data;
   },
   async getOrderValueDistribution(params?: AnalyticsQueryParams & { group_by?: string }): Promise<OrderValueDistributionResponse> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/analytics/order-value-distribution`, { params });
+    const response = await apiClient.get(`/analytics/order-value-distribution`, { params });
     return response.data;
   },
   async getItemQuantityDistribution(params?: AnalyticsQueryParams): Promise<ItemQuantityDistributionResponse> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/analytics/item-quantity-distribution`, { params });
+    const response = await apiClient.get(`/analytics/item-quantity-distribution`, { params });
     return response.data;
   },
 
   // Group 3
   async getOrderFlow(params?: AnalyticsQueryParams): Promise<SankeyData> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/analytics/order-flow`, { params });
+    const response = await apiClient.get(`/analytics/order-flow`, { params });
     return response.data;
   },
   async getRevenueWaterfall(params?: AnalyticsQueryParams & { date?: string }): Promise<WaterfallResponse> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/analytics/revenue-waterfall`, { params });
+    const response = await apiClient.get(`/analytics/revenue-waterfall`, { params });
     return response.data;
   },
   async getInventoryWaterfall(params?: AnalyticsQueryParams & { date?: string }): Promise<WaterfallResponse> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/analytics/inventory-waterfall`, { params });
+    const response = await apiClient.get(`/analytics/inventory-waterfall`, { params });
     return response.data;
   },
   async getOrderTimeline(params?: AnalyticsQueryParams & { date?: string }): Promise<OrdersTimelineResponse> {
-    const response = await axios.get(`${API_BASE_URL}/api/v1/analytics/order-timeline`, { params });
+    const response = await apiClient.get(`/analytics/order-timeline`, { params });
     return response.data;
   },
 
@@ -395,8 +376,8 @@ export const analyticsApi = {
    * Query Thesys C1 for conversational analytics
    */
   async queryC1(request: C1QueryRequest): Promise<C1QueryResponse> {
-    const response = await axios.post(
-      `${API_BASE_URL}/api/v1/analytics/query`,
+    const response = await apiClient.post(
+      `/analytics/query`,
       request
     );
     return response.data;
