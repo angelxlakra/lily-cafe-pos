@@ -4,7 +4,7 @@
 // ========================================
 
 import { useState, useEffect } from 'react';
-import { X, Plus, Minus, Trash } from '@phosphor-icons/react';
+import { X, Plus, Minus, Trash, MagnifyingGlass } from '@phosphor-icons/react';
 import { useUpdateOrder } from '../hooks/useOrders';
 import { useMenu } from '../hooks/useMenu';
 import { useAppConfig } from '../hooks/useConfig';
@@ -32,6 +32,7 @@ export default function EditOrderModal({ order, onClose }: EditOrderModalProps) 
   const [items, setItems] = useState<EditOrderItem[]>([]);
   const [tableNumber, setTableNumber] = useState(order.table_number);
   const [customerName, setCustomerName] = useState(order.customer_name || '');
+  const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   // Initialize items from existing order
@@ -130,6 +131,10 @@ export default function EditOrderModal({ order, onClose }: EditOrderModalProps) 
   };
 
   const availableMenuItems = (menu.items.data || []).filter((item: MenuItemType) => item.is_available);
+
+  const filteredMenuItems = availableMenuItems.filter((item: MenuItemType) => 
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <>
@@ -315,8 +320,24 @@ export default function EditOrderModal({ order, onClose }: EditOrderModalProps) 
             <h3 className="text-sm font-semibold text-neutral-text-dark mb-3">
               Add Items from Menu
             </h3>
+
+            {/* Search Box */}
+            <div className="relative mb-3">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <MagnifyingGlass size={16} className="text-neutral-text-light" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search menu items..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-white border border-neutral-border rounded-lg
+                         focus:outline-none focus:ring-2 focus:ring-coffee-brown text-sm"
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto p-1">
-              {availableMenuItems.map((menuItem: MenuItemType) => (
+              {filteredMenuItems.map((menuItem: MenuItemType) => (
                 <button
                   key={menuItem.id}
                   onClick={() => handleAddMenuItem(menuItem)}
@@ -331,6 +352,11 @@ export default function EditOrderModal({ order, onClose }: EditOrderModalProps) 
                   </p>
                 </button>
               ))}
+              {filteredMenuItems.length === 0 && (
+                <div className="col-span-2 text-center py-4 text-sm text-muted">
+                  No items found matching "{searchQuery}"
+                </div>
+              )}
             </div>
           </div>
 

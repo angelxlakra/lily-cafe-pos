@@ -351,7 +351,7 @@ export const useAddPayments = () => {
       // Invalidate active orders (paid order will be removed)
       queryClient.invalidateQueries({ queryKey: ordersQueryKeys.active });
       // Invalidate order history to show the new paid order
-      queryClient.invalidateQueries({ queryKey: ordersQueryKeys.history() });
+      queryClient.invalidateQueries({ queryKey: ['orders', 'history'] });
       // Refresh order detail cache
       queryClient.invalidateQueries({ queryKey: ordersQueryKeys.detail(variables.orderId) });
     },
@@ -381,11 +381,47 @@ export const useUpdatePayments = () => {
   return useMutation({
     mutationFn: ({ orderId, data }: { orderId: number; data: AddPaymentRequest }) =>
       paymentsApi.updatePayments(orderId, data),
+    // Optimistic update
+    onMutate: async ({ orderId, data }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ordersQueryKeys.detail(orderId) });
+      await queryClient.cancelQueries({ queryKey: ['orders', 'history'] });
+
+      // Snapshot the previous value
+      const previousOrder = queryClient.getQueryData<Order>(ordersQueryKeys.detail(orderId));
+
+      // Optimistically update the detail cache
+      if (previousOrder) {
+        queryClient.setQueryData<Order>(ordersQueryKeys.detail(orderId), {
+          ...previousOrder,
+          payments: data.payments.map((p, i) => ({
+            id: -Date.now() - i, // Temporary ID
+            payment_method: p.payment_method,
+            amount: p.amount,
+            created_at: new Date().toISOString(),
+          })),
+          // Recalculate totals if needed, but assuming amount matches totals for now or handled by backend
+        });
+      }
+
+      // Return context
+      return { previousOrder };
+    },
+    // If the mutation fails, rollback
+    onError: (_err, _variables, context) => {
+      if (context?.previousOrder) {
+        queryClient.setQueryData(
+          ordersQueryKeys.detail(context.previousOrder.id),
+          context.previousOrder
+        );
+      }
+    },
     onSuccess: async (_payments, variables) => {
-      // Refetch order history to refresh with updated payment methods
-      await queryClient.refetchQueries({ queryKey: ordersQueryKeys.history() });
+      // Invalidate order history to refresh with updated payment methods
+      // Use array format to match all history queries regardless of params
+      await queryClient.invalidateQueries({ queryKey: ['orders', 'history'] });
       // Refresh order detail cache
-      await queryClient.refetchQueries({ queryKey: ordersQueryKeys.detail(variables.orderId) });
+      await queryClient.invalidateQueries({ queryKey: ordersQueryKeys.detail(variables.orderId) });
     },
   });
 };
