@@ -548,14 +548,6 @@ export default function OrderHistoryPage() {
                                 <PencilSimple size={16} weight="bold" />
                                 <span className="hidden lg:inline">Edit</span>
                               </button>
-                              <button
-                                onClick={() => setCancelOrderId(order.id)}
-                                className="px-3 py-1 text-sm bg-error/10 border border-error text-error hover:bg-error hover:text-white rounded-md transition-colors flex items-center gap-1"
-                                title="Cancel Order"
-                              >
-                                <Trash size={16} weight="bold" />
-                                <span className="hidden lg:inline">Cancel</span>
-                              </button>
                             </>
                           )}
                           <button
@@ -647,14 +639,6 @@ export default function OrderHistoryPage() {
                             <PencilSimple size={16} weight="bold" />
                             Edit
                           </button>
-                          <button
-                            onClick={() => setCancelOrderId(order.id)}
-                            className="px-4 py-2 text-sm bg-error/10 border border-error text-error hover:bg-error hover:text-white rounded-md transition-colors flex items-center justify-center gap-1"
-                            title="Cancel Order"
-                          >
-                            <Trash size={16} weight="bold" />
-                            Cancel
-                          </button>
                         </>
                       )}
                       <button
@@ -717,6 +701,7 @@ export default function OrderHistoryPage() {
           onSave={handleSavePayments}
           onClose={() => setEditPaymentsOrder(null)}
           isSaving={updatePaymentsMutation.isPending}
+          onCancelOrder={() => setCancelOrderId(editPaymentsOrder.id)}
         />
       )}
 

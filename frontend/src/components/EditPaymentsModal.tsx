@@ -4,6 +4,7 @@
 // ========================================
 
 import { useState } from "react";
+import { Trash } from "@phosphor-icons/react";
 import { UpiIcon, CashIcon, CardIcon } from "./icons/PaymentIcons";
 import { formatCurrency } from "../utils/formatCurrency";
 import type {
@@ -17,6 +18,7 @@ interface EditPaymentsModalProps {
   onSave: (orderId: number, payments: PaymentCreateRequest[]) => void;
   onClose: () => void;
   isSaving?: boolean;
+  onCancelOrder?: () => void;
 }
 
 export default function EditPaymentsModal({
@@ -24,6 +26,7 @@ export default function EditPaymentsModal({
   onSave,
   onClose,
   isSaving = false,
+  onCancelOrder,
 }: EditPaymentsModalProps) {
   const paymentIcons: Record<PaymentMethod, JSX.Element> = {
     upi: <UpiIcon size={32} weight="duotone" />,
@@ -230,7 +233,7 @@ export default function EditPaymentsModal({
             </div>
 
             {/* Amount Input */}
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <div className="flex-1">
                 <input
                   type="number"
@@ -243,27 +246,32 @@ export default function EditPaymentsModal({
                   disabled={isSaving}
                 />
               </div>
+              {remaining > 0 && (
+                <button
+                  onClick={() => {
+                    setPayments([...payments, { payment_method: paymentMethod, amount: remaining }]);
+                    setPaymentAmount("");
+                    setError("");
+                  }}
+                  className="px-4 py-3 bg-coffee-brown/10 border-2 border-coffee-brown text-coffee-brown font-semibold rounded-lg
+                           hover:bg-coffee-brown hover:text-white transition-all disabled:opacity-50
+                           whitespace-nowrap text-sm shadow-sm hover:shadow-md"
+                  disabled={isSaving}
+                  title={`Add full remaining amount (${formatCurrency(remaining)})`}
+                >
+                  Full Amount
+                </button>
+              )}
               <button
                 onClick={handleAddPayment}
-                className="px-6 py-3 bg-coffee-brown text-white font-medium rounded-lg
-                         hover:bg-coffee-dark transition-colors disabled:opacity-50"
+                className="px-6 py-3 bg-coffee-brown text-white font-semibold rounded-lg
+                         hover:bg-coffee-dark shadow-sm hover:shadow-md
+                         transition-all disabled:opacity-50"
                 disabled={isSaving}
               >
                 Add
               </button>
             </div>
-
-            {remaining > 0 && (
-              <button
-                onClick={() => {
-                  setPaymentAmount((remaining / 100).toString());
-                }}
-                className="mt-2 text-sm text-coffee-brown hover:text-coffee-dark font-medium"
-                disabled={isSaving}
-              >
-                Add remaining {formatCurrency(remaining)}
-              </button>
-            )}
           </div>
 
           {/* Error Message */}
@@ -274,26 +282,49 @@ export default function EditPaymentsModal({
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              disabled={isSaving}
-              className="flex-1 py-3 px-4 text-neutral-text-dark font-medium
-                       bg-neutral-background rounded-xl hover:bg-neutral-border
-                       transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={!isValid || isSaving}
-              className="flex-1 py-3 px-4 text-white font-medium
-                       bg-coffee-brown rounded-xl hover:bg-coffee-dark
-                       transition-colors disabled:opacity-50
-                       disabled:cursor-not-allowed"
-            >
-              {isSaving ? "Saving..." : "Save Changes"}
-            </button>
+          <div className="flex flex-col gap-3">
+            <div className="flex gap-3 items-center">
+              {onCancelOrder && order.status !== 'canceled' && (
+                <button
+                  onClick={() => {
+                    onCancelOrder();
+                    onClose();
+                  }}
+                  disabled={isSaving}
+                  className="py-2 px-3 text-xs text-error font-medium
+                           bg-transparent border border-error/30 rounded-lg
+                           hover:bg-error/10 hover:border-error
+                           transition-all disabled:opacity-50
+                           flex items-center gap-1.5"
+                >
+                  <Trash size={14} weight="bold" />
+                  Cancel Order
+                </button>
+              )}
+              <div className="flex-1"></div>
+              <button
+                onClick={onClose}
+                disabled={isSaving}
+                className="py-3.5 px-6 text-neutral-text-dark font-semibold text-base
+                         bg-white border-2 border-neutral-border rounded-xl
+                         hover:bg-neutral-background hover:border-coffee-brown/30
+                         shadow-sm hover:shadow-md
+                         transition-all disabled:opacity-50"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={!isValid || isSaving}
+                className="py-3.5 px-6 text-white font-semibold text-base
+                         bg-coffee-brown rounded-xl hover:bg-coffee-dark
+                         shadow-md hover:shadow-lg
+                         transition-all disabled:opacity-50
+                         disabled:cursor-not-allowed"
+              >
+                {isSaving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
           </div>
         </div>
       </div>

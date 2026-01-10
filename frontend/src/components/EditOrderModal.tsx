@@ -14,6 +14,7 @@ import type { Order, MenuItem as MenuItemType } from '../types';
 interface EditOrderModalProps {
   order: Order;
   onClose: () => void;
+  onCancelOrder?: () => void;
 }
 
 interface EditOrderItem {
@@ -24,7 +25,7 @@ interface EditOrderItem {
   is_parcel: boolean;
 }
 
-export default function EditOrderModal({ order, onClose }: EditOrderModalProps) {
+export default function EditOrderModal({ order, onClose, onCancelOrder }: EditOrderModalProps) {
   const menu = useMenu();
   const { data: config } = useAppConfig();
   const updateOrder = useUpdateOrder();
@@ -378,18 +379,44 @@ export default function EditOrderModal({ order, onClose }: EditOrderModalProps) 
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 p-6 border-t border-neutral-border bg-neutral-background/50">
+        <div className="flex gap-3 p-6 border-t border-neutral-border bg-neutral-background/50 items-center">
+          {onCancelOrder && order.status !== 'canceled' && (
+            <button
+              onClick={() => {
+                onCancelOrder();
+                onClose();
+              }}
+              disabled={updateOrder.isPending}
+              className="py-2 px-3 text-xs text-error font-medium
+                       bg-transparent border border-error/30 rounded-lg
+                       hover:bg-error/10 hover:border-error
+                       transition-all disabled:opacity-50
+                       flex items-center gap-1.5"
+            >
+              <Trash size={14} weight="bold" />
+              Cancel Order
+            </button>
+          )}
+          <div className="flex-1"></div>
           <button
             onClick={onClose}
             disabled={updateOrder.isPending}
-            className="btn-secondary flex-1"
+            className="py-3.5 px-6 text-neutral-text-dark font-semibold text-base
+                     bg-white border-2 border-neutral-border rounded-xl
+                     hover:bg-neutral-background hover:border-coffee-brown/30
+                     shadow-sm hover:shadow-md
+                     transition-all disabled:opacity-50"
           >
-            Cancel
+            Close
           </button>
           <button
             onClick={handleSubmit}
             disabled={updateOrder.isPending || items.length === 0}
-            className="btn-primary flex-1"
+            className="py-3.5 px-6 text-white font-semibold text-base
+                     bg-coffee-brown rounded-xl hover:bg-coffee-dark
+                     shadow-md hover:shadow-lg
+                     transition-all disabled:opacity-50
+                     disabled:cursor-not-allowed"
           >
             {updateOrder.isPending ? 'Saving...' : 'Save Changes'}
           </button>
