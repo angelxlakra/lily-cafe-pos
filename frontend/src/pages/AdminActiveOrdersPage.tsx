@@ -4,18 +4,23 @@
 // ========================================
 
 import { useState } from 'react';
-import Sidebar from '../components/Sidebar';
-import PaymentModal from '../components/PaymentModal';
-import EditOrderModal from '../components/EditOrderModal';
+import { toast } from 'sonner';
+import { ClipboardText } from '@phosphor-icons/react';
+import { useSidebar } from '../context/SidebarContext';
+import { 
+  useActiveOrders, 
+  useCancelOrder, 
+  useUpdateItemServedStatus, 
+  useSetItemServedQuantity 
+} from '../hooks/useOrders';
 import EmptyState from '../components/EmptyState';
+import EditOrderModal from '../components/EditOrderModal';
+import PaymentModal from '../components/PaymentModal';
+import ConfirmDialog from '../components/ConfirmDialog';
 import PartialServeModal from '../components/PartialServeModal';
 import EditServedQuantityModal from '../components/EditServedQuantityModal';
-import ConfirmDialog from '../components/ConfirmDialog';
-import { useActiveOrders, useCancelOrder, useUpdateItemServedStatus, useSetItemServedQuantity } from '../hooks/useOrders';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatDateTime } from '../utils/formatDateTime';
-import { toast } from '../utils/toast';
-import { ClipboardText } from '@phosphor-icons/react';
 import type { Order, OrderItem } from '../types';
 
 export default function AdminActiveOrdersPage() {
@@ -23,9 +28,9 @@ export default function AdminActiveOrdersPage() {
   const [paymentOrderId, setPaymentOrderId] = useState<number | null>(null);
   const [editOrder, setEditOrder] = useState<Order | null>(null);
   const [cancelOrderId, setCancelOrderId] = useState<number | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [serveModalData, setServeModalData] = useState<{ item: OrderItem; orderId: number } | null>(null);
   const [editModalData, setEditModalData] = useState<{ item: OrderItem; orderId: number } | null>(null);
+  const { setMobileOpen } = useSidebar();
 
   const cancelMutation = useCancelOrder();
   const updateServedMutation = useUpdateItemServedStatus();
@@ -87,18 +92,13 @@ export default function AdminActiveOrdersPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-neutral-background">
-      {/* Sidebar */}
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
-      {/* Main Content */}
-      <div className="flex-1 lg:ml-60">
+    <div className="flex flex-col h-full">
         {/* Header */}
         <header className="bg-off-white border-b border-neutral-border p-4 md:p-6">
           <div className="flex items-center gap-4">
             {/* Hamburger Menu Button */}
             <button
-              onClick={() => setIsSidebarOpen(true)}
+              onClick={() => setMobileOpen(true)}
               className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg bg-coffee-brown text-cream hover:bg-coffee-dark transition-colors"
               aria-label="Open menu"
             >
@@ -116,7 +116,7 @@ export default function AdminActiveOrdersPage() {
         </header>
 
         {/* Content */}
-        <main className="p-6">
+        <main className="flex-1 p-6 overflow-y-auto">
           {/* Loading State */}
           {isLoading && (
             <div className="flex items-center justify-center min-h-[400px]">
@@ -162,7 +162,7 @@ export default function AdminActiveOrdersPage() {
             </div>
           )}
         </main>
-      </div>
+
 
       {/* Edit Order Modal */}
       {editOrder && (

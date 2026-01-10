@@ -4,7 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { ThemeProvider } from './contexts/ThemeContext.tsx'
+import { SidebarProvider } from './context/SidebarContext.tsx'
 import App from './App.tsx'
+import AdminLayout from './components/AdminLayout.tsx'
 import ApiTestPage from './pages/ApiTestPage.tsx'
 import TablesPage from './pages/TablesPage.tsx'
 import OrderPage from './pages/OrderPage.tsx'
@@ -15,6 +17,7 @@ import MenuManagementPage from './pages/MenuManagementPage.tsx'
 import OrderHistoryPage from './pages/OrderHistoryPage.tsx'
 import InventoryPage from './pages/InventoryPage.tsx'
 import CashCounterPage from './pages/CashCounterPage.tsx'
+import AnalyticsPage from './pages/AnalyticsPage.tsx'
 import ProtectedRoute from './components/ProtectedRoute.tsx'
 import './index.css'
 
@@ -70,45 +73,61 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
             {/* Admin Protected Routes */}
             <Route
-              path="/admin/active-orders"
               element={
-                <ProtectedRoute>
-                  <AdminActiveOrdersPage />
-                </ProtectedRoute>
+                <SidebarProvider>
+                  <AdminLayout />
+                </SidebarProvider>
               }
-            />
-            <Route
-              path="/admin/menu"
-              element={
-                <ProtectedRoute>
-                  <MenuManagementPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/order-history"
-              element={
-                <ProtectedRoute>
-                  <OrderHistoryPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/inventory"
-              element={
-                <ProtectedRoute>
-                  <InventoryPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/cash-counter"
-              element={
-                <ProtectedRoute>
-                  <CashCounterPage />
-                </ProtectedRoute>
-              }
-            />
+            >
+              <Route
+                path="/admin/active-orders"
+                element={
+                  <ProtectedRoute>
+                    <AdminActiveOrdersPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/menu"
+                element={
+                  <ProtectedRoute>
+                    <MenuManagementPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/order-history"
+                element={
+                  <ProtectedRoute>
+                    <OrderHistoryPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/inventory"
+                element={
+                  <ProtectedRoute>
+                    <InventoryPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/cash-counter"
+                element={
+                  <ProtectedRoute>
+                    <CashCounterPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/analytics"
+                element={
+                  <ProtectedRoute requiredRole="owner">
+                    <AnalyticsPage />
+                  </ProtectedRoute>
+                }
+              />
+            </Route>
 
             {/* Dev/Testing Routes */}
             <Route path="/test" element={<App />} />

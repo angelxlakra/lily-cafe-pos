@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Package, Tag, ClockCounterClockwise, ClipboardText } from '@phosphor-icons/react';
+import { useSidebar } from '../context/SidebarContext';
 import BottomNav from '../components/BottomNav';
-import Sidebar from '../components/Sidebar';
 import DailyCountTab from '../components/inventory/DailyCountTab';
 import InventoryItemsTab from '../components/inventory/InventoryItemsTab';
 import InventoryCategoriesTab from '../components/inventory/InventoryCategoriesTab';
@@ -11,14 +11,13 @@ type Tab = 'daily-count' | 'items' | 'categories' | 'transactions';
 
 export default function InventoryPage() {
   const [activeTab, setActiveTab] = useState<Tab>('daily-count');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { setMobileOpen } = useSidebar();
 
   return (
-    <div className="min-h-screen bg-neutral-background pb-16 lg:pb-0 lg:pl-60 transition-all duration-300">
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+    <div className="flex flex-col h-full bg-neutral-background">
 
       {/* Header */}
-      <header className="bg-off-white border-b border-neutral-border p-4 md:p-6 sticky top-0 z-30 shadow-sm">
+      <header className="bg-off-white border-b border-neutral-border p-4 md:p-6 sticky top-0 z-30 shadow-sm flex-shrink-0">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-heading heading-section text-neutral-text-dark">Inventory Management</h1>
@@ -26,7 +25,7 @@ export default function InventoryPage() {
           </div>
           <div className="lg:hidden">
             <button 
-              onClick={() => setIsSidebarOpen(true)}
+              onClick={() => setMobileOpen(true)}
               className="p-2 text-coffee-brown hover:bg-neutral-border/50 rounded-lg transition-colors"
             >
               <span className="sr-only">Open Menu</span>

@@ -16,18 +16,21 @@ router = APIRouter()
 @router.post("/login", response_model=schemas.Token)
 def login(login_data: schemas.LoginRequest):
     """
-    Admin login endpoint.
-    Returns JWT token on successful authentication.
+    User login endpoint.
+    Returns JWT token with role on successful authentication.
     """
-    if not security.authenticate_admin(login_data.username, login_data.password):
+    user_role = security.authenticate_user(login_data.username, login_data.password)
+
+    if user_role is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Create token with role included
     access_token = security.create_access_token(
-        data={"sub": login_data.username},
+        data={"sub": login_data.username, "role": user_role.value},
         expires_delta=timedelta(hours=settings.TOKEN_EXPIRY_HOURS),
     )
 
@@ -35,6 +38,10 @@ def login(login_data: schemas.LoginRequest):
 
 
 @router.get("/verify")
-def verify_token(current_user: str = Depends(get_current_user)):
-    """Verify JWT token and return current user."""
-    return {"username": current_user, "authenticated": True}
+def verify_token(current_user: schemas.TokenData = Depends(get_current_user)):
+    """Verify JWT token and return current user with role."""
+    return {
+        "username": current_user.username,
+        "role": current_user.role.value,
+        "authenticated": True
+    }

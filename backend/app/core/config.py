@@ -53,11 +53,15 @@ class Settings:
     PRINTER_PORT: str = os.getenv("PRINTER_PORT", "")  # Serial port (e.g., COM3)
     PRINTER_BAUDRATE: int = int(os.getenv("PRINTER_BAUDRATE", "9600"))  # Serial baudrate
 
-    # Admin Credentials
+    # Admin Credentials (access to all features EXCEPT analytics)
     ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
     ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "changeme123")
 
-    # Owner Password Hash (for cash counter verification)
+    # Owner Credentials (full access including analytics)
+    OWNER_USERNAME: str = os.getenv("OWNER_USERNAME", "owner")
+    OWNER_PASSWORD: str = os.getenv("OWNER_PASSWORD", "owner123")
+
+    # Owner Password Hash (for cash counter verification - separate from login)
     # Generate hash using: python -c "from passlib.context import CryptContext; print(CryptContext(schemes=['bcrypt']).hash('your_password'))"
     OWNER_PASSWORD_HASH: str = os.getenv("OWNER_PASSWORD_HASH", "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW")  # Default: "owner123"
 
@@ -71,6 +75,9 @@ class Settings:
 
     # API Configuration
     API_V1_PREFIX: str = "/api/v1"
+
+    # Thesys C1 Configuration
+    THESYS_API_KEY: str = os.getenv("THESYS_API_KEY", "")
 
 
 # Create a singleton instance

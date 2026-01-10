@@ -4,7 +4,7 @@
 // ========================================
 
 import { useState, useMemo } from 'react';
-import Sidebar from '../components/Sidebar';
+import { useSidebar } from '../context/SidebarContext';
 import MenuItemForm from '../components/MenuItemForm';
 import EmptyState from '../components/EmptyState';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -19,13 +19,13 @@ import { ForkKnife } from '@phosphor-icons/react';
 export default function MenuManagementPage() {
   const { data: menuItems, isLoading, error } = useMenuItems();
   const deleteMutation = useDeleteMenuItem();
+  const { setMobileOpen } = useSidebar();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [deleteItemId, setDeleteItemId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const hasFilters = searchQuery !== '' || categoryFilter !== 'all';
 
   const items = menuItems || [];
@@ -98,18 +98,15 @@ export default function MenuManagementPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-neutral-background">
-      {/* Sidebar */}
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
+    <div className="flex flex-col h-full bg-neutral-background">
       {/* Main Content */}
-      <div className="flex-1 lg:ml-60 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="bg-off-white border-b border-neutral-border p-4 md:p-6">
+        <header className="bg-off-white border-b border-neutral-border p-4 md:p-6 flex-shrink-0">
           <div className="flex flex-wrap items-center gap-3 md:gap-4 mb-4">
             {/* Hamburger Menu Button */}
             <button
-              onClick={() => setIsSidebarOpen(true)}
+              onClick={() => setMobileOpen(true)}
               className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg bg-coffee-brown text-cream hover:bg-coffee-dark transition-colors"
               aria-label="Open menu"
             >
@@ -135,7 +132,7 @@ export default function MenuManagementPage() {
         </header>
 
         {/* Filters */}
-        <div className="p-4 sm:p-6 bg-off-white border-b border-neutral-border">
+        <div className="p-4 sm:p-6 bg-off-white border-b border-neutral-border flex-shrink-0">
           <div className="flex flex-col md:flex-row gap-4">
             {/* Search */}
             <div className="flex-1">
@@ -374,11 +371,11 @@ export default function MenuManagementPage() {
           )}
 
           {/* Item Count */}
-          {!isLoading && filteredItems.length > 0 && (
+          {/*!isLoading && filteredItems.length > 0 && (
             <div className="mt-4 text-sm text-neutral-text-light">
               Showing {filteredItems.length} of {items.length} items
             </div>
-          )}
+          )*/}
         </main>
       </div>
 

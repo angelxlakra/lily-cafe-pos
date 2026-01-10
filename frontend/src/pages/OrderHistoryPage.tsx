@@ -4,16 +4,16 @@
 // ========================================
 
 import { useState, useMemo } from 'react';
-import Sidebar from '../components/Sidebar';
+import { useSidebar } from '../context/SidebarContext';
 import EmptyState from '../components/EmptyState';
 import DatePickerWithQuickFilters from '../components/DatePickerWithQuickFilters';
 import SortableTableHeader from '../components/SortableTableHeader';
-import { useOrderHistory, useOrder, useUpdatePayments } from '../hooks/useOrders';
+import { useOrderHistory, useOrder, useUpdatePayments, useCancelOrder } from '../hooks/useOrders';
 import { useAppConfig } from '../hooks/useConfig';
 import { useSortableTable } from '../hooks/useSortableTable';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatDateTime } from '../utils/formatDateTime';
-import { CalendarDots, Printer, PencilSimple, MagnifyingGlass, X, CaretLeft, CaretRight } from '@phosphor-icons/react';
+import { CalendarDots, Printer, PencilSimple, MagnifyingGlass, X, CaretLeft, CaretRight, Trash } from '@phosphor-icons/react';
 import { UpiIcon, CashIcon, CardIcon } from '../components/icons/PaymentIcons';
 import DailyRevenueModal from '../components/DailyRevenueModal';
 import EditPaymentsModal from '../components/EditPaymentsModal';
@@ -29,10 +29,12 @@ export default function OrderHistoryPage() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
   const [editPaymentsOrder, setEditPaymentsOrder] = useState<Order | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [cancelOrderId, setCancelOrderId] = useState<number | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'canceled'>('all');
+  const { setMobileOpen } = useSidebar();
 
   // Payment method icons
   const paymentIcons: Record<PaymentMethod, JSX.Element> = {
@@ -67,6 +69,18 @@ export default function OrderHistoryPage() {
     );
   };
 
+  // Helper to render status badge
+  const renderStatusBadge = (status: 'active' | 'paid' | 'canceled') => {
+    if (status === 'canceled') {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md bg-error/10 text-error border border-error/20">
+          Cancelled
+        </span>
+      );
+    }
+    return null;
+  };
+
   const { data: orderHistoryData, isLoading, error } = useOrderHistory({
     start_date: dateRange.start,
     end_date: dateRange.end,
@@ -84,15 +98,22 @@ export default function OrderHistoryPage() {
 
   const { data: appConfig } = useAppConfig();
   const updatePaymentsMutation = useUpdatePayments();
+  const cancelOrderMutation = useCancelOrder();
 
-
-
-  // Filter orders based on search query
+  // Filter orders based on search query and status
   const filteredOrders = useMemo(() => {
-    if (!searchQuery.trim()) return allOrders;
+    let filtered = allOrders;
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(order => order.status === statusFilter);
+    }
+
+    // Apply search query
+    if (!searchQuery.trim()) return filtered;
 
     const query = searchQuery.toLowerCase();
-    return allOrders.filter(order => {
+    return filtered.filter(order => {
       // Search by table number
       if (order.table_number.toString().includes(query)) return true;
 
@@ -108,7 +129,7 @@ export default function OrderHistoryPage() {
 
       return false;
     });
-  }, [allOrders, searchQuery]);
+  }, [allOrders, searchQuery, statusFilter]);
 
   // Add display_time to orders based on payment time or created_at
   const processedOrders = useMemo(() => {
@@ -168,6 +189,18 @@ export default function OrderHistoryPage() {
     }
   };
 
+  const handleCancelOrder = async () => {
+    if (!cancelOrderId) return;
+
+    try {
+      await cancelOrderMutation.mutateAsync(cancelOrderId);
+      setCancelOrderId(null);
+    } catch (error) {
+      console.error('Failed to cancel order:', error);
+      alert('Failed to cancel order. Please try again.');
+    }
+  };
+
   const gstRatePercent = appConfig?.gst_rate ?? 18;
   const gstRateLabel = Number.isInteger(gstRatePercent)
     ? String(gstRatePercent)
@@ -196,18 +229,15 @@ export default function OrderHistoryPage() {
   );
 
   return (
-    <div className="flex min-h-screen bg-neutral-background">
-      {/* Sidebar */}
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
+    <div className="flex flex-col h-full bg-neutral-background">
       {/* Main Content */}
-      <div className="flex-1 lg:ml-60 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="bg-off-white border-b border-neutral-border p-4 md:p-6">
           <div className="flex items-center gap-4 mb-4">
             {/* Hamburger Menu Button */}
             <button
-              onClick={() => setIsSidebarOpen(true)}
+              onClick={() => setMobileOpen(true)}
               className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg bg-coffee-brown text-cream hover:bg-coffee-dark transition-colors"
               aria-label="Open menu"
             >
@@ -262,6 +292,40 @@ export default function OrderHistoryPage() {
                   <X size={18} aria-hidden="true" />
                 </button>
               )}
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setStatusFilter('all')}
+                className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+                  statusFilter === 'all'
+                    ? 'bg-coffee-brown text-white'
+                    : 'bg-white border border-neutral-border text-neutral-text-dark hover:bg-cream'
+                }`}
+              >
+                All Orders
+              </button>
+              <button
+                onClick={() => setStatusFilter('paid')}
+                className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+                  statusFilter === 'paid'
+                    ? 'bg-coffee-brown text-white'
+                    : 'bg-white border border-neutral-border text-neutral-text-dark hover:bg-cream'
+                }`}
+              >
+                Paid Only
+              </button>
+              <button
+                onClick={() => setStatusFilter('canceled')}
+                className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+                  statusFilter === 'canceled'
+                    ? 'bg-error text-white'
+                    : 'bg-white border border-neutral-border text-neutral-text-dark hover:bg-cream'
+                }`}
+              >
+                Cancelled Only
+              </button>
             </div>
           </div>
         </header>
@@ -434,9 +498,12 @@ export default function OrderHistoryPage() {
                       className="hover:bg-cream/50 transition-colors"
                     >
                       <td className="px-6 py-4">
-                        <p className="font-mono text-sm text-neutral-text-dark">
-                          {order.order_number}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-mono text-sm text-neutral-text-dark">
+                            {order.order_number}
+                          </p>
+                          {renderStatusBadge(order.status)}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <p className="font-medium text-neutral-text-dark">
@@ -463,22 +530,34 @@ export default function OrderHistoryPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handlePrintReceipt(order.id)}
-                            className="px-3 py-1 text-sm bg-lily-green/10 border border-lily-green text-lily-green hover:bg-lily-green hover:text-white rounded-md transition-colors flex items-center gap-1"
-                            title="Print Receipt"
-                          >
-                            <Printer size={16} weight="bold" />
-                            <span className="hidden lg:inline">Print</span>
-                          </button>
-                          <button
-                            onClick={() => handleEditPayments(order)}
-                            className="px-3 py-1 text-sm bg-coffee-brown/10 border border-coffee-brown text-coffee-brown hover:bg-coffee-brown hover:text-white rounded-md transition-colors flex items-center gap-1"
-                            title="Edit Payments"
-                          >
-                            <PencilSimple size={16} weight="bold" />
-                            <span className="hidden lg:inline">Edit</span>
-                          </button>
+                          {order.status !== 'canceled' && (
+                            <>
+                              <button
+                                onClick={() => handlePrintReceipt(order.id)}
+                                className="px-3 py-1 text-sm bg-lily-green/10 border border-lily-green text-lily-green hover:bg-lily-green hover:text-white rounded-md transition-colors flex items-center gap-1"
+                                title="Print Receipt"
+                              >
+                                <Printer size={16} weight="bold" />
+                                <span className="hidden lg:inline">Print</span>
+                              </button>
+                              <button
+                                onClick={() => handleEditPayments(order)}
+                                className="px-3 py-1 text-sm bg-coffee-brown/10 border border-coffee-brown text-coffee-brown hover:bg-coffee-brown hover:text-white rounded-md transition-colors flex items-center gap-1"
+                                title="Edit Payments"
+                              >
+                                <PencilSimple size={16} weight="bold" />
+                                <span className="hidden lg:inline">Edit</span>
+                              </button>
+                              <button
+                                onClick={() => setCancelOrderId(order.id)}
+                                className="px-3 py-1 text-sm bg-error/10 border border-error text-error hover:bg-error hover:text-white rounded-md transition-colors flex items-center gap-1"
+                                title="Cancel Order"
+                              >
+                                <Trash size={16} weight="bold" />
+                                <span className="hidden lg:inline">Cancel</span>
+                              </button>
+                            </>
+                          )}
                           <button
                             onClick={() => handleViewDetails(order.id)}
                             className="px-3 py-1 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors whitespace-nowrap"
@@ -505,9 +584,12 @@ export default function OrderHistoryPage() {
                         <p className="text-xs text-neutral-text-light uppercase tracking-wide">
                           Order #
                         </p>
-                        <p className="font-mono text-sm text-neutral-text-dark">
-                          {order.order_number}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-mono text-sm text-neutral-text-dark">
+                            {order.order_number}
+                          </p>
+                          {renderStatusBadge(order.status)}
+                        </div>
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-neutral-text-light uppercase tracking-wide">
@@ -546,23 +628,35 @@ export default function OrderHistoryPage() {
                       </div>
                     </div>
 
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handlePrintReceipt(order.id)}
-                        className="px-4 py-2 text-sm bg-lily-green/10 border border-lily-green text-lily-green hover:bg-lily-green hover:text-white rounded-md transition-colors flex items-center justify-center gap-1"
-                        title="Print Receipt"
-                      >
-                        <Printer size={16} weight="bold" />
-                        Print
-                      </button>
-                      <button
-                        onClick={() => handleEditPayments(order)}
-                        className="px-4 py-2 text-sm bg-coffee-brown/10 border border-coffee-brown text-coffee-brown hover:bg-coffee-brown hover:text-white rounded-md transition-colors flex items-center justify-center gap-1"
-                        title="Edit Payments"
-                      >
-                        <PencilSimple size={16} weight="bold" />
-                        Edit
-                      </button>
+                    <div className="flex gap-2 flex-wrap">
+                      {order.status !== 'canceled' && (
+                        <>
+                          <button
+                            onClick={() => handlePrintReceipt(order.id)}
+                            className="px-4 py-2 text-sm bg-lily-green/10 border border-lily-green text-lily-green hover:bg-lily-green hover:text-white rounded-md transition-colors flex items-center justify-center gap-1"
+                            title="Print Receipt"
+                          >
+                            <Printer size={16} weight="bold" />
+                            Print
+                          </button>
+                          <button
+                            onClick={() => handleEditPayments(order)}
+                            className="px-4 py-2 text-sm bg-coffee-brown/10 border border-coffee-brown text-coffee-brown hover:bg-coffee-brown hover:text-white rounded-md transition-colors flex items-center justify-center gap-1"
+                            title="Edit Payments"
+                          >
+                            <PencilSimple size={16} weight="bold" />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => setCancelOrderId(order.id)}
+                            className="px-4 py-2 text-sm bg-error/10 border border-error text-error hover:bg-error hover:text-white rounded-md transition-colors flex items-center justify-center gap-1"
+                            title="Cancel Order"
+                          >
+                            <Trash size={16} weight="bold" />
+                            Cancel
+                          </button>
+                        </>
+                      )}
                       <button
                         onClick={() => handleViewDetails(order.id)}
                         className="flex-1 px-4 py-2 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors"
@@ -624,6 +718,60 @@ export default function OrderHistoryPage() {
           onClose={() => setEditPaymentsOrder(null)}
           isSaving={updatePaymentsMutation.isPending}
         />
+      )}
+
+      {/* Cancel Order Confirmation Modal */}
+      {cancelOrderId && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50 z-[60]"
+            onClick={() => setCancelOrderId(null)}
+            aria-hidden="true"
+          />
+
+          {/* Modal */}
+          <div
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+                       w-full max-w-md bg-off-white rounded-2xl shadow-2xl z-[70] p-6"
+            role="dialog"
+            aria-modal="true"
+          >
+            <h3 className="text-lg font-semibold text-neutral-text-dark mb-4">
+              Cancel Order?
+            </h3>
+            <p className="text-neutral-text-light mb-6">
+              Are you sure you want to cancel this order? This will mark it as cancelled
+              and it will no longer appear in active orders. This is useful for removing
+              duplicate or mistaken orders.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setCancelOrderId(null)}
+                className="px-4 py-2 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light/20 rounded-md transition-colors"
+              >
+                Keep Order
+              </button>
+              <button
+                onClick={handleCancelOrder}
+                disabled={cancelOrderMutation.isPending}
+                className="px-4 py-2 text-sm bg-error border border-error text-white hover:bg-error/90 rounded-md transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {cancelOrderMutation.isPending ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                    Cancelling...
+                  </>
+                ) : (
+                  <>
+                    <Trash size={16} weight="bold" />
+                    Yes, Cancel Order
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Daily Revenue Modal */}
@@ -741,7 +889,7 @@ function OrderDetailsModal({
                           {item.menu_item_name}
                         </p>
                         <p className="text-sm text-neutral-text-light">
-                          Qty: {item.quantity} � {formatCurrency(item.unit_price)}
+                          Qty: {item.quantity}  {formatCurrency(item.unit_price)}
                         </p>
                       </div>
                       <p className="font-semibold text-coffee-brown">

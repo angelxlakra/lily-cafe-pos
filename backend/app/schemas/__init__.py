@@ -35,6 +35,7 @@ from app.schemas.schemas import (
     InventoryCategoryUpdate,
     InventoryCategory,
     # Auth schemas
+    UserRole,
     LoginRequest,
     Token,
     TokenData,
@@ -72,6 +73,7 @@ __all__ = [
     "InventoryCategoryUpdate",
     "InventoryCategory",
     # Auth
+    "UserRole",
     "LoginRequest",
     "Token",
     "TokenData",

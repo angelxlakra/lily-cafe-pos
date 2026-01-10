@@ -72,29 +72,26 @@ def get_order_history(
     - date: Filter by specific date (legacy support)
     - start_date: Start date (YYYY-MM-DD)
     - end_date: End date (YYYY-MM-DD)
-    - status: Filter by order status
+    - status: Filter by order status (if not specified, shows PAID and CANCELED orders)
     - page: Page number (default: 1)
     - size: Items per page (default: 50)
     """
     try:
-        # If no filters specified at all, default to showing only PAID orders
-        # Only apply default PAID filter if NO status is explicitly requested
-        filter_status = status if status else OrderStatus.PAID
-        
         # Legacy support: if `date` is provided, treat it as start=end
         if date and not start_date and not end_date:
             start_date = date
             end_date = date
-            
+
         skip = (page - 1) * size
 
         items, total, total_revenue, payment_breakdown = crud.get_orders_paginated(
             db,
-            status=filter_status,
+            status=status,
             start_date=start_date,
             end_date=end_date,
             skip=skip,
             limit=size,
+            exclude_active=True,  # Show PAID and CANCELED orders, exclude ACTIVE
         )
         
         pages = (total + size - 1) // size if size > 0 else 0

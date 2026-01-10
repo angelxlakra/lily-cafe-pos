@@ -788,3 +788,9 @@ p {
     display: none;
   }
 }
+
+.crayon-shell-container {
+  font-family: var(--font-sans);
+  height: 100%;
+  width: 100%;
+}

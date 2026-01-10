@@ -4,7 +4,8 @@ These schemas define the shape of data sent to and received from the API.
 """
 
 from datetime import datetime
-from typing import List, Optional
+from enum import Enum
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 from app.models.models import OrderStatus, PaymentMethod
 
@@ -277,6 +278,13 @@ class InventoryCategory(InventoryCategoryBase):
 # ============================================================================
 
 
+class UserRole(str, Enum):
+    """User roles for role-based access control."""
+
+    OWNER = "owner"
+    ADMIN = "admin"
+
+
 class LoginRequest(BaseModel):
     """Schema for admin login request."""
 
@@ -295,3 +303,209 @@ class TokenData(BaseModel):
     """Schema for decoded token data."""
 
     username: Optional[str] = None
+    role: Optional[UserRole] = None
+
+class HeatmapPoint(BaseModel):
+    """Data point for heatmap."""
+    day_of_week: int = Field(..., description="0=Sunday, 6=Saturday")
+    hour: int = Field(..., ge=0, le=23)
+    order_count: int
+    revenue: float
+
+
+
+class HeatmapResponse(BaseModel):
+    """Response generic for heatmap data."""
+    data: List[HeatmapPoint]
+
+
+class CalendarHeatmapPoint(BaseModel):
+    """Data point for calendar heatmap."""
+    date: str  # YYYY-MM-DD
+    value: float
+    count: int
+
+
+class CalendarHeatmapData(BaseModel):
+    """Calendar heatmap analytics data."""
+    data: List[CalendarHeatmapPoint]
+
+
+# ============================================================================
+# Detailed Analytics Response Schemas
+# ============================================================================
+
+
+class BaseCategoryStat(BaseModel):
+    name: str
+    revenue_rupees: float
+    order_count: int
+    avg_order_value_rupees: float
+    items_count: int
+    top_item: Optional[Any] = None
+    vegetarian_ratio: float
+    beverage_ratio: float
+    revenue_percentage: float
+
+
+class CategoryPerformanceResponse(BaseModel):
+    categories: List[BaseCategoryStat]
+    total_categories: int
+
+
+class LowStockItem(BaseModel):
+    name: str
+    current_quantity: float
+    unit: str
+    min_threshold: float
+    shortage: float
+    category: str
+
+
+class InventoryItemSummary(BaseModel):
+    name: str
+    current_quantity: float
+    value_rupees: float
+    category: str
+
+class InventoryStatusResponse(BaseModel):
+    items: List[InventoryItemSummary]
+    low_stock_items: List[LowStockItem]
+    low_stock_count: int
+    out_of_stock_count: int
+    total_inventory_value_rupees: float
+
+
+class ProductPerformanceItem(BaseModel):
+    name: str
+    quantity_sold: int
+    revenue_rupees: float
+    order_count: int = 0
+    avg_quantity_per_order: float = 0
+    frequency: float = 0
+
+
+class ProductPerformanceDetailedResponse(BaseModel):
+    top_products: List[ProductPerformanceItem]
+
+
+class PaymentMethodStat(BaseModel):
+    total_amount_rupees: float
+    transaction_count: int
+    avg_transaction_rupees: float
+    percentage_revenue: float
+    percentage_count: float
+
+
+class PaymentTrendsResponse(BaseModel):
+    payment_methods: Dict[str, PaymentMethodStat]
+    total_revenue_rupees: float
+    highest_avg_transaction_method: Optional[str]
+
+
+class OrderStatsDetailedResponse(BaseModel):
+    total_orders: int
+    active_orders: int
+    completed_orders: int
+    average_order_value_rupees: float
+    # conversion_rates for funnel
+    active_rate: float
+    completion_rate: float
+    cancellation_rate: float
+
+
+class RevenueCompositionItem(BaseModel):
+    date: str
+    category: str
+    revenue: float
+
+
+class RevenueCompositionResponse(BaseModel):
+    data: List[RevenueCompositionItem]
+
+
+class OrderStatusFlowItem(BaseModel):
+    date: str
+    status: str
+    count: int
+
+
+class OrderStatusFlowResponse(BaseModel):
+    data: List[OrderStatusFlowItem]
+
+
+class DayOfWeekStat(BaseModel):
+    day: str # Mon, Tue...
+    day_index: int # 0-6
+    revenue_rupees: float
+    order_count: int
+    avg_order_value_rupees: float
+    payment_diversity: int
+    parcel_ratio: float
+
+
+class DayOfWeekStatsResponse(BaseModel):
+    data: List[DayOfWeekStat]
+
+
+class BoxPlotData(BaseModel):
+    min: float
+    q1: float
+    median: float
+    q3: float
+    max: float
+
+
+class OrderValueDistributionItem(BaseModel):
+    group: str
+    stats: BoxPlotData
+
+
+class OrderValueDistributionResponse(BaseModel):
+    data: List[OrderValueDistributionItem]
+
+
+class ItemQuantityDistributionItem(BaseModel):
+    item_name: str
+    stats: BoxPlotData
+
+
+class ItemQuantityDistributionResponse(BaseModel):
+    data: List[ItemQuantityDistributionItem]
+
+
+class SankeyNode(BaseModel):
+    name: str
+
+class SankeyLink(BaseModel):
+    source: int # index in nodes list
+    target: int # index in nodes list
+    value: float
+
+class SankeyData(BaseModel):
+    nodes: List[SankeyNode]
+    links: List[SankeyLink]
+
+
+class WaterfallItem(BaseModel):
+    name: str
+    value: float
+    is_total: bool = False
+    color: Optional[str] = None
+
+
+class WaterfallResponse(BaseModel):
+    data: List[WaterfallItem]
+
+
+class OrdersTimelineItem(BaseModel):
+    order_number: str
+    table_number: int
+    created_at: str
+    amount: float
+    paid_at: Optional[str]
+    duration_minutes: Optional[float]
+
+
+class OrdersTimelineResponse(BaseModel):
+    data: List[OrdersTimelineItem]

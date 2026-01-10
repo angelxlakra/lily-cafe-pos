@@ -175,14 +175,22 @@ def _get_orders_query(
     date_str: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    exclude_active: bool = False,
 ):
     """
     Helper to build order query with filters.
+
+    Args:
+        exclude_active: If True and status is None, excludes ACTIVE orders (shows PAID + CANCELED)
     """
     query = db.query(models.Order)
 
     if status:
         query = query.filter(models.Order.status == status)
+    elif exclude_active:
+        # When no specific status requested but exclude_active is True,
+        # show both PAID and CANCELED orders (exclude ACTIVE)
+        query = query.filter(models.Order.status != models.OrderStatus.ACTIVE)
 
     if table_number:
         query = query.filter(models.Order.table_number == table_number)
@@ -226,12 +234,13 @@ def get_orders(
     date_str: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    exclude_active: bool = False,
 ) -> List[models.Order]:
     """
     Get all orders matching filters.
     """
     query = _get_orders_query(
-        db, status, table_number, today_only, date_str, start_date, end_date
+        db, status, table_number, today_only, date_str, start_date, end_date, exclude_active
     )
     return query.order_by(models.Order.created_at.desc()).all()
 
@@ -246,6 +255,7 @@ def get_orders_paginated(
     end_date: Optional[str] = None,
     skip: int = 0,
     limit: int = 50,
+    exclude_active: bool = False,
 ) -> tuple[List[models.Order], int, int, dict]:
     """
     Get paginated orders matching filters.
@@ -254,7 +264,7 @@ def get_orders_paginated(
         Tuple of (list of orders, total count, total revenue, payment breakdown)
     """
     query = _get_orders_query(
-        db, status, table_number, today_only, date_str, start_date, end_date
+        db, status, table_number, today_only, date_str, start_date, end_date, exclude_active
     )
     total = query.count()
     
@@ -636,8 +646,9 @@ def cancel_order(db: Session, order_id: int) -> Optional[models.Order]:
     """
     Cancel an order (soft delete - sets status to CANCELED).
 
-    Canceled orders remain in the database for record keeping but are
-    not shown in active orders. They also don't appear in order history.
+    Canceled orders remain in the database for record keeping.
+    They are marked with CANCELED status and can be filtered in order history.
+    Useful for removing duplicate or mistaken orders.
 
     Args:
         db: Database session
@@ -645,18 +656,12 @@ def cancel_order(db: Session, order_id: int) -> Optional[models.Order]:
 
     Returns:
         Canceled order, or None if order not found
-
-    Raises:
-        ValueError: If order is already paid (cannot cancel paid orders)
     """
     db_order = get_order(db, order_id)
     if not db_order:
         return None
 
-    # Don't allow canceling paid orders
-    if db_order.status == models.OrderStatus.PAID:
-        raise ValueError("Cannot cancel a paid order")
-
+    # Allow canceling any order (including paid orders) for duplicate removal
     db_order.status = models.OrderStatus.CANCELED
     db_order.updated_at = datetime.utcnow()
     db.commit()

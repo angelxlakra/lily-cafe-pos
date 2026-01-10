@@ -9,6 +9,7 @@ import axios, {
   InternalAxiosRequestConfig,
 } from "axios";
 import type {
+  User,
   LoginRequest,
   LoginResponse,
   MenuItem,
@@ -162,6 +163,14 @@ export const authApi = {
    */
   isAuthenticated: (): boolean => {
     return getAuthToken() !== null;
+  },
+
+  /**
+   * Verify token and get current user with role
+   */
+  verifyToken: async (): Promise<User> => {
+    const response = await apiClient.get<User>('/auth/verify');
+    return response.data;
   },
 };
 
