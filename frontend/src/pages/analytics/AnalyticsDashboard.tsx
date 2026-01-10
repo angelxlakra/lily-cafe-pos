@@ -20,7 +20,7 @@ import {
   Calendar
 } from '@phosphor-icons/react';
 import { UpiIcon, CashIcon, CardIcon } from '../../components/icons/PaymentIcons';
-import AnalyticsSettingsModal, { AVAILABLE_CHARTS, ChartVisibility } from '../../components/analytics/AnalyticsSettingsModal';
+import AnalyticsSettingsModal, { ChartVisibility } from '../../components/analytics/AnalyticsSettingsModal';
 import OrderHeatmap from '../../components/analytics/charts/OrderHeatmap';
 import CalendarHeatmap from '../../components/analytics/charts/CalendarHeatmap';
 import CategoryTreemap from '../../components/analytics/charts/CategoryTreemap';
