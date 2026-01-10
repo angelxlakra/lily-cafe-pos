@@ -63,11 +63,29 @@ export default function AnalyticsDashboard() {
         console.error('Failed to parse saved chart visibility', e);
       }
     }
-    // Default all to true
-    return AVAILABLE_CHARTS.reduce((acc, chart) => {
-      acc[chart.id] = true;
-      return acc;
-    }, {} as ChartVisibility);
+    // Default chart visibility - customized defaults
+    return {
+      revenueTrend: true,
+      topDishes: true,
+      revenueByCategory: true,
+      revenueByPaymentMethod: true,
+      orderHeatmap: true,
+      calendarHeatmap: false,
+      categoryTreemap: false,
+      orderTimeline: false,
+      inventoryWaterfall: false,
+      revenueWaterfall: false,
+      orderSankey: false,
+      itemQuantityBox: false,
+      orderValueBox: false,
+      dayRadar: false,
+      orderStatusStream: true,
+      revenueStacked: false,
+      orderFunnel: false,
+      paymentRadial: false,
+      productBubble: false,
+      inventoryTreemap: false,
+    };
   });
 
   const handleToggleChart = (chartId: string) => {

@@ -4,6 +4,7 @@ import '../../../node_modules/@crayonai/react-ui/dist/styles/index.css';
 import { useTheme } from '../../contexts/ThemeContext';
 import { themePresets } from "@crayonai/react-ui";
 import { useState } from 'react';
+import { getAuthToken } from '../../api/client';
 
 // Thread Types (matching Thesys SDK expectations)
 interface Thread {
@@ -57,6 +58,40 @@ export default function AskQuestionsView() {
     }
   });
    
+  // Custom message processor with authentication
+  const processMessage = async ({
+    threadId,
+    messages,
+    responseId,
+    abortController
+  }: {
+    threadId: string;
+    messages: any[];
+    responseId: string;
+    abortController: AbortController;
+  }): Promise<Response> => {
+    const token = getAuthToken();
+
+    // Get the last user message
+    const lastMessage = messages[messages.length - 1];
+
+    const response = await fetch("http://localhost:8000/api/v1/analytics/query", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token && { "Authorization": `Bearer ${token}` }),
+      },
+      body: JSON.stringify({
+        prompt: lastMessage,
+        threadId,
+        responseId,
+      }),
+      signal: abortController.signal,
+    });
+
+    return response;
+  };
+
   // Simulated Thread Manager
   const threadManager = useThreadManager({
     threadListManager,
@@ -66,14 +101,14 @@ export default function AskQuestionsView() {
     },
     onUpdateMessage: ({ message }) => {
         setMessagesByThread(prev => {
-            const threadId = activeThreadId; 
+            const threadId = activeThreadId;
             const existing = prev[threadId] || [];
             // Check if message already exists to avoid duplicates if necessary, or just append
             // Assuming message has an ID or we just append
             return { ...prev, [threadId]: [...existing, message] };
         });
     },
-    apiUrl: "http://localhost:8000/api/v1/analytics/query",
+    processMessage,
   });
 
   return (
