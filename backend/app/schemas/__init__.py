@@ -40,6 +40,17 @@ from app.schemas.schemas import (
     Token,
     TokenData,
 )
+from app.schemas.analytics_schemas import (
+    TimeRange,
+    RevenueData,
+    ProductPerformance,
+    OrderStatistics,
+    HeatmapPoint,
+    HeatmapData,
+    CalendarHeatmapPoint,
+    CalendarHeatmapData,
+    C1QueryRequest,
+)
 
 __all__ = [
     # Categories
@@ -77,4 +88,14 @@ __all__ = [
     "LoginRequest",
     "Token",
     "TokenData",
+    # Analytics
+    "TimeRange",
+    "RevenueData",
+    "ProductPerformance",
+    "OrderStatistics",
+    "HeatmapPoint",
+    "HeatmapData",
+    "CalendarHeatmapPoint",
+    "CalendarHeatmapData",
+    "C1QueryRequest",
 ]
