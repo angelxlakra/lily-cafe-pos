@@ -53,6 +53,17 @@ class Settings:
     PRINTER_PORT: str = os.getenv("PRINTER_PORT", "")  # Serial port (e.g., COM3)
     PRINTER_BAUDRATE: int = int(os.getenv("PRINTER_BAUDRATE", "9600"))  # Serial baudrate
 
+    # Email / SMTP Configuration (for inventory reports)
+    SMTP_ENABLED: bool = os.getenv("SMTP_ENABLED", "false").lower() == "true"
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    SMTP_SENDER_EMAIL: str = os.getenv("SMTP_SENDER_EMAIL", "")
+    INVENTORY_REPORT_EMAILS: List[str] = [
+        e.strip() for e in os.getenv("INVENTORY_REPORT_EMAILS", "").split(",") if e.strip()
+    ]
+
     # Admin Credentials (access to all features EXCEPT analytics)
     ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
     ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "changeme123")

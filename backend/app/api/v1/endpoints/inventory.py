@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from decimal import Decimal
@@ -7,6 +7,8 @@ from decimal import Decimal
 from app.db.session import get_db
 from app.models.inventory_models import InventoryCategory, InventoryItem, InventoryTransaction, TransactionType
 from app.schemas import inventory_schemas
+from app.core.config import settings
+from app.utils.email_sender import send_inventory_report
 
 router = APIRouter()
 
@@ -386,7 +388,8 @@ def record_adjustment(adjustment: inventory_schemas.AdjustmentCreate, db: Sessio
 @router.post("/transactions/batch-adjustment", status_code=status.HTTP_201_CREATED)
 def record_batch_adjustment(
     batch: inventory_schemas.BatchAdjustmentCreate,
-    db: Session = Depends(get_db)
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
 ):
     """
     Record multiple inventory adjustments at once (daily count).
@@ -451,6 +454,36 @@ def record_batch_adjustment(
 
     # Commit all changes atomically
     db.commit()
+
+    # Schedule inventory report email as background task
+    if settings.SMTP_ENABLED and created_transactions:
+        all_active_items = db.query(InventoryItem).filter(
+            InventoryItem.is_active == True
+        ).all()
+
+        low_stock_data = []
+        for item in all_active_items:
+            if item.is_low_stock:
+                pct = 0.0
+                if float(item.min_threshold) > 0:
+                    pct = (float(item.current_quantity) / float(item.min_threshold)) * 100
+                low_stock_data.append({
+                    "name": item.name,
+                    "category_name": item.category.name if item.category else "Uncategorized",
+                    "current_quantity": float(item.current_quantity),
+                    "min_threshold": float(item.min_threshold),
+                    "unit": item.unit,
+                    "percentage_remaining": pct,
+                })
+
+        low_stock_data.sort(key=lambda x: x["percentage_remaining"])
+
+        background_tasks.add_task(
+            send_inventory_report,
+            low_stock_items=low_stock_data,
+            changes=created_transactions,
+            recorded_by=batch.recorded_by,
+        )
 
     return {
         "success": True,
