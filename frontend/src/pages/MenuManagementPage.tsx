@@ -235,6 +235,9 @@ export default function MenuManagementPage() {
                         onSort={requestSort}
                         align="right"
                       />
+                      <th className="px-6 py-3 text-center text-sm font-semibold text-neutral-text-light uppercase tracking-wider">
+                        Station
+                      </th>
                       <SortableTableHeader
                         label="Status"
                         sortKey={'is_available' as keyof MenuItem}
@@ -273,6 +276,17 @@ export default function MenuManagementPage() {
                           <p className="font-semibold text-coffee-brown">
                             {formatCurrency(item.price)}
                           </p>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span
+                            className={`inline-block px-2 py-1 text-xs rounded-md font-medium ${
+                              item.is_beverage
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-orange-100 text-orange-700'
+                            }`}
+                          >
+                            {item.is_beverage ? 'Bar' : 'Kitchen'}
+                          </span>
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span
@@ -340,15 +354,26 @@ export default function MenuManagementPage() {
                     )}
 
                     <div className="flex items-center justify-between">
-                      <span
-                        className={`inline-block px-2 py-1 text-xs rounded-md ${
-                          item.is_available
-                            ? 'bg-success/10 text-success'
-                            : 'bg-error/10 text-error'
-                        }`}
-                      >
-                        {item.is_available ? 'Available' : 'Unavailable'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-block px-2 py-1 text-xs rounded-md font-medium ${
+                            item.is_beverage
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-orange-100 text-orange-700'
+                          }`}
+                        >
+                          {item.is_beverage ? 'Bar' : 'Kitchen'}
+                        </span>
+                        <span
+                          className={`inline-block px-2 py-1 text-xs rounded-md ${
+                            item.is_available
+                              ? 'bg-success/10 text-success'
+                              : 'bg-error/10 text-error'
+                          }`}
+                        >
+                          {item.is_available ? 'Available' : 'Unavailable'}
+                        </span>
+                      </div>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleEdit(item)}

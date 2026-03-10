@@ -666,55 +666,40 @@ def print_order_chit(order: models.Order, items_to_print: list[models.OrderItem]
         item_count = len(items_to_print)
         logger.info(f"Generating order chit for table {order.table_number}, order {order.order_number} ({item_count} items)")
 
-        # Separate items into dine-in and parcel
-        dine_in_items = [item for item in items_to_print if not item.is_parcel]
+        # Separate items into kitchen, bar, and parcel
+        kitchen_items = [item for item in items_to_print if not item.is_parcel and not item.is_beverage]
+        bar_items = [item for item in items_to_print if not item.is_parcel and item.is_beverage]
         parcel_items = [item for item in items_to_print if item.is_parcel]
 
         success = True
 
-        # Print dine-in chit if there are dine-in items
-        if dine_in_items:
-            logger.info(f"Printing dine-in chit for table {order.table_number} ({len(dine_in_items)} items)")
-            
+        def _print_chit_with_pdf(items, station: str):
+            nonlocal success
+            if not items:
+                return
+            label = station.upper()
+            logger.info(f"Printing {label} chit for table {order.table_number} ({len(items)} items)")
+
             # Generate PDF for records
             try:
                 from app.utils.pdf_generator import generate_order_chit_pdf
                 chits_dir = os.path.join(os.getcwd(), "chits")
                 os.makedirs(chits_dir, exist_ok=True)
-                pdf_filename = f"Table_{order.table_number}_{order.order_number}_DINEIN.pdf"
+                pdf_filename = f"Table_{order.table_number}_{order.order_number}_{label}.pdf"
                 pdf_path = os.path.join(chits_dir, pdf_filename)
 
                 with open(pdf_path, "wb") as pdf_file:
-                    generate_order_chit_pdf(order, pdf_file, paper_size=paper_size, items_to_print=dine_in_items, is_parcel=False)
+                    generate_order_chit_pdf(order, pdf_file, paper_size=paper_size, items_to_print=items, station=station)
                 logger.info(f"✓ PDF saved to: {pdf_path}")
             except Exception as e:
                 logger.warning(f"Failed to save PDF copy: {e}")
 
-            # Print using ESC/POS commands
-            if not _print_order_chit_escpos(order, dine_in_items, paper_size, is_parcel=False):
+            if not _print_order_chit_escpos(order, items, paper_size, station=station):
                 success = False
 
-        # Print parcel chit if there are parcel items
-        if parcel_items:
-            logger.info(f"Printing parcel chit for table {order.table_number} ({len(parcel_items)} items)")
-            
-            # Generate PDF for records
-            try:
-                from app.utils.pdf_generator import generate_order_chit_pdf
-                chits_dir = os.path.join(os.getcwd(), "chits")
-                os.makedirs(chits_dir, exist_ok=True)
-                pdf_filename = f"Table_{order.table_number}_{order.order_number}_PARCEL.pdf"
-                pdf_path = os.path.join(chits_dir, pdf_filename)
-
-                with open(pdf_path, "wb") as pdf_file:
-                    generate_order_chit_pdf(order, pdf_file, paper_size=paper_size, items_to_print=parcel_items, is_parcel=True)
-                logger.info(f"✓ PDF saved to: {pdf_path}")
-            except Exception as e:
-                logger.warning(f"Failed to save PDF copy: {e}")
-
-            # Print using ESC/POS commands
-            if not _print_order_chit_escpos(order, parcel_items, paper_size, is_parcel=True):
-                success = False
+        _print_chit_with_pdf(kitchen_items, "kitchen")
+        _print_chit_with_pdf(bar_items, "bar")
+        _print_chit_with_pdf(parcel_items, "parcel")
 
         return success
 
@@ -723,7 +708,7 @@ def print_order_chit(order: models.Order, items_to_print: list[models.OrderItem]
         return False
 
 
-def _print_order_chit_escpos(order: models.Order, items_to_print: list[models.OrderItem], paper_size: str = "80mm", is_parcel: bool = False) -> bool:
+def _print_order_chit_escpos(order: models.Order, items_to_print: list[models.OrderItem], paper_size: str = "80mm", station: str = "kitchen") -> bool:
     """
     Print order chit using ESC/POS commands.
 
@@ -731,6 +716,7 @@ def _print_order_chit_escpos(order: models.Order, items_to_print: list[models.Or
         order: Order model instance
         items_to_print: List of OrderItems to print on the chit
         paper_size: Paper size (58mm or 80mm)
+        station: "kitchen", "bar", or "parcel"
 
     Returns:
         True if printing succeeded, False otherwise
@@ -811,16 +797,16 @@ def _print_order_chit_escpos(order: models.Order, items_to_print: list[models.Or
         printer.text("\n")
 
         # ============================================================================
-        # PARCEL IDENTIFIER - Show at bottom if this is a parcel chit
+        # STATION IDENTIFIER - Show at bottom
         # ============================================================================
-        if is_parcel:
-            printer.set(align='center')
-            printer.text("=" * (32 if is_58mm else 42) + "\n")
-            printer.set(bold=True, width=2, height=2)
-            printer.text("PARCEL\n")
-            printer.set(bold=False, width=1, height=1)
-            printer.text("=" * (32 if is_58mm else 42) + "\n")
-            printer.text("\n")
+        station_label = station.upper()
+        printer.set(align='center')
+        printer.text("=" * (32 if is_58mm else 42) + "\n")
+        printer.set(bold=True, width=2, height=2)
+        printer.text(f"{station_label}\n")
+        printer.set(bold=False, width=1, height=1)
+        printer.text("=" * (32 if is_58mm else 42) + "\n")
+        printer.text("\n")
 
         # Cut paper (if supported)
         try:

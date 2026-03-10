@@ -615,7 +615,7 @@ def generate_receipt(
 
 
 def generate_order_chit_pdf(
-    order: models.Order, output: BinaryIO, paper_size: PaperSize = "80mm", items_to_print: Optional[list] = None, is_parcel: bool = False
+    order: models.Order, output: BinaryIO, paper_size: PaperSize = "80mm", items_to_print: Optional[list] = None, station: str = "kitchen", is_parcel: bool = False
 ) -> None:
     """
     Generate a simple order chit (kitchen ticket) PDF.
@@ -632,7 +632,12 @@ def generate_order_chit_pdf(
         paper_size: Paper width - either "58mm" or "80mm" (default: "80mm")
         items_to_print: Optional list of specific OrderItem objects to print.
                        If None, prints all items in the order.
+        station: "kitchen", "bar", or "parcel" — shown as label at the bottom
+        is_parcel: Deprecated. Use station="parcel" instead.
     """
+    # Support legacy is_parcel parameter
+    if is_parcel:
+        station = "parcel"
     config = ReceiptConfig(paper_size)
     c = canvas.Canvas(output, pagesize=(config.receipt_width, config.receipt_height))
 
@@ -739,16 +744,15 @@ def generate_order_chit_pdf(
     add_spacing(10)
 
     # ============================================================================
-    # PARCEL IDENTIFIER - Show at bottom if this is a parcel chit
+    # STATION IDENTIFIER - Show at bottom
     # ============================================================================
-    if is_parcel:
-        add_spacing(5)
-        draw_centered("═══════════════════════", y_position, "Courier", 12)
-        add_spacing(5)
-        draw_centered("PARCEL", y_position, "Helvetica-Bold", 20)
-        add_spacing(5)
-        draw_centered("═══════════════════════", y_position, "Courier", 12)
-        add_spacing(10)
+    add_spacing(5)
+    draw_centered("═══════════════════════", y_position, "Courier", 12)
+    add_spacing(5)
+    draw_centered(station.upper(), y_position, "Helvetica-Bold", 20)
+    add_spacing(5)
+    draw_centered("═══════════════════════", y_position, "Courier", 12)
+    add_spacing(10)
 
     # Save the PDF
     c.showPage()

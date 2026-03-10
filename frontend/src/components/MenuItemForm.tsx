@@ -34,6 +34,7 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
     item ? String(item.category_id) : ""
   );
   const [isVegetarian, setIsVegetarian] = useState(item?.is_vegetarian ?? true);
+  const [isBeverage, setIsBeverage] = useState(item?.is_beverage ?? false);
   const [isAvailable, setIsAvailable] = useState(item?.is_available ?? true);
   const [error, setError] = useState("");
   const [showNewCategory, setShowNewCategory] = useState(false);
@@ -45,6 +46,7 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
     if (item) {
       setSelectedCategoryId(String(item.category_id));
       setPrice((item.price / 100).toString());
+      setIsBeverage(item.is_beverage ?? false);
     }
   }, [item]);
 
@@ -91,6 +93,7 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
             price: pricePaise,
             category_id: categoryId,
             is_vegetarian: isVegetarian,
+            is_beverage: isBeverage,
             is_available: isAvailable,
           },
         });
@@ -102,6 +105,7 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
           price: pricePaise,
           category_id: categoryId,
           is_vegetarian: isVegetarian,
+          is_beverage: isBeverage,
         });
 
         // If the item should start as unavailable, apply an update after creation
@@ -346,6 +350,44 @@ export default function MenuItemForm({ item, onClose }: MenuItemFormProps) {
               </label>
               <p className="mt-1 ml-8 text-xs text-neutral-text-light">
                 {isVegetarian ? "Item is vegetarian (green indicator)" : "Item is non-vegetarian (red indicator)"}
+              </p>
+            </div>
+
+            {/* Kitchen / Bar Station */}
+            <div>
+              <label className="block text-sm font-medium text-neutral-text-dark mb-2">
+                Chit Station
+              </label>
+              <div className="flex rounded-lg border border-neutral-border overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setIsBeverage(false)}
+                  disabled={isProcessing}
+                  className={`flex-1 py-2.5 text-sm font-medium transition-colors disabled:cursor-not-allowed ${
+                    !isBeverage
+                      ? "bg-coffee-brown text-white"
+                      : "bg-white text-neutral-text-dark hover:bg-neutral-border"
+                  }`}
+                >
+                  Kitchen
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsBeverage(true)}
+                  disabled={isProcessing}
+                  className={`flex-1 py-2.5 text-sm font-medium transition-colors disabled:cursor-not-allowed ${
+                    isBeverage
+                      ? "bg-coffee-brown text-white"
+                      : "bg-white text-neutral-text-dark hover:bg-neutral-border"
+                  }`}
+                >
+                  Bar
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-neutral-text-light">
+                {isBeverage
+                  ? "Bar items go to a separate bar chit when printing"
+                  : "Kitchen items go to a separate kitchen chit when printing"}
               </p>
             </div>
 

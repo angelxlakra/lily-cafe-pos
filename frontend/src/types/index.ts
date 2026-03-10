@@ -37,6 +37,7 @@ export interface MenuItem {
   category_id: number;
   category: Category;
   is_vegetarian: boolean;
+  is_beverage: boolean; // true = bar item, false = kitchen item
   is_available: boolean;
   created_at: string;
   updated_at: string;
@@ -48,6 +49,7 @@ export interface CreateMenuItemRequest {
   price: number; // Price in paise
   category_id: number;
   is_vegetarian?: boolean;
+  is_beverage?: boolean;
 }
 
 export interface UpdateMenuItemRequest {
@@ -56,6 +58,7 @@ export interface UpdateMenuItemRequest {
   price?: number; // Price in paise
   category_id?: number;
   is_vegetarian?: boolean;
+  is_beverage?: boolean;
   is_available?: boolean;
 }
 
