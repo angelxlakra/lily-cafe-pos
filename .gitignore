@@ -133,3 +133,6 @@ backend/chits/*.pdf
 # Test Artifacts
 ui-inspection-screenshots/
 .playwright-mcp/
+
+# Superpowers brainstorm sessions
+.superpowers/
