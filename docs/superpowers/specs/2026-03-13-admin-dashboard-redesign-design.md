@@ -138,7 +138,28 @@ Replaces the current card grid with a two-panel layout:
 - Footer: total amount, `Generate Bill` (primary), `Edit` (secondary), `cancel order` (ghost)
 - Empty state when no order selected: centred icon + "Select an order from the list"
 
-**Auto-select:** The selected order ID is tracked in `useState<number | null>`. On page load, a `useEffect` watching `orders` sets `selectedOrderId` to `orders[0].id` if `selectedOrderId` is null and orders are available. After a cancel mutation succeeds (in the `onSuccess` callback of `useCancelOrder`), clear `selectedOrderId` to null — the `useEffect` above will then auto-select the new first order once the query re-fetches and resolves.
+**State inventory for `AdminActiveOrdersPage`:**
+```ts
+const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+const [paymentOrderId, setPaymentOrderId]   = useState<number | null>(null); // opens PaymentModal
+const [editOrder, setEditOrder]             = useState<Order | null>(null);   // opens EditOrderModal
+const [cancelOrderId, setCancelOrderId]     = useState<number | null>(null);  // opens cancel confirm
+const [serveModalData, setServeModalData]   = useState<...| null>(null);      // opens PartialServeModal
+const [editModalData, setEditModalData]     = useState<...| null>(null);      // opens item edit modal
+```
+`cancelOrderId` drives a cancel-confirmation UI; setting it non-null signals "confirm cancel for this order ID".
+
+**Auto-select:** On page load, a `useEffect` watching `orders` sets `selectedOrderId` to `orders[0].id` if `selectedOrderId` is null and orders are available. After a cancel mutation succeeds, clear `selectedOrderId` to null — the `useEffect` above will then auto-select the new first order once the query re-fetches and resolves.
+
+**Cancel calling pattern:** Use the callback-based `.mutate()` form (not `mutateAsync` with try/catch) so the `onSuccess` callback can call `setSelectedOrderId(null)`:
+```ts
+cancelOrder.mutate(cancelOrderId, {
+  onSuccess: () => {
+    setCancelOrderId(null);
+    setSelectedOrderId(null);
+  }
+});
+```
 
 **No mobile master-detail:** Admin is desktop-only for order management. On small screens (< `lg`), the list renders full-width. The detail panel is not shown on mobile — this is acceptable as admin is not used for billing on phones.
 
@@ -240,7 +261,7 @@ Each page replaces its full-page spinner with a layout-matched shimmer skeleton 
 **Error states are unchanged** — the existing `{error && <div>...}` blocks remain in place after the skeleton conditional. Skeleton is shown only when `isLoading === true`; error state is shown when `error` is truthy; both conditions are independent.
 
 Skeletons mirror the actual page structure:
-- **Active Orders:** skeleton list rows (left) + skeleton detail rows (right)
+- **Active Orders:** skeleton list rows (left) + skeleton detail rows (right — `hidden lg:flex` to match the panel's responsive behaviour)
 - **Order History:** skeleton stat cells + skeleton table rows
 - **Cash Counter:** skeleton card
 - **Analytics:** skeleton stat cells + skeleton chart placeholder
@@ -267,6 +288,20 @@ The `?` shortcut is **not** a new implementation task — `KeyboardShortcutsHelp
 const isAnyModalOpen = paymentOrderId !== null || editOrder !== null || cancelOrderId !== null || serveModalData !== null || editModalData !== null
 ```
 
+**Hook API:** `useKeyboardShortcuts` accepts a `Record<string, ShortcutConfig>` where `ShortcutConfig` is `{ handler: () => void; enabled?: boolean; ctrl?: boolean; shift?: boolean; alt?: boolean; preventDefault?: boolean }`. The key in the record is the `event.key` string. The hook does `shortcuts[event.key.toLowerCase()] || shortcuts[event.key]` lookup, so both `'arrowup'` and `'ArrowUp'` resolve — but use the canonical `event.key` value as the record key to be explicit.
+
+**`useMemo` for shortcuts object:** Wrap the shortcuts config object in `useMemo` with `[selectedOrderId, orders, isAnyModalOpen]` as dependencies. This prevents re-registering all event listeners on every render (the hook's `useEffect` depends on `[shortcuts]`), and ensures `enabled` and `handler` closures capture current state.
+
+```ts
+const shortcuts = useMemo(() => ({
+  ArrowUp: { handler: () => { /* navigate to previous */ }, enabled: !isAnyModalOpen },
+  ArrowDown: { handler: () => { /* navigate to next */ }, enabled: !isAnyModalOpen },
+  b: { handler: () => { /* open bill modal */ }, enabled: !isAnyModalOpen && selectedOrderId !== null },
+  e: { handler: () => { /* open edit modal */ }, enabled: !isAnyModalOpen && selectedOrderId !== null },
+}), [selectedOrderId, orders, isAnyModalOpen]);
+useKeyboardShortcuts(shortcuts);
+```
+
 ### 7. Clickable Rows (Order History)
 
 Entire `<tr>` is wrapped in an `onClick` handler that opens the order detail modal. The explicit "View Details" button is removed — the row click replaces it. Print and Edit buttons remain as inline action buttons.
@@ -282,9 +317,139 @@ Entire `<tr>` is wrapped in an `onClick` handler that opens the order detail mod
 - `AnalyticsDashboard`, `AskQuestionsView`, analytics settings modal
 - `MenuItemForm` modal
 - All inventory tab content components
-- Waiter-facing pages (`OrderPage`, `TablesPage`, `ActiveOrdersPage`, `LoginPage`)
 - `CartDrawer`, `PaymentModal`, `EditOrderModal`, `PartialServeModal` modals
+- `MenuList`, `FloatingCartButton`, `TableGrid`, `KeyboardShortcutsHelp` components
 - Dark mode — all new components respect existing dark mode CSS variables
+
+---
+
+## Background Treatment
+
+**Choice: Linen texture — applied to all pages (admin + waiter).**
+
+A new `LinenTexture` component replaces the existing `BackgroundPattern` on waiter pages and is added to all admin pages.
+
+### `LinenTexture` component
+
+`frontend/src/components/LinenTexture.tsx`
+
+- `fixed inset-0 pointer-events-none z-0` overlay
+- SVG `<pattern>` with fine crosshatch: horizontal + vertical lines at 4px spacing, 0.5px stroke
+- Stroke colour: `var(--color-coffee-light)` (#A0826D)
+- Opacity: 0.08 light mode, 0.05 dark mode. Use the existing `useTheme()` hook from `frontend/src/contexts/ThemeContext.tsx` — it returns `{ theme }` typed as `'light' | 'dark'` (never undefined). Derive `isDark = theme === 'dark'` and pass `style={{ opacity: isDark ? 0.05 : 0.08 }}`.
+- No other props required
+
+**Mount location:**
+- **Admin pages**: mount `<LinenTexture />` once inside `AdminLayout.tsx` (the shared wrapper), so it applies to all 6 admin pages automatically. Do not add it individually to each admin page file.
+- **Waiter pages**: add `<LinenTexture />` individually to `TablesPage`, `OrderPage`, and waiter `ActiveOrdersPage` — replacing the existing `<BackgroundPattern />` mount in each file.
+
+**Practical note:** The existing `BackgroundPattern` (coffee beans + cups) is replaced on waiter pages — it remains in the codebase but is no longer mounted.
+
+---
+
+## Colour Palette Addition
+
+**Choice: Warm amber `#C27A2A` added as a new accent token.**
+
+Add to `frontend/src/index.css` following the exact two-part pattern used for existing tokens (`coffee-brown`, `lily-green`, etc.):
+
+```css
+/* In @theme {} block — light mode value, registers as Tailwind colour token */
+--color-amber: #C27A2A;
+
+/* In .dark {} block — dark mode override */
+--color-amber: #D4943F;
+```
+
+There is **no** `:root {}` block needed, and **no** `var()` self-reference. The `@theme {}` block defines the CSS custom property with a hardcoded light-mode value (Tailwind v4 then generates `var(--color-amber)` in all utility classes). The `.dark {}` block overrides the same custom property with the dark-mode value at runtime. This is the exact same pattern as `--color-coffee-brown: #6F4E37` in `@theme {}` and `--color-coffee-brown: #B8916A` in `.dark {}`.
+
+**Usage across the app:**
+
+| Context | Token |
+|---|---|
+| Order age warning 30–59 min — left border + badge | `amber` |
+| Cash counter "pending" card `border-l-4` accent | `amber` |
+| Parcel badge tint | `amber` tint bg, dark text |
+| Waiter order card "parcel" indicator | `amber` tint |
+
+The `amber` token slots into the existing Order Age Warning table:
+
+| Age | Left border | Background tint |
+|---|---|---|
+| < 30 min | `lily-green` | none |
+| 30–59 min | `amber` | `rgba(194,122,42,0.04)` |
+| ≥ 60 min | `error` red | `rgba(244,67,54,0.04)` |
+
+---
+
+## Waiter View Design
+
+Three pages — `TablesPage`, `OrderPage`, `ActiveOrdersPage` (waiter) — plus the shared `BottomNav`. Primary usage: mobile + tablet. The design polish is lighter than the admin redesign; functional components (`MenuList`, `FloatingCartButton`, `CartDrawer`, `TableGrid`) are untouched.
+
+### Header Style (all waiter pages)
+
+Keep `bg-gradient-primary` header — it already carries strong brand presence. Add an eyebrow above the title on `TablesPage` and waiter `ActiveOrdersPage`:
+
+```
+LILY CAFE              ← eyebrow: lily-green, uppercase, tracking-widest, text-xs, opacity-80
+Tables                 ← existing h1, font-heading
+```
+
+`OrderPage` header keeps its current back-button layout — no eyebrow (the table number is the contextual title).
+
+### `TablesPage`
+
+- Replace `<BackgroundPattern />` with `<LinenTexture />`
+- Add eyebrow line above `<h1>` in the header
+- No other layout changes
+
+### `OrderPage`
+
+- Replace `<BackgroundPattern />` with `<LinenTexture />`
+- No other changes — the search bar, category chips, and menu list are already well-structured
+
+### `ActiveOrdersPage` (waiter)
+
+Three changes:
+
+1. **Header consistency** — switch from `bg-coffee-brown` to `bg-gradient-primary` (matches TablesPage)
+   Add eyebrow `LILY CAFE · ORDERS` above the h1.
+   Add `<LinenTexture />`.
+
+2. **Order card restyling:**
+   - Background: `bg-off-white` → `bg-cream` (warmer)
+   - Left accent: `border-l-4 border-coffee-brown`
+   - Remove explicit "View Details" button — entire card is clickable (`cursor-pointer onClick={onViewDetails}`)
+   - Add a serve-status strip below the item count: small pill badges showing `{served} served` (lily-green) + `{pending} pending` (amber) counts, derived from `order.order_items`
+   - Parcel items: amber badge `Parcel` on the relevant item row inside the details modal
+   - **Inline name edit preserved:** The existing inline customer-name edit feature (pencil icon → input + save/cancel buttons) is retained. All interactive elements within the edit flow must call `e.stopPropagation()` on their `onClick`/`onChange` handlers to prevent triggering the card-level `onViewDetails`. Specifically: the pencil edit button, the name input, the save button, and the cancel button all need `e.stopPropagation()`. When `isEditingName` is true, the card's root `onClick` can also be suppressed via a conditional: `onClick={isEditingName ? undefined : onViewDetails}`.
+
+3. **Order details modal restyling:**
+   - Modal bg: already `bg-off-white` ✓
+   - Item rows: already `bg-cream` ✓ — no change needed
+   - Add served/unserved status next to each item: `✓ Served` (lily-green text) or `Pending` (amber text) based on `item.is_served`
+
+### `BottomNav`
+
+Current state: `bg-off-white/95 backdrop-blur-md border-t-2 border-neutral-border/50`. Active tab uses `bg-gradient-primary text-cream` with a cream `h-1` top indicator bar. Inactive tabs use `text-neutral-text-light hover:text-coffee-brown`.
+
+Direction C polish — migrate active tab away from gradient:
+
+- Background: keep existing `bg-off-white/95 backdrop-blur-md` — no change
+- **Active tab**: remove `bg-gradient-primary text-cream`; replace with `text-coffee-brown` icon + label and a 2px `coffee-brown` top border (`border-t-2 border-coffee-brown`) replacing the current cream `h-1` indicator. Scale-up on icon stays (`scale-110`).
+- Inactive tab: keep `text-neutral-text-light hover:text-coffee-brown hover:bg-cream/60` — no change
+- Theme button: keep as-is
+- The outer `border-t-2 border-neutral-border/50` on the `<nav>` element stays unchanged
+
+---
+
+## What Does Not Change (Waiter View)
+
+- `MenuList`, `FloatingCartButton`, `CartDrawer` — untouched
+- `TableGrid` — untouched
+- `KeyboardShortcutsHelp` — untouched
+- All routing and navigation logic
+- `ThemeToggle` position and behaviour
 
 ---
 
@@ -293,13 +458,19 @@ Entire `<tr>` is wrapped in an `onClick` handler that opens the order detail mod
 **New files:**
 - `frontend/src/components/PageHeader.tsx`
 - `frontend/src/components/AdminStatsBar.tsx`
+- `frontend/src/components/LinenTexture.tsx`
 
 **Modified files:**
+- `frontend/src/index.css` — add `amber` CSS variable + Tailwind token
 - `frontend/src/components/AdminLayout.tsx` — minor
 - `frontend/src/components/Sidebar.tsx` — no changes expected
+- `frontend/src/components/BottomNav.tsx` — styling polish
 - `frontend/src/pages/AdminActiveOrdersPage.tsx` — full rewrite (layout change)
 - `frontend/src/pages/OrderHistoryPage.tsx` — header, toolbar, table styling, row click
 - `frontend/src/pages/CashCounterPage.tsx` — header, card styling
 - `frontend/src/pages/AnalyticsPage.tsx` — header, toggle styling
 - `frontend/src/pages/InventoryPage.tsx` — header, tab styling
 - `frontend/src/pages/MenuManagementPage.tsx` — header, toolbar, table, availability toggle
+- `frontend/src/pages/TablesPage.tsx` — swap BackgroundPattern → LinenTexture, header eyebrow
+- `frontend/src/pages/OrderPage.tsx` — swap BackgroundPattern → LinenTexture
+- `frontend/src/pages/ActiveOrdersPage.tsx` (waiter) — header, LinenTexture, card restyling, clickable cards
