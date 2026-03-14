@@ -4,7 +4,6 @@
 // ========================================
 
 import { useState, useMemo } from 'react';
-import { useSidebar } from '../context/SidebarContext';
 import EmptyState from '../components/EmptyState';
 import DatePickerWithQuickFilters from '../components/DatePickerWithQuickFilters';
 import SortableTableHeader from '../components/SortableTableHeader';
@@ -19,6 +18,8 @@ import DailyRevenueModal from '../components/DailyRevenueModal';
 import EditPaymentsModal from '../components/EditPaymentsModal';
 import { paymentsApi } from '../api/client';
 import type { PaymentMethod, PaymentCreateRequest, Order } from '../types';
+import PageHeader from '../components/PageHeader';
+import AdminStatsBar from '../components/AdminStatsBar';
 
 export default function OrderHistoryPage() {
   // Get today's date for max date validation
@@ -34,7 +35,7 @@ export default function OrderHistoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [cancelOrderId, setCancelOrderId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'canceled'>('all');
-  const { setMobileOpen } = useSidebar();
+  const [isBreakdownOpen, setIsBreakdownOpen] = useState(false);
 
   // Payment method icons
   const paymentIcons: Record<PaymentMethod, JSX.Element> = {
@@ -89,7 +90,6 @@ export default function OrderHistoryPage() {
   });
 
   const allOrders = orderHistoryData?.items || [];
-  const totalOrders = orderHistoryData?.total || 0;
   const totalPages = orderHistoryData?.pages || 0;
 
   const { data: selectedOrder, isLoading: isLoadingDetails } = useOrder(
@@ -130,6 +130,32 @@ export default function OrderHistoryPage() {
       return false;
     });
   }, [allOrders, searchQuery, statusFilter]);
+
+  // Computed stats for AdminStatsBar
+  const totalRevenue = filteredOrders
+    .filter(o => o.status !== 'canceled')
+    .reduce((sum, o) => sum + o.total_amount, 0);
+  const avgOrder = filteredOrders.length > 0
+    ? Math.round(totalRevenue / filteredOrders.filter(o => o.status !== 'canceled').length) || 0
+    : 0;
+
+  // Payment breakdown by method from filteredOrders
+  const methodBreakdown = (() => {
+    const paidOrders = filteredOrders.filter(o => o.status !== 'canceled' && o.payments && o.payments.length > 0);
+    const byMethod: Record<string, number> = {};
+    paidOrders.forEach(o => {
+      o.payments.forEach((p: any) => {
+        const m = p.payment_method || 'unknown';
+        byMethod[m] = (byMethod[m] || 0) + p.amount;
+      });
+    });
+    const total = Object.values(byMethod).reduce((s, v) => s + v, 0);
+    return Object.entries(byMethod).map(([method, amount]) => ({
+      method,
+      amount,
+      pct: total > 0 ? Math.round((amount / total) * 100) : 0,
+    }));
+  })();
 
   // Add display_time to orders based on payment time or created_at
   const processedOrders = useMemo(() => {
@@ -208,9 +234,6 @@ export default function OrderHistoryPage() {
 
   // Calculate stats based on server data (for the full period)
   const periodTotalRevenue = orderHistoryData?.total_revenue || 0;
-  const periodTotalOrders = orderHistoryData?.total || 0;
-  const isSingleDay = dateRange.start === dateRange.end;
-  const revenueLabel = isSingleDay ? "Daily Revenue" : "Total Revenue";
 
   // Calculate payment method breakdown
   // Prefer server-side breakdown if available, otherwise fallback to local (though local is only current page)
@@ -233,28 +256,36 @@ export default function OrderHistoryPage() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="bg-off-white border-b border-neutral-border p-4 md:p-6">
-          <div className="flex items-center gap-4 mb-4">
-            {/* Hamburger Menu Button */}
-            <button
-              onClick={() => setMobileOpen(true)}
-              className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg bg-coffee-brown text-cream hover:bg-coffee-dark transition-colors"
-              aria-label="Open menu"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            <div className="flex-1">
-              <h1 className="font-heading heading-section text-neutral-text-dark">
-                Order History
-              </h1>
-              <p className="text-sm text-muted dark:text-neutral-text-light mt-1">
-                View past orders and daily sales
-              </p>
-            </div>
-          </div>
+        <PageHeader title="Order History" subtitle="Review and manage completed orders" />
+        <AdminStatsBar
+          stats={[
+            { label: 'Total Orders', value: String(filteredOrders.length) },
+            {
+              label: 'Revenue',
+              value: formatCurrency(totalRevenue),
+              clickable: true,
+              onClick: () => setIsBreakdownOpen(prev => !prev),
+              hint: '↗ tap for breakdown',
+            },
+            { label: 'Avg Order', value: formatCurrency(avgOrder) },
+          ]}
+        />
 
+        {/* Revenue Breakdown Panel */}
+        {isBreakdownOpen && (
+          <div className="flex gap-3 px-4 py-3 border-b border-neutral-border bg-cream/40 overflow-x-auto">
+            {methodBreakdown.map(b => (
+              <div key={b.method} className="flex-shrink-0 bg-off-white border border-neutral-border rounded-lg px-3 py-2 min-w-[100px]">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-neutral-text-light">{b.method}</p>
+                <p className="text-sm font-bold text-coffee-brown">{formatCurrency(b.amount)}</p>
+                <p className="text-[10px] text-neutral-text-light">{b.pct}%</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="p-4 md:p-6 bg-off-white border-b border-neutral-border">
           {/* Date Picker and Search */}
           <div className="space-y-4">
             {/* Date Picker with Quick Filters */}
@@ -328,77 +359,21 @@ export default function OrderHistoryPage() {
               </button>
             </div>
           </div>
-        </header>
-
-        {/* Daily Summary */}
-        {!isLoading && !error && (
-          <div className="p-4 sm:p-6 bg-off-white border-b border-neutral-border">
-            <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
-              <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-200">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-lily-green/10 dark:bg-lily-green/20 rounded-lg text-lily-green dark:text-lily-green-light">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-neutral-text-light dark:text-neutral-text-light">Total Orders</p>
-                    <p className="text-2xl font-bold font-heading text-neutral-text-dark">
-                      {totalOrders}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                onClick={() => setIsRevenueModalOpen(true)}
-                className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group hover:-translate-y-1"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-coffee-light/10 dark:bg-coffee-light/20 rounded-lg text-coffee-brown dark:text-coffee-light group-hover:bg-coffee-brown group-hover:text-white dark:group-hover:text-white transition-colors">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-neutral-text-light dark:text-neutral-text-light group-hover:text-coffee-brown dark:group-hover:text-cream transition-colors">
-                      {revenueLabel}
-                    </p>
-                    <p className="text-2xl font-bold font-heading text-coffee-brown dark:text-cream">
-                      {formatCurrency(periodTotalRevenue)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-200">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-neutral-text-light dark:text-neutral-text-light">Average Order</p>
-                    <p className="text-2xl font-bold font-heading text-coffee-brown dark:text-cream">
-                      {formatCurrency(periodTotalOrders > 0 ? Math.round(periodTotalRevenue / periodTotalOrders) : 0)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
 
         {/* Content */}
         <main className="p-4 sm:p-6 flex-1">
-          {/* Loading State */}
+          {/* Loading State — skeleton */}
           {isLoading && (
-            <div className="flex items-center justify-center min-h-[400px]">
-              <div className="text-center">
-                <div className="animate-spin h-12 w-12 border-4 border-coffee-brown border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p className="text-neutral-text-light">Loading order history...</p>
+            <div className="p-6 animate-pulse space-y-2">
+              <div className="flex gap-0 border border-neutral-border rounded-lg overflow-hidden mb-4">
+                {[1,2,3].map(i => (
+                  <div key={i} className="flex-1 h-14 bg-neutral-border/50" />
+                ))}
               </div>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-10 w-full bg-neutral-border/50 rounded" />
+              ))}
             </div>
           )}
 
@@ -495,7 +470,8 @@ export default function OrderHistoryPage() {
                   {orders.map((order) => (
                     <tr
                       key={order.id}
-                      className="hover:bg-cream/50 transition-colors"
+                      onClick={() => handleViewDetails(order.id)}
+                      className="hover:bg-cream/40 transition-colors cursor-pointer"
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
@@ -524,7 +500,7 @@ export default function OrderHistoryPage() {
                         {renderPaymentMethods(order)}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <p className="font-semibold text-coffee-brown">
+                        <p className={`font-semibold ${order.status === 'canceled' ? 'line-through text-neutral-text-light' : 'text-coffee-brown'}`}>
                           {formatCurrency(order.total_amount)}
                         </p>
                       </td>
@@ -533,7 +509,7 @@ export default function OrderHistoryPage() {
                           {order.status !== 'canceled' && (
                             <>
                               <button
-                                onClick={() => handlePrintReceipt(order.id)}
+                                onClick={(e) => { e.stopPropagation(); handlePrintReceipt(order.id); }}
                                 className="px-3 py-1 text-sm bg-lily-green/10 border border-lily-green text-lily-green hover:bg-lily-green hover:text-white rounded-md transition-colors flex items-center gap-1"
                                 title="Print Receipt"
                               >
@@ -541,7 +517,7 @@ export default function OrderHistoryPage() {
                                 <span className="hidden lg:inline">Print</span>
                               </button>
                               <button
-                                onClick={() => handleEditPayments(order)}
+                                onClick={(e) => { e.stopPropagation(); handleEditPayments(order); }}
                                 className="px-3 py-1 text-sm bg-coffee-brown/10 border border-coffee-brown text-coffee-brown hover:bg-coffee-brown hover:text-white rounded-md transition-colors flex items-center gap-1"
                                 title="Edit Payments"
                               >
@@ -550,12 +526,6 @@ export default function OrderHistoryPage() {
                               </button>
                             </>
                           )}
-                          <button
-                            onClick={() => handleViewDetails(order.id)}
-                            className="px-3 py-1 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors whitespace-nowrap"
-                          >
-                            View Details
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -569,7 +539,8 @@ export default function OrderHistoryPage() {
                 {orders.map((order) => (
                   <div
                     key={order.id}
-                    className="rounded-xl border border-neutral-border bg-cream/50 p-4 space-y-3"
+                    onClick={() => handleViewDetails(order.id)}
+                    className="rounded-xl border border-neutral-border bg-cream/50 p-4 space-y-3 cursor-pointer hover:bg-cream/40 transition-colors"
                   >
                     <div className="flex flex-wrap justify-between gap-2">
                       <div>
@@ -587,7 +558,7 @@ export default function OrderHistoryPage() {
                         <p className="text-xs text-neutral-text-light uppercase tracking-wide">
                           Total
                         </p>
-                        <p className="font-semibold text-coffee-brown">
+                        <p className={`font-semibold ${order.status === 'canceled' ? 'line-through text-neutral-text-light' : 'text-coffee-brown'}`}>
                           {formatCurrency(order.total_amount)}
                         </p>
                       </div>
@@ -624,7 +595,7 @@ export default function OrderHistoryPage() {
                       {order.status !== 'canceled' && (
                         <>
                           <button
-                            onClick={() => handlePrintReceipt(order.id)}
+                            onClick={(e) => { e.stopPropagation(); handlePrintReceipt(order.id); }}
                             className="px-4 py-2 text-sm bg-lily-green/10 border border-lily-green text-lily-green hover:bg-lily-green hover:text-white rounded-md transition-colors flex items-center justify-center gap-1"
                             title="Print Receipt"
                           >
@@ -632,7 +603,7 @@ export default function OrderHistoryPage() {
                             Print
                           </button>
                           <button
-                            onClick={() => handleEditPayments(order)}
+                            onClick={(e) => { e.stopPropagation(); handleEditPayments(order); }}
                             className="px-4 py-2 text-sm bg-coffee-brown/10 border border-coffee-brown text-coffee-brown hover:bg-coffee-brown hover:text-white rounded-md transition-colors flex items-center justify-center gap-1"
                             title="Edit Payments"
                           >
@@ -641,12 +612,6 @@ export default function OrderHistoryPage() {
                           </button>
                         </>
                       )}
-                      <button
-                        onClick={() => handleViewDetails(order.id)}
-                        className="flex-1 px-4 py-2 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors"
-                      >
-                        View Details
-                      </button>
                     </div>
                   </div>
                 ))}
