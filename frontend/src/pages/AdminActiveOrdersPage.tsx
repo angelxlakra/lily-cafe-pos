@@ -133,31 +133,16 @@ function OrderRow({ order, isSelected, onClick }: OrderRowProps) {
   );
 }
 
-// ── detail panel ──────────────────────────────────────────────────────────────
+// ── item row ──────────────────────────────────────────────────────────────────
 
-interface DetailPanelProps {
-  order: Order;
-  onGenerateBill: () => void;
-  onEdit: () => void;
-  onCancel: () => void;
+interface ItemRowProps {
+  item: OrderItem;
   onOpenServeModal: (item: OrderItem) => void;
   onOpenEditModal: (item: OrderItem) => void;
 }
 
-function DetailPanel({
-  order,
-  onGenerateBill,
-  onEdit,
-  onCancel,
-  onOpenServeModal,
-  onOpenEditModal,
-}: DetailPanelProps) {
-  const age = getOrderAgeMinutes(order.created_at);
-  const items = order.order_items || [];
-  const dineInItems = items.filter(i => !i.is_parcel);
-  const parcelItems = items.filter(i => i.is_parcel);
-
-  const ItemRow = ({ item }: { item: OrderItem }) => (
+function ItemRow({ item, onOpenServeModal, onOpenEditModal }: ItemRowProps) {
+  return (
     <tr className="border-b border-[#F5E6D3] last:border-0">
       <td className="py-2 px-3 text-sm text-coffee-dark">{item.menu_item_name}</td>
       <td className="py-2 px-3 text-sm text-center text-neutral-text-light">{item.quantity}</td>
@@ -192,6 +177,31 @@ function DetailPanel({
       </td>
     </tr>
   );
+}
+
+// ── detail panel ──────────────────────────────────────────────────────────────
+
+interface DetailPanelProps {
+  order: Order;
+  onGenerateBill: () => void;
+  onEdit: () => void;
+  onCancel: () => void;
+  onOpenServeModal: (item: OrderItem) => void;
+  onOpenEditModal: (item: OrderItem) => void;
+}
+
+function DetailPanel({
+  order,
+  onGenerateBill,
+  onEdit,
+  onCancel,
+  onOpenServeModal,
+  onOpenEditModal,
+}: DetailPanelProps) {
+  const age = getOrderAgeMinutes(order.created_at);
+  const items = order.order_items || [];
+  const dineInItems = items.filter(i => !i.is_parcel);
+  const parcelItems = items.filter(i => i.is_parcel);
 
   return (
     <div className="flex flex-col h-full">
@@ -239,7 +249,7 @@ function DetailPanel({
                 </tr>
               </thead>
               <tbody>
-                {dineInItems.map(item => <ItemRow key={item.id} item={item} />)}
+                {dineInItems.map(item => <ItemRow key={item.id} item={item} onOpenServeModal={onOpenServeModal} onOpenEditModal={onOpenEditModal} />)}
               </tbody>
             </table>
           </div>
@@ -264,7 +274,7 @@ function DetailPanel({
                 </tr>
               </thead>
               <tbody>
-                {parcelItems.map(item => <ItemRow key={item.id} item={item} />)}
+                {parcelItems.map(item => <ItemRow key={item.id} item={item} onOpenServeModal={onOpenServeModal} onOpenEditModal={onOpenEditModal} />)}
               </tbody>
             </table>
           </div>
@@ -340,29 +350,35 @@ export default function AdminActiveOrdersPage() {
   const orders = activeOrders || [];
   const selectedOrder = orders.find(o => o.id === selectedOrderId) ?? null;
 
-  // Auto-select first order when none selected
+  // Auto-select first order when none selected or selected order disappears
   useEffect(() => {
-    if (selectedOrderId === null && orders.length > 0) {
+    if (orders.length === 0) {
+      setSelectedOrderId(null);
+      return;
+    }
+    const stillExists = orders.some(o => o.id === selectedOrderId);
+    if (!stillExists) {
       setSelectedOrderId(orders[0].id);
     }
   }, [orders, selectedOrderId]);
 
   // Stats
-  const liveTotal = orders.reduce((sum, o) => sum + o.total_amount, 0);
-  const pendingServe = orders.filter(o =>
-    (o.order_items || []).some(i => !i.is_served)
-  ).length;
-  const readyToBill = orders.filter(o =>
-    (o.order_items || []).length > 0 &&
-    (o.order_items || []).every(i => i.is_served)
-  ).length;
-
-  const stats = [
-    { label: 'Active', value: String(orders.length) },
-    { label: 'Live Total', value: formatCurrency(liveTotal) },
-    { label: 'Pending Serve', value: String(pendingServe) },
-    { label: 'Ready to Bill', value: String(readyToBill) },
-  ];
+  const stats = useMemo(() => {
+    const liveTotal = orders.reduce((sum, o) => sum + o.total_amount, 0);
+    const pendingServe = orders.filter(o =>
+      (o.order_items || []).some(i => !i.is_served)
+    ).length;
+    const readyToBill = orders.filter(o =>
+      (o.order_items || []).length > 0 &&
+      (o.order_items || []).every(i => i.is_served)
+    ).length;
+    return [
+      { label: 'Active', value: String(orders.length) },
+      { label: 'Live Total', value: formatCurrency(liveTotal) },
+      { label: 'Pending Serve', value: String(pendingServe) },
+      { label: 'Ready to Bill', value: String(readyToBill) },
+    ];
+  }, [orders]);
 
   // Modal guards
   const isAnyModalOpen =
