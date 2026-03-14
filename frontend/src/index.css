@@ -38,6 +38,8 @@
   --color-neutral-border: #D4C4B0;
   --color-neutral-background: #FFFCF7;
 
+  --color-amber: #C27A2A;
+
   /* Custom fonts */
   --font-sans: Inter, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
   --font-heading: "Quesha", "Georgia", "Times New Roman", serif;
@@ -76,6 +78,8 @@
   --color-neutral-text-muted: #9B8977;
   --color-neutral-border: #4A4034;
   --color-neutral-background: #1C1812;
+
+  --color-amber: #D4943F;
 }
 
 /* Dark mode: Richer backgrounds for header elements */
