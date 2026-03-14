@@ -7,7 +7,7 @@ import { useActiveOrders } from '../hooks/useOrders';
 import { useAppConfig } from '../hooks/useConfig';
 import TableGrid from '../components/TableGrid';
 import BottomNav from '../components/BottomNav';
-import BackgroundPattern from '../components/BackgroundPattern';
+import LinenTexture from '../components/LinenTexture';
 import { ThemeToggle } from '../components/ThemeToggle';
 
 export default function TablesPage() {
@@ -19,7 +19,7 @@ export default function TablesPage() {
   return (
     <div className="min-h-screen bg-neutral-background pb-16 relative">
       {/* Background Pattern */}
-      <BackgroundPattern opacity={0.04} density="light" />
+      <LinenTexture />
 
       {/* Floating Theme Toggle */}
       <div className="fixed top-4 right-4 z-50">
@@ -28,6 +28,9 @@ export default function TablesPage() {
 
       {/* Header */}
       <header className="bg-gradient-primary text-cream p-6 sticky top-0 z-30 shadow-medium">
+        <p className="text-[10px] font-semibold tracking-widest uppercase text-lily-green/80 text-center mb-0.5">
+          Lily Cafe
+        </p>
         <h1 className="font-heading heading-sub text-center text-cream">Lily Cafe – Tables</h1>
         <div className="text-center text-white text-base mt-1 font-medium">Select a table to take an order</div>
       </header>
