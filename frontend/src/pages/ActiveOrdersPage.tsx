@@ -277,7 +277,6 @@ function OrderDetailsModal({
   onClose,
   gstRateLabel,
 }: OrderDetailsModalProps) {
-  console.log({ order });
   return (
     <>
       {/* Backdrop */}
