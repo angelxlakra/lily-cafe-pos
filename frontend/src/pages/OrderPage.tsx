@@ -13,7 +13,7 @@ import MenuList from "../components/MenuList";
 import FloatingCartButton from "../components/FloatingCartButton";
 import CartDrawer from "../components/CartDrawer";
 import BottomNav from "../components/BottomNav";
-import BackgroundPattern from "../components/BackgroundPattern";
+import LinenTexture from "../components/LinenTexture";
 import KeyboardShortcutsHelp from "../components/KeyboardShortcutsHelp";
 import { toast } from "../utils/toast";
 import type { MenuItem } from "../types";
@@ -282,7 +282,7 @@ export default function OrderPage() {
   return (
     <div className="min-h-screen bg-neutral-background pb-16 relative">
       {/* Background Pattern */}
-      <BackgroundPattern opacity={0.04} density="light" />
+      <LinenTexture />
 
       {/* Header */}
       <header className="bg-gradient-primary text-cream p-4 sticky top-0 z-30 shadow-medium">
