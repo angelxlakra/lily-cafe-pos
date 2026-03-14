@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { LockOpen, LockKey, CheckCircle, Info } from '@phosphor-icons/react';
-import { useSidebar } from '../context/SidebarContext';
 import BottomNav from '../components/BottomNav';
+import PageHeader from '../components/PageHeader';
 import DenominationCounter, { Denominations } from '../components/DenominationCounter';
 import { useCashCounterToday, useOpenCashCounter, useCloseCashCounter, useVerifyCashCounter, useCashCounterHistory } from '../hooks/useCashCounter';
 import { toast } from '../utils/toast';
@@ -11,39 +11,19 @@ import { formatDateTime } from '../utils/formatDateTime';
 
 export default function CashCounterPage() {
   const { data: todayCounter, isLoading } = useCashCounterToday();
-  const { setMobileOpen } = useSidebar();
 
   return (
     <div className="flex flex-col h-full bg-neutral-background">
 
-      {/* Header */}
-      <header className="bg-off-white border-b border-neutral-border p-4 md:p-6 flex-shrink-0">
-        <div className="flex items-center gap-4">
-          {/* Hamburger Menu Button */}
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg bg-coffee-brown text-cream hover:bg-coffee-dark transition-colors"
-            aria-label="Open menu"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-          <div className="flex-1">
-            <h1 className="font-heading heading-section text-neutral-text-dark">
-              Cash Counter
-            </h1>
-            <p className="text-sm text-muted mt-1">
-              Daily cash management and verification
-            </p>
-          </div>
-        </div>
-      </header>
+      <PageHeader title="Cash Counter" />
 
       <main className="p-4 lg:p-6 max-w-7xl mx-auto w-full flex-1 overflow-y-auto">
-        {isLoading ? (
-          <div className="text-center py-12 text-neutral-text-muted">Loading counter status...</div>
-        ) : (
+        {isLoading && (
+          <div className="p-6 animate-pulse">
+            <div className="h-48 w-full bg-neutral-border/50 rounded-xl" />
+          </div>
+        )}
+        {!isLoading && (
           <div className="flex flex-col lg:flex-row gap-6">
               {/* Middle Column - Main Content */}
               <div className="flex-1 space-y-3 min-w-0">
@@ -282,7 +262,7 @@ function OpenCounterForm() {
   };
 
   return (
-    <div className="card p-4 animate-fade-in">
+    <div className="card p-4 animate-fade-in border-l-4 border-lily-green">
       <h3 className="text-base font-heading text-neutral-text-dark mb-3 flex items-center justify-between">
         <span className="flex items-center gap-2">
           <LockOpen size={20} />
@@ -403,7 +383,7 @@ function CloseCounterForm({ counter }: { counter: any }) {
 
   return (
     <>
-      <div className="card p-4 animate-fade-in border-l-4 border-warning">
+      <div className="card p-4 animate-fade-in border-l-4 border-lily-green">
         <h3 className="text-base font-heading text-neutral-text-dark mb-3 flex items-center justify-between">
           <span className="flex items-center gap-2">
             <LockKey size={20} />
@@ -598,7 +578,7 @@ function VerifyCounterForm({ counter }: { counter: any }) {
 
   return (
     <>
-      <div className="card p-6 animate-fade-in border-l-4 border-info">
+      <div className="card p-6 animate-fade-in border-l-4 border-amber">
         <h3 className="text-lg font-heading text-neutral-text-dark mb-4 flex items-center gap-2">
           <CheckCircle size={24} />
           Owner Verification Required
