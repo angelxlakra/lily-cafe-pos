@@ -1,15 +1,8 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,400;1,9..144,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 
 /* Override dark mode to use class selector instead of system preference */
 @custom-variant dark (&:where(.dark, .dark *));
-
-@font-face {
-  font-family: "Quesha";
-  src: url("/fonts/Quesha.ttf") format("truetype");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
 
 /* Custom theme configuration for Lily Cafe */
 @theme {
