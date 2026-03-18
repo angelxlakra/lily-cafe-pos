@@ -4,38 +4,38 @@
 /* Override dark mode to use class selector instead of system preference */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Custom theme configuration for Lily Cafe */
+/* Custom theme configuration for Lily Cafe — Terracotta & Sand */
 @theme {
-  /* Coffee theme colors - Light Mode */
-  --color-coffee-brown: #6F4E37;
-  --color-coffee-dark: #4A3728;
-  --color-coffee-light: #A0826D;
+  /* Terracotta & Sand palette - Light Mode */
+  --color-coffee-brown: #c04e30;
+  --color-coffee-dark: #b5462a;
+  --color-coffee-light: #e8906a;
 
-  --color-cream: #F5E6D3;
-  --color-off-white: #FAF8F5;
+  --color-cream: #fdeee4;
+  --color-off-white: #fffaf6;
 
-  --color-lily-green: #8B9D83;
-  --color-lily-green-light: #A8B89F;
+  --color-lily-green: #3d7a50;
+  --color-lily-green-light: #5a9a6e;
 
-  /* Functional colors */
+  /* Functional colors — unchanged */
   --color-success: #4CAF50;
   --color-error: #F44336;
   --color-warning: #FF9800;
   --color-info: #2196F3;
 
   /* Neutral colors - Light Mode */
-  --color-neutral-text-dark: #2C2420;
-  --color-neutral-text-body: #43352D;
-  --color-neutral-text-light: #6B5D54;
-  --color-neutral-text-muted: #8F8076;
-  --color-neutral-border: #D4C4B0;
-  --color-neutral-background: #FFFCF7;
+  --color-neutral-text-dark: #1e1208;
+  --color-neutral-text-body: #5a3e28;
+  --color-neutral-text-light: #6e5240;
+  --color-neutral-text-muted: #7a6258;
+  --color-neutral-border: #e8d0c0;
+  --color-neutral-background: #fdf7f2;
 
   --color-amber: #C27A2A;
 
   /* Custom fonts */
-  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-  --font-heading: "Quesha", "Georgia", "Times New Roman", serif;
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-heading: 'Fraunces', 'Georgia', 'Times New Roman', serif;
 
   /* Custom spacing (8px grid) */
   --spacing-18: 4.5rem;
@@ -46,31 +46,32 @@
   --min-width-touch: 3rem;
 }
 
-/* Dark Mode Theme */
+/* Dark Mode Theme — Terracotta & Sand */
 .dark {
-  /* Coffee theme colors - Dark Mode (warmer tones) */
-  --color-coffee-brown: #B8916A;
-  --color-coffee-dark: #D4A574;
-  --color-coffee-light: #8A6E52;
+  /* Terracotta & Sand palette - Dark Mode */
+  --color-coffee-brown: #e07050;
+  --color-coffee-dark: #f08060;
+  --color-coffee-light: #a05040;
 
-  --color-cream: #3A3128;
-  --color-off-white: #2A2419;
+  --color-cream: #2a1c10;
+  --color-off-white: #241810;
 
-  --color-lily-green: #9BAF91;
+  --color-lily-green: #5a9a6e;
+  --color-lily-green-light: #7ab88a;
 
-  /* Functional colors - Dark Mode (slightly muted) */
+  /* Functional colors - Dark Mode (preserved exactly) */
   --color-success: #66BB6A;
   --color-error: #EF5350;
   --color-warning: #FFA726;
   --color-info: #42A5F5;
 
   /* Neutral colors - Dark Mode */
-  --color-neutral-text-dark: #F5F0E8;
-  --color-neutral-text-body: #E8DFD3;
-  --color-neutral-text-light: #C5B8A8;
-  --color-neutral-text-muted: #9B8977;
-  --color-neutral-border: #4A4034;
-  --color-neutral-background: #1C1812;
+  --color-neutral-text-dark: #f5ede4;
+  --color-neutral-text-body: #c8a888;
+  --color-neutral-text-light: #b08870;
+  --color-neutral-text-muted: #b89070;
+  --color-neutral-border: #3d2a1e;
+  --color-neutral-background: #1a1008;
 
   --color-amber: #D4943F;
 }
