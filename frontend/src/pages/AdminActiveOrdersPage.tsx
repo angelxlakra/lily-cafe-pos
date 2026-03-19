@@ -1,7 +1,9 @@
 // frontend/src/pages/AdminActiveOrdersPage.tsx
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
-import { ClipboardText } from '@phosphor-icons/react';
+// @ts-expect-error - These icons are imported for use in upcoming tasks
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { ClipboardText, CurrencyInr, PencilSimple, ArrowsLeftRight } from '@phosphor-icons/react';
 import {
   useActiveOrders,
   useCancelOrder,
@@ -17,6 +19,7 @@ import PaymentModal from '../components/PaymentModal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import PartialServeModal from '../components/PartialServeModal';
 import EditServedQuantityModal from '../components/EditServedQuantityModal';
+import MoveTableModal from '../components/MoveTableModal';
 import KeyboardShortcutsHelp from '../components/KeyboardShortcutsHelp';
 import { formatCurrency } from '../utils/formatCurrency';
 import type { Order, OrderItem } from '../types';
@@ -204,7 +207,7 @@ function DetailPanel({
   const parcelItems = items.filter(i => i.is_parcel);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full w-full">
       {/* Detail header */}
       <div className="px-5 py-4 border-b border-neutral-border bg-off-white/80">
         <div className="flex items-start justify-between">
@@ -342,6 +345,7 @@ export default function AdminActiveOrdersPage() {
   const [cancelOrderId, setCancelOrderId] = useState<number | null>(null);
   const [serveModalData, setServeModalData] = useState<{ item: OrderItem; orderId: number } | null>(null);
   const [editModalData, setEditModalData] = useState<{ item: OrderItem; orderId: number } | null>(null);
+  const [moveOrderId, setMoveOrderId] = useState<number | null>(null);
 
   const cancelMutation = useCancelOrder();
   const updateServedMutation = useUpdateItemServedStatus();
@@ -386,7 +390,8 @@ export default function AdminActiveOrdersPage() {
     editOrder !== null ||
     cancelOrderId !== null ||
     serveModalData !== null ||
-    editModalData !== null;
+    editModalData !== null ||
+    moveOrderId !== null;
 
   // Keyboard shortcuts
   const shortcuts = useMemo(() => ({
@@ -570,6 +575,12 @@ export default function AdminActiveOrdersPage() {
           orderId={editModalData.orderId}
           onClose={() => setEditModalData(null)}
           onEdit={handleEditServedQuantity}
+        />
+      )}
+      {moveOrderId && (
+        <MoveTableModal
+          order={orders.find(o => o.id === moveOrderId)!}
+          onClose={() => setMoveOrderId(null)}
         />
       )}
 
