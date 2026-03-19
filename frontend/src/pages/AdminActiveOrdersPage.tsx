@@ -221,9 +221,9 @@ interface DetailPanelProps {
 
 function DetailPanel({
   order,
-  onGenerateBill,
-  onEdit,
-  onCancel,
+  onGenerateBill: _onGenerateBill,
+  onEdit: _onEdit,
+  onCancel: _onCancel,
   onOpenServeModal,
   onOpenEditModal,
 }: DetailPanelProps) {
@@ -310,36 +310,79 @@ function DetailPanel({
         )}
       </div>
 
-      {/* Footer */}
-      <div className="px-5 py-4 border-t border-neutral-border bg-off-white/80">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm text-neutral-text-light">Total</span>
-          <span className="font-heading italic text-xl text-coffee-dark">
-            {formatCurrency(order.total_amount)}
-          </span>
+    </div>
+  );
+}
+
+// ── order sidebar ──────────────────────────────────────────────────────────────
+
+interface OrderSidebarProps {
+  order: Order;
+  onGenerateBill: () => void;
+  onEdit: () => void;
+  onMove: () => void;
+  onCancel: () => void;
+}
+
+function OrderSidebar({ order, onGenerateBill, onEdit, onMove, onCancel }: OrderSidebarProps) {
+  const items = order.order_items || [];
+  const servedCount = items.filter(i => i.is_served).length;
+  const pendingCount = items.length - servedCount;
+
+  return (
+    <div className="hidden lg:flex flex-col w-56 flex-shrink-0 border-l border-neutral-border bg-off-white/60">
+      {/* Summary card */}
+      <div className="bg-coffee-brown/10 border border-coffee-light/30 rounded-xl p-4 mx-4 mt-4">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-text-muted mb-1">Total</p>
+        <p className="font-heading italic text-2xl text-coffee-dark">{formatCurrency(order.total_amount)}</p>
+        <div className="flex gap-2 mt-2 flex-wrap">
+          {servedCount > 0 && (
+            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-lily-green/10 text-lily-green">
+              {servedCount} served
+            </span>
+          )}
+          {pendingCount > 0 && (
+            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber/10 text-amber">
+              {pendingCount} pending
+            </span>
+          )}
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={onGenerateBill}
-            className="flex-1 bg-coffee-brown text-cream text-sm font-semibold py-2 rounded-lg hover:bg-coffee-dark transition-colors"
-          >
-            Generate Bill
-          </button>
-          <button
-            onClick={onEdit}
-            className="px-4 bg-cream border border-neutral-border text-coffee-dark text-sm font-semibold py-2 rounded-lg hover:bg-neutral-border/30 transition-colors"
-          >
-            Edit
-          </button>
-        </div>
-        <div className="mt-2 text-center">
-          <button
-            onClick={onCancel}
-            className="text-xs text-neutral-text-light underline hover:text-error transition-colors"
-          >
-            cancel order
-          </button>
-        </div>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex flex-col gap-2 px-4 mt-4">
+        <button
+          onClick={onGenerateBill}
+          className="btn btn-primary w-full text-sm flex items-center justify-center gap-1.5"
+        >
+          <CurrencyInr size={15} />
+          Generate Bill
+        </button>
+        <button
+          onClick={onEdit}
+          className="btn btn-secondary w-full text-sm flex items-center justify-center gap-1.5"
+        >
+          <PencilSimple size={15} />
+          Edit Order
+        </button>
+        <button
+          onClick={onMove}
+          className="w-full text-sm font-semibold py-2 px-3 rounded-lg border border-lily-green/30 text-lily-green bg-lily-green/5 hover:bg-lily-green/10 transition-colors flex items-center justify-center gap-1.5"
+        >
+          <ArrowsLeftRight size={15} />
+          Move Table
+        </button>
+      </div>
+
+      {/* Divider + cancel */}
+      <div className="border-t border-neutral-border mx-4 mt-4" />
+      <div className="text-center mt-2 px-4">
+        <button
+          onClick={onCancel}
+          className="text-xs text-neutral-text-muted underline hover:text-error transition-colors"
+        >
+          cancel order
+        </button>
       </div>
     </div>
   );
@@ -552,7 +595,7 @@ export default function AdminActiveOrdersPage() {
             ))}
           </div>
 
-          {/* Detail panel — right panel, hidden on mobile */}
+          {/* Detail panel — center, always shown on lg+ */}
           <div className="hidden lg:flex flex-1 overflow-hidden">
             {selectedOrder ? (
               <DetailPanel
@@ -567,6 +610,17 @@ export default function AdminActiveOrdersPage() {
               <EmptyDetailPanel />
             )}
           </div>
+
+          {/* Right sidebar — actions, lg+ only */}
+          {selectedOrder && (
+            <OrderSidebar
+              order={selectedOrder}
+              onGenerateBill={() => setPaymentOrderId(selectedOrder.id)}
+              onEdit={() => setEditOrder(selectedOrder)}
+              onMove={() => setMoveOrderId(selectedOrder.id)}
+              onCancel={() => setCancelOrderId(selectedOrder.id)}
+            />
+          )}
         </div>
       )}
 
