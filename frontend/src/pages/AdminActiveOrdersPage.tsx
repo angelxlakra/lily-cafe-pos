@@ -1,7 +1,7 @@
 // frontend/src/pages/AdminActiveOrdersPage.tsx
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
-import { ClipboardText, CurrencyInr as _CurrencyInr, PencilSimple as _PencilSimple, ArrowsLeftRight as _ArrowsLeftRight } from '@phosphor-icons/react';
+import { ClipboardText, CurrencyInr, PencilSimple, ArrowsLeftRight } from '@phosphor-icons/react';
 import {
   useActiveOrders,
   useCancelOrder,
@@ -84,9 +84,12 @@ interface OrderRowProps {
   order: Order;
   isSelected: boolean;
   onClick: () => void;
+  onBill: (e: React.MouseEvent) => void;
+  onEdit: (e: React.MouseEvent) => void;
+  onMove: (e: React.MouseEvent) => void;
 }
 
-function OrderRow({ order, isSelected, onClick }: OrderRowProps) {
+function OrderRow({ order, isSelected, onClick, onBill, onEdit, onMove }: OrderRowProps) {
   const age = getOrderAgeMinutes(order.created_at);
   const items = order.order_items || [];
   const servedCount = items.filter(i => i.is_served).length;
@@ -128,6 +131,31 @@ function OrderRow({ order, isSelected, onClick }: OrderRowProps) {
           <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber/10 text-amber">
             {pendingCount} pending
           </span>
+        )}
+      </div>
+      <div className="flex gap-1 mt-1.5 flex-wrap">
+        <button
+          onClick={onBill}
+          className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-coffee-brown/10 text-coffee-brown flex items-center gap-0.5 hover:bg-coffee-brown/20 transition-colors"
+        >
+          <CurrencyInr size={10} />
+          Bill
+        </button>
+        <button
+          onClick={onEdit}
+          className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-cream border border-neutral-border text-neutral-text-dark flex items-center gap-0.5 hover:bg-neutral-border/30 transition-colors"
+        >
+          <PencilSimple size={10} />
+          Edit
+        </button>
+        {isSelected && (
+          <button
+            onClick={onMove}
+            className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-lily-green/10 text-lily-green flex items-center gap-0.5 hover:bg-lily-green/20 transition-colors"
+          >
+            <ArrowsLeftRight size={10} />
+            Move
+          </button>
         )}
       </div>
     </button>
@@ -517,6 +545,9 @@ export default function AdminActiveOrdersPage() {
                 order={order}
                 isSelected={order.id === selectedOrderId}
                 onClick={() => setSelectedOrderId(order.id)}
+                onBill={(e) => { e.stopPropagation(); setPaymentOrderId(order.id); }}
+                onEdit={(e) => { e.stopPropagation(); setEditOrder(order); }}
+                onMove={(e) => { e.stopPropagation(); setMoveOrderId(order.id); }}
               />
             ))}
           </div>
