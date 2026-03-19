@@ -1,9 +1,7 @@
 // frontend/src/pages/AdminActiveOrdersPage.tsx
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
-// @ts-expect-error - These icons are imported for use in upcoming tasks
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { ClipboardText, CurrencyInr, PencilSimple, ArrowsLeftRight } from '@phosphor-icons/react';
+import { ClipboardText, CurrencyInr as _CurrencyInr, PencilSimple as _PencilSimple, ArrowsLeftRight as _ArrowsLeftRight } from '@phosphor-icons/react';
 import {
   useActiveOrders,
   useCancelOrder,

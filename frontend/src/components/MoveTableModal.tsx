@@ -5,7 +5,9 @@ interface MoveTableModalProps {
   onClose: () => void;
 }
 
-export default function MoveTableModal({ onClose }: MoveTableModalProps) {
+export default function MoveTableModal({ order: _order, onClose }: MoveTableModalProps) {
+  // TODO(Task 4): destructure and use `order` when implementing the real move flow
+
   return (
     <>
       <div className="fixed inset-0 bg-black/50 z-50" onClick={onClose} aria-hidden="true" />
