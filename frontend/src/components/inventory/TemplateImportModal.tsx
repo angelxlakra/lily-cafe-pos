@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import { X, Upload, CheckCircle, Warning } from '@phosphor-icons/react';
+import { Upload, CheckCircle, Warning } from '@phosphor-icons/react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { inventoryApi } from '../../api/inventory';
 import { parseWhatsAppTemplate, type ParsedItem } from '../../utils/unitParser';
@@ -146,22 +146,29 @@ export default function TemplateImportModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-coffee-dark rounded-lg shadow-xl max-w-4xl w-full my-8 flex flex-col max-h-[calc(100vh-4rem)]">
+      <div className="bg-off-white border border-neutral-border rounded-lg shadow-xl max-w-4xl w-full my-8 flex flex-col max-h-[calc(100vh-4rem)]">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 md:p-6 border-b border-neutral-border flex-shrink-0">
-          <div>
-            <h2 className="text-lg md:text-xl font-heading text-neutral-text-dark dark:text-cream">
-              Import from WhatsApp Template
+        <div
+          style={{ background: 'linear-gradient(135deg, #2196F3, #1565C0)' }}
+          className="flex items-center gap-3 px-5 py-4 flex-shrink-0"
+        >
+          <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+            <Upload size={20} weight="duotone" color="white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-white font-heading italic text-base font-bold leading-tight">
+              Import Template
             </h2>
-            <p className="text-xs md:text-sm text-neutral-text-muted mt-1">
+            <p className="text-white/70 text-xs mt-0.5">
               Paste your WhatsApp inventory template to bulk import items
             </p>
           </div>
           <button
             onClick={handleClose}
-            className="p-2 hover:bg-neutral-background rounded-lg transition-colors flex-shrink-0"
+            aria-label="Close"
+            className="text-white/60 hover:text-white text-xl leading-none ml-auto flex-shrink-0"
           >
-            <X size={24} className="text-neutral-text-muted" />
+            &times;
           </button>
         </div>
 
@@ -346,7 +353,7 @@ Rice - YES
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between gap-3 p-4 md:p-6 border-t border-neutral-border flex-shrink-0 bg-white dark:bg-coffee-dark">
+        <div className="flex items-center justify-between gap-3 p-4 md:p-6 border-t border-neutral-border flex-shrink-0 bg-off-white">
           {step === 'input' && (
             <>
               <button onClick={handleClose} className="btn-ghost text-sm md:text-base">
