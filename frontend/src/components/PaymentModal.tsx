@@ -139,18 +139,44 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
       {/* Modal - Wider for two-column layout */}
       <div
         className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                   w-full max-w-5xl max-h-[90vh] overflow-y-auto bg-neutral-background rounded-3xl shadow-2xl z-70
-                   flex flex-col lg:flex-row overflow-hidden"
+                   w-full max-w-5xl max-h-[90vh] bg-neutral-background rounded-3xl shadow-2xl z-70
+                   flex flex-col overflow-hidden"
         role="dialog"
         aria-modal="true"
       >
+        {/* Full-width gradient header */}
+        <div
+          style={{ background: 'linear-gradient(135deg, #c04e30, #b5462a)' }}
+          className="flex items-center gap-3 px-5 py-4 flex-shrink-0"
+        >
+          <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+            <svg className="w-5 h-5" fill="white" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-white font-heading italic text-base font-bold leading-tight">
+              Payment for Table {order?.table_number}
+            </h2>
+            {order?.order_number && (
+              <p className="text-white/70 text-xs mt-0.5">{order.order_number}</p>
+            )}
+          </div>
+          <button
+            onClick={!isProcessing ? onClose : undefined}
+            disabled={isProcessing}
+            aria-label="Close"
+            className="text-white/60 hover:text-white text-xl leading-none ml-auto flex-shrink-0 disabled:opacity-50"
+          >
+            &times;
+          </button>
+        </div>
+
+        {/* Two-column content */}
+        <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
         {/* LEFT COLUMN - Order Summary */}
         <div className="w-full lg:w-5/12 bg-off-white p-8 flex flex-col border-r border-neutral-border">
           <div className="mb-8">
-            <h2 className="text-3xl font-heading font-bold text-coffee-dark mb-6">
-              Payment for Table {order?.table_number}
-            </h2>
-
             {/* Summary Tiles Grid */}
             <div className="grid grid-cols-2 gap-4 mb-6">
               {/* Total Amount Box */}
@@ -163,15 +189,15 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
 
               {/* Amount Remaining Box */}
               <div className={`rounded-xl p-4 flex flex-col justify-center border ${
-                remaining === 0 
-                  ? 'bg-green-50 border-green-200' 
-                  : 'bg-orange-50 border-orange-200'
+                remaining === 0
+                  ? 'bg-lily-green/10 border-lily-green/30'
+                  : 'bg-amber/10 border-amber/30'
               }`}>
                 <span className={`text-sm font-medium mb-1 ${
-                  remaining === 0 ? 'text-green-700' : 'text-orange-700'
+                  remaining === 0 ? 'text-lily-green' : 'text-amber'
                 }`}>Remaining</span>
                 <span className={`text-2xl font-bold font-heading ${
-                  remaining === 0 ? 'text-green-800' : 'text-orange-800'
+                  remaining === 0 ? 'text-lily-green' : 'text-amber'
                 }`}>
                   {formatCurrency(remaining)}
                 </span>
@@ -235,16 +261,6 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
 
         {/* RIGHT COLUMN - Payment Controls */}
         <div className="w-full lg:w-7/12 bg-neutral-background p-8 flex flex-col relative">
-           {/* Close Button */}
-           <button
-            onClick={onClose}
-            disabled={isProcessing}
-            className="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full hover:bg-cream transition-colors text-neutral-text-light z-50"
-            aria-label="Close"
-          >
-            <span className="text-2xl">&times;</span>
-          </button>
-
           <div className="flex-1 flex flex-col min-h-0">
             {/* Payments Added Section - Scrollable if too many items */}
             <div className="flex-shrink min-h-0 overflow-y-auto mb-4 pr-2">
@@ -368,7 +384,7 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                {error && (
                   <div
                      id="payment-amount-error"
-                     className="mb-4 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl flex items-center gap-2 text-sm"
+                     className="mb-4 bg-error/10 border border-error/30 text-error px-3 py-2 rounded-xl flex items-center gap-2 text-sm"
                      role="alert"
                   >
                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -420,7 +436,8 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
              </button>
           </div>
         </div>
-      </div>
+        </div>  {/* closes two-column content */}
+      </div>    {/* closes modal */}
     </>
   );
 }
