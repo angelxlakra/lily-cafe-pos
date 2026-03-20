@@ -1,5 +1,5 @@
 
-import { X, Check } from '@phosphor-icons/react';
+import { ChartBar, Check } from '@phosphor-icons/react';
 import { useTheme } from '../../contexts/ThemeContext';
 
 export type ChartVisibility = {
@@ -54,21 +54,29 @@ export default function AnalyticsSettingsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div 
-        className="w-full max-w-md rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in duration-200"
-        style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}
+      <div
+        className="w-full max-w-md rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in duration-200 bg-off-white"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-neutral-border">
-          <h2 className="text-lg font-heading font-semibold" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
-            Dashboard Settings
-          </h2>
+        <div
+          style={{ background: 'linear-gradient(135deg, #C27A2A, #a06020)' }}
+          className="flex items-center gap-3 px-5 py-4 flex-shrink-0"
+        >
+          <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+            <ChartBar size={20} weight="duotone" color="white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-white font-heading italic text-base font-bold leading-tight">
+              Chart Settings
+            </h2>
+            <p className="text-white/70 text-xs mt-0.5">Show or hide dashboard charts</p>
+          </div>
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-black/5 transition-colors pb-1"
-            style={{ color: theme === 'dark' ? '#9ca3af' : '#6b7280' }}
+            aria-label="Close"
+            className="text-white/60 hover:text-white text-xl leading-none ml-auto flex-shrink-0"
           >
-            <X size={20} />
+            &times;
           </button>
         </div>
 
@@ -82,9 +90,8 @@ export default function AnalyticsSettingsModal({
             {AVAILABLE_CHARTS.map((chart) => (
               <div 
                 key={chart.id}
-                className="flex items-start gap-3 p-3 rounded-lg border border-neutral-border cursor-pointer transition-colors"
-                style={{ 
-                    backgroundColor: theme === 'dark' ? 'rgba(55, 65, 81, 0.5)' : '#f9fafb',
+                className="flex items-start gap-3 p-3 rounded-lg border border-neutral-border cursor-pointer transition-colors bg-cream"
+                style={{
                     borderColor: visibleCharts[chart.id] ? (theme === 'dark' ? '#A88B6A' : '#5C3D2E') : undefined
                 }}
                 onClick={() => onToggleChart(chart.id)}
