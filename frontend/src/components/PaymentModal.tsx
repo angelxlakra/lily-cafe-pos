@@ -291,7 +291,7 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                             <span className="font-bold text-coffee-dark text-sm">{formatCurrency(payment.amount)}</span>
                             <button
                                onClick={() => handleRemovePayment(index)}
-                               className="text-red-600 hover:bg-red-50 rounded-full p-1 transition-colors"
+                               className="text-error hover:bg-error/10 rounded-full p-1 transition-colors"
                             >
                                &times;
                             </button>
