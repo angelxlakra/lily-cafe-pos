@@ -202,8 +202,8 @@ export default function EditPaymentsModal({
                     </div>
                     <button
                       onClick={() => handleRemovePayment(index)}
-                      className="text-red-600 hover:text-red-700 text-sm font-medium
-                                 px-3 py-1 hover:bg-red-50 rounded transition-colors"
+                      className="text-error hover:text-error/80 text-sm font-medium
+                                 px-3 py-1 hover:bg-error/10 rounded transition-colors"
                       disabled={isSaving}
                     >
                       Remove
