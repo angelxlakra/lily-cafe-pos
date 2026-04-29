@@ -4,7 +4,8 @@
 // ========================================
 
 import { useState } from "react";
-import { OrderItem } from "../types";
+import { CheckCircle } from "@phosphor-icons/react";
+import type { OrderItem } from "../types";
 
 interface PartialServeModalProps {
   item: OrderItem;
@@ -41,24 +42,39 @@ export default function PartialServeModal({
       {/* Modal */}
       <div
         className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                   w-full max-w-md bg-white rounded-2xl shadow-2xl z-60 p-6"
+                   w-full max-w-md bg-off-white rounded-2xl shadow-2xl z-60
+                   border border-neutral-border overflow-hidden"
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex flex-col gap-6">
-          {/* Header */}
-          <div>
-            <h2 className="text-2xl font-heading font-bold text-coffee-dark mb-2">
+        {/* Header */}
+        <div
+          style={{ background: 'linear-gradient(135deg, #3d7a50, #2e6040)' }}
+          className="flex items-center gap-3 px-5 py-4"
+        >
+          <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+            <CheckCircle size={20} weight="duotone" color="white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-white font-heading italic text-base font-bold leading-tight">
               Serve Items
             </h2>
-            <p className="text-neutral-text-light text-sm">
-              {item.menu_item_name}
-            </p>
+            <p className="text-white/70 text-xs mt-0.5">{item.menu_item_name}</p>
           </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="text-white/60 hover:text-white text-xl leading-none ml-auto flex-shrink-0"
+          >
+            &times;
+          </button>
+        </div>
 
+        {/* Body */}
+        <div className="p-5 flex flex-col gap-5">
           {/* Status */}
-          <div className="bg-neutral-background rounded-xl p-4">
+          <div className="bg-cream border border-neutral-border rounded-xl p-4">
             <div className="flex justify-between items-center mb-2">
               <span className="text-neutral-text-light text-sm">Already Served</span>
               <span className="font-semibold text-coffee-dark">
@@ -67,9 +83,7 @@ export default function PartialServeModal({
             </div>
             <div className="flex justify-between items-center">
               <span className="text-neutral-text-light text-sm">Remaining</span>
-              <span className="font-semibold text-coffee-dark">
-                {remainingQuantity}
-              </span>
+              <span className="font-semibold text-coffee-dark">{remainingQuantity}</span>
             </div>
           </div>
 
@@ -79,7 +93,6 @@ export default function PartialServeModal({
               How many items to serve now?
             </label>
 
-            {/* Quantity Display */}
             <div className="text-center mb-4">
               <span className="text-5xl font-bold font-heading text-coffee-brown">
                 {quantityToServe}
@@ -89,33 +102,27 @@ export default function PartialServeModal({
               </span>
             </div>
 
-            {/* Slider Input */}
             <input
               type="range"
               min="0"
               max={remainingQuantity}
               value={quantityToServe}
               onChange={(e) => setQuantityToServe(parseInt(e.target.value, 10))}
-              className="w-full h-3 bg-neutral-border rounded-lg appearance-none cursor-pointer
-                         slider-thumb:appearance-none slider-thumb:w-6 slider-thumb:h-6
-                         slider-thumb:rounded-full slider-thumb:bg-coffee-brown
-                         slider-thumb:cursor-pointer slider-thumb:border-4 slider-thumb:border-white
-                         slider-thumb:shadow-md"
+              className="w-full h-3 rounded-lg appearance-none cursor-pointer"
               style={{
                 background: `linear-gradient(to right,
-                  rgb(139, 98, 72) 0%,
-                  rgb(139, 98, 72) ${(quantityToServe / remainingQuantity) * 100}%,
-                  rgb(229, 231, 235) ${(quantityToServe / remainingQuantity) * 100}%,
-                  rgb(229, 231, 235) 100%)`
+                  #c04e30 0%,
+                  #c04e30 ${(quantityToServe / remainingQuantity) * 100}%,
+                  #e8d0c0 ${(quantityToServe / remainingQuantity) * 100}%,
+                  #e8d0c0 100%)`
               }}
             />
 
-            {/* Quick Selection Buttons */}
             <div className="flex gap-2 mt-4">
               <button
                 onClick={() => setQuantityToServe(0)}
                 className="flex-1 py-2 px-3 text-sm font-medium text-neutral-text-dark
-                           bg-neutral-background rounded-lg hover:bg-neutral-border
+                           bg-cream border border-neutral-border rounded-lg hover:bg-neutral-border/50
                            transition-colors"
               >
                 None
@@ -123,7 +130,7 @@ export default function PartialServeModal({
               <button
                 onClick={() => setQuantityToServe(Math.floor(remainingQuantity / 2))}
                 className="flex-1 py-2 px-3 text-sm font-medium text-neutral-text-dark
-                           bg-neutral-background rounded-lg hover:bg-neutral-border
+                           bg-cream border border-neutral-border rounded-lg hover:bg-neutral-border/50
                            transition-colors"
                 disabled={remainingQuantity < 2}
               >
@@ -132,35 +139,35 @@ export default function PartialServeModal({
               <button
                 onClick={() => setQuantityToServe(remainingQuantity)}
                 className="flex-1 py-2 px-3 text-sm font-medium text-neutral-text-dark
-                           bg-neutral-background rounded-lg hover:bg-neutral-border
+                           bg-cream border border-neutral-border rounded-lg hover:bg-neutral-border/50
                            transition-colors"
               >
                 All
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              className="flex-1 py-3 px-4 text-neutral-text-dark font-medium
-                         bg-neutral-background rounded-xl hover:bg-neutral-border
-                         transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleServe}
-              disabled={quantityToServe === 0}
-              className="flex-1 py-3 px-4 text-white font-medium
-                         bg-coffee-brown rounded-xl hover:bg-coffee-dark
-                         transition-colors disabled:opacity-50
-                         disabled:cursor-not-allowed"
-            >
-              Serve {quantityToServe > 0 ? quantityToServe : ''}
-            </button>
-          </div>
+        {/* Footer */}
+        <div className="border-t border-neutral-border p-4 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 px-4 text-neutral-text-dark font-medium
+                       bg-cream border border-neutral-border rounded-xl hover:bg-neutral-border/50
+                       transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleServe}
+            disabled={quantityToServe === 0}
+            className="flex-1 py-3 px-4 text-white font-medium
+                       bg-lily-green rounded-xl hover:bg-lily-green-light
+                       transition-colors disabled:opacity-50
+                       disabled:cursor-not-allowed"
+          >
+            Serve {quantityToServe > 0 ? quantityToServe : ''}
+          </button>
         </div>
       </div>
     </>

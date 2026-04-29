@@ -4,7 +4,7 @@
 // ========================================
 
 import { useState } from "react";
-import { Trash } from "@phosphor-icons/react";
+import { Trash, CurrencyInr } from "@phosphor-icons/react";
 import { UpiIcon, CashIcon, CardIcon } from "./icons/PaymentIcons";
 import { formatCurrency } from "../utils/formatCurrency";
 import type {
@@ -104,21 +104,39 @@ export default function EditPaymentsModal({
       {/* Modal */}
       <div
         className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                   w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl z-60 p-6"
+                   w-full max-w-2xl max-h-[90vh] bg-off-white rounded-2xl shadow-2xl z-60
+                   border border-neutral-border overflow-hidden flex flex-col"
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex flex-col gap-6">
-          {/* Header */}
-          <div>
-            <h2 className="text-2xl font-heading font-bold text-coffee-dark mb-2">
-              Edit Payment Methods
+        {/* Header */}
+        <div
+          style={{ background: 'linear-gradient(135deg, #c04e30, #b5462a)' }}
+          className="flex items-center gap-3 px-5 py-4 flex-shrink-0"
+        >
+          <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+            <CurrencyInr size={20} weight="duotone" color="white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-white font-heading italic text-base font-bold leading-tight">
+              Edit Payments
             </h2>
-            <p className="text-neutral-text-light text-sm">
-              Order #{order.order_number} - Table {order.table_number}
+            <p className="text-white/70 text-xs mt-0.5">
+              Table {order.table_number} · {order.order_number}
             </p>
           </div>
+          <button
+            onClick={onClose}
+            disabled={isSaving}
+            aria-label="Close"
+            className="text-white/60 hover:text-white text-xl leading-none ml-auto flex-shrink-0 disabled:opacity-50"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-6 p-6 overflow-y-auto flex-1">
 
           {/* Order Total */}
           <div className="bg-neutral-background rounded-xl p-4">
@@ -133,10 +151,10 @@ export default function EditPaymentsModal({
               <span
                 className={`text-lg font-semibold ${
                   isValid
-                    ? "text-green-700"
+                    ? "text-lily-green"
                     : remaining > 0
-                    ? "text-orange-700"
-                    : "text-red-700"
+                    ? "text-amber"
+                    : "text-error"
                 }`}
               >
                 {formatCurrency(paymentsTotal)}
@@ -147,7 +165,7 @@ export default function EditPaymentsModal({
                 <span className="text-neutral-text-light">Difference: </span>
                 <span
                   className={`font-medium ${
-                    remaining > 0 ? "text-orange-700" : "text-red-700"
+                    remaining > 0 ? "text-amber" : "text-error"
                   }`}
                 >
                   {remaining > 0 ? "+" : ""}
@@ -184,8 +202,8 @@ export default function EditPaymentsModal({
                     </div>
                     <button
                       onClick={() => handleRemovePayment(index)}
-                      className="text-red-600 hover:text-red-700 text-sm font-medium
-                                 px-3 py-1 hover:bg-red-50 rounded transition-colors"
+                      className="text-error hover:text-error/80 text-sm font-medium
+                                 px-3 py-1 hover:bg-error/10 rounded transition-colors"
                       disabled={isSaving}
                     >
                       Remove
@@ -276,8 +294,8 @@ export default function EditPaymentsModal({
 
           {/* Error Message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-sm text-red-700">{error}</p>
+            <div className="bg-error/10 border border-error/30 rounded-lg p-3">
+              <p className="text-sm text-error">{error}</p>
             </div>
           )}
 

@@ -4,7 +4,7 @@
 // ========================================
 
 import { useState, useEffect } from 'react';
-import { X, Plus, Minus, Trash, MagnifyingGlass } from '@phosphor-icons/react';
+import { PencilSimple, Plus, Minus, Trash, MagnifyingGlass } from '@phosphor-icons/react';
 import { useUpdateOrder } from '../hooks/useOrders';
 import { useMenu } from '../hooks/useMenu';
 import { useAppConfig } from '../hooks/useConfig';
@@ -155,21 +155,27 @@ export default function EditOrderModal({ order, onClose, onCancelOrder }: EditOr
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-neutral-border">
-          <div>
-            <h2 className="text-2xl font-bold text-neutral-text-dark">
-              Edit Order #{order.order_number}
+        <div
+          style={{ background: 'linear-gradient(135deg, #c04e30, #b5462a)' }}
+          className="flex items-center gap-3 px-5 py-4 flex-shrink-0"
+        >
+          <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+            <PencilSimple size={20} weight="duotone" color="white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-white font-heading italic text-base font-bold leading-tight">
+              Edit Order
             </h2>
-            <p className="text-sm text-muted mt-1">
-              Modify items, customer name, or table number
+            <p className="text-white/70 text-xs mt-0.5">
+              #{order.order_number} · Modify items, table, or customer
             </p>
           </div>
           <button
             onClick={onClose}
-            className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-neutral-background transition-colors"
             aria-label="Close"
+            className="text-white/60 hover:text-white text-xl leading-none ml-auto flex-shrink-0"
           >
-            <X size={24} weight="bold" className="text-neutral-text-light" />
+            &times;
           </button>
         </div>
 

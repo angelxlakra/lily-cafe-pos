@@ -116,7 +116,7 @@ export default function MenuList({
                               : "bg-red-600"
                           }`}></div>
                         </div>
-                        <h3 className="text-base font-semibold text-neutral-text-dark">
+                        <h3 className="text-base font-normal font-heading text-neutral-text-dark">
                           {item.name}
                         </h3>
                       </div>

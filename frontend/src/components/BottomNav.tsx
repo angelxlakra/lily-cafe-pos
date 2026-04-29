@@ -57,14 +57,14 @@ export default function BottomNav({ className = "" }: BottomNavProps) {
                 relative
                 ${
                   isActive
-                    ? "bg-gradient-primary text-cream"
+                    ? "text-coffee-brown"
                     : "text-neutral-text-light hover:text-coffee-brown hover:bg-cream/60"
                 }
               `}
             >
               {/* Active indicator line */}
               {isActive && (
-                <div className="absolute top-0 left-0 right-0 h-1 bg-cream rounded-b-full"></div>
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-coffee-brown" />
               )}
 
               <span className={`text-2xl ${isActive ? 'scale-110' : ''} smooth-transition`} aria-hidden>

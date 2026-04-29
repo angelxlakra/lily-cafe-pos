@@ -12,6 +12,7 @@ import { formatDateTime } from "../utils/formatDateTime";
 import BottomNav from "../components/BottomNav";
 import EmptyState from "../components/EmptyState";
 import { ThemeToggle } from "../components/ThemeToggle";
+import LinenTexture from '../components/LinenTexture';
 import { Tray, PencilSimple, Check, X } from "@phosphor-icons/react";
 import type { Order } from "../types";
 
@@ -42,13 +43,17 @@ export default function ActiveOrdersPage() {
 
   return (
     <div className="min-h-screen bg-neutral-background pb-16">
+      <LinenTexture />
       {/* Floating Theme Toggle */}
       <div className="fixed top-4 right-4 z-50">
         <ThemeToggle />
       </div>
 
       {/* Header */}
-      <header className="bg-coffee-brown text-cream p-4 sticky top-0 z-30 shadow-md">
+      <header className="bg-gradient-primary text-cream p-4 sticky top-0 z-30 shadow-md">
+        <p className="text-[10px] font-semibold tracking-widest uppercase text-lily-green/80 text-center mb-0.5">
+          Lily Cafe · Orders
+        </p>
         <h1 className="font-heading heading-sub text-center">Active Orders</h1>
       </header>
 
@@ -158,7 +163,10 @@ function OrderCard({ order, onViewDetails }: OrderCardProps) {
   };
 
   return (
-    <div className="bg-off-white border border-neutral-border rounded-lg p-4 shadow-sm">
+    <div
+      className="bg-cream border border-neutral-border rounded-lg p-4 shadow-sm border-l-4 border-l-coffee-brown cursor-pointer hover:shadow-md transition-shadow"
+      onClick={!isEditingName ? onViewDetails : undefined}
+    >
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-neutral-text-dark">
@@ -171,7 +179,8 @@ function OrderCard({ order, onViewDetails }: OrderCardProps) {
               <input
                 type="text"
                 value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => { e.stopPropagation(); setCustomerName(e.target.value); }}
                 placeholder="Customer name"
                 className="flex-1 px-3 py-1.5 text-sm border border-neutral-border rounded-lg
                          focus:outline-none focus:ring-2 focus:ring-coffee-brown"
@@ -183,7 +192,7 @@ function OrderCard({ order, onViewDetails }: OrderCardProps) {
                 }}
               />
               <button
-                onClick={handleSaveName}
+                onClick={(e) => { e.stopPropagation(); handleSaveName(); }}
                 disabled={isPending}
                 className="p-1.5 text-success hover:bg-success/10 rounded-lg transition-colors"
                 aria-label="Save name"
@@ -191,7 +200,7 @@ function OrderCard({ order, onViewDetails }: OrderCardProps) {
                 <Check size={18} weight="bold" />
               </button>
               <button
-                onClick={handleCancelEdit}
+                onClick={(e) => { e.stopPropagation(); handleCancelEdit(); }}
                 disabled={isPending}
                 className="p-1.5 text-error hover:bg-error/10 rounded-lg transition-colors"
                 aria-label="Cancel edit"
@@ -205,7 +214,7 @@ function OrderCard({ order, onViewDetails }: OrderCardProps) {
                 {order.customer_name || "No customer name"}
               </p>
               <button
-                onClick={() => setIsEditingName(true)}
+                onClick={(e) => { e.stopPropagation(); setIsEditingName(true); }}
                 className="p-1 text-coffee-brown hover:bg-coffee-brown/10 rounded transition-colors"
                 aria-label="Edit customer name"
               >
@@ -228,12 +237,28 @@ function OrderCard({ order, onViewDetails }: OrderCardProps) {
         <span>{formatDateTime(order.created_at)}</span>
       </div>
 
-      <button
-        onClick={onViewDetails}
-        className="btn-secondary w-full"
-      >
-        View Details
-      </button>
+      {/* Serve status strip */}
+      <div className="flex gap-1.5 mt-1 mb-3">
+        {(() => {
+          const items = order.order_items || [];
+          const served = items.filter((i: any) => i.is_served).length;
+          const pending = items.length - served;
+          return (
+            <>
+              {served > 0 && (
+                <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-lily-green/10 text-lily-green">
+                  {served} served
+                </span>
+              )}
+              {pending > 0 && (
+                <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber/10 text-amber">
+                  {pending} pending
+                </span>
+              )}
+            </>
+          );
+        })()}
+      </div>
     </div>
   );
 }
@@ -252,7 +277,6 @@ function OrderDetailsModal({
   onClose,
   gstRateLabel,
 }: OrderDetailsModalProps) {
-  console.log({ order });
   return (
     <>
       {/* Backdrop */}
@@ -333,22 +357,30 @@ function OrderDetailsModal({
                 </h3>
                 <div className="space-y-2">
                   {order.order_items.map((item: any, index: number) => (
-                    <div
-                      key={index}
-                      className="flex justify-between items-start bg-cream rounded-lg p-3"
-                    >
+                    <div key={index} className="flex justify-between items-start bg-cream rounded-lg p-3">
                       <div className="flex-1">
-                        <p className="font-medium text-neutral-text-dark">
-                          {item.menu_item_name}
-                        </p>
-                        <p className="text-sm text-neutral-text-light">
-                          Qty: {item.quantity} ×{" "}
-                          {formatCurrency(item.unit_price)}
-                        </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-neutral-text-dark">{item.menu_item_name}</p>
+                          {item.is_parcel && (
+                            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber/10 text-amber border border-amber/20">
+                              Parcel
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-sm text-neutral-text-light">
+                            Qty: {item.quantity} × {formatCurrency(item.unit_price)}
+                          </p>
+                          {item.is_served !== undefined && (
+                            <span className={`text-[9px] font-semibold ${
+                              item.is_served ? 'text-lily-green' : 'text-amber'
+                            }`}>
+                              {item.is_served ? '✓ Served' : 'Pending'}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <p className="font-semibold text-coffee-brown">
-                        {formatCurrency(item.subtotal)}
-                      </p>
+                      <p className="font-semibold text-coffee-brown">{formatCurrency(item.subtotal)}</p>
                     </div>
                   ))}
                 </div>
