@@ -5,7 +5,8 @@
 
 import axios from "axios";
 
-const API_BASE = "http://192.168.31.29:8000/api/v1";
+const _hostname = typeof window !== "undefined" ? window.location.hostname : "localhost";
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL ?? `http://${_hostname}:8000`}/api/v1`;
 
 // Test order configuration
 const TEST_ORDER = {

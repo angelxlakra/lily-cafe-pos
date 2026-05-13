@@ -39,7 +39,8 @@ export default function CustomC1Chat() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/analytics/query', {
+      const apiBase = import.meta.env.VITE_API_BASE_URL ?? `http://${window.location.hostname}:8000`;
+      const response = await fetch(`${apiBase}/api/v1/analytics/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

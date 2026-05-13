@@ -13,7 +13,8 @@ from app import schemas, crud
 from app.models.models import OrderStatus
 from app.api.deps import get_db, get_current_user
 from app.utils.pdf_generator import generate_receipt
-from app.utils.printer import print_receipt, print_order_chit
+from app.utils.printer import print_receipt
+from app.utils.print_queue import enqueue_chit_jobs
 from app.core.config import settings
 
 router = APIRouter()
@@ -140,18 +141,14 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
         # create_order returns (order, new_items_only)
         new_order, new_items = crud.create_order(db, order)
 
-        # Auto-print order chit if printer is enabled
-        # Only print NEW items (not items that were already in the order)
-        if settings.PRINTER_ENABLED:
-            try:
-                chit_printed = print_order_chit(new_order, items_to_print=new_items)
-                if chit_printed:
-                    logger.info(f"Order chit printed for table {int(new_order.table_number)} ({len(new_items)} new items)")
-                else:
-                    logger.warning(f"Failed to print order chit for table {int(new_order.table_number)}")
-            except Exception as e:
-                # Log error but don't fail the order creation
-                logger.error(f"Error printing order chit: {e}")
+        # Enqueue chit print jobs for the relay agent
+        try:
+            job_count = enqueue_chit_jobs(db, new_order, new_items)
+            if job_count:
+                logger.info(f"Queued {job_count} print job(s) for table {int(new_order.table_number)}")
+        except Exception as e:
+            # Never fail the order because of a print queue error
+            logger.error(f"Error queuing print jobs: {e}")
 
         return new_order
     except ValueError as e:
