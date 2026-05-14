@@ -41,6 +41,8 @@ def print_chit(payload: dict, printer_cfg: dict, paper_size: str = "80mm") -> bo
         is_58mm = paper_size == "58mm"
         width = 32 if is_58mm else 42
 
+        station = payload.get("station", "kitchen").upper()
+
         # Header: large table number
         printer.set(align="center", bold=True, width=2, height=2)
         printer.text(f"TABLE {payload['table_number']}\n")
@@ -56,15 +58,6 @@ def print_chit(payload: dict, printer_cfg: dict, paper_size: str = "80mm") -> bo
             printer.text(f"Name:  {payload['customer_name']}\n")
         printer.text("\n")
 
-        # Station banner
-        station = payload.get("station", "kitchen").upper()
-        printer.set(align="center")
-        printer.text("=" * width + "\n")
-        printer.set(bold=True, width=2, height=2)
-        printer.text(f"{station}\n")
-        printer.set(bold=False, width=1, height=1)
-        printer.text("=" * width + "\n\n")
-
         # Items — large text, no prices
         for item in payload["items"]:
             if item.get("is_beverage"):
@@ -79,6 +72,14 @@ def print_chit(payload: dict, printer_cfg: dict, paper_size: str = "80mm") -> bo
         printer.text("=" * width + "\n")
         printer.text("NOTES:\n\n\n\n\n")
         printer.text("-" * width + "\n\n")
+
+        # Station banner at bottom — most visible when chit hangs on the rail
+        printer.set(align="center")
+        printer.text("=" * width + "\n")
+        printer.set(bold=True, width=2, height=2)
+        printer.text(f"{station}\n")
+        printer.set(bold=False, width=1, height=1)
+        printer.text("=" * width + "\n")
 
         try:
             printer.cut()
