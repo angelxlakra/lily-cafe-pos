@@ -11,12 +11,12 @@ WORKDIR /app
 RUN pip install uv --quiet
 
 # Copy dependency manifest first for layer caching
-COPY pyproject.toml .
+COPY backend/pyproject.toml .
 
 # Install production deps only
 RUN uv pip install --system --no-cache ".[prod]"
 
-COPY . .
+COPY backend/ .
 
 # /data is mounted as Fly.io persistent volume — SQLite lives here
 RUN mkdir -p /data /app/chits
