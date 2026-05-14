@@ -121,3 +121,6 @@ class Payment(Base):
     order = relationship("Order", back_populates="payments")
 
 
+# Import PrintJob so Base.metadata.create_all() picks it up
+from app.models.print_job import PrintJob  # noqa: F401
+
