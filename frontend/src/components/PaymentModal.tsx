@@ -6,6 +6,7 @@
 import { useState } from "react";
 import { UpiIcon, CashIcon, CardIcon } from "./icons/PaymentIcons";
 import { useOrder, useAddPayments, usePrintReceipt } from "../hooks/useOrders";
+import { useAppConfig } from "../hooks/useConfig";
 import { formatCurrency } from "../utils/formatCurrency";
 import { toast } from "../utils/toast";
 import type {
@@ -20,6 +21,7 @@ interface PaymentModalProps {
 
 export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
   const { data: order } = useOrder(orderId);
+  const { data: appConfig } = useAppConfig();
   const addPaymentsMutation = useAddPayments();
   const printReceiptMutation = usePrintReceipt();
 
@@ -35,7 +37,10 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
   const [error, setError] = useState("");
   const [showBreakdown, setShowBreakdown] = useState(false);
 
-  const totalAmount = order?.total_amount || 0;
+  const gstRatePercent = appConfig?.gst_rate ?? 5;
+  const subtotal = order?.subtotal || 0;
+  const computedGst = Math.round(subtotal * gstRatePercent / 100);
+  const totalAmount = subtotal + computedGst;
   const existingPayments = order?.payments ?? [];
   const alreadyPaid = existingPayments.reduce((sum, payment) => sum + payment.amount, 0);
   const pendingTotal = payments.reduce((sum, p) => sum + p.amount, 0);
@@ -218,12 +223,12 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                       </tbody>
                       <tfoot className="bg-off-white border-t border-neutral-border">
                          <tr>
-                            <td colSpan={2} className="p-3 text-left text-neutral-text-light">GST (5%)</td>
-                            <td className="p-3 text-right text-neutral-text-light">{formatCurrency(order?.gst_amount || 0)}</td>
+                            <td colSpan={2} className="p-3 text-left text-neutral-text-light">GST ({gstRatePercent}%)</td>
+                            <td className="p-3 text-right text-neutral-text-light">{formatCurrency(computedGst)}</td>
                          </tr>
                          <tr>
                             <td colSpan={2} className="p-3 text-left font-bold text-coffee-dark text-base">Total</td>
-                            <td className="p-3 text-right font-bold text-coffee-dark text-base">{formatCurrency(order?.total_amount || 0)}</td>
+                            <td className="p-3 text-right font-bold text-coffee-dark text-base">{formatCurrency(totalAmount)}</td>
                          </tr>
                       </tfoot>
                    </table>
