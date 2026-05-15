@@ -95,7 +95,7 @@ export default function OrderPage() {
       );
   }, [cart, allItems]);
 
-  const gstRatePercent = appConfig?.gst_rate ?? 18;
+  const gstRatePercent = appConfig?.gst_rate ?? 5;
   const gstRate = gstRatePercent / 100;
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = cartItems.reduce(

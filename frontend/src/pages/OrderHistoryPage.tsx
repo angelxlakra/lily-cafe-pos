@@ -201,7 +201,7 @@ export default function OrderHistoryPage() {
     }
   };
 
-  const gstRatePercent = appConfig?.gst_rate ?? 18;
+  const gstRatePercent = appConfig?.gst_rate ?? 5;
   const gstRateLabel = Number.isInteger(gstRatePercent)
     ? String(gstRatePercent)
     : gstRatePercent.toFixed(2);
