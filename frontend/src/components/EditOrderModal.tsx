@@ -52,7 +52,7 @@ export default function EditOrderModal({ order, onClose, onCancelOrder }: EditOr
 
   // Calculate totals
   const subtotal = items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
-  const gstRate = config?.gst_rate || 18;
+  const gstRate = config?.gst_rate || 5;
   const gstAmount = Math.floor(subtotal * gstRate / 100);
   const total = subtotal + gstAmount;
 

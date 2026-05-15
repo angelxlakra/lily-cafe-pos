@@ -38,7 +38,7 @@ export default function CartDrawer({
   onRemoveItem,
   onSaveOrder,
   isSaving = false,
-  gstRatePercent = 18,
+  gstRatePercent = 5,
   customerName = '',
   onCustomerNameChange,
 }: CartDrawerProps) {

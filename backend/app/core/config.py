@@ -18,7 +18,7 @@ class Settings:
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
     TOKEN_EXPIRY_HOURS: int = int(os.getenv("TOKEN_EXPIRY_HOURS", "24"))
     MAX_TABLES: int = int(os.getenv("MAX_TABLES", "15"))
-    GST_RATE: float = float(os.getenv("GST_RATE", "18"))
+    GST_RATE: float = float(os.getenv("GST_RATE", "5"))
     TIMEZONE: str = os.getenv("TIMEZONE", "Asia/Kolkata")  # IST timezone
 
     # Restaurant Details
