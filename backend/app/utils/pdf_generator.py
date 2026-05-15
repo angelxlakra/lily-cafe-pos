@@ -472,10 +472,11 @@ def generate_receipt(
         spacing=1.5,
     )
 
-    # GST breakdown (CGST + SGST)
+    # GST breakdown (CGST + SGST) — recompute from subtotal so rate and amount are always consistent
     half_gst_rate = settings.GST_RATE / 2
-    cgst_amount = order.gst_amount // 2
-    sgst_amount = order.gst_amount - cgst_amount
+    gst_amount = int(order.subtotal * settings.GST_RATE / 100)
+    cgst_amount = gst_amount // 2
+    sgst_amount = gst_amount - cgst_amount
 
     draw_row(
         f"CGST ({half_gst_rate}%):",
@@ -499,7 +500,7 @@ def generate_receipt(
     # TOTAL (prominent)
     draw_row(
         "TOTAL:",
-        format_currency(order.total_amount),
+        format_currency(order.subtotal + gst_amount),
         left_font="Helvetica-Bold",
         left_size=config.font_total,
         right_font="DejaVuSansMono",

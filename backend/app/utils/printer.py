@@ -347,10 +347,11 @@ def print_receipt(order: models.Order) -> bool:
         else:
             printer.text(f"{'Subtotal:':<28} {subtotal_text:>13}\n")
 
-        # GST breakdown
+        # GST breakdown — recompute from subtotal so rate and amount are always consistent
         half_gst_rate = settings.GST_RATE / 2
-        cgst_amount = order.gst_amount // 2
-        sgst_amount = order.gst_amount - cgst_amount
+        gst_amount = int(order.subtotal * settings.GST_RATE / 100)
+        cgst_amount = gst_amount // 2
+        sgst_amount = gst_amount - cgst_amount
 
         cgst_text = format_currency(cgst_amount)
         sgst_text = format_currency(sgst_amount)
@@ -365,7 +366,7 @@ def print_receipt(order: models.Order) -> bool:
         printer.text("-" * (32 if is_58mm else 42) + "\n")
 
         # Total (prominent)
-        total_text = format_currency(order.total_amount)
+        total_text = format_currency(order.subtotal + gst_amount)
         printer.set(bold=True, width=1, height=2)
         if is_58mm:
             printer.text(f"{'TOTAL:':<20} {total_text:>11}\n")

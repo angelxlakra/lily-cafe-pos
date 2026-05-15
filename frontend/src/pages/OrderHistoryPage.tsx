@@ -202,9 +202,6 @@ export default function OrderHistoryPage() {
   };
 
   const gstRatePercent = appConfig?.gst_rate ?? 5;
-  const gstRateLabel = Number.isInteger(gstRatePercent)
-    ? String(gstRatePercent)
-    : gstRatePercent.toFixed(2);
 
   // Calculate stats based on server data (for the full period)
   const periodTotalRevenue = orderHistoryData?.total_revenue || 0;
@@ -690,7 +687,7 @@ export default function OrderHistoryPage() {
           isLoading={isLoadingDetails}
           onClose={handleCloseModal}
           onPrintReceipt={handlePrintReceipt}
-          gstRateLabel={gstRateLabel}
+          gstRatePercent={gstRatePercent}
         />
       )}
 
@@ -779,7 +776,7 @@ interface OrderDetailsModalProps {
   isLoading: boolean;
   onClose: () => void;
   onPrintReceipt: (orderId: number) => void;
-  gstRateLabel: string;
+  gstRatePercent: number;
 }
 
 function OrderDetailsModal({
@@ -787,8 +784,14 @@ function OrderDetailsModal({
   isLoading,
   onClose,
   onPrintReceipt,
-  gstRateLabel,
+  gstRatePercent,
 }: OrderDetailsModalProps) {
+  const halfRate = gstRatePercent / 2;
+  const halfRateLabel = Number.isInteger(halfRate) ? String(halfRate) : halfRate.toFixed(2);
+  const computedGst = order ? Math.round(order.subtotal * gstRatePercent / 100) : 0;
+  const sgstAmount = Math.round(computedGst / 2);
+  const cgstAmount = computedGst - sgstAmount;
+  const computedTotal = order ? order.subtotal + computedGst : 0;
   return (
     <>
       {/* Backdrop */}
@@ -897,18 +900,18 @@ function OrderDetailsModal({
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-neutral-text-light">
-                    SGST ({(parseFloat(gstRateLabel) / 2).toFixed(2)}%):
+                    SGST ({halfRateLabel}%):
                   </span>
                   <span className="font-semibold text-neutral-text-dark">
-                    {formatCurrency(Math.round(order.gst_amount / 2))}
+                    {formatCurrency(sgstAmount)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-neutral-text-light">
-                    CGST ({(parseFloat(gstRateLabel) / 2).toFixed(2)}%):
+                    CGST ({halfRateLabel}%):
                   </span>
                   <span className="font-semibold text-neutral-text-dark">
-                    {formatCurrency(order.gst_amount - Math.round(order.gst_amount / 2))}
+                    {formatCurrency(cgstAmount)}
                   </span>
                 </div>
                 <div className="border-t border-neutral-border pt-2">
@@ -917,7 +920,7 @@ function OrderDetailsModal({
                       Total:
                     </span>
                     <span className="font-bold font-heading text-coffee-brown">
-                      {formatCurrency(order.total_amount)}
+                      {formatCurrency(computedTotal)}
                     </span>
                   </div>
                 </div>
