@@ -1,3 +1,3 @@
 @echo off
 cd /d "%~dp0"
-python agent.py >> agent.log 2>&1
+python "%~dp0agent.py" >> "%~dp0agent.log" 2>&1

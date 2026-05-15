@@ -28,10 +28,7 @@ load_dotenv(AGENT_DIR / ".env")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(AGENT_DIR / "agent.log", encoding="utf-8"),
-    ],
+    handlers=[logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
 
