@@ -12,20 +12,25 @@ Config via .env (copy from .env.example and fill in your values).
 
 import logging
 import os
+import sys
 import time
 from datetime import datetime
+from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
 
-load_dotenv()
+# Resolve paths relative to this script so they work regardless of cwd or who runs it
+AGENT_DIR = Path(__file__).parent.resolve()
+sys.path.insert(0, str(AGENT_DIR))  # ensure chit_renderer is importable
+load_dotenv(AGENT_DIR / ".env")
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler("agent.log", encoding="utf-8"),
+        logging.FileHandler(AGENT_DIR / "agent.log", encoding="utf-8"),
     ],
 )
 logger = logging.getLogger(__name__)
