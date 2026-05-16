@@ -226,6 +226,12 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                             <td colSpan={2} className="p-3 text-left text-neutral-text-light">GST ({gstRatePercent}%)</td>
                             <td className="p-3 text-right text-neutral-text-light">{formatCurrency(computedGst)}</td>
                          </tr>
+                         {totalAmount !== subtotal + computedGst && (
+                           <tr>
+                             <td colSpan={2} className="p-3 text-left text-neutral-text-light">Rounding</td>
+                             <td className="p-3 text-right text-neutral-text-light">-{formatCurrency(subtotal + computedGst - totalAmount)}</td>
+                           </tr>
+                         )}
                          <tr>
                             <td colSpan={2} className="p-3 text-left font-bold text-coffee-dark text-base">Total</td>
                             <td className="p-3 text-right font-bold text-coffee-dark text-base">{formatCurrency(totalAmount)}</td>

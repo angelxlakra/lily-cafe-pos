@@ -485,13 +485,24 @@ def generate_receipt(
         right_size=config.font_subtotal,
         spacing=1.5,
     )
+    rounding_adjustment = order.total_amount - (order.subtotal + gst_amount)
+
     draw_row(
         f"SGST ({half_gst_rate}%):",
         format_currency(sgst_amount),
         left_size=config.font_subtotal,
         right_size=config.font_subtotal,
-        spacing=0.5,  # More spacing after last tax line
+        spacing=1.5 if rounding_adjustment != 0 else 0.5,
     )
+
+    if rounding_adjustment != 0:
+        draw_row(
+            "Rounding:",
+            f"-₹{abs(rounding_adjustment)/100:.2f}",
+            left_size=config.font_subtotal,
+            right_size=config.font_subtotal,
+            spacing=0.5,
+        )
 
     # Separator before total
     draw_separator(y_position, thickness=0.5)
@@ -500,7 +511,7 @@ def generate_receipt(
     # TOTAL (prominent)
     draw_row(
         "TOTAL:",
-        format_currency(order.subtotal + gst_amount),
+        format_currency(order.total_amount),
         left_font="Helvetica-Bold",
         left_size=config.font_total,
         right_font="DejaVuSansMono",
