@@ -363,10 +363,18 @@ def print_receipt(order: models.Order) -> bool:
             printer.text(f"{'CGST (' + str(half_gst_rate) + '%):':<28} {cgst_text:>13}\n")
             printer.text(f"{'SGST (' + str(half_gst_rate) + '%):':<28} {sgst_text:>13}\n")
 
+        rounding_adjustment = order.total_amount - (order.subtotal + gst_amount)
+        if rounding_adjustment != 0:
+            rounding_text = f"-Rs.{abs(rounding_adjustment)/100:.2f}"
+            if is_58mm:
+                printer.text(f"{'Rounding:':<20} {rounding_text:>11}\n")
+            else:
+                printer.text(f"{'Rounding:':<28} {rounding_text:>13}\n")
+
         printer.text("-" * (32 if is_58mm else 42) + "\n")
 
         # Total (prominent)
-        total_text = format_currency(order.subtotal + gst_amount)
+        total_text = format_currency(order.total_amount)
         printer.set(bold=True, width=1, height=2)
         if is_58mm:
             printer.text(f"{'TOTAL:':<20} {total_text:>11}\n")

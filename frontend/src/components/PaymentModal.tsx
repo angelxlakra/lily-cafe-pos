@@ -40,7 +40,7 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
   const gstRatePercent = appConfig?.gst_rate ?? 5;
   const subtotal = order?.subtotal || 0;
   const computedGst = Math.round(subtotal * gstRatePercent / 100);
-  const totalAmount = subtotal + computedGst;
+  const totalAmount = order?.total_amount ?? (subtotal + computedGst);
   const existingPayments = order?.payments ?? [];
   const alreadyPaid = existingPayments.reduce((sum, payment) => sum + payment.amount, 0);
   const pendingTotal = payments.reduce((sum, p) => sum + p.amount, 0);
@@ -50,7 +50,7 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
   const handleAddPayment = () => {
     setError("");
 
-    const amount = parseInt(paymentAmount, 10) * 100;
+    const amount = Math.round(parseFloat(paymentAmount) * 100);
 
     if (!paymentAmount || isNaN(amount) || amount <= 0) {
       setError("Please enter a valid amount");
@@ -226,6 +226,12 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                             <td colSpan={2} className="p-3 text-left text-neutral-text-light">GST ({gstRatePercent}%)</td>
                             <td className="p-3 text-right text-neutral-text-light">{formatCurrency(computedGst)}</td>
                          </tr>
+                         {totalAmount !== subtotal + computedGst && (
+                           <tr>
+                             <td colSpan={2} className="p-3 text-left text-neutral-text-light">Rounding</td>
+                             <td className="p-3 text-right text-neutral-text-light">-{formatCurrency(subtotal + computedGst - totalAmount)}</td>
+                           </tr>
+                         )}
                          <tr>
                             <td colSpan={2} className="p-3 text-left font-bold text-coffee-dark text-base">Total</td>
                             <td className="p-3 text-right font-bold text-coffee-dark text-base">{formatCurrency(totalAmount)}</td>
