@@ -14,8 +14,11 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from dotenv import load_dotenv
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # On production (Fly.io), env vars are already injected as secrets
 
 from sqlalchemy import inspect
 from app.db.session import engine, SessionLocal
