@@ -122,7 +122,8 @@ def client(test_db):
 @pytest.fixture
 def admin_credentials():
     """Admin login credentials."""
-    return {"username": "admin", "password": "changeme123"}
+    from app.core.config import settings
+    return {"username": settings.ADMIN_USERNAME, "password": settings.ADMIN_PASSWORD}
 
 
 @pytest.fixture
@@ -356,4 +357,32 @@ def paid_order(test_db, sample_menu_items):
 
     test_db.refresh(order)
     return order
+
+
+@pytest.fixture
+def owner_token(client):
+    """Get a valid JWT token for the owner role."""
+    from app.core.config import settings
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"username": settings.OWNER_USERNAME, "password": settings.OWNER_PASSWORD},
+    )
+    assert response.status_code == 200, f"Owner login failed: {response.json()}"
+    return response.json()["access_token"]
+
+
+@pytest.fixture
+def owner_headers(owner_token):
+    """Authorization headers for owner-authenticated requests."""
+    return {"Authorization": f"Bearer {owner_token}"}
+
+
+@pytest.fixture
+def loaded_settings_store(test_db):
+    """Load settings_store from test_db and reset after the test."""
+    from app.core import settings_store
+    settings_store.load(test_db)
+    yield settings_store
+    # Reset to defaults so other tests aren't affected
+    settings_store._cache = dict(settings_store.DEFAULTS)
 
