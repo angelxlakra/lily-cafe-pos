@@ -147,11 +147,6 @@ packages = ["app"]
 [tool.hatch.version]
 path = "app/__init__.py"
 
-[dependency-groups]
-dev = [
-    "pytest>=9.0.3",
-]
-
 # Scripts - convenient commands can be added here if needed
 # For now, use uv run commands directly:
 # uv run uvicorn app.main:app --reload
