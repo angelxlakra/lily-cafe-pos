@@ -11,6 +11,7 @@ from email.mime.multipart import MIMEMultipart
 from typing import List, Dict, Any
 
 from app.core.config import settings
+from app.core import settings_store
 
 logger = logging.getLogger(__name__)
 
@@ -27,14 +28,14 @@ def send_email(subject: str, html_body: str, recipients: List[str]) -> bool:
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = settings.SMTP_SENDER_EMAIL
+        msg["From"] = settings_store.get("smtp.sender_email")
         msg["To"] = ", ".join(recipients)
         msg.attach(MIMEText(html_body, "html"))
 
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as server:
+        with smtplib.SMTP(settings_store.get("smtp.host", "smtp.gmail.com"), settings_store.get_int("smtp.port", 587), timeout=30) as server:
             server.starttls()
-            server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
-            server.sendmail(settings.SMTP_SENDER_EMAIL, recipients, msg.as_string())
+            server.login(settings_store.get("smtp.username"), settings.SMTP_PASSWORD)
+            server.sendmail(settings_store.get("smtp.sender_email"), recipients, msg.as_string())
 
         logger.info(f"Inventory report email sent to {recipients}")
         return True
@@ -140,7 +141,7 @@ def build_inventory_report_html(
     <html>
     <body style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px; color: #333;">
         <h1 style="color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px;">
-            {settings.RESTAURANT_NAME} - Inventory Report
+            {settings_store.get("restaurant.name")} - Inventory Report
         </h1>
         <p style="color: #64748b; margin-bottom: 20px;">
             Recorded by <strong>{recorded_by}</strong> on {timestamp}
@@ -148,7 +149,7 @@ def build_inventory_report_html(
         {low_stock_section}
         {changes_section}
         <p style="color: #94a3b8; font-size: 12px; margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
-            This is an automated report from {settings.RESTAURANT_NAME} POS System.
+            This is an automated report from {settings_store.get("restaurant.name")} POS System.
         </p>
     </body>
     </html>"""
@@ -164,7 +165,7 @@ def send_inventory_report(
     Wrapped in try/except to never crash the background worker.
     """
     try:
-        recipients = settings.INVENTORY_REPORT_EMAILS
+        recipients = [e.strip() for e in settings_store.get("smtp.report_emails", "").split(",") if e.strip()]
         if not recipients:
             logger.warning("INVENTORY_REPORT_EMAILS not configured, skipping inventory report email")
             return
@@ -172,7 +173,7 @@ def send_inventory_report(
         timestamp = datetime.now().strftime("%B %d, %Y at %I:%M %p")
         html_body = build_inventory_report_html(low_stock_items, changes, recorded_by, timestamp)
 
-        subject = f"Inventory Report - {settings.RESTAURANT_NAME}"
+        subject = f"Inventory Report - {settings_store.get("restaurant.name")}"
         if low_stock_items:
             subject = f"[LOW STOCK] {subject} ({len(low_stock_items)} items)"
 

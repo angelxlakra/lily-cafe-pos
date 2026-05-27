@@ -16,6 +16,7 @@ from app.utils.pdf_generator import generate_receipt
 from app.utils.printer import print_receipt
 from app.utils.print_queue import enqueue_chit_jobs
 from app.core.config import settings
+from app.core import settings_store
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -456,7 +457,7 @@ def generate_receipt_endpoint(
     # Generate PDF (always return PDF regardless of print status)
     pdf_buffer = BytesIO()
     # Use configured paper size (either "58mm" or "80mm")
-    paper_size = settings.RECEIPT_PAPER_SIZE
+    paper_size = settings_store.get("receipt.paper_size", "80mm")
     if paper_size not in ["58mm", "80mm"]:
         paper_size = "80mm"  # Default to 80mm if invalid
     generate_receipt(order, pdf_buffer, paper_size=paper_size)

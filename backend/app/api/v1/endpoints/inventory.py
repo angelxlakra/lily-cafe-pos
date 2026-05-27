@@ -7,7 +7,7 @@ from decimal import Decimal
 from app.db.session import get_db
 from app.models.inventory_models import InventoryCategory, InventoryItem, InventoryTransaction, TransactionType
 from app.schemas import inventory_schemas
-from app.core.config import settings
+from app.core import settings_store
 from app.utils.email_sender import send_inventory_report
 
 router = APIRouter()
@@ -456,7 +456,7 @@ def record_batch_adjustment(
     db.commit()
 
     # Schedule inventory report email as background task
-    if settings.SMTP_ENABLED and created_transactions:
+    if settings_store.get_bool("smtp.enabled", False) and created_transactions:
         all_active_items = db.query(InventoryItem).filter(
             InventoryItem.is_active == True
         ).all()

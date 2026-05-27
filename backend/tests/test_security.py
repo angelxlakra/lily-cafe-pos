@@ -79,14 +79,15 @@ class TestJWTToken:
         exp_time = datetime.fromtimestamp(decoded["exp"])
         now = datetime.now()
 
-        # Should use default TOKEN_EXPIRY_HOURS (24 hours)
+        # Should use default token_expiry_hours (24 hours from settings_store)
         time_diff = (exp_time - now).total_seconds()
-        expected_seconds = settings.TOKEN_EXPIRY_HOURS * 3600
+        from app.core import settings_store
+        expected_seconds = settings_store.get_int("app.token_expiry_hours", 24) * 3600
         assert expected_seconds - 100 < time_diff < expected_seconds + 100
 
     def test_verify_token_success(self):
         """Test successful token verification."""
-        data = {"sub": "admin"}
+        data = {"sub": "admin", "role": "admin"}
         token = security.create_access_token(data)
 
         token_data = security.verify_token(token)
