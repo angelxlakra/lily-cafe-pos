@@ -20,6 +20,7 @@ from app.models.inventory_models import (  # noqa
     TransactionType,
 )
 from app.models.cash_models import DailyCashCounter  # noqa
+from app.models.settings_model import AppSetting  # noqa
 
 __all__ = [
     "Base",
@@ -35,4 +36,5 @@ __all__ = [
     "InventoryTransaction",
     "TransactionType",
     "DailyCashCounter",
+    "AppSetting",
 ]
