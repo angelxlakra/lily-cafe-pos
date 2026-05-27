@@ -35,8 +35,17 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup_event():
-    """Initialize database on application startup."""
+    """Initialize database and load settings cache on application startup."""
     init_db()
+    # Load settings from DB into the in-memory cache.
+    # init_db() runs first so the app_settings table is guaranteed to exist.
+    from app.db.session import SessionLocal
+    from app.core import settings_store
+    db = SessionLocal()
+    try:
+        settings_store.load(db)
+    finally:
+        db.close()
 
 
 # ============================================================================
