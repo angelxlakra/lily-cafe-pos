@@ -69,8 +69,13 @@ def load(db: Session) -> None:
             if row.value is not None:
                 new_cache[row.key] = row.value
         _cache = new_cache
-    except Exception:
-        # Table may not exist yet on very first boot — use defaults
+    except Exception as e:
+        # Catch DB errors when app_settings table doesn't exist yet (first boot
+        # before migration). Uses DEFAULTS so the app is still functional.
+        # NOTE: This assumes a single-process deployment (Fly.io + SQLite).
+        # Multi-process deployments would need cross-process cache invalidation.
+        import logging
+        logging.getLogger(__name__).warning("settings_store.load() failed, using defaults: %s", e)
         _cache = dict(DEFAULTS)
 
 

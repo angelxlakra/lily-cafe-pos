@@ -7,6 +7,17 @@ from app.models.settings_model import AppSetting
 
 
 # ============================================================================
+# Fixtures
+# ============================================================================
+
+@pytest.fixture(autouse=True)
+def reset_settings_cache():
+    """Reset the settings cache after each test to prevent cross-test pollution."""
+    yield
+    settings_store._cache = {}
+
+
+# ============================================================================
 # Settings Store Tests
 # ============================================================================
 
