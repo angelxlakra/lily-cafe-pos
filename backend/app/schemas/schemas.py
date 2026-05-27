@@ -509,3 +509,17 @@ class OrdersTimelineItem(BaseModel):
 
 class OrdersTimelineResponse(BaseModel):
     data: List[OrdersTimelineItem]
+
+
+# ============================================================================
+# Settings Schemas
+# ============================================================================
+
+class SettingsResponse(BaseModel):
+    """Response schema for GET /settings — all settings as a flat dict."""
+    settings: dict[str, str]
+
+
+class SettingsUpdate(BaseModel):
+    """Request body for PUT /settings — partial dict of key->value updates."""
+    settings: dict[str, str]
