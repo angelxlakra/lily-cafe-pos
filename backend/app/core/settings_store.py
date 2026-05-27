@@ -88,12 +88,18 @@ def get(key: str, default: str = "") -> str:
 
 def get_int(key: str, default: int = 0) -> int:
     """Return cached value coerced to int."""
-    return int(get(key, str(default)))
+    try:
+        return int(get(key, str(default)))
+    except (ValueError, TypeError):
+        return default
 
 
 def get_float(key: str, default: float = 0.0) -> float:
     """Return cached value coerced to float."""
-    return float(get(key, str(default)))
+    try:
+        return float(get(key, str(default)))
+    except (ValueError, TypeError):
+        return default
 
 
 def get_bool(key: str, default: bool = False) -> bool:
