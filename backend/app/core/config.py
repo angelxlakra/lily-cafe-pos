@@ -1,6 +1,9 @@
 """
 Configuration management for Lily Cafe POS System.
-Loads environment variables and provides application settings.
+Loads environment variables for secrets and bootstrap values only.
+
+Non-secret settings (restaurant info, GST rate, etc.) are stored in the
+database and accessed via app.core.settings_store.
 """
 
 import os
@@ -12,76 +15,32 @@ load_dotenv()
 
 
 class Settings:
-    """Application settings loaded from environment variables."""
+    """Secrets and bootstrap settings loaded from environment variables."""
 
-    # App Configuration
+    # App Bootstrap
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
-    TOKEN_EXPIRY_HOURS: int = int(os.getenv("TOKEN_EXPIRY_HOURS", "24"))
-    MAX_TABLES: int = int(os.getenv("MAX_TABLES", "15"))
-    GST_RATE: float = float(os.getenv("GST_RATE", "5"))
-    TIMEZONE: str = os.getenv("TIMEZONE", "Asia/Kolkata")  # IST timezone
 
-    # Restaurant Details
-    RESTAURANT_NAME: str = os.getenv("RESTAURANT_NAME", "Lily Cafe by Mary's Kitchen")
-    RESTAURANT_ADDRESS_LINE1: str = os.getenv(
-        "RESTAURANT_ADDRESS_LINE1", "Shop 123, Main Street"
-    )
-    RESTAURANT_ADDRESS_LINE2: str = os.getenv(
-        "RESTAURANT_ADDRESS_LINE2", "City, State - 123456"
-    )
-    RESTAURANT_PHONE: str = os.getenv("RESTAURANT_PHONE", "+91-1234567890")
-    RESTAURANT_EMAIL: str = os.getenv("RESTAURANT_EMAIL", "info@lilycafe.com")
-    RESTAURANT_GSTIN: str = os.getenv("RESTAURANT_GSTIN", "29ABCDE1234F1Z5")
-    RESTAURANT_FSSAI: str = os.getenv("RESTAURANT_FSSAI", "29ABCDE1234F1Z5")
-    RESTAURANT_LOGO_PATH: str = os.getenv("RESTAURANT_LOGO_PATH", "")
-
-    # Receipt Configuration
-    RECEIPT_PAPER_SIZE: str = os.getenv("RECEIPT_PAPER_SIZE", "80mm")  # "58mm" or "80mm"
-    GOOGLE_REVIEW_URL: str = os.getenv(
-        "GOOGLE_REVIEW_URL", "https://g.page/r/your-business-review"
-    )
-    FEEDBACK_FORM_URL: str = os.getenv(
-        "FEEDBACK_FORM_URL", "https://forms.gle/your-feedback-form"
-    )
-
-    # Thermal Printer Configuration
-    PRINTER_ENABLED: bool = os.getenv("PRINTER_ENABLED", "false").lower() == "true"
-    PRINTER_TYPE: str = os.getenv("PRINTER_TYPE", "")  # "win32", "usb", "serial"
-    PRINTER_NAME: str = os.getenv("PRINTER_NAME", "")  # Windows printer name
-    PRINTER_VENDOR_ID: str = os.getenv("PRINTER_VENDOR_ID", "")  # USB vendor ID (hex)
-    PRINTER_PRODUCT_ID: str = os.getenv("PRINTER_PRODUCT_ID", "")  # USB product ID (hex)
-    PRINTER_PORT: str = os.getenv("PRINTER_PORT", "")  # Serial port (e.g., COM3)
-    PRINTER_BAUDRATE: int = int(os.getenv("PRINTER_BAUDRATE", "9600"))  # Serial baudrate
-
-    # Email / SMTP Configuration (for inventory reports)
-    SMTP_ENABLED: bool = os.getenv("SMTP_ENABLED", "false").lower() == "true"
-    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
-    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
-    SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "")
-    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
-    SMTP_SENDER_EMAIL: str = os.getenv("SMTP_SENDER_EMAIL", "")
-    INVENTORY_REPORT_EMAILS: List[str] = [
-        e.strip() for e in os.getenv("INVENTORY_REPORT_EMAILS", "").split(",") if e.strip()
-    ]
-
-    # Admin Credentials (access to all features EXCEPT analytics)
+    # Admin Credentials
     ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
     ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "changeme123")
 
-    # Owner Credentials (full access including analytics)
+    # Owner Credentials
     OWNER_USERNAME: str = os.getenv("OWNER_USERNAME", "owner")
     OWNER_PASSWORD: str = os.getenv("OWNER_PASSWORD", "owner123")
 
-    # Owner Password Hash (for cash counter verification - separate from login)
-    # Generate hash using: python -c "from passlib.context import CryptContext; print(CryptContext(schemes=['bcrypt']).hash('your_password'))"
-    OWNER_PASSWORD_HASH: str = os.getenv("OWNER_PASSWORD_HASH", "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW")  # Default: "owner123"
+    # Owner Password Hash (for cash counter verification)
+    OWNER_PASSWORD_HASH: str = os.getenv(
+        "OWNER_PASSWORD_HASH",
+        "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
+    )
 
     # Database
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./restaurant.db")
 
-    # CORS Origins (comma-separated)
+    # CORS Origins (comma-separated) — needed at startup before DB is accessible
     CORS_ORIGINS: List[str] = os.getenv(
-        "CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174"
+        "CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174",
     ).split(",")
 
     # API Configuration
@@ -92,6 +51,21 @@ class Settings:
 
     # Print Agent API Key (shared secret between backend and agent.py)
     PRINT_AGENT_API_KEY: str = os.getenv("PRINT_AGENT_API_KEY", "change-me-in-production")
+
+    # Email / SMTP Password (secret — stays in env var)
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+
+    # Thermal Printer Configuration (local hardware — not stored in DB)
+    PRINTER_ENABLED: bool = os.getenv("PRINTER_ENABLED", "false").lower() == "true"
+    PRINTER_TYPE: str = os.getenv("PRINTER_TYPE", "")
+    PRINTER_NAME: str = os.getenv("PRINTER_NAME", "")
+    PRINTER_VENDOR_ID: str = os.getenv("PRINTER_VENDOR_ID", "")
+    PRINTER_PRODUCT_ID: str = os.getenv("PRINTER_PRODUCT_ID", "")
+    PRINTER_PORT: str = os.getenv("PRINTER_PORT", "")
+    PRINTER_BAUDRATE: int = int(os.getenv("PRINTER_BAUDRATE", "9600"))
+
+    # Restaurant logo path (local filesystem — not applicable in cloud deployment)
+    RESTAURANT_LOGO_PATH: str = os.getenv("RESTAURANT_LOGO_PATH", "")
 
 
 # Create a singleton instance

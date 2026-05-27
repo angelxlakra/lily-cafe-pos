@@ -20,6 +20,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
 from app.core.config import settings
+from app.core import settings_store
 from app.models import models
 
 # Font setup
@@ -131,7 +132,7 @@ def convert_to_local_timezone(utc_datetime: datetime) -> datetime:
         utc_datetime = utc_datetime.replace(tzinfo=ZoneInfo("UTC"))
 
     # Convert to configured timezone
-    local_tz = ZoneInfo(settings.TIMEZONE)
+    local_tz = ZoneInfo(settings_store.get("app.timezone", "Asia/Kolkata"))
     return utc_datetime.astimezone(local_tz)
 
 
@@ -301,7 +302,7 @@ def generate_receipt(
 
     # Restaurant name (split into two lines: "Lily" and "Cafe by Mary's Kitchen")
     # Check if the name contains "Lily" to split it properly
-    restaurant_name = settings.RESTAURANT_NAME
+    restaurant_name = settings_store.get("restaurant.name")
     add_small_spacing(0.5)
     if "Lily" in restaurant_name:
         # First line: "Lily"
@@ -320,11 +321,11 @@ def generate_receipt(
 
     # Address
     draw_centered(
-        settings.RESTAURANT_ADDRESS_LINE1, y_position, "Helvetica", config.font_address
+        settings_store.get("restaurant.address_line1"), y_position, "Helvetica", config.font_address
     )
     add_small_spacing(0.9)
     draw_centered(
-        settings.RESTAURANT_ADDRESS_LINE2, y_position, "Helvetica", config.font_address
+        settings_store.get("restaurant.address_line2"), y_position, "Helvetica", config.font_address
     )
     add_small_spacing(1.0)
 
@@ -332,14 +333,14 @@ def generate_receipt(
     if paper_size == "58mm":
         # Stack vertically for narrow paper
         draw_centered(
-            f"Tel: {settings.RESTAURANT_PHONE}", y_position, "Helvetica", config.font_contact
+            f"Tel: {settings_store.get('restaurant.phone')}", y_position, "Helvetica", config.font_contact
         )
         add_small_spacing(0.8)
-        draw_centered(settings.RESTAURANT_EMAIL, y_position, "Helvetica", config.font_contact)
+        draw_centered(settings_store.get("restaurant.email"), y_position, "Helvetica", config.font_contact)
     else:
         # Side by side for wider paper
         draw_centered(
-            f"Tel: {settings.RESTAURANT_PHONE} | {settings.RESTAURANT_EMAIL}",
+            f"Tel: {settings_store.get('restaurant.phone')} | {settings_store.get('restaurant.email')}",
             y_position,
             "Helvetica",
             config.font_contact,
@@ -349,8 +350,8 @@ def generate_receipt(
     #FSSAI
     # Draw FSSAI and GSTIN side by side
     c.setFont("Helvetica", config.font_gstin)
-    fssai_text = f"FSSAI: {settings.RESTAURANT_FSSAI}"
-    gstin_text = f"GSTIN: {settings.RESTAURANT_GSTIN}"
+    fssai_text = f"FSSAI: {settings_store.get('restaurant.fssai')}"
+    gstin_text = f"GSTIN: {settings_store.get('restaurant.gstin')}"
 
     c.drawCentredString(x_center, y_position, fssai_text)
     add_small_spacing(0.8)
@@ -473,8 +474,9 @@ def generate_receipt(
     )
 
     # GST breakdown (CGST + SGST) — recompute from subtotal so rate and amount are always consistent
-    half_gst_rate = settings.GST_RATE / 2
-    gst_amount = int(order.subtotal * settings.GST_RATE / 100)
+    gst_rate = settings_store.get_float("app.gst_rate", 5.0)
+    half_gst_rate = gst_rate / 2
+    gst_amount = int(order.subtotal * gst_rate / 100)
     cgst_amount = gst_amount // 2
     sgst_amount = gst_amount - cgst_amount
 
@@ -567,8 +569,8 @@ def generate_receipt(
     # add_spacing(0.9)
 
     # # QR code URLs from settings
-    # google_review_url = settings.GOOGLE_REVIEW_URL
-    # feedback_form_url = settings.FEEDBACK_FORM_URL
+    # google_review_url = settings_store.get("receipt.google_review_url")
+    # feedback_form_url = settings_store.get("receipt.feedback_form_url")
 
     # # Generate QR codes
     # qr_google = generate_qr_code(google_review_url, config.qr_size)

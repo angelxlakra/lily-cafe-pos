@@ -11,6 +11,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.core.config import settings
+from app.core import settings_store
 from app import schemas
 
 # Password hashing context (using bcrypt)
@@ -70,7 +71,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(hours=settings.TOKEN_EXPIRY_HOURS)
+        expire = datetime.utcnow() + timedelta(hours=settings_store.get_int("app.token_expiry_hours", 24))
 
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)

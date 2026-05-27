@@ -14,6 +14,7 @@ from datetime import datetime
 from io import BytesIO
 
 from app.core.config import settings
+from app.core import settings_store
 from app.models import models
 
 logger = logging.getLogger(__name__)
@@ -246,7 +247,7 @@ def print_receipt(order: models.Order) -> bool:
             return False
 
         # Get paper width from settings
-        paper_size = settings.RECEIPT_PAPER_SIZE
+        paper_size = settings_store.get("receipt.paper_size", "80mm")
         is_58mm = paper_size == "58mm"
 
         # Initialize printer
@@ -258,20 +259,20 @@ def print_receipt(order: models.Order) -> bool:
 
         printer.text("LILY\n")
         printer.set(align='center', bold=True, width=1, height=1)
-        printer.text(f"{settings.RESTAURANT_NAME.replace('Lily ', '')}\n")
+        printer.text(f"{settings_store.get('restaurant.name', '').replace('Lily ', '')}\n")
         printer.set(align='center', bold=False)
-        printer.text(f"{settings.RESTAURANT_ADDRESS_LINE1}\n")
-        printer.text(f"{settings.RESTAURANT_ADDRESS_LINE2}\n")
+        printer.text(f"{settings_store.get('restaurant.address_line1')}\n")
+        printer.text(f"{settings_store.get('restaurant.address_line2')}\n")
 
         if is_58mm:
             # Stack contact info for narrow paper
-            printer.text(f"Tel: {settings.RESTAURANT_PHONE}\n")
-            printer.text(f"{settings.RESTAURANT_EMAIL}\n")
+            printer.text(f"Tel: {settings_store.get('restaurant.phone')}\n")
+            printer.text(f"{settings_store.get('restaurant.email')}\n")
         else:
             # Side by side for wider paper
-            printer.text(f"Tel: {settings.RESTAURANT_PHONE} | {settings.RESTAURANT_EMAIL}\n")
+            printer.text(f"Tel: {settings_store.get('restaurant.phone')} | {settings_store.get('restaurant.email')}\n")
 
-        printer.text(f"GSTIN: {settings.RESTAURANT_GSTIN}\n")
+        printer.text(f"GSTIN: {settings_store.get('restaurant.gstin')}\n")
         printer.text("\n")
 
         # Separator
@@ -348,8 +349,9 @@ def print_receipt(order: models.Order) -> bool:
             printer.text(f"{'Subtotal:':<28} {subtotal_text:>13}\n")
 
         # GST breakdown — recompute from subtotal so rate and amount are always consistent
-        half_gst_rate = settings.GST_RATE / 2
-        gst_amount = int(order.subtotal * settings.GST_RATE / 100)
+        _gst_rate = settings_store.get_float("app.gst_rate", 5.0)
+        half_gst_rate = _gst_rate / 2
+        gst_amount = int(order.subtotal * _gst_rate / 100)
         cgst_amount = gst_amount // 2
         sgst_amount = gst_amount - cgst_amount
 
@@ -667,7 +669,7 @@ def print_order_chit(order: models.Order, items_to_print: list[models.OrderItem]
         items_to_print = order.order_items
 
     # Get paper width from settings
-    paper_size = settings.RECEIPT_PAPER_SIZE
+    paper_size = settings_store.get("receipt.paper_size", "80mm")
     if paper_size not in ["58mm", "80mm"]:
         paper_size = "80mm"  # Default to 80mm if invalid
 
@@ -863,7 +865,7 @@ def test_printer() -> bool:
         printer.text("TEST RECEIPT\n")
         printer.set(bold=False, width=1, height=1)
         printer.text("\n")
-        printer.text(f"{settings.RESTAURANT_NAME}\n")
+        printer.text(f"{settings_store.get('restaurant.name')}\n")
         printer.text("\n")
         printer.text("Printer Test Successful!\n")
         printer.text(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")

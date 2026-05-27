@@ -6,8 +6,7 @@ from datetime import timedelta
 from fastapi import APIRouter, HTTPException, status, Depends
 
 from app import schemas
-from app.core import security
-from app.core.config import settings
+from app.core import security, settings_store
 from app.api.deps import get_current_user
 
 router = APIRouter()
@@ -31,7 +30,7 @@ def login(login_data: schemas.LoginRequest):
     # Create token with role included
     access_token = security.create_access_token(
         data={"sub": login_data.username, "role": user_role.value},
-        expires_delta=timedelta(hours=settings.TOKEN_EXPIRY_HOURS),
+        expires_delta=timedelta(hours=settings_store.get_int("app.token_expiry_hours", 24)),
     )
 
     return {"access_token": access_token, "token_type": "bearer"}

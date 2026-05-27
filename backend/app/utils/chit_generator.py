@@ -12,6 +12,7 @@ from reportlab.lib import colors
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
+from app.core import settings_store
 from app.core.config import settings
 from app.models import models
 
@@ -27,7 +28,7 @@ def generate_order_chit_pdf(order: models.Order) -> io.BytesIO:
         BytesIO buffer containing the PDF
     """
     # Paper size (80mm width)
-    paper_size = settings.RECEIPT_PAPER_SIZE
+    paper_size = settings_store.get("receipt.paper_size", "80mm")
     if paper_size == "58mm":
         receipt_width = 58 * mm
     else:

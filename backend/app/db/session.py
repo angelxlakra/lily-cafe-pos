@@ -41,6 +41,7 @@ def init_db():
     Initialize database by creating all tables.
     Should be called on application startup.
     """
-    from app.models import models  # Import models to register them
+    from app.models import models  # noqa
+    from app.models.settings_model import AppSetting  # noqa - ensures app_settings table is created
 
     Base.metadata.create_all(bind=engine)

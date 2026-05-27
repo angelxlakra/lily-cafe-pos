@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app import crud
 from app.models.models import OrderStatus
-from app.core.config import settings
+from app.core import settings_store
 from app.api.deps import get_db, get_current_user
 
 router = APIRouter()
@@ -35,5 +35,5 @@ def get_stats(
         "today_orders": len(today_orders),
         "today_revenue": today_revenue,  # In paise
         "active_orders": len(active_orders),
-        "total_tables": settings.MAX_TABLES,
+        "total_tables": settings_store.get_int("app.max_tables", 15),
     }
