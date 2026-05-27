@@ -9,7 +9,7 @@ import {
   WaiterViewIcon,
   LogoutIcon,
 } from "./icons/NavigationIcons";
-import { Package, CurrencyInr, ChartLine, CaretLeft, CaretRight } from "@phosphor-icons/react";
+import { Package, CurrencyInr, ChartLine, Gear, CaretLeft, CaretRight } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 
 export default function Sidebar() {
@@ -108,6 +108,15 @@ export default function Sidebar() {
               to="/admin/analytics"
               icon={<ChartLine size={24} weight="duotone" />}
               label="Analytics"
+              onClick={handleCloseMobile}
+              isCollapsed={isCollapsed}
+            />
+          )}
+          {role === 'owner' && (
+            <NavItem
+              to="/admin/settings"
+              icon={<Gear size={24} weight="duotone" />}
+              label="Settings"
               onClick={handleCloseMobile}
               isCollapsed={isCollapsed}
             />

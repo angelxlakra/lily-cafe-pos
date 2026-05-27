@@ -18,6 +18,7 @@ import OrderHistoryPage from './pages/OrderHistoryPage.tsx'
 import InventoryPage from './pages/InventoryPage.tsx'
 import CashCounterPage from './pages/CashCounterPage.tsx'
 import AnalyticsPage from './pages/AnalyticsPage.tsx'
+import SettingsPage from './pages/SettingsPage.tsx'
 import ProtectedRoute from './components/ProtectedRoute.tsx'
 import './index.css'
 
@@ -124,6 +125,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                 element={
                   <ProtectedRoute requiredRole="owner">
                     <AnalyticsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/settings"
+                element={
+                  <ProtectedRoute requiredRole="owner">
+                    <SettingsPage />
                   </ProtectedRoute>
                 }
               />
