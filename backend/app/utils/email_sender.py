@@ -141,7 +141,7 @@ def build_inventory_report_html(
     <html>
     <body style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px; color: #333;">
         <h1 style="color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px;">
-            {settings_store.get("restaurant.name")} - Inventory Report
+            {settings_store.get('restaurant.name')} - Inventory Report
         </h1>
         <p style="color: #64748b; margin-bottom: 20px;">
             Recorded by <strong>{recorded_by}</strong> on {timestamp}
@@ -149,7 +149,7 @@ def build_inventory_report_html(
         {low_stock_section}
         {changes_section}
         <p style="color: #94a3b8; font-size: 12px; margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
-            This is an automated report from {settings_store.get("restaurant.name")} POS System.
+            This is an automated report from {settings_store.get('restaurant.name')} POS System.
         </p>
     </body>
     </html>"""
@@ -173,7 +173,7 @@ def send_inventory_report(
         timestamp = datetime.now().strftime("%B %d, %Y at %I:%M %p")
         html_body = build_inventory_report_html(low_stock_items, changes, recorded_by, timestamp)
 
-        subject = f"Inventory Report - {settings_store.get("restaurant.name")}"
+        subject = f"Inventory Report - {settings_store.get('restaurant.name')}"
         if low_stock_items:
             subject = f"[LOW STOCK] {subject} ({len(low_stock_items)} items)"
 

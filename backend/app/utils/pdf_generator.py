@@ -569,8 +569,8 @@ def generate_receipt(
     # add_spacing(0.9)
 
     # # QR code URLs from settings
-    # google_review_url = settings.GOOGLE_REVIEW_URL
-    # feedback_form_url = settings.FEEDBACK_FORM_URL
+    # google_review_url = settings_store.get("receipt.google_review_url")
+    # feedback_form_url = settings_store.get("receipt.feedback_form_url")
 
     # # Generate QR codes
     # qr_google = generate_qr_code(google_review_url, config.qr_size)
