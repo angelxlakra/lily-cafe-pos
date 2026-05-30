@@ -73,13 +73,16 @@ def print_chit(payload: dict, printer_cfg: dict, paper_size: str = "80mm") -> bo
         printer.text("NOTES:\n\n\n\n\n")
         printer.text("-" * width + "\n\n")
 
-        # Station banner at bottom — most visible when chit hangs on the rail
+        # Station banner + table number at bottom — most visible when chit hangs on the rail
         printer.set(align="center")
         printer.text("=" * width + "\n")
         printer.set(bold=True, width=2, height=2)
         printer.text(f"{station}\n")
         printer.set(bold=False, width=1, height=1)
         printer.text("=" * width + "\n")
+        printer.set(align="center", bold=True, width=2, height=2)
+        printer.text(f"TABLE {payload['table_number']}\n")
+        printer.set(bold=False, width=1, height=1)
 
         try:
             printer.cut()
