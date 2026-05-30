@@ -149,6 +149,22 @@ def generate_order_chit_pdf(order: models.Order) -> io.BytesIO:
         c.line(5 * mm, y_position, receipt_width - 5 * mm, y_position)
         y_position -= 7 * mm
 
+    y_position -= 5 * mm
+
+    # Separator line
+    c.setLineWidth(2)
+    c.setStrokeColor(colors.black)
+    c.line(5 * mm, y_position, receipt_width - 5 * mm, y_position)
+    y_position -= 25 * mm
+
+    # ============================================================================
+    # GIANT TABLE NUMBER (bottom repeat)
+    # ============================================================================
+
+    c.setFont("Helvetica-Bold", 72)
+    text_width = c.stringWidth(table_text, "Helvetica-Bold", 72)
+    c.drawString(x_center - text_width / 2, y_position, table_text)
+
     # Save PDF
     c.showPage()
     c.save()
