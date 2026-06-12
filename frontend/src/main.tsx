@@ -18,6 +18,7 @@ import OrderHistoryPage from './pages/OrderHistoryPage.tsx'
 import InventoryPage from './pages/InventoryPage.tsx'
 import CashCounterPage from './pages/CashCounterPage.tsx'
 import AnalyticsPage from './pages/AnalyticsPage.tsx'
+import ToolsPage from './pages/ToolsPage.tsx'
 import SettingsPage from './pages/SettingsPage.tsx'
 import ProtectedRoute from './components/ProtectedRoute.tsx'
 import './index.css'
@@ -137,6 +138,16 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                 }
               />
             </Route>
+
+            {/* Standalone unlisted tool — auth required, but no sidebar chrome */}
+            <Route
+              path="/admin/tools"
+              element={
+                <ProtectedRoute>
+                  <ToolsPage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Dev/Testing Routes */}
             <Route path="/test" element={<App />} />

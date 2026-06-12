@@ -79,6 +79,28 @@ export interface AnalyticsQueryParams {
   date?: string;
 }
 
+// ---- Dish frequency ("Tools" page) ----
+export interface DishFrequencyParams {
+  start_date?: string;       // IST calendar day, YYYY-MM-DD
+  end_date?: string;         // IST calendar day, YYYY-MM-DD
+  menu_item_ids?: number[];  // optional dish filter
+  paid_only?: boolean;
+}
+
+export interface DishCountRow {
+  menu_item_id: number | null;
+  name: string;
+  quantity: number;       // total units served
+  times_ordered: number;  // distinct orders containing this dish
+}
+
+export interface DishFrequencyResponse {
+  start_date: string | null;
+  end_date: string | null;
+  paid_only: boolean;
+  rows: DishCountRow[];
+}
+
 // ========================================
 // New Chart Types
 // ========================================
@@ -266,6 +288,20 @@ export const analyticsApi = {
   async getRevenue(params?: AnalyticsQueryParams): Promise<RevenueData> {
     const response = await apiClient.get(`/analytics/revenue`, {
       params,
+    });
+    return response.data;
+  },
+
+  /**
+   * Get dish frequency — how many times each dish was ordered in an interval.
+   */
+  async getDishFrequency(params: DishFrequencyParams): Promise<DishFrequencyResponse> {
+    const response = await apiClient.get(`/analytics/dish-frequency`, {
+      params,
+      // Serialize menu_item_ids as repeated `menu_item_ids=1&menu_item_ids=2`
+      paramsSerializer: {
+        indexes: null,
+      },
     });
     return response.data;
   },

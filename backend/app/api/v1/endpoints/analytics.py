@@ -6,13 +6,13 @@ Provides revenue, product, and order statistics with Thesys C1 generative UI int
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, List
 import json
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 from pydantic import BaseModel
 from openai import OpenAI
 
-from app.api.deps import get_db, get_current_owner
+from app.api.deps import get_db, get_current_owner, get_current_user
 from app.core.config import settings
 from app.models.models import Order, OrderItem, Payment, PaymentMethod, OrderStatus, MenuItem
 from app import schemas
@@ -675,6 +675,141 @@ def get_product_performance(
     return ProductPerformance(
         top_products=top_products,
         revenue_by_category=revenue_by_category
+    )
+
+
+# ============================================================
+# Dish Frequency ("Tools" page) - how many times each dish was
+# ordered within a date interval, optionally filtered to a set
+# of dishes, sorted in descending order of quantity.
+# ============================================================
+
+class DishCountRow(BaseModel):
+    menu_item_id: Optional[int] = None
+    name: str
+    quantity: int          # total plates/units served (sum of OrderItem.quantity)
+    times_ordered: int     # number of distinct orders containing this dish
+
+
+class DishFrequencyResponse(BaseModel):
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    paid_only: bool
+    rows: List[DishCountRow]
+
+
+# IST is UTC+5:30. created_at is stored as naive UTC.
+_IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def _ist_day_to_utc_bounds(start: Optional[str], end: Optional[str]):
+    """Interpret start/end as IST calendar days (YYYY-MM-DD) and
+    return naive-UTC datetime bounds suitable for comparing against
+    Order.created_at. Either bound may be None (open-ended)."""
+    from datetime import date as _date, time as _time
+
+    start_dt = None
+    end_dt = None
+    if start:
+        d = _date.fromisoformat(start)
+        start_dt = (
+            datetime.combine(d, _time.min, _IST)
+            .astimezone(timezone.utc)
+            .replace(tzinfo=None)
+        )
+    if end:
+        d = _date.fromisoformat(end)
+        end_dt = (
+            datetime.combine(d, _time.max, _IST)
+            .astimezone(timezone.utc)
+            .replace(tzinfo=None)
+        )
+    return start_dt, end_dt
+
+
+@router.get("/dish-frequency", response_model=DishFrequencyResponse)
+def get_dish_frequency(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    menu_item_ids: Optional[List[int]] = Query(default=None),
+    paid_only: bool = False,
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_user),
+):
+    """
+    Count how many times each dish was ordered within a date interval.
+
+    - **start_date / end_date**: IST calendar days (YYYY-MM-DD), inclusive. Omit for all-time.
+    - **menu_item_ids**: optional list of dish ids to restrict to. Selected dishes
+      with no orders in the interval are returned with a count of 0.
+    - **paid_only**: when true, count only paid orders; otherwise count all
+      orders except canceled ones.
+
+    Rows are sorted in descending order of total quantity.
+    """
+    try:
+        start_dt, end_dt = _ist_day_to_utc_bounds(start_date, end_date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Dates must be in YYYY-MM-DD format")
+
+    filters = []
+    if start_dt is not None:
+        filters.append(Order.created_at >= start_dt)
+    if end_dt is not None:
+        filters.append(Order.created_at <= end_dt)
+
+    if paid_only:
+        filters.append(Order.status == OrderStatus.PAID)
+    else:
+        filters.append(Order.status != OrderStatus.CANCELED)
+
+    if menu_item_ids:
+        filters.append(OrderItem.menu_item_id.in_(menu_item_ids))
+
+    rows_query = (
+        db.query(
+            OrderItem.menu_item_id.label("menu_item_id"),
+            OrderItem.menu_item_name.label("name"),
+            func.sum(OrderItem.quantity).label("quantity"),
+            func.count(func.distinct(OrderItem.order_id)).label("times_ordered"),
+        )
+        .join(Order, Order.id == OrderItem.order_id)
+        .filter(and_(*filters))
+        .group_by(OrderItem.menu_item_id, OrderItem.menu_item_name)
+        .order_by(func.sum(OrderItem.quantity).desc())
+        .all()
+    )
+
+    rows = [
+        DishCountRow(
+            menu_item_id=menu_item_id,
+            name=name,
+            quantity=int(quantity or 0),
+            times_ordered=int(times_ordered or 0),
+        )
+        for menu_item_id, name, quantity, times_ordered in rows_query
+    ]
+
+    # Include explicitly-selected dishes that had no orders, as zero rows.
+    if menu_item_ids:
+        present_ids = {r.menu_item_id for r in rows}
+        missing_ids = [i for i in menu_item_ids if i not in present_ids]
+        if missing_ids:
+            missing_items = (
+                db.query(MenuItem.id, MenuItem.name)
+                .filter(MenuItem.id.in_(missing_ids))
+                .all()
+            )
+            for item_id, name in missing_items:
+                rows.append(
+                    DishCountRow(menu_item_id=item_id, name=name, quantity=0, times_ordered=0)
+                )
+
+    return DishFrequencyResponse(
+        start_date=start_date,
+        end_date=end_date,
+        paid_only=paid_only,
+        rows=rows,
     )
 
 
