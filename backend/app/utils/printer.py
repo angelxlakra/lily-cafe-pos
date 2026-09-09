@@ -358,12 +358,13 @@ def print_receipt(order: models.Order) -> bool:
         cgst_text = format_currency(cgst_amount)
         sgst_text = format_currency(sgst_amount)
 
-        if is_58mm:
-            printer.text(f"CGST ({half_gst_rate}%): {cgst_text:>11}\n")
-            printer.text(f"SGST ({half_gst_rate}%): {sgst_text:>11}\n")
-        else:
-            printer.text(f"{'CGST (' + str(half_gst_rate) + '%):':<28} {cgst_text:>13}\n")
-            printer.text(f"{'SGST (' + str(half_gst_rate) + '%):':<28} {sgst_text:>13}\n")
+        if _gst_rate > 0:
+            if is_58mm:
+                printer.text(f"CGST ({half_gst_rate}%): {cgst_text:>11}\n")
+                printer.text(f"SGST ({half_gst_rate}%): {sgst_text:>11}\n")
+            else:
+                printer.text(f"{'CGST (' + str(half_gst_rate) + '%):':<28} {cgst_text:>13}\n")
+                printer.text(f"{'SGST (' + str(half_gst_rate) + '%):':<28} {sgst_text:>13}\n")
 
         rounding_adjustment = order.total_amount - (order.subtotal + gst_amount)
         if rounding_adjustment != 0:

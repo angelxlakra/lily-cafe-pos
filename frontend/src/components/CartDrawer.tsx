@@ -238,21 +238,25 @@ export default function CartDrawer({
               </span>
             </div>
 
-            {/* SGST */}
-            <div className="flex justify-between text-sm">
-              <span className="text-neutral-text-light">SGST ({gstRateLabel}%):</span>
-              <span className="font-semibold text-neutral-text-dark">
-                {formatCurrency(sgstAmount)}
-              </span>
-            </div>
+            {gstRatePercent > 0 && (
+              <>
+                {/* SGST */}
+                <div className="flex justify-between text-sm">
+                  <span className="text-neutral-text-light">SGST ({gstRateLabel}%):</span>
+                  <span className="font-semibold text-neutral-text-dark">
+                    {formatCurrency(sgstAmount)}
+                  </span>
+                </div>
 
-            {/* CGST */}
-            <div className="flex justify-between text-sm">
-              <span className="text-neutral-text-light">CGST ({gstRateLabel}%):</span>
-              <span className="font-semibold text-neutral-text-dark">
-                {formatCurrency(cgstAmount)}
-              </span>
-            </div>
+                {/* CGST */}
+                <div className="flex justify-between text-sm">
+                  <span className="text-neutral-text-light">CGST ({gstRateLabel}%):</span>
+                  <span className="font-semibold text-neutral-text-dark">
+                    {formatCurrency(cgstAmount)}
+                  </span>
+                </div>
+              </>
+            )}
 
             {/* Divider */}
             <div className="border-t border-neutral-border"></div>

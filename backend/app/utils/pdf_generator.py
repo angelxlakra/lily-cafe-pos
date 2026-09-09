@@ -480,22 +480,23 @@ def generate_receipt(
     cgst_amount = gst_amount // 2
     sgst_amount = gst_amount - cgst_amount
 
-    draw_row(
-        f"CGST ({half_gst_rate}%):",
-        format_currency(cgst_amount),
-        left_size=config.font_subtotal,
-        right_size=config.font_subtotal,
-        spacing=1.5,
-    )
     rounding_adjustment = order.total_amount - (order.subtotal + gst_amount)
 
-    draw_row(
-        f"SGST ({half_gst_rate}%):",
-        format_currency(sgst_amount),
-        left_size=config.font_subtotal,
-        right_size=config.font_subtotal,
-        spacing=1.5 if rounding_adjustment != 0 else 0.5,
-    )
+    if gst_rate > 0:
+        draw_row(
+            f"CGST ({half_gst_rate}%):",
+            format_currency(cgst_amount),
+            left_size=config.font_subtotal,
+            right_size=config.font_subtotal,
+            spacing=1.5,
+        )
+        draw_row(
+            f"SGST ({half_gst_rate}%):",
+            format_currency(sgst_amount),
+            left_size=config.font_subtotal,
+            right_size=config.font_subtotal,
+            spacing=1.5 if rounding_adjustment != 0 else 0.5,
+        )
 
     if rounding_adjustment != 0:
         draw_row(
