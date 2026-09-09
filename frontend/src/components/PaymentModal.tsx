@@ -222,10 +222,12 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                         ))}
                       </tbody>
                       <tfoot className="bg-off-white border-t border-neutral-border">
-                         <tr>
-                            <td colSpan={2} className="p-3 text-left text-neutral-text-light">GST ({gstRatePercent}%)</td>
-                            <td className="p-3 text-right text-neutral-text-light">{formatCurrency(computedGst)}</td>
-                         </tr>
+                         {gstRatePercent > 0 && (
+                           <tr>
+                              <td colSpan={2} className="p-3 text-left text-neutral-text-light">GST ({gstRatePercent}%)</td>
+                              <td className="p-3 text-right text-neutral-text-light">{formatCurrency(computedGst)}</td>
+                           </tr>
+                         )}
                          {totalAmount !== subtotal + computedGst && (
                            <tr>
                              <td colSpan={2} className="p-3 text-left text-neutral-text-light">Rounding</td>

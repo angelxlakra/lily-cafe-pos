@@ -367,10 +367,12 @@ export default function EditOrderModal({ order, onClose, onCancelOrder }: EditOr
               <span>Subtotal:</span>
               <span className="font-semibold">{formatCurrency(subtotal)}</span>
             </div>
-            <div className="flex justify-between text-neutral-text-light">
-              <span>GST ({gstRate}%):</span>
-              <span className="font-semibold">{formatCurrency(gstAmount)}</span>
-            </div>
+            {gstRate > 0 && (
+              <div className="flex justify-between text-neutral-text-light">
+                <span>GST ({gstRate}%):</span>
+                <span className="font-semibold">{formatCurrency(gstAmount)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-xl font-bold text-coffee-brown border-t border-neutral-border pt-2">
               <span>Total:</span>
               <span>{formatCurrency(total)}</span>

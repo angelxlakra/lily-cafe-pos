@@ -898,22 +898,26 @@ function OrderDetailsModal({
                     {formatCurrency(order.subtotal)}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-neutral-text-light">
-                    SGST ({halfRateLabel}%):
-                  </span>
-                  <span className="font-semibold text-neutral-text-dark">
-                    {formatCurrency(sgstAmount)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-neutral-text-light">
-                    CGST ({halfRateLabel}%):
-                  </span>
-                  <span className="font-semibold text-neutral-text-dark">
-                    {formatCurrency(cgstAmount)}
-                  </span>
-                </div>
+                {gstRatePercent > 0 && (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-neutral-text-light">
+                        SGST ({halfRateLabel}%):
+                      </span>
+                      <span className="font-semibold text-neutral-text-dark">
+                        {formatCurrency(sgstAmount)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-neutral-text-light">
+                        CGST ({halfRateLabel}%):
+                      </span>
+                      <span className="font-semibold text-neutral-text-dark">
+                        {formatCurrency(cgstAmount)}
+                      </span>
+                    </div>
+                  </>
+                )}
                 <div className="border-t border-neutral-border pt-2">
                   <div className="flex justify-between text-lg">
                     <span className="font-semibold text-neutral-text-dark">
