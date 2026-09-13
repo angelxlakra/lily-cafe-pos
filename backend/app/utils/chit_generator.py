@@ -17,6 +17,45 @@ from app.core.config import settings
 from app.models import models
 
 
+def _wrap_to_width(c, text: str, font_name: str, font_size: int, max_width: float) -> list:
+    """
+    Break text into lines that fit within max_width at the given font.
+
+    Words wider than the line on their own are hard-split rather than dropped,
+    so a long unbroken string still prints instead of running off the paper.
+    """
+    lines = []
+    current = ""
+
+    for word in text.split():
+        while c.stringWidth(word, font_name, font_size) > max_width:
+            # Shrink the word until the leading chunk fits, then carry the rest
+            cut = len(word)
+            while cut > 1 and c.stringWidth(word[:cut], font_name, font_size) > max_width:
+                cut -= 1
+            if current:
+                lines.append(current)
+                current = ""
+            lines.append(word[:cut])
+            word = word[cut:]
+
+        if not word:
+            continue
+
+        candidate = f"{current} {word}".strip()
+        if c.stringWidth(candidate, font_name, font_size) <= max_width:
+            current = candidate
+        else:
+            if current:
+                lines.append(current)
+            current = word
+
+    if current:
+        lines.append(current)
+
+    return lines
+
+
 def generate_order_chit_pdf(order: models.Order) -> io.BytesIO:
     """
     Generate a PDF order chit with large table number and items.
@@ -142,8 +181,21 @@ def generate_order_chit_pdf(order: models.Order) -> io.BytesIO:
     c.drawString(5 * mm, y_position, "NOTES:")
     y_position -= 8 * mm
 
-    # Draw lines for handwritten notes
-    for _ in range(5):
+    # The waiter's instruction, printed large enough to read from the pass
+    note = (order.notes or "").strip()
+    if note:
+        note_font, note_size = "Helvetica-Bold", 16
+        c.setFont(note_font, note_size)
+        max_width = receipt_width - 10 * mm
+        for line in _wrap_to_width(c, note, note_font, note_size, max_width):
+            c.drawString(5 * mm, y_position, line)
+            y_position -= 7 * mm
+        y_position -= 3 * mm
+        c.setFont("Helvetica", 10)
+
+    # Draw lines for anything written by hand — fewer when a note was printed,
+    # so the chit does not grow unnecessarily long
+    for _ in range(2 if note else 5):
         c.setLineWidth(0.5)
         c.setStrokeColor(colors.grey)
         c.line(5 * mm, y_position, receipt_width - 5 * mm, y_position)

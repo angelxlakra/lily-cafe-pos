@@ -74,6 +74,10 @@ class Order(Base):
     gst_amount = Column(Integer, nullable=False)  # GST amount in paise
     total_amount = Column(Integer, nullable=False)  # Final total in paise
     status = Column(SQLEnum(OrderStatus), default=OrderStatus.ACTIVE, nullable=False, index=True)
+    # Free-text instruction for the kitchen/bar, printed in the NOTES section of
+    # the chit (e.g. "no onion", "extra spicy"). Holds the note from the most
+    # recent round of items, since a chit is printed per round.
+    notes = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 

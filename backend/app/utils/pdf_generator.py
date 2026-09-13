@@ -629,6 +629,44 @@ def generate_receipt(
     c.save()
 
 
+def _wrap_to_width(c, text: str, font_name: str, font_size: float, max_width: float) -> list:
+    """
+    Break text into lines that fit within max_width at the given font.
+
+    Words wider than the line on their own are hard-split rather than dropped,
+    so a long unbroken string still prints instead of running off the paper.
+    """
+    lines = []
+    current = ""
+
+    for word in text.split():
+        while c.stringWidth(word, font_name, font_size) > max_width:
+            cut = len(word)
+            while cut > 1 and c.stringWidth(word[:cut], font_name, font_size) > max_width:
+                cut -= 1
+            if current:
+                lines.append(current)
+                current = ""
+            lines.append(word[:cut])
+            word = word[cut:]
+
+        if not word:
+            continue
+
+        candidate = f"{current} {word}".strip()
+        if c.stringWidth(candidate, font_name, font_size) <= max_width:
+            current = candidate
+        else:
+            if current:
+                lines.append(current)
+            current = word
+
+    if current:
+        lines.append(current)
+
+    return lines
+
+
 def generate_order_chit_pdf(
     order: models.Order, output: BinaryIO, paper_size: PaperSize = "80mm", items_to_print: Optional[list] = None, station: str = "kitchen", is_parcel: bool = False
 ) -> None:
@@ -639,7 +677,7 @@ def generate_order_chit_pdf(
     - Very large table number (customizable)
     - Order items with quantities
     - Total amount
-    - Space for handwritten notes
+    - The order's note (if any), plus space for handwritten notes
 
     Args:
         order: Order model instance
@@ -751,8 +789,19 @@ def generate_order_chit_pdf(
     draw_left("NOTES:", y_position, "Helvetica-Bold", 12)
     add_spacing(10)
 
-    # Add blank space for notes (multiple lines)
-    for _ in range(6):
+    # The waiter's instruction for this order, printed large enough to read
+    # from the pass. Wrapped so a long note does not run off the paper.
+    note = (order.notes or "").strip()
+    if note:
+        note_font, note_size = "Helvetica-Bold", 16
+        for line in _wrap_to_width(c, note, note_font, note_size, config.content_width):
+            draw_left(line, y_position, note_font, note_size)
+            add_spacing(7)
+        add_spacing(3)
+
+    # Blank space for anything written by hand — less of it when a note was
+    # printed, so the chit does not grow unnecessarily long
+    for _ in range(2 if note else 6):
         add_spacing(8)
 
     draw_separator(y_position, char="-")

@@ -36,22 +36,23 @@ def get_db():
         db.close()
 
 
-# Audit columns added to `orders` after the table already shipped. Kept here so
-# both init_db() and scripts/migrate_add_order_audit_fields.py apply them the
-# same way. create_all() only creates missing *tables*, never missing columns.
-_ORDER_AUDIT_COLUMNS = {
+# Columns added to `orders` after the table already shipped. Kept here so both
+# init_db() and scripts/migrate_add_order_columns.py apply them the same way.
+# create_all() only creates missing *tables*, never missing columns.
+_ORDER_ADDED_COLUMNS = {
     "canceled_at": "DATETIME",
     "canceled_by": "VARCHAR(50)",
     "cancel_reason": "VARCHAR(255)",
     "last_edited_at": "DATETIME",
     "last_edited_by": "VARCHAR(50)",
     "edit_count": "INTEGER DEFAULT 0 NOT NULL",
+    "notes": "VARCHAR(500)",
 }
 
 
-def ensure_order_audit_columns(bind=None) -> list[str]:
+def ensure_order_columns(bind=None) -> list[str]:
     """
-    Add any missing audit columns to the orders table.
+    Add any missing columns to the orders table.
 
     Idempotent — safe to call on every startup. Returns the names of the
     columns that were actually added.
@@ -66,7 +67,7 @@ def ensure_order_audit_columns(bind=None) -> list[str]:
     added = []
 
     with bind.connect() as conn:
-        for name, ddl_type in _ORDER_AUDIT_COLUMNS.items():
+        for name, ddl_type in _ORDER_ADDED_COLUMNS.items():
             if name in existing:
                 continue
             conn.execute(text(f"ALTER TABLE orders ADD COLUMN {name} {ddl_type}"))
@@ -88,5 +89,5 @@ def init_db():
     Base.metadata.create_all(bind=engine)
 
     # create_all() does not alter existing tables, so bring older databases
-    # up to date with the order audit columns.
-    ensure_order_audit_columns(engine)
+    # up to date with the columns added to `orders` since it shipped.
+    ensure_order_columns(engine)

@@ -97,6 +97,8 @@ export interface Order {
   order_number: string;
   table_number: number;
   customer_name: string | null;
+  /** Instruction for the kitchen/bar, printed in the NOTES section of the chit */
+  notes?: string | null;
   status: 'active' | 'paid' | 'canceled';
   order_items: OrderItem[];
   subtotal: number;
@@ -118,6 +120,8 @@ export interface Order {
 export interface CreateOrderRequest {
   table_number: number;
   customer_name?: string | null;
+  /** Instruction for the kitchen/bar, printed in the NOTES section of the chit */
+  notes?: string | null;
   items: Array<{
     menu_item_id: number;
     quantity: number;

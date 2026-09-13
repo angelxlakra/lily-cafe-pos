@@ -458,6 +458,12 @@ def create_order(db: Session, order: schemas.OrderCreate) -> tuple[models.Order,
         if order.customer_name:
             existing_order.customer_name = order.customer_name
 
+        # Notes are per-round, not cumulative: a chit is printed for each round
+        # of items, and it must carry the note the waiter typed for *this*
+        # round. Assigning unconditionally means leaving the box empty clears
+        # the previous note instead of reprinting it on the new chit.
+        existing_order.notes = order.notes
+
         db.commit()
         db.refresh(existing_order)
         return existing_order, new_items_only
@@ -502,6 +508,7 @@ def create_order(db: Session, order: schemas.OrderCreate) -> tuple[models.Order,
             order_number=generate_order_number(db),
             table_number=order.table_number,
             customer_name=order.customer_name,
+            notes=order.notes,
             subtotal=subtotal,
             gst_amount=gst_amount,
             total_amount=total_amount,

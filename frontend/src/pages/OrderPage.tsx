@@ -29,7 +29,8 @@ export default function OrderPage() {
 
   // State - cart maps menu_item_id to { quantity, is_parcel }
   const [cart, setCart] = useState<Map<number, { quantity: number; is_parcel: boolean }>>(new Map());
-  const [customerName, setCustomerName] = useState("");
+  // Instruction for the kitchen/bar, printed in the NOTES section of the chit
+  const [notes, setNotes] = useState("");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
@@ -184,7 +185,7 @@ export default function OrderPage() {
 
     const orderData = {
       table_number: tableNumber,
-      customer_name: customerName.trim() || undefined, // Only include if not empty
+      notes: notes.trim() || undefined, // Only include if not empty
       items: cartItems.map(({ menuItem, quantity, is_parcel }) => ({
         menu_item_id: menuItem.id,
         quantity,
@@ -199,9 +200,9 @@ export default function OrderPage() {
           description: `Table ${tableNumber} order has been sent to the kitchen.`
         });
 
-        // Clear cart and customer name
+        // Clear cart and notes
         setCart(new Map());
-        setCustomerName("");
+        setNotes("");
 
         // Close drawer
         setIsDrawerOpen(false);
@@ -396,8 +397,8 @@ export default function OrderPage() {
         onSaveOrder={handleSaveOrder}
         isSaving={isSavingOrder}
         gstRatePercent={gstRatePercent}
-        customerName={customerName}
-        onCustomerNameChange={setCustomerName}
+        notes={notes}
+        onNotesChange={setNotes}
       />
 
       {/* Bottom Navigation */}

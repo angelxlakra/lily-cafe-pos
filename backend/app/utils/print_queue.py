@@ -13,6 +13,7 @@ def _build_payload(order: Order, items: list[OrderItem], station: str) -> str:
         "order_number": order.order_number,
         "table_number": order.table_number,
         "customer_name": order.customer_name,
+        "notes": order.notes,
         "created_at": order.created_at.isoformat(),
         "station": station,
         "items": [

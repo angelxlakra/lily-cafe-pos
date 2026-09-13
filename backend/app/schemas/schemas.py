@@ -160,6 +160,11 @@ class OrderCreate(BaseModel):
 
     table_number: int = Field(..., ge=1, le=50)
     customer_name: Optional[str] = Field(None, max_length=200)
+    notes: Optional[str] = Field(
+        None,
+        max_length=500,
+        description="Instruction for the kitchen/bar, printed on the order chit",
+    )
     items: List[OrderItemCreate] = Field(..., min_length=1)
 
 
@@ -168,6 +173,11 @@ class OrderUpdate(BaseModel):
 
     status: Optional[OrderStatus] = None
     customer_name: Optional[str] = Field(None, max_length=200)
+    notes: Optional[str] = Field(
+        None,
+        max_length=500,
+        description="Instruction for the kitchen/bar, printed on the order chit",
+    )
 
 
 class OrderItemsUpdate(BaseModel):
@@ -199,6 +209,7 @@ class Order(BaseModel):
     gst_amount: int  # In paise
     total_amount: int  # In paise
     status: OrderStatus
+    notes: Optional[str] = None  # Kitchen/bar instruction printed on the chit
     created_at: datetime
     updated_at: datetime
     order_items: List[OrderItem]

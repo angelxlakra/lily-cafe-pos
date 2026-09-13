@@ -24,8 +24,9 @@ interface CartDrawerProps {
   onSaveOrder: () => void;
   isSaving?: boolean;
   gstRatePercent?: number;
-  customerName?: string;
-  onCustomerNameChange?: (name: string) => void;
+  /** Instruction for the kitchen/bar, printed in the NOTES section of the chit */
+  notes?: string;
+  onNotesChange?: (notes: string) => void;
 }
 
 export default function CartDrawer({
@@ -39,8 +40,8 @@ export default function CartDrawer({
   onSaveOrder,
   isSaving = false,
   gstRatePercent = 5,
-  customerName = '',
-  onCustomerNameChange,
+  notes = '',
+  onNotesChange,
 }: CartDrawerProps) {
   // Calculate totals
   const subtotal = cartItems.reduce(
@@ -267,22 +268,27 @@ export default function CartDrawer({
               <span className="font-bold font-heading text-coffee-brown">{formatCurrency(total)}</span>
             </div>
 
-            {/* Customer Name Input (Optional) */}
+            {/* Kitchen Notes (Optional) — printed on the order chit */}
             <div>
-              <label htmlFor="customer-name" className="block text-sm font-medium text-neutral-text-dark mb-2">
-                Customer Name <span className="text-neutral-text-light">(optional)</span>
+              <label htmlFor="order-notes" className="block text-sm font-medium text-neutral-text-dark mb-2">
+                Notes for kitchen <span className="text-neutral-text-light">(optional)</span>
               </label>
-              <input
-                id="customer-name"
-                type="text"
-                value={customerName}
-                onChange={(e) => onCustomerNameChange?.(e.target.value)}
-                placeholder="Enter customer name..."
+              <textarea
+                id="order-notes"
+                value={notes}
+                onChange={(e) => onNotesChange?.(e.target.value)}
+                placeholder="e.g. no onion, extra spicy, less sugar..."
+                rows={2}
+                maxLength={500}
                 className="w-full px-4 py-2.5 border border-neutral-border rounded-lg
                          focus:outline-none focus:ring-2 focus:ring-coffee-brown
-                         text-neutral-text-dark placeholder:text-neutral-text-light"
+                         text-neutral-text-dark placeholder:text-neutral-text-light
+                         resize-none"
                 disabled={isSaving}
               />
+              <p className="mt-1 text-xs text-neutral-text-light">
+                Printed on the kitchen/bar chit for these items.
+              </p>
             </div>
 
             {/* Save Order Button */}
