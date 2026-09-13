@@ -64,7 +64,9 @@ class PurchaseCreate(BaseModel):
 
 class UsageCreate(BaseModel):
     items: List[InventoryTransactionBase]
-    recorded_by: str
+    # Accepted for backward compatibility but ignored — the server records the
+    # authenticated user, so the client cannot claim to be somebody else.
+    recorded_by: Optional[str] = Field(None, max_length=100, deprecated=True)
 
 class AdjustmentCreate(BaseModel):
     item_id: int
@@ -80,7 +82,9 @@ class AdjustmentItem(BaseModel):
 class BatchAdjustmentCreate(BaseModel):
     """Batch adjustment for daily inventory count."""
     adjustments: List[AdjustmentItem]
-    recorded_by: str = Field(..., min_length=1, max_length=100)
+    # Accepted for backward compatibility but ignored — the server records the
+    # authenticated user, so the client cannot claim to be somebody else.
+    recorded_by: Optional[str] = Field(None, max_length=100, deprecated=True)
 
 class InventoryTransaction(BaseModel):
     id: int

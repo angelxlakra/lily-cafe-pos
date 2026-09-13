@@ -12,14 +12,51 @@ from app.models.models import Payment, PaymentMethod
 from app.schemas import cash_schemas
 from app.core.config import settings
 from app.core.security import verify_password
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_owner
+from app.core import access
 from app.schemas import TokenData
 
 router = APIRouter()
 
+
+def _require_own_day(current_user: TokenData, day: date, action: str) -> None:
+    """
+    Admin may only work on the current day's counter; the owner may work on
+    any day (e.g. backfilling or correcting an earlier day's count).
+    """
+    if not access.is_owner(current_user) and day != access.business_today():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Owner login required to {action} for a day other than today.",
+        )
+
+
+def _authorizing_owner(current_user: TokenData) -> str:
+    """
+    Name to record for an action gated by the owner password.
+
+    When the owner is signed in, that is simply their username. When the
+    owner authorizes at the counter while the admin is signed in, record both
+    so the trail shows who was operating the till.
+    """
+    if access.is_owner(current_user):
+        return current_user.username
+    return f"{settings.OWNER_USERNAME} (via {current_user.username})"[:100]
+
 @router.post("/open", response_model=cash_schemas.DailyCashCounter, status_code=status.HTTP_201_CREATED)
-def open_cash_counter(data: cash_schemas.DailyCashCounterOpen, db: Session = Depends(get_db)):
-    """Open the daily cash counter."""
+def open_cash_counter(
+    data: cash_schemas.DailyCashCounterOpen,
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+):
+    """
+    Open the daily cash counter.
+
+    Requires a login, and records who opened it. The admin login may only
+    open today's counter; the owner can also open an earlier day.
+    """
+    _require_own_day(current_user, data.date, "open the cash counter")
+
     # Check if already open
     existing = db.query(DailyCashCounter).filter(DailyCashCounter.date == data.date).first()
     if existing:
@@ -48,7 +85,7 @@ def open_cash_counter(data: cash_schemas.DailyCashCounterOpen, db: Session = Dep
         opening_20s=data.opening_20s,
         opening_10s=data.opening_10s,
         notes=data.notes,
-        opened_by="admin" # TODO: Get from auth
+        opened_by=current_user.username,
     )
     db.add(counter)
     db.commit()
@@ -56,8 +93,19 @@ def open_cash_counter(data: cash_schemas.DailyCashCounterOpen, db: Session = Dep
     return counter
 
 @router.post("/close", response_model=cash_schemas.DailyCashCounter)
-def close_cash_counter(data: cash_schemas.DailyCashCounterClose, db: Session = Depends(get_db)):
-    """Close the daily cash counter."""
+def close_cash_counter(
+    data: cash_schemas.DailyCashCounterClose,
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+):
+    """
+    Close the daily cash counter.
+
+    Requires a login, and records who closed it. The admin login may only
+    close today's counter; the owner can also close an earlier day.
+    """
+    _require_own_day(current_user, data.date, "close the cash counter")
+
     counter = db.query(DailyCashCounter).filter(DailyCashCounter.date == data.date).first()
     if not counter:
         raise HTTPException(status_code=404, detail="Counter not found for this date")
@@ -98,7 +146,7 @@ def close_cash_counter(data: cash_schemas.DailyCashCounterClose, db: Session = D
     counter.expected_closing = expected_closing
     counter.variance = variance
     counter.notes = data.notes
-    counter.closed_by = "admin" # TODO: Get from auth
+    counter.closed_by = current_user.username
     counter.closed_at = datetime.now()
 
     db.commit()
@@ -111,8 +159,19 @@ def close_cash_counter(data: cash_schemas.DailyCashCounterClose, db: Session = D
     return counter_dict
 
 @router.post("/verify/{counter_id}", response_model=cash_schemas.DailyCashCounter)
-def verify_cash_counter(counter_id: int, verify_data: cash_schemas.DailyCashCounterVerify, db: Session = Depends(get_db)):
-    """Verify cash counter (Owner only)."""
+def verify_cash_counter(
+    counter_id: int,
+    verify_data: cash_schemas.DailyCashCounterVerify,
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+):
+    """
+    Verify a closed cash counter.
+
+    Authorized by the owner password, so the owner can approve the count at
+    the till while the admin is signed in. A login is still required, so the
+    action is always attributable to whoever was operating the till.
+    """
     counter = db.query(DailyCashCounter).filter(DailyCashCounter.id == counter_id).first()
     if not counter:
         raise HTTPException(status_code=404, detail="Counter not found")
@@ -128,7 +187,7 @@ def verify_cash_counter(counter_id: int, verify_data: cash_schemas.DailyCashCoun
         raise HTTPException(status_code=401, detail="Incorrect owner password")
         
     counter.is_verified = True
-    counter.verified_by = "owner"
+    counter.verified_by = _authorizing_owner(current_user)
     counter.verified_at = datetime.now()
     
     db.commit()
@@ -136,8 +195,11 @@ def verify_cash_counter(counter_id: int, verify_data: cash_schemas.DailyCashCoun
     return counter
 
 @router.get("/today", response_model=dict)
-def get_today_counter(db: Session = Depends(get_db)):
-    """Get today's cash counter status."""
+def get_today_counter(
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+):
+    """Get today's cash counter status. Requires a login."""
     today = date.today()
     counter = db.query(DailyCashCounter).filter(DailyCashCounter.date == today).first()
     
@@ -173,9 +235,15 @@ def get_today_counter(db: Session = Depends(get_db)):
 def get_history(
     limit: int = 30,
     offset: int = 0,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(get_current_owner),
 ):
-    """Get cash counter history."""
+    """
+    Get cash counter history.
+
+    Owner only — this is a record of previous days' cash, which the admin
+    login is not allowed to see.
+    """
     query = db.query(DailyCashCounter)
     total = query.count()
     counters = query.order_by(desc(DailyCashCounter.date)).offset(offset).limit(limit).all()
@@ -217,7 +285,11 @@ def get_counter_for_day(
     Returns the counter (or null if none was opened that day), the cash
     payments collected, and the nearest earlier/later days that have a
     counter so the UI can step between recorded days.
+
+    The admin login may only look up today; the owner can look up any day.
     """
+    _require_own_day(current_user, day, "view the cash counter")
+
     counter = db.query(DailyCashCounter).filter(DailyCashCounter.date == day).first()
 
     cash_sum, cash_count = db.query(
@@ -250,8 +322,18 @@ def get_counter_for_day(
     }
 
 @router.post("/reopen/{counter_id}",response_model=cash_schemas.DailyCashCounter)
-def reopen_cash_counter(counter_id: int, reopen_data: cash_schemas.DailyCashCounterVerify, db: Session = Depends(get_db)):
-    """Reopen a closed cash counter (Owner only)."""
+def reopen_cash_counter(
+    counter_id: int,
+    reopen_data: cash_schemas.DailyCashCounterVerify,
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+):
+    """
+    Reopen a closed cash counter so the cash can be recounted.
+
+    Authorized by the owner password, like verification, and likewise
+    requires a login so the action is attributable.
+    """
     counter = db.query(DailyCashCounter).filter(DailyCashCounter.id == counter_id).first()
     if not counter:
         raise HTTPException(status_code=404, detail="Counter not found")

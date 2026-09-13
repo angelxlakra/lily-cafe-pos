@@ -8,22 +8,38 @@ from app.db.session import get_db
 from app.models.inventory_models import InventoryCategory, InventoryItem, InventoryTransaction, TransactionType
 from app.schemas import inventory_schemas
 from app.core import settings_store
+from app.api.deps import get_current_user, get_current_owner
+from app.schemas import TokenData
 from app.utils.email_sender import send_inventory_report
 
 router = APIRouter()
+
+# Access model for inventory:
+#   - Reads and day-to-day stock movements (purchases, usage, counts) are
+#     part of running the day, so any signed-in staff member can do them.
+#   - Categories and items are master data — they carry cost prices and
+#     reorder levels and shape every future report — so, like the menu,
+#     only the owner login may create, change or remove them.
+_READ = Depends(get_current_user)
+_STAFF = Depends(get_current_user)
+_OWNER = Depends(get_current_owner)
 
 # ============================================================================
 # Categories
 # ============================================================================
 
 @router.get("/categories", response_model=List[inventory_schemas.InventoryCategory])
-def get_categories(db: Session = Depends(get_db)):
+def get_categories(db: Session = Depends(get_db), current_user: TokenData = _READ):
     """Get all inventory categories."""
     return db.query(InventoryCategory).all()
 
 @router.post("/categories", response_model=inventory_schemas.InventoryCategory, status_code=status.HTTP_201_CREATED)
-def create_category(category: inventory_schemas.InventoryCategoryCreate, db: Session = Depends(get_db)):
-    """Create a new inventory category."""
+def create_category(
+    category: inventory_schemas.InventoryCategoryCreate,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _OWNER,
+):
+    """Create a new inventory category. Owner login only."""
     from datetime import datetime
 
     db_category = db.query(InventoryCategory).filter(InventoryCategory.name == category.name).first()
@@ -42,7 +58,12 @@ def create_category(category: inventory_schemas.InventoryCategoryCreate, db: Ses
     return new_category
 
 @router.patch("/categories/{category_id}", response_model=inventory_schemas.InventoryCategory)
-def update_category(category_id: int, category_update: inventory_schemas.InventoryCategoryUpdate, db: Session = Depends(get_db)):
+def update_category(
+    category_id: int,
+    category_update: inventory_schemas.InventoryCategoryUpdate,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _OWNER,
+):
     """Update an inventory category."""
     db_category = db.query(InventoryCategory).filter(InventoryCategory.id == category_id).first()
     if not db_category:
@@ -59,7 +80,11 @@ def update_category(category_id: int, category_update: inventory_schemas.Invento
     return db_category
 
 @router.delete("/categories/{category_id}")
-def delete_category(category_id: int, db: Session = Depends(get_db)):
+def delete_category(
+    category_id: int,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _OWNER,
+):
     """Delete an inventory category."""
     db_category = db.query(InventoryCategory).filter(InventoryCategory.id == category_id).first()
     if not db_category:
@@ -83,7 +108,8 @@ def get_items(
     is_active: bool = True,
     low_stock: bool = False,
     search: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: TokenData = _READ
 ):
     """Get all inventory items with filtering."""
     query = db.query(InventoryItem)
@@ -125,7 +151,7 @@ def get_items(
     }
 
 @router.get("/items/low-stock", response_model=dict)
-def get_low_stock_items(db: Session = Depends(get_db)):
+def get_low_stock_items(db: Session = Depends(get_db), current_user: TokenData = _READ):
     """Get all low stock items sorted by urgency."""
     items = db.query(InventoryItem).filter(InventoryItem.is_active == True).all()
     low_stock_items = []
@@ -152,7 +178,7 @@ def get_low_stock_items(db: Session = Depends(get_db)):
     }
 
 @router.get("/items/{item_id}", response_model=inventory_schemas.InventoryItem)
-def get_item(item_id: int, db: Session = Depends(get_db)):
+def get_item(item_id: int, db: Session = Depends(get_db), current_user: TokenData = _READ):
     """Get a single inventory item."""
     item = db.query(InventoryItem).filter(InventoryItem.id == item_id).first()
     if not item:
@@ -166,8 +192,12 @@ def get_item(item_id: int, db: Session = Depends(get_db)):
     return item_dict
 
 @router.post("/items", response_model=inventory_schemas.InventoryItem, status_code=status.HTTP_201_CREATED)
-def create_item(item: inventory_schemas.InventoryItemCreate, db: Session = Depends(get_db)):
-    """Create a new inventory item."""
+def create_item(
+    item: inventory_schemas.InventoryItemCreate,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _OWNER,
+):
+    """Create a new inventory item. Owner login only."""
     # Check uniqueness within category if category provided
     if item.category_id:
         existing = db.query(InventoryItem).filter(
@@ -199,7 +229,12 @@ def create_item(item: inventory_schemas.InventoryItemCreate, db: Session = Depen
     return item_dict
 
 @router.patch("/items/{item_id}", response_model=inventory_schemas.InventoryItem)
-def update_item(item_id: int, item_update: inventory_schemas.InventoryItemUpdate, db: Session = Depends(get_db)):
+def update_item(
+    item_id: int,
+    item_update: inventory_schemas.InventoryItemUpdate,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _OWNER,
+):
     """Update an inventory item."""
     item = db.query(InventoryItem).filter(InventoryItem.id == item_id).first()
     if not item:
@@ -220,7 +255,11 @@ def update_item(item_id: int, item_update: inventory_schemas.InventoryItemUpdate
     return item_dict
 
 @router.delete("/items/{item_id}")
-def delete_item(item_id: int, db: Session = Depends(get_db)):
+def delete_item(
+    item_id: int,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _OWNER,
+):
     """Soft delete an inventory item."""
     item = db.query(InventoryItem).filter(InventoryItem.id == item_id).first()
     if not item:
@@ -235,7 +274,11 @@ def delete_item(item_id: int, db: Session = Depends(get_db)):
 # ============================================================================
 
 @router.post("/transactions/purchase", status_code=status.HTTP_201_CREATED)
-def record_purchase(purchase: inventory_schemas.PurchaseCreate, db: Session = Depends(get_db)):
+def record_purchase(
+    purchase: inventory_schemas.PurchaseCreate,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _STAFF,
+):
     """Record a purchase transaction (stock addition)."""
     transactions = []
     
@@ -257,7 +300,7 @@ def record_purchase(purchase: inventory_schemas.PurchaseCreate, db: Session = De
             transaction_type=TransactionType.PURCHASE,
             quantity=item_data.quantity,
             notes=item_data.notes,
-            recorded_by="admin", # TODO: Get from auth context
+            recorded_by=current_user.username,
             previous_quantity=previous_qty,
             new_quantity=new_qty
         )
@@ -288,7 +331,11 @@ def record_purchase(purchase: inventory_schemas.PurchaseCreate, db: Session = De
     }
 
 @router.post("/transactions/usage", status_code=status.HTTP_201_CREATED)
-def record_usage(usage: inventory_schemas.UsageCreate, db: Session = Depends(get_db)):
+def record_usage(
+    usage: inventory_schemas.UsageCreate,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _STAFF,
+):
     """Record usage transaction (stock reduction)."""
     transactions = []
     warnings = []
@@ -309,7 +356,7 @@ def record_usage(usage: inventory_schemas.UsageCreate, db: Session = Depends(get
             transaction_type=TransactionType.USAGE,
             quantity=-item_data.quantity, # Negative for usage
             notes=item_data.notes,
-            recorded_by=usage.recorded_by,
+            recorded_by=current_user.username,
             previous_quantity=previous_qty,
             new_quantity=new_qty
         )
@@ -347,7 +394,11 @@ def record_usage(usage: inventory_schemas.UsageCreate, db: Session = Depends(get
     }
 
 @router.post("/transactions/adjustment", status_code=status.HTTP_201_CREATED)
-def record_adjustment(adjustment: inventory_schemas.AdjustmentCreate, db: Session = Depends(get_db)):
+def record_adjustment(
+    adjustment: inventory_schemas.AdjustmentCreate,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _STAFF,
+):
     """Record inventory adjustment (correction)."""
     item = db.query(InventoryItem).filter(InventoryItem.id == adjustment.item_id).first()
     if not item:
@@ -364,7 +415,7 @@ def record_adjustment(adjustment: inventory_schemas.AdjustmentCreate, db: Sessio
         transaction_type=TransactionType.ADJUSTMENT,
         quantity=diff,
         notes=adjustment.notes,
-        recorded_by="admin", # TODO: Get from auth context
+        recorded_by=current_user.username,
         previous_quantity=previous_qty,
         new_quantity=new_qty
     )
@@ -390,6 +441,7 @@ def record_batch_adjustment(
     batch: inventory_schemas.BatchAdjustmentCreate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
+    current_user: TokenData = _STAFF,
 ):
     """
     Record multiple inventory adjustments at once (daily count).
@@ -439,7 +491,7 @@ def record_batch_adjustment(
             transaction_type=TransactionType.ADJUSTMENT,
             quantity=diff,
             notes=notes,
-            recorded_by=batch.recorded_by,
+            recorded_by=current_user.username,
             previous_quantity=previous_qty,
             new_quantity=new_qty
         )
@@ -482,7 +534,7 @@ def record_batch_adjustment(
             send_inventory_report,
             low_stock_items=low_stock_data,
             changes=created_transactions,
-            recorded_by=batch.recorded_by,
+            recorded_by=current_user.username,
         )
 
     return {
@@ -491,7 +543,7 @@ def record_batch_adjustment(
         "total_items_processed": len(batch.adjustments),
         "items_changed": len(created_transactions),
         "items_unchanged": len(batch.adjustments) - len(created_transactions),
-        "recorded_by": batch.recorded_by,
+        "recorded_by": current_user.username,
         "changes": created_transactions
     }
 
@@ -501,7 +553,8 @@ def get_transactions(
     transaction_type: Optional[TransactionType] = None,
     limit: int = 50,
     offset: int = 0,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: TokenData = _READ,
 ):
     """Get transaction history."""
     query = db.query(InventoryTransaction)
