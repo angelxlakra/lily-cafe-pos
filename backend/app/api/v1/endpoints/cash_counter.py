@@ -12,6 +12,8 @@ from app.models.models import Payment, PaymentMethod
 from app.schemas import cash_schemas
 from app.core.config import settings
 from app.core.security import verify_password
+from app.api.deps import get_current_user
+from app.schemas import TokenData
 
 router = APIRouter()
 
@@ -204,7 +206,50 @@ def get_history(
         }
     }
 
-@router.post("/reopen/{counter_id}", response_model=cash_schemas.DailyCashCounter)
+@router.get("/day/{day}")
+def get_counter_for_day(
+    day: date,
+    db: Session = Depends(get_db),
+    current_user: TokenData = Depends(get_current_user),
+):
+    """Full cash counter details for a single day (hidden day-lookup page).
+
+    Returns the counter (or null if none was opened that day), the cash
+    payments collected, and the nearest earlier/later days that have a
+    counter so the UI can step between recorded days.
+    """
+    counter = db.query(DailyCashCounter).filter(DailyCashCounter.date == day).first()
+
+    cash_sum, cash_count = db.query(
+        func.sum(Payment.amount), func.count(Payment.id)
+    ).filter(
+        Payment.payment_method == PaymentMethod.CASH,
+        func.date(Payment.created_at) == str(day)
+    ).one()
+    cash_payments_rupees = Decimal(cash_sum or 0) / 100
+
+    prev_counter = db.query(DailyCashCounter.date).filter(
+        DailyCashCounter.date < day
+    ).order_by(desc(DailyCashCounter.date)).first()
+    next_counter = db.query(DailyCashCounter.date).filter(
+        DailyCashCounter.date > day
+    ).order_by(DailyCashCounter.date).first()
+
+    counter_data = None
+    if counter:
+        counter_data = cash_schemas.DailyCashCounter.model_validate(counter).model_dump()
+        counter_data['cash_payments_total'] = cash_payments_rupees
+
+    return {
+        "date": day,
+        "counter": counter_data,
+        "cash_payments_total": cash_payments_rupees,
+        "cash_payments_count": cash_count or 0,
+        "prev_date": prev_counter[0] if prev_counter else None,
+        "next_date": next_counter[0] if next_counter else None,
+    }
+
+@router.post("/reopen/{counter_id}",response_model=cash_schemas.DailyCashCounter)
 def reopen_cash_counter(counter_id: int, reopen_data: cash_schemas.DailyCashCounterVerify, db: Session = Depends(get_db)):
     """Reopen a closed cash counter (Owner only)."""
     counter = db.query(DailyCashCounter).filter(DailyCashCounter.id == counter_id).first()

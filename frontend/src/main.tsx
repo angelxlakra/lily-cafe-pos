@@ -19,6 +19,7 @@ import InventoryPage from './pages/InventoryPage.tsx'
 import CashCounterPage from './pages/CashCounterPage.tsx'
 import AnalyticsPage from './pages/AnalyticsPage.tsx'
 import ToolsPage from './pages/ToolsPage.tsx'
+import CashDayPage from './pages/CashDayPage.tsx'
 import SettingsPage from './pages/SettingsPage.tsx'
 import ProtectedRoute from './components/ProtectedRoute.tsx'
 import './index.css'
@@ -145,6 +146,16 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               element={
                 <ProtectedRoute>
                   <ToolsPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Standalone unlisted page — cash counter details for a chosen day */}
+            <Route
+              path="/admin/cash-day"
+              element={
+                <ProtectedRoute>
+                  <CashDayPage />
                 </ProtectedRoute>
               }
             />
