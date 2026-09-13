@@ -58,6 +58,16 @@ export interface CashCounterVerify {
   notes?: string;
 }
 
+// Decimal fields arrive from the API as strings (e.g. "750.50").
+export interface CashCounterDayResponse {
+  date: string;
+  counter: (DailyCashCounter & { cash_payments_total: string | null }) | null;
+  cash_payments_total: string;
+  cash_payments_count: number;
+  prev_date: string | null;
+  next_date: string | null;
+}
+
 export interface CashCounterHistoryResponse {
   history: DailyCashCounter[];
   total: number;

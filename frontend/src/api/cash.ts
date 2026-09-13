@@ -4,7 +4,8 @@ import type {
   CashCounterOpen,
   CashCounterClose,
   CashCounterVerify,
-  CashCounterHistoryResponse
+  CashCounterHistoryResponse,
+  CashCounterDayResponse
 } from '../types/cash';
 
 export const cashApi = {
@@ -37,6 +38,11 @@ export const cashApi = {
       }
       throw error;
     }
+  },
+
+  getDay: async (day: string): Promise<CashCounterDayResponse> => {
+    const response = await apiClient.get<CashCounterDayResponse>(`/cash-counter/day/${day}`);
+    return response.data;
   },
 
   getHistory: async (params?: { limit?: number; offset?: number }): Promise<CashCounterHistoryResponse> => {
