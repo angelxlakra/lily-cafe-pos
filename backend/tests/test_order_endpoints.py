@@ -273,8 +273,8 @@ def test_get_active_order_for_empty_table(client: TestClient):
 # ============================================================================
 
 
-def test_update_order_status(client: TestClient, sample_menu_items):
-    """Test updating order status via PATCH."""
+def test_update_order_status(client: TestClient, sample_menu_items, auth_headers):
+    """Test updating order status via PATCH (requires auth)."""
     # Create order
     create_response = client.post(
         "/api/v1/orders",
@@ -288,7 +288,8 @@ def test_update_order_status(client: TestClient, sample_menu_items):
     # Update customer name
     response = client.patch(
         f"/api/v1/orders/{order_id}",
-        json={"customer_name": "Updated Name"}
+        json={"customer_name": "Updated Name"},
+        headers=auth_headers,
     )
 
     assert response.status_code == 200
@@ -296,11 +297,12 @@ def test_update_order_status(client: TestClient, sample_menu_items):
     assert data["customer_name"] == "Updated Name"
 
 
-def test_update_order_not_found(client: TestClient):
+def test_update_order_not_found(client: TestClient, auth_headers):
     """Test updating non-existent order returns 404."""
     response = client.patch(
         "/api/v1/orders/99999",
-        json={"status": "canceled"}
+        json={"status": "canceled"},
+        headers=auth_headers,
     )
 
     assert response.status_code == 404
@@ -452,7 +454,7 @@ def test_cannot_cancel_paid_order_api(client: TestClient, sample_menu_items, aut
 # ============================================================================
 
 
-def test_list_orders_filter_by_status(client: TestClient, sample_menu_items, db: Session):
+def test_list_orders_filter_by_status(client: TestClient, sample_menu_items, db: Session, auth_headers):
     """Test filtering orders by status."""
     # Create multiple orders
     for i in range(3):
@@ -471,17 +473,17 @@ def test_list_orders_filter_by_status(client: TestClient, sample_menu_items, db:
     db.commit()
 
     # Filter by active
-    response = client.get("/api/v1/orders?status=active")
+    response = client.get("/api/v1/orders?status=active", headers=auth_headers)
     assert response.status_code == 200
     assert len(response.json()) == 2
 
     # Filter by paid
-    response = client.get("/api/v1/orders?status=paid")
+    response = client.get("/api/v1/orders?status=paid", headers=auth_headers)
     assert response.status_code == 200
     assert len(response.json()) == 1
 
 
-def test_list_orders_filter_by_table(client: TestClient, sample_menu_items):
+def test_list_orders_filter_by_table(client: TestClient, sample_menu_items, auth_headers):
     """Test filtering orders by table number."""
     # Create orders on different tables
     for table_num in [1, 2, 3]:
@@ -494,7 +496,7 @@ def test_list_orders_filter_by_table(client: TestClient, sample_menu_items):
         )
 
     # Filter by table 2
-    response = client.get("/api/v1/orders?table_number=2")
+    response = client.get("/api/v1/orders?table_number=2", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()

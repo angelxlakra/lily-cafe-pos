@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from app import schemas, crud
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, get_current_owner
 
 router = APIRouter()
 
@@ -27,9 +27,9 @@ def list_categories(db: Session = Depends(get_db)):
 def create_category(
     category: schemas.CategoryCreate,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user),
+    current_user: schemas.TokenData = Depends(get_current_owner),
 ):
-    """Create a new category (admin only)."""
+    """Create a new category. Owner login only."""
     try:
         return crud.create_category(db, category)
     except IntegrityError:

@@ -9,11 +9,12 @@ import EmptyState from '../components/EmptyState';
 import DatePickerWithQuickFilters from '../components/DatePickerWithQuickFilters';
 import SortableTableHeader from '../components/SortableTableHeader';
 import { useOrderHistory, useOrder, useUpdatePayments, useCancelOrder } from '../hooks/useOrders';
+import { useAuth } from '../hooks/useAuth';
 import { useAppConfig } from '../hooks/useConfig';
 import { useSortableTable } from '../hooks/useSortableTable';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatDateTime } from '../utils/formatDateTime';
-import { CalendarDots, Printer, PencilSimple, MagnifyingGlass, X, CaretLeft, CaretRight, Trash } from '@phosphor-icons/react';
+import { CalendarDots, Printer, PencilSimple, MagnifyingGlass, X, CaretLeft, CaretRight, Trash, LockSimple } from '@phosphor-icons/react';
 import { UpiIcon, CashIcon, CardIcon } from '../components/icons/PaymentIcons';
 import DailyRevenueModal from '../components/DailyRevenueModal';
 import EditPaymentsModal from '../components/EditPaymentsModal';
@@ -33,8 +34,14 @@ export default function OrderHistoryPage() {
   const [editPaymentsOrder, setEditPaymentsOrder] = useState<Order | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [cancelOrderId, setCancelOrderId] = useState<number | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'canceled'>('all');
   const { setMobileOpen } = useSidebar();
+
+  // Only the owner may look at previous days or correct an order after the
+  // bill has been generated. The backend enforces this too; the UI just
+  // avoids offering actions that would come back as 403.
+  const { isOwner } = useAuth();
 
   // Payment method icons
   const paymentIcons: Record<PaymentMethod, JSX.Element> = {
@@ -74,10 +81,37 @@ export default function OrderHistoryPage() {
     if (status === 'canceled') {
       return (
         <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-md bg-error/10 text-error border border-error/20">
-          Cancelled
+          Deleted
         </span>
       );
     }
+    return null;
+  };
+
+  // Helper to render the audit trail for an order: who deleted it (and why),
+  // or who corrected it after the bill was generated. A deleted order stays
+  // in history rather than vanishing, so this line explains what happened.
+  const renderAuditNote = (order: Order) => {
+    if (order.status === 'canceled') {
+      return (
+        <p className="text-xs text-error mt-1">
+          Deleted by {order.canceled_by || 'unknown user'}
+          {order.canceled_at ? ` on ${formatDateTime(order.canceled_at)}` : ''}
+          {order.cancel_reason ? ` — ${order.cancel_reason}` : ''}
+        </p>
+      );
+    }
+
+    if (order.last_edited_by) {
+      return (
+        <p className="text-xs text-neutral-text-light mt-1">
+          Edited by {order.last_edited_by}
+          {order.last_edited_at ? ` on ${formatDateTime(order.last_edited_at)}` : ''}
+          {order.edit_count && order.edit_count > 1 ? ` (${order.edit_count} edits)` : ''}
+        </p>
+      );
+    }
+
     return null;
   };
 
@@ -193,8 +227,12 @@ export default function OrderHistoryPage() {
     if (!cancelOrderId) return;
 
     try {
-      await cancelOrderMutation.mutateAsync(cancelOrderId);
+      await cancelOrderMutation.mutateAsync({
+        id: cancelOrderId,
+        reason: cancelReason.trim() || undefined,
+      });
       setCancelOrderId(null);
+      setCancelReason('');
     } catch (error) {
       console.error('Failed to cancel order:', error);
       alert('Failed to cancel order. Please try again.');
@@ -263,6 +301,8 @@ export default function OrderHistoryPage() {
                 setPage(1);
               }}
               max={today}
+              todayOnly={!isOwner}
+              todayOnlyNote="Owner login required to view previous days"
             />
 
             {/* Search Bar */}
@@ -501,6 +541,7 @@ export default function OrderHistoryPage() {
                           </p>
                           {renderStatusBadge(order.status)}
                         </div>
+                        {renderAuditNote(order)}
                       </td>
                       <td className="px-6 py-4">
                         <p className="font-medium text-neutral-text-dark">
@@ -537,14 +578,24 @@ export default function OrderHistoryPage() {
                                 <Printer size={16} weight="bold" />
                                 <span className="hidden lg:inline">Print</span>
                               </button>
-                              <button
-                                onClick={() => handleEditPayments(order)}
-                                className="px-3 py-1 text-sm bg-coffee-brown/10 border border-coffee-brown text-coffee-brown hover:bg-coffee-brown hover:text-white rounded-md transition-colors flex items-center gap-1"
-                                title="Edit Payments"
-                              >
-                                <PencilSimple size={16} weight="bold" />
-                                <span className="hidden lg:inline">Edit</span>
-                              </button>
+                              {isOwner ? (
+                                <button
+                                  onClick={() => handleEditPayments(order)}
+                                  className="px-3 py-1 text-sm bg-coffee-brown/10 border border-coffee-brown text-coffee-brown hover:bg-coffee-brown hover:text-white rounded-md transition-colors flex items-center gap-1"
+                                  title="Edit Payments"
+                                >
+                                  <PencilSimple size={16} weight="bold" />
+                                  <span className="hidden lg:inline">Edit</span>
+                                </button>
+                              ) : (
+                                <span
+                                  className="px-3 py-1 text-sm border border-neutral-border text-neutral-text-light rounded-md flex items-center gap-1 cursor-not-allowed"
+                                  title="Owner login required to change a bill that has already been generated"
+                                >
+                                  <LockSimple size={16} weight="duotone" />
+                                  <span className="hidden lg:inline">Edit</span>
+                                </span>
+                              )}
                             </>
                           )}
                           <button
@@ -579,6 +630,7 @@ export default function OrderHistoryPage() {
                           </p>
                           {renderStatusBadge(order.status)}
                         </div>
+                        {renderAuditNote(order)}
                       </div>
                       <div className="text-right">
                         <p className="text-xs text-neutral-text-light uppercase tracking-wide">
@@ -628,14 +680,16 @@ export default function OrderHistoryPage() {
                             <Printer size={16} weight="bold" />
                             Print
                           </button>
-                          <button
-                            onClick={() => handleEditPayments(order)}
-                            className="px-4 py-2 text-sm bg-coffee-brown/10 border border-coffee-brown text-coffee-brown hover:bg-coffee-brown hover:text-white rounded-md transition-colors flex items-center justify-center gap-1"
-                            title="Edit Payments"
-                          >
-                            <PencilSimple size={16} weight="bold" />
-                            Edit
-                          </button>
+                          {isOwner && (
+                            <button
+                              onClick={() => handleEditPayments(order)}
+                              className="px-4 py-2 text-sm bg-coffee-brown/10 border border-coffee-brown text-coffee-brown hover:bg-coffee-brown hover:text-white rounded-md transition-colors flex items-center justify-center gap-1"
+                              title="Edit Payments"
+                            >
+                              <PencilSimple size={16} weight="bold" />
+                              Edit
+                            </button>
+                          )}
                         </>
                       )}
                       <button
@@ -722,14 +776,32 @@ export default function OrderHistoryPage() {
             <h3 className="text-lg font-semibold text-neutral-text-dark mb-4">
               Cancel Order?
             </h3>
-            <p className="text-neutral-text-light mb-6">
-              Are you sure you want to cancel this order? This will mark it as cancelled
-              and it will no longer appear in active orders. This is useful for removing
-              duplicate or mistaken orders.
+            <p className="text-neutral-text-light mb-4">
+              Are you sure you want to cancel this order? It will no longer appear in
+              active orders, but it stays in order history marked as deleted, showing
+              your username and the time — so the deletion is on the record.
             </p>
+            <label className="block mb-6">
+              <span className="block text-sm font-medium text-neutral-text-dark mb-1">
+                Reason <span className="text-neutral-text-light">(optional)</span>
+              </span>
+              <input
+                type="text"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                maxLength={255}
+                placeholder="e.g. Duplicate order, customer left"
+                className="w-full px-3 py-2 border border-neutral-border rounded-lg
+                           bg-white text-neutral-text-dark text-sm
+                           focus:outline-none focus:ring-2 focus:ring-coffee-brown"
+              />
+            </label>
             <div className="flex gap-3 justify-end">
               <button
-                onClick={() => setCancelOrderId(null)}
+                onClick={() => {
+                  setCancelOrderId(null);
+                  setCancelReason('');
+                }}
                 className="px-4 py-2 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light/20 rounded-md transition-colors"
               >
                 Keep Order

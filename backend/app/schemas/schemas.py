@@ -178,6 +178,16 @@ class OrderItemsUpdate(BaseModel):
     table_number: Optional[int] = Field(None, ge=1, le=50, description="Change table number (optional)")
 
 
+class OrderCancelRequest(BaseModel):
+    """Optional body for canceling (soft-deleting) an order."""
+
+    reason: Optional[str] = Field(
+        None,
+        max_length=255,
+        description="Why the order was canceled — shown in order history",
+    )
+
+
 class Order(BaseModel):
     """Schema for order responses."""
 
@@ -193,6 +203,15 @@ class Order(BaseModel):
     updated_at: datetime
     order_items: List[OrderItem]
     payments: List[Payment]
+
+    # Audit trail - populated when an order is canceled (soft-deleted) or
+    # corrected after billing. Null on untouched orders.
+    canceled_at: Optional[datetime] = None
+    canceled_by: Optional[str] = None
+    cancel_reason: Optional[str] = None
+    last_edited_at: Optional[datetime] = None
+    last_edited_by: Optional[str] = None
+    edit_count: int = 0
 
     class Config:
         from_attributes = True

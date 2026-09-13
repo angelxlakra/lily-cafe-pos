@@ -1,11 +1,18 @@
 import { useState } from 'react'
-import { Calendar, ArrowRight } from '@phosphor-icons/react'
+import { Calendar, ArrowRight, LockSimple } from '@phosphor-icons/react'
 
 interface DatePickerWithQuickFiltersProps {
   startDate: string
   endDate: string
   onChange: (start: string, end: string) => void
   max?: string
+  /**
+   * Lock the picker to today. Used for the admin login, which may only see
+   * the current day — past dates are hidden rather than shown-and-rejected.
+   */
+  todayOnly?: boolean
+  /** Explanation rendered next to the picker when todayOnly is set */
+  todayOnlyNote?: string
 }
 
 type QuickFilter = {
@@ -95,8 +102,34 @@ export default function DatePickerWithQuickFilters({
   endDate,
   onChange,
   max,
+  todayOnly = false,
+  todayOnlyNote,
 }: DatePickerWithQuickFiltersProps) {
   const [activeFilter, setActiveFilter] = useState<string | null>(null)
+
+  // When locked to today there is nothing to pick, so show a static label
+  // instead of controls that would only produce a "not allowed" error.
+  if (todayOnly) {
+    const todayLabel = new Date(`${startDate}T00:00:00`).toLocaleDateString(
+      undefined,
+      { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
+    )
+
+    return (
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-coffee-brown text-cream shadow-md">
+          <Calendar size={16} aria-hidden="true" />
+          Today — {todayLabel}
+        </span>
+        {todayOnlyNote && (
+          <span className="flex items-center gap-1.5 text-xs text-neutral-text-light">
+            <LockSimple size={14} weight="duotone" aria-hidden="true" />
+            {todayOnlyNote}
+          </span>
+        )}
+      </div>
+    )
+  }
 
   const handleQuickFilter = (filter: QuickFilter) => {
     const { start, end } = filter.getRange()

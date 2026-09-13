@@ -105,6 +105,14 @@ export interface Order {
   created_at: string;
   updated_at: string;
   payments: Payment[];
+  /** Audit trail - set when the order was canceled (soft-deleted) */
+  canceled_at?: string | null;
+  canceled_by?: string | null;
+  cancel_reason?: string | null;
+  /** Audit trail - set when the order was corrected after being created/billed */
+  last_edited_at?: string | null;
+  last_edited_by?: string | null;
+  edit_count?: number;
 }
 
 export interface CreateOrderRequest {

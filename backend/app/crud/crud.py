@@ -535,7 +535,10 @@ def update_order(
 
 
 def admin_edit_order(
-    db: Session, order_id: int, order_update: schemas.OrderItemsUpdate
+    db: Session,
+    order_id: int,
+    order_update: schemas.OrderItemsUpdate,
+    edited_by: Optional[str] = None,
 ) -> Optional[models.Order]:
     """
     Admin function to edit order items and recalculate totals.
@@ -547,6 +550,7 @@ def admin_edit_order(
         db: Database session
         order_id: Order ID to edit
         order_update: New order items, optional customer name, and optional table number
+        edited_by: Username of the staff member making the correction (audit trail)
 
     Returns:
         Updated order with new items, or None if order not found
@@ -637,22 +641,34 @@ def admin_edit_order(
     if order_update.customer_name:
         db_order.customer_name = order_update.customer_name
 
+    # Audit trail - record who corrected the order and how often it has changed
+    db_order.last_edited_at = datetime.utcnow()
+    db_order.last_edited_by = edited_by
+    db_order.edit_count = (db_order.edit_count or 0) + 1
+
     db.commit()
     db.refresh(db_order)
     return db_order
 
 
-def cancel_order(db: Session, order_id: int) -> Optional[models.Order]:
+def cancel_order(
+    db: Session,
+    order_id: int,
+    canceled_by: Optional[str] = None,
+    reason: Optional[str] = None,
+) -> Optional[models.Order]:
     """
     Cancel an order (soft delete - sets status to CANCELED).
 
     Canceled orders remain in the database for record keeping.
-    They are marked with CANCELED status and can be filtered in order history.
-    Useful for removing duplicate or mistaken orders.
+    They are marked with CANCELED status and stay visible in order history,
+    stamped with who canceled them and when, so a deletion is never silent.
 
     Args:
         db: Database session
         order_id: Order ID to cancel
+        canceled_by: Username of the staff member canceling the order
+        reason: Optional free-text reason shown in order history
 
     Returns:
         Canceled order, or None if order not found
@@ -663,6 +679,9 @@ def cancel_order(db: Session, order_id: int) -> Optional[models.Order]:
 
     # Allow canceling any order (including paid orders) for duplicate removal
     db_order.status = models.OrderStatus.CANCELED
+    db_order.canceled_at = datetime.utcnow()
+    db_order.canceled_by = canceled_by
+    db_order.cancel_reason = reason
     db_order.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(db_order)
@@ -918,7 +937,10 @@ def create_payments_batch(
 
 
 def replace_order_payments(
-    db: Session, order_id: int, payments: List[schemas.PaymentCreate]
+    db: Session,
+    order_id: int,
+    payments: List[schemas.PaymentCreate],
+    edited_by: Optional[str] = None,
 ) -> List[models.Payment]:
     """
     Replace all payments for an order (used to edit payment methods).
@@ -931,6 +953,7 @@ def replace_order_payments(
         db: Database session
         order_id: Order ID
         payments: List of new payments to replace existing ones
+        edited_by: Username of the staff member making the correction (audit trail)
 
     Returns:
         List of created payments
@@ -968,8 +991,11 @@ def replace_order_payments(
         db.add(db_payment)
         created_payments.append(db_payment)
 
-    # Update order timestamp
+    # Update order timestamp and audit trail
     order.updated_at = datetime.utcnow()
+    order.last_edited_at = datetime.utcnow()
+    order.last_edited_by = edited_by
+    order.edit_count = (order.edit_count or 0) + 1
 
     db.commit()
 

@@ -77,6 +77,17 @@ class Order(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
+    # Audit trail - who canceled (soft-deleted) this order and when.
+    # Kept on the order itself so cancellations stay visible in order history.
+    canceled_at = Column(DateTime, nullable=True)
+    canceled_by = Column(String(50), nullable=True)  # Username of the user who canceled
+    cancel_reason = Column(String(255), nullable=True)
+
+    # Audit trail - last correction made after the order was created/billed
+    last_edited_at = Column(DateTime, nullable=True)
+    last_edited_by = Column(String(50), nullable=True)
+    edit_count = Column(Integer, default=0, nullable=False)
+
     # Relationships
     order_items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
     payments = relationship("Payment", back_populates="order", cascade="all, delete-orphan")
