@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { Warning, X } from '@phosphor-icons/react'
 
 interface ConfirmDialogProps {
@@ -11,6 +11,8 @@ interface ConfirmDialogProps {
   cancelText?: string
   variant?: 'danger' | 'warning' | 'info'
   isLoading?: boolean
+  /** Extra content rendered under the message, e.g. a reason input */
+  children?: ReactNode
 }
 
 /**
@@ -27,6 +29,7 @@ export default function ConfirmDialog({
   cancelText = 'Cancel',
   variant = 'warning',
   isLoading = false,
+  children,
 }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const confirmButtonRef = useRef<HTMLButtonElement>(null)
@@ -126,10 +129,12 @@ export default function ConfirmDialog({
         {/* Message */}
         <p
           id="dialog-description"
-          className="text-neutral-text-light dark:text-neutral-text mb-6 ml-11"
+          className="text-neutral-text-light dark:text-neutral-text mb-4 ml-11"
         >
           {message}
         </p>
+
+        {children && <div className="mb-6 ml-11">{children}</div>}
 
         {/* Actions */}
         <div className="flex gap-3 justify-end">

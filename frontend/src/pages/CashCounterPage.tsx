@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { LockOpen, LockKey, CheckCircle, Info } from '@phosphor-icons/react';
 import { useSidebar } from '../context/SidebarContext';
 import BottomNav from '../components/BottomNav';
 import DenominationCounter, { Denominations } from '../components/DenominationCounter';
-import { useCashCounterToday, useOpenCashCounter, useCloseCashCounter, useVerifyCashCounter, useCashCounterHistory } from '../hooks/useCashCounter';
+import { useCashCounterToday, useOpenCashCounter, useCloseCashCounter, useVerifyCashCounter, useReopenCashCounter, useCashCounterHistory } from '../hooks/useCashCounter';
+import { useAuth } from '../hooks/useAuth';
 import { toast } from '../utils/toast';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatDateTime } from '../utils/formatDateTime';
@@ -708,43 +708,30 @@ interface ReopenCounterModalProps {
 
 function ReopenCounterModal({ isOpen, onClose, counter }: ReopenCounterModalProps) {
   const [password, setPassword] = useState('');
-  const [isReopening, setIsReopening] = useState(false);
-  const queryClient = useQueryClient();
+  const reopenCounter = useReopenCashCounter();
+  const isReopening = reopenCounter.isPending;
 
   const handleReopen = async () => {
     if (!password) return;
 
-    setIsReopening(true);
     try {
-      // Call reopen API (we'll create this)
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1/cash-counter/reopen/${counter.id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        },
-        body: JSON.stringify({ owner_password: password })
+      await reopenCounter.mutateAsync({
+        id: counter.id,
+        data: { owner_password: password },
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to reopen counter');
-      }
-
-      await queryClient.invalidateQueries({ queryKey: ['cash-counter'] });
 
       toast.success("Counter reopened successfully!", {
         description: "You can now modify the cash count"
       });
       onClose();
       setPassword('');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Reopen failed", error);
       toast.error("Failed to reopen counter", {
-        description: error instanceof Error ? error.message : "Invalid password or server error"
+        description:
+          error?.response?.data?.detail ||
+          (error instanceof Error ? error.message : "Invalid password or server error")
       });
-    } finally {
-      setIsReopening(false);
     }
   };
 
@@ -829,8 +816,15 @@ function ReopenCounterModal({ isOpen, onClose, counter }: ReopenCounterModalProp
 }
 
 function CashCounterHistory() {
-  const { data, isLoading } = useCashCounterHistory();
+  // Previous days' cash is owner-only on the API, so admin never sees this
+  // panel and the request is not fired at all.
+  const { isOwner } = useAuth();
+  const { data, isLoading } = useCashCounterHistory(undefined, { enabled: isOwner });
   const history = data?.history || [];
+
+  if (!isOwner) {
+    return null;
+  }
 
   if (isLoading) {
     return (

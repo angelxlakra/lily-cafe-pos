@@ -3,6 +3,8 @@ Pytest configuration and fixtures for Lily Cafe POS System tests.
 Provides test database, client, and authentication utilities.
 """
 
+from datetime import date
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -251,8 +253,10 @@ def sample_menu_items(test_db, sample_categories):
 @pytest.fixture
 def sample_order(test_db, sample_menu_items):
     """Create a sample order for testing (ang-35/ang-36 fixture)."""
+    # Stamp today's business date so role-based "today only" rules see this
+    # order as current (order numbers carry the business date: ORD-YYYYMMDD-####)
     order = models.Order(
-        order_number="ORD-20241031-0001",
+        order_number=f"ORD-{date.today().strftime('%Y%m%d')}-0001",
         table_number=5,
         customer_name="Test Customer",
         subtotal=12000,  # ₹120

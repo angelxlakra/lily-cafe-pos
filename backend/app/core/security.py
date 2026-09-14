@@ -190,6 +190,31 @@ async def get_current_user(
     return token_data
 
 
+async def get_optional_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+) -> Optional[schemas.TokenData]:
+    """
+    FastAPI dependency that resolves the current user if a valid token was
+    sent, and returns None otherwise.
+
+    Used by endpoints that must stay reachable without a login (the waiter
+    screens) but that apply extra rules when a staff member *is* logged in.
+
+    Args:
+        credentials: HTTP Bearer credentials from request header, if any
+
+    Returns:
+        TokenData when a valid token was supplied, None otherwise
+    """
+    if credentials is None:
+        return None
+
+    try:
+        return verify_token(credentials.credentials)
+    except HTTPException:
+        return None
+
+
 async def get_current_owner(
     current_user: schemas.TokenData = Depends(get_current_user),
 ) -> schemas.TokenData:

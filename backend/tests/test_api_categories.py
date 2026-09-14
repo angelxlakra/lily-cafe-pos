@@ -51,14 +51,14 @@ class TestListCategories:
 class TestCreateCategory:
     """Tests for POST /api/v1/categories endpoint."""
 
-    def test_create_category_success(self, client, auth_headers):
+    def test_create_category_success(self, client, owner_headers):
         """Test creating a new category with authentication."""
         category_data = {"name": "Italian"}
 
         response = client.post(
             "/api/v1/categories",
             json=category_data,
-            headers=auth_headers,
+            headers=owner_headers,
         )
 
         assert response.status_code == status.HTTP_201_CREATED
@@ -89,44 +89,44 @@ class TestCreateCategory:
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_create_category_duplicate_name(self, client, auth_headers, sample_categories):
+    def test_create_category_duplicate_name(self, client, owner_headers, sample_categories):
         """Test creating a category with duplicate name fails."""
         category_data = {"name": "South Indian"}
 
         response = client.post(
             "/api/v1/categories",
             json=category_data,
-            headers=auth_headers,
+            headers=owner_headers,
         )
 
         # Should fail due to unique constraint
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
-    def test_create_category_empty_name(self, client, auth_headers):
+    def test_create_category_empty_name(self, client, owner_headers):
         """Test creating a category with empty name fails validation."""
         category_data = {"name": ""}
 
         response = client.post(
             "/api/v1/categories",
             json=category_data,
-            headers=auth_headers,
+            headers=owner_headers,
         )
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    def test_create_category_missing_name(self, client, auth_headers):
+    def test_create_category_missing_name(self, client, owner_headers):
         """Test creating a category without name fails validation."""
         category_data = {}
 
         response = client.post(
             "/api/v1/categories",
             json=category_data,
-            headers=auth_headers,
+            headers=owner_headers,
         )
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    def test_create_category_too_long_name(self, client, auth_headers):
+    def test_create_category_too_long_name(self, client, owner_headers):
         """Test creating a category with name exceeding max length."""
         # Name longer than 100 characters
         category_data = {"name": "A" * 101}
@@ -134,12 +134,12 @@ class TestCreateCategory:
         response = client.post(
             "/api/v1/categories",
             json=category_data,
-            headers=auth_headers,
+            headers=owner_headers,
         )
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    def test_create_multiple_categories(self, client, auth_headers):
+    def test_create_multiple_categories(self, client, owner_headers):
         """Test creating multiple categories in sequence."""
         categories = ["Italian", "Chinese", "Mexican"]
 
@@ -147,7 +147,7 @@ class TestCreateCategory:
             response = client.post(
                 "/api/v1/categories",
                 json={"name": name},
-                headers=auth_headers,
+                headers=owner_headers,
             )
             assert response.status_code == status.HTTP_201_CREATED
 
@@ -163,13 +163,13 @@ class TestCreateCategory:
 class TestCategoryIntegration:
     """Integration tests for category endpoints."""
 
-    def test_create_and_list_category(self, client, auth_headers):
+    def test_create_and_list_category(self, client, owner_headers):
         """Test creating a category and then listing it."""
         # Create category
         create_response = client.post(
             "/api/v1/categories",
             json={"name": "Japanese"},
-            headers=auth_headers,
+            headers=owner_headers,
         )
         assert create_response.status_code == status.HTTP_201_CREATED
         created_data = create_response.json()
@@ -183,13 +183,13 @@ class TestCategoryIntegration:
         assert any(cat["id"] == created_data["id"] for cat in categories)
         assert any(cat["name"] == "Japanese" for cat in categories)
 
-    def test_category_persists_across_requests(self, client, auth_headers):
+    def test_category_persists_across_requests(self, client, owner_headers):
         """Test that created category persists across multiple requests."""
         # Create category
         client.post(
             "/api/v1/categories",
             json={"name": "Thai"},
-            headers=auth_headers,
+            headers=owner_headers,
         )
 
         # Make multiple list requests

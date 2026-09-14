@@ -192,7 +192,10 @@ export const useCancelOrder = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: number) => ordersApi.cancelOrder(id),
+    mutationFn: (input: number | { id: number; reason?: string }) =>
+      typeof input === 'number'
+        ? ordersApi.cancelOrder(input)
+        : ordersApi.cancelOrder(input.id, input.reason),
     onSuccess: () => {
       // Invalidate active orders to remove the canceled order
       queryClient.invalidateQueries({ queryKey: ordersQueryKeys.active });

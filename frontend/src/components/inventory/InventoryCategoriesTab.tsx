@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Plus, PencilSimple, Trash, X, Check } from '@phosphor-icons/react';
+import { Plus, PencilSimple, Trash, X, Check, LockSimple } from '@phosphor-icons/react';
 import { useInventoryCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../../hooks/useInventory';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function InventoryCategoriesTab() {
   const { data: categories, isLoading } = useInventoryCategories();
@@ -10,6 +11,8 @@ export default function InventoryCategoriesTab() {
 
   const [isCreating, setIsCreating] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  // Inventory categories are master data, so only the owner may change them.
+  const { isOwner } = useAuth();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
 
@@ -61,18 +64,25 @@ export default function InventoryCategoriesTab() {
       {/* Header & Actions */}
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-heading text-coffee-brown dark:text-cream">Categories</h2>
-        <button
-          onClick={() => setIsCreating(true)}
-          className="btn-primary flex items-center gap-2"
-          disabled={isCreating}
-        >
-          <Plus weight="bold" />
-          <span>Add Category</span>
-        </button>
+        {isOwner ? (
+          <button
+            onClick={() => setIsCreating(true)}
+            className="btn-primary flex items-center gap-2"
+            disabled={isCreating}
+          >
+            <Plus weight="bold" />
+            <span>Add Category</span>
+          </button>
+        ) : (
+          <span className="flex items-center gap-2 text-sm text-neutral-text-muted">
+            <LockSimple size={16} weight="duotone" aria-hidden="true" />
+            Owner login required to edit categories
+          </span>
+        )}
       </div>
 
       {/* Create Form */}
-      {isCreating && (
+      {isCreating && isOwner && (
         <form onSubmit={handleCreate} className="card p-4 flex items-center gap-4 animate-fade-in">
           <input
             type="text"
@@ -101,7 +111,7 @@ export default function InventoryCategoriesTab() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {categories?.map((category) => (
           <div key={category.id} className="card p-4 flex justify-between items-center group hover:shadow-md transition-shadow">
-            {editingId === category.id ? (
+            {editingId === category.id && isOwner ? (
               <div className="flex items-center gap-2 w-full">
                 <input
                   type="text"
@@ -120,22 +130,24 @@ export default function InventoryCategoriesTab() {
             ) : (
               <>
                 <span className="font-medium text-lg text-neutral-text-dark">{category.name}</span>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button 
-                    onClick={() => startEditing(category)}
-                    className="p-2 text-neutral-text-muted hover:text-coffee-brown hover:bg-coffee-brown/10 rounded-lg transition-colors"
-                    title="Edit"
-                  >
-                    <PencilSimple size={18} />
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(category.id)}
-                    className="p-2 text-neutral-text-muted hover:text-error hover:bg-error/10 rounded-lg transition-colors"
-                    title="Delete"
-                  >
-                    <Trash size={18} />
-                  </button>
-                </div>
+                {isOwner && (
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => startEditing(category)}
+                      className="p-2 text-neutral-text-muted hover:text-coffee-brown hover:bg-coffee-brown/10 rounded-lg transition-colors"
+                      title="Edit"
+                    >
+                      <PencilSimple size={18} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(category.id)}
+                      className="p-2 text-neutral-text-muted hover:text-error hover:bg-error/10 rounded-lg transition-colors"
+                      title="Delete"
+                    >
+                      <Trash size={18} />
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </div>

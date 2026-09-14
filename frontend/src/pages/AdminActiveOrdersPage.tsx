@@ -28,6 +28,7 @@ export default function AdminActiveOrdersPage() {
   const [paymentOrderId, setPaymentOrderId] = useState<number | null>(null);
   const [editOrder, setEditOrder] = useState<Order | null>(null);
   const [cancelOrderId, setCancelOrderId] = useState<number | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
   const [serveModalData, setServeModalData] = useState<{ item: OrderItem; orderId: number } | null>(null);
   const [editModalData, setEditModalData] = useState<{ item: OrderItem; orderId: number } | null>(null);
   const { setMobileOpen } = useSidebar();
@@ -80,9 +81,13 @@ export default function AdminActiveOrdersPage() {
     if (!cancelOrderId) return;
 
     try {
-      await cancelMutation.mutateAsync(cancelOrderId);
+      await cancelMutation.mutateAsync({
+        id: cancelOrderId,
+        reason: cancelReason.trim() || undefined,
+      });
       toast.success("Order cancelled successfully");
       setCancelOrderId(null);
+      setCancelReason('');
     } catch (error) {
       console.error('Failed to cancel order:', error);
       toast.error("Failed to cancel order", {
@@ -184,15 +189,34 @@ export default function AdminActiveOrdersPage() {
       {cancelOrderId && (
         <ConfirmDialog
           isOpen={true}
-          onClose={() => setCancelOrderId(null)}
+          onClose={() => {
+            setCancelOrderId(null);
+            setCancelReason('');
+          }}
           onConfirm={handleCancelOrder}
           title="Cancel Order?"
-          message={`Are you sure you want to cancel ${orders.find(o => o.id === cancelOrderId) ? `Table ${orders.find(o => o.id === cancelOrderId)!.table_number}'s order (${formatCurrency(orders.find(o => o.id === cancelOrderId)!.total_amount)})` : 'this order'}? This action cannot be undone.`}
+          message={`Are you sure you want to cancel ${orders.find(o => o.id === cancelOrderId) ? `Table ${orders.find(o => o.id === cancelOrderId)!.table_number}'s order (${formatCurrency(orders.find(o => o.id === cancelOrderId)!.total_amount)})` : 'this order'}? It stays in order history marked as deleted, showing your username and the time.`}
           confirmText="Yes, Cancel Order"
           cancelText="No, Keep It"
           variant="danger"
           isLoading={cancelMutation.isPending}
-        />
+        >
+          <label className="block">
+            <span className="block text-sm font-medium text-neutral-text-dark dark:text-neutral-text-light mb-1">
+              Reason <span className="text-neutral-text-light">(optional)</span>
+            </span>
+            <input
+              type="text"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              maxLength={255}
+              placeholder="e.g. Duplicate order, customer left"
+              className="w-full px-3 py-2 border border-neutral-border dark:border-neutral-700 rounded-lg
+                         bg-white dark:bg-neutral-900 text-neutral-text-dark dark:text-neutral-text-light text-sm
+                         focus:outline-none focus:ring-2 focus:ring-coffee-brown"
+            />
+          </label>
+        </ConfirmDialog>
       )}
 
       {/* Partial Serve Modal */}

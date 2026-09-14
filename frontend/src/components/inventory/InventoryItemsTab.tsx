@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Plus, MagnifyingGlass, Warning, PencilSimple, Trash, X } from '@phosphor-icons/react';
+import { Plus, MagnifyingGlass, Warning, PencilSimple, Trash, X, LockSimple } from '@phosphor-icons/react';
 import { useInventoryItems, useInventoryCategories, useCreateItem, useUpdateItem, useDeleteItem } from '../../hooks/useInventory';
+import { useAuth } from '../../hooks/useAuth';
 import type { InventoryItem, InventoryItemCreate } from '../../types/inventory';
 
 export default function InventoryItemsTab() {
@@ -9,6 +10,11 @@ export default function InventoryItemsTab() {
   const [showLowStock, setShowLowStock] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+
+  // Items are master data — they carry cost prices and reorder levels — so,
+  // like the menu, only the owner may add, change or remove them. Admin can
+  // still read the list and do the daily count. Enforced on the API too.
+  const { isOwner } = useAuth();
 
   const { data: itemsData, isLoading } = useInventoryItems({
     search,
@@ -62,17 +68,24 @@ export default function InventoryItemsTab() {
           </button>
         </div>
 
-        <button
-          onClick={() => setIsCreating(true)}
-          className="btn-primary flex items-center gap-2 whitespace-nowrap"
-        >
-          <Plus weight="bold" />
-          <span>Add Item</span>
-        </button>
+        {isOwner ? (
+          <button
+            onClick={() => setIsCreating(true)}
+            className="btn-primary flex items-center gap-2 whitespace-nowrap"
+          >
+            <Plus weight="bold" />
+            <span>Add Item</span>
+          </button>
+        ) : (
+          <span className="flex items-center gap-2 whitespace-nowrap text-sm text-neutral-text-muted">
+            <LockSimple size={16} weight="duotone" aria-hidden="true" />
+            Owner login required to edit items
+          </span>
+        )}
       </div>
 
       {/* Create/Edit Form Modal */}
-      {(isCreating || editingItem) && (
+      {(isCreating || editingItem) && isOwner && (
         <ItemFormModal
           categories={categories || []}
           item={editingItem}
@@ -133,22 +146,24 @@ export default function InventoryItemsTab() {
                     </td>
                     <td className="p-4 text-right text-neutral-text-muted text-sm">{item.unit}</td>
                     <td className="p-4 text-right">
-                      <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => setEditingItem(item)}
-                          className="p-2 text-neutral-text-muted hover:text-coffee-brown hover:bg-coffee-brown/10 rounded-lg"
-                          title="Edit"
-                        >
-                          <PencilSimple size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          className="p-2 text-neutral-text-muted hover:text-error hover:bg-error/10 rounded-lg"
-                          title="Delete"
-                        >
-                          <Trash size={18} />
-                        </button>
-                      </div>
+                      {isOwner && (
+                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => setEditingItem(item)}
+                            className="p-2 text-neutral-text-muted hover:text-coffee-brown hover:bg-coffee-brown/10 rounded-lg"
+                            title="Edit"
+                          >
+                            <PencilSimple size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(item.id)}
+                            className="p-2 text-neutral-text-muted hover:text-error hover:bg-error/10 rounded-lg"
+                            title="Delete"
+                          >
+                            <Trash size={18} />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))

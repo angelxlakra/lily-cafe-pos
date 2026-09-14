@@ -20,10 +20,19 @@ export function useCashCounterToday() {
   });
 }
 
-export function useCashCounterHistory(params?: { limit?: number; offset?: number }) {
+/**
+ * Cash counter history is owner-only on the API (it is a record of previous
+ * days' cash), so `enabled` lets the caller skip the request for admin
+ * instead of firing it and handling a 403.
+ */
+export function useCashCounterHistory(
+  params?: { limit?: number; offset?: number },
+  options?: { enabled?: boolean }
+) {
   return useQuery({
     queryKey: cashKeys.history(params),
     queryFn: () => cashApi.getHistory(params),
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -45,6 +54,17 @@ export function useCloseCashCounter() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cashKeys.today() });
       queryClient.invalidateQueries({ queryKey: cashKeys.history() });
+    },
+  });
+}
+
+export function useReopenCashCounter() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: CashCounterVerify }) =>
+      cashApi.reopenCounter(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cashKeys.all });
     },
   });
 }

@@ -28,11 +28,45 @@ def get_printer(printer_type: str, **kwargs):
     raise ValueError(f"Unknown printer type: {printer_type}")
 
 
+def _wrap(text: str, width: int) -> list:
+    """
+    Break text into lines of at most `width` characters, on word boundaries.
+
+    Thermal printers do not wrap double-width text themselves, so a long note
+    would otherwise be cut off at the edge of the paper. Words longer than the
+    line width are hard-split rather than dropped.
+    """
+    lines = []
+    current = ""
+
+    for word in text.split():
+        while len(word) > width:
+            if current:
+                lines.append(current)
+                current = ""
+            lines.append(word[:width])
+            word = word[width:]
+
+        if not current:
+            current = word
+        elif len(current) + 1 + len(word) <= width:
+            current += " " + word
+        else:
+            lines.append(current)
+            current = word
+
+    if current:
+        lines.append(current)
+
+    return lines
+
+
 def print_chit(payload: dict, printer_cfg: dict, paper_size: str = "80mm") -> bool:
     """
     Print one chit from a payload dict.
 
-    payload keys: order_number, table_number, customer_name, created_at, station, items
+    payload keys: order_number, table_number, customer_name, notes, created_at,
+                  station, items
     printer_cfg keys: type, and type-specific keys (vendor_id, product_id, port, host, name)
     """
     printer = None
@@ -68,9 +102,21 @@ def print_chit(payload: dict, printer_cfg: dict, paper_size: str = "80mm") -> bo
 
         printer.set(bold=False, underline=False, width=1, height=1)
 
-        # Notes section
+        # Notes section — the waiter's instruction printed large enough to read
+        # from the pass, then blank lines for anything written by hand.
         printer.text("=" * width + "\n")
-        printer.text("NOTES:\n\n\n\n\n")
+        printer.text("NOTES:\n")
+
+        note = (payload.get("notes") or "").strip()
+        if note:
+            printer.set(align="left", bold=True, width=2, height=2)
+            for line in _wrap(note, width // 2):
+                printer.text(f"{line}\n")
+            printer.set(bold=False, width=1, height=1)
+            printer.text("\n\n")
+        else:
+            printer.text("\n\n\n\n")
+
         printer.text("-" * width + "\n\n")
 
         # Station banner + table number at bottom — most visible when chit hangs on the rail

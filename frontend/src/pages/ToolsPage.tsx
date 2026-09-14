@@ -4,12 +4,13 @@
 // over a chosen date interval and (optionally) a chosen set of dishes.
 // ========================================
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useMenuItems } from '../hooks/useMenu';
+import { useAuth } from '../hooks/useAuth';
 import { analyticsApi } from '../api/analytics';
 import type { DishFrequencyParams } from '../api/analytics';
-import { Wrench, MagnifyingGlass, X } from '@phosphor-icons/react';
+import { Wrench, MagnifyingGlass, X, LockSimple } from '@phosphor-icons/react';
 
 // Local YYYY-MM-DD for an offset number of days ago (IST-ish, uses browser locale).
 function isoDaysAgo(days: number): string {
@@ -19,8 +20,14 @@ function isoDaysAgo(days: number): string {
 }
 
 export default function ToolsPage() {
+  // Only the owner may report on previous days; the admin login is limited to
+  // today, so it defaults to today and the date inputs are locked.
+  const { isOwner } = useAuth();
+
   // Filter inputs (draft) — only applied when "Run report" is pressed.
-  const [startDate, setStartDate] = useState<string>(isoDaysAgo(7));
+  const [startDate, setStartDate] = useState<string>(
+    isOwner ? isoDaysAgo(7) : isoDaysAgo(0)
+  );
   const [endDate, setEndDate] = useState<string>(isoDaysAgo(0));
   const [paidOnly, setPaidOnly] = useState<boolean>(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -28,6 +35,13 @@ export default function ToolsPage() {
 
   // The params actually sent to the API (set on submit).
   const [appliedParams, setAppliedParams] = useState<DishFrequencyParams | null>(null);
+
+  // isOwner resolves after the token is verified, so reset the default range
+  // once the role is known: today only for admin, last 7 days for the owner.
+  useEffect(() => {
+    setStartDate(isOwner ? isoDaysAgo(7) : isoDaysAgo(0));
+    setEndDate(isoDaysAgo(0));
+  }, [isOwner]);
 
   const { data: menuItems = [], isLoading: menuLoading } = useMenuItems();
 
@@ -95,8 +109,9 @@ export default function ToolsPage() {
                 type="date"
                 value={startDate}
                 max={endDate}
+                disabled={!isOwner}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="px-3 py-2 rounded-md border border-neutral-border bg-neutral-background text-neutral-text"
+                className="px-3 py-2 rounded-md border border-neutral-border bg-neutral-background text-neutral-text disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -105,8 +120,9 @@ export default function ToolsPage() {
                 type="date"
                 value={endDate}
                 min={startDate}
+                disabled={!isOwner}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="px-3 py-2 rounded-md border border-neutral-border bg-neutral-background text-neutral-text"
+                className="px-3 py-2 rounded-md border border-neutral-border bg-neutral-background text-neutral-text disabled:opacity-60 disabled:cursor-not-allowed"
               />
             </label>
             <label className="flex items-center gap-2 md:pb-2">
@@ -125,6 +141,13 @@ export default function ToolsPage() {
               Run report
             </button>
           </div>
+
+          {!isOwner && (
+            <p className="mt-3 flex items-center gap-1.5 text-xs text-neutral-text-light">
+              <LockSimple size={14} weight="duotone" aria-hidden="true" />
+              Showing today only — owner login required to report on previous days.
+            </p>
+          )}
 
           {/* Dish picker */}
           <div className="mt-5">

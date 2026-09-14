@@ -11,11 +11,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { inventoryApi } from '../../api/inventory';
 import CategorySection from './CategorySection';
 import TemplateImportModal from './TemplateImportModal';
+import { useAuth } from '../../hooks/useAuth';
 import type { AdjustmentItem, InventoryItem } from '../../types/inventory';
 
 export default function DailyCountTab() {
   const queryClient = useQueryClient();
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  // Importing a template creates inventory categories and items — master
+  // data, so owner-only. The daily count itself stays open to admin.
+  const { isOwner } = useAuth();
 
   // Fetch items grouped by category
   const { data: categorizedItems, isLoading } = useQuery({
@@ -167,20 +172,24 @@ export default function DailyCountTab() {
               No Inventory Items
             </h3>
             <p className="text-neutral-text-muted mb-6">
-              Get started by importing your items from WhatsApp template or add them manually in the Items tab.
+              {isOwner
+                ? 'Get started by importing your items from WhatsApp template or add them manually in the Items tab.'
+                : 'No items to count yet. Ask the owner to add inventory items.'}
             </p>
           </div>
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            className="btn-primary inline-flex items-center gap-2"
-          >
-            <Upload size={20} weight="fill" />
-            Import from WhatsApp Template
-          </button>
+          {isOwner && (
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="btn-primary inline-flex items-center gap-2"
+            >
+              <Upload size={20} weight="fill" />
+              Import from WhatsApp Template
+            </button>
+          )}
         </div>
 
         <TemplateImportModal
-          isOpen={isImportModalOpen}
+          isOpen={isImportModalOpen && isOwner}
           onClose={() => setIsImportModalOpen(false)}
           existingCategories={categories}
         />
@@ -300,7 +309,7 @@ export default function DailyCountTab() {
 
       {/* Template Import Modal */}
       <TemplateImportModal
-        isOpen={isImportModalOpen}
+        isOpen={isImportModalOpen && isOwner}
         onClose={() => setIsImportModalOpen(false)}
         existingCategories={categories}
       />

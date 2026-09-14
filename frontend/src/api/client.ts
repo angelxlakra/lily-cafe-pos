@@ -292,11 +292,18 @@ export const ordersApi = {
   },
 
   /**
-   * Cancel an order (admin only, requires auth)
+   * Cancel an order (requires auth).
+   *
+   * The order is soft-deleted: it stays in order history stamped with who
+   * canceled it and why. Voiding an already-billed order needs the owner login.
    */
-  cancelOrder: async (id: number): Promise<{ message: string }> => {
+  cancelOrder: async (
+    id: number,
+    reason?: string
+  ): Promise<{ message: string }> => {
     const response = await apiClient.delete<{ message: string }>(
-      `/orders/${id}`
+      `/orders/${id}`,
+      { data: reason ? { reason } : undefined }
     );
     return response.data;
   },

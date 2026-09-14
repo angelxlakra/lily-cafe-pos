@@ -15,6 +15,8 @@ interface UseAuthReturn {
   loginError: string | null;
   user: User | null;
   role: UserRole | null;
+  /** True only for the owner login — gates past-day data and post-bill edits */
+  isOwner: boolean;
 
   // Actions
   login: (credentials: LoginRequest) => Promise<LoginResponse>;
@@ -62,6 +64,7 @@ export const useAuth = (): UseAuthReturn => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(authApi.isAuthenticated());
   const [user, setUser] = useState<User | null>(null);
   const role = user?.role || null;
+  const isOwner = role === 'owner';
 
   // Fetch user data if authenticated
   const fetchUser = async () => {
@@ -137,6 +140,7 @@ export const useAuth = (): UseAuthReturn => {
     loginError: loginMutation.error ? (loginMutation.error as Error).message : null,
     user,
     role,
+    isOwner,
     login: loginMutation.mutateAsync,
     logout,
   };

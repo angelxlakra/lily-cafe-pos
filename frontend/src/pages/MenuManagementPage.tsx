@@ -10,16 +10,21 @@ import EmptyState from '../components/EmptyState';
 import ConfirmDialog from '../components/ConfirmDialog';
 import SortableTableHeader from '../components/SortableTableHeader';
 import { useMenuItems, useDeleteMenuItem } from '../hooks/useMenu';
+import { useAuth } from '../hooks/useAuth';
 import { useSortableTable } from '../hooks/useSortableTable';
 import { formatCurrency } from '../utils/formatCurrency';
 import { toast } from '../utils/toast';
 import type { MenuItem } from '../types';
-import { ForkKnife } from '@phosphor-icons/react';
+import { ForkKnife, LockSimple } from '@phosphor-icons/react';
 
 export default function MenuManagementPage() {
   const { data: menuItems, isLoading, error } = useMenuItems();
   const deleteMutation = useDeleteMenuItem();
   const { setMobileOpen } = useSidebar();
+
+  // Menu changes are owner-only: prices and items drive every future bill,
+  // so the reception admin gets a read-only view. Enforced on the API too.
+  const { isOwner } = useAuth();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
@@ -119,15 +124,24 @@ export default function MenuManagementPage() {
                 Menu Management
               </h1>
               <p className="text-sm text-muted mt-1">
-                Add, edit, and manage menu items
+                {isOwner
+                  ? 'Add, edit, and manage menu items'
+                  : 'View the menu — only the owner login can change items or prices'}
               </p>
             </div>
-            <button
-              onClick={handleAddNew}
-              className="btn-primary whitespace-nowrap w-full sm:w-auto"
-            >
-              + Add Item
-            </button>
+            {isOwner ? (
+              <button
+                onClick={handleAddNew}
+                className="btn-primary whitespace-nowrap w-full sm:w-auto"
+              >
+                + Add Item
+              </button>
+            ) : (
+              <span className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-neutral-border text-neutral-text-light whitespace-nowrap">
+                <LockSimple size={16} weight="duotone" aria-hidden="true" />
+                Read-only — owner login required to edit
+              </span>
+            )}
           </div>
         </header>
 
@@ -193,10 +207,16 @@ export default function MenuManagementPage() {
               description={
                 hasFilters
                   ? 'Try adjusting your search or selecting a different category.'
-                  : 'Add your first menu item to start building the cafe menu.'
+                  : isOwner
+                  ? 'Add your first menu item to start building the cafe menu.'
+                  : 'The menu is empty. Ask the owner to add items.'
               }
-              actionLabel={hasFilters ? 'Reset filters' : 'Add menu item'}
-              onAction={hasFilters ? handleResetFilters : handleAddNew}
+              actionLabel={
+                hasFilters ? 'Reset filters' : isOwner ? 'Add menu item' : undefined
+              }
+              onAction={
+                hasFilters ? handleResetFilters : isOwner ? handleAddNew : undefined
+              }
             />
           )}
 
@@ -301,18 +321,30 @@ export default function MenuManagementPage() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => handleEdit(item)}
-                              className="px-3 py-1 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => setDeleteItemId(item.id)}
-                              className="px-3 py-1 text-sm bg-error/10 border border-error text-error hover:bg-error hover:text-white rounded-md transition-colors"
-                            >
-                              Delete
-                            </button>
+                            {isOwner ? (
+                              <>
+                                <button
+                                  onClick={() => handleEdit(item)}
+                                  className="px-3 py-1 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => setDeleteItemId(item.id)}
+                                  className="px-3 py-1 text-sm bg-error/10 border border-error text-error hover:bg-error hover:text-white rounded-md transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </>
+                            ) : (
+                              <span
+                                className="inline-flex items-center gap-1 text-xs text-neutral-text-light"
+                                title="Owner login required to change menu items"
+                              >
+                                <LockSimple size={14} weight="duotone" aria-hidden="true" />
+                                Owner only
+                              </span>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -374,20 +406,22 @@ export default function MenuManagementPage() {
                           {item.is_available ? 'Available' : 'Unavailable'}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleEdit(item)}
-                          className="px-3 py-1 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => setDeleteItemId(item.id)}
-                          className="px-3 py-1 text-sm bg-error/10 border border-error text-error hover:bg-error hover:text-white rounded-md transition-colors"
-                        >
-                          Delete
-                        </button>
-                      </div>
+                      {isOwner && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleEdit(item)}
+                            className="px-3 py-1 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => setDeleteItemId(item.id)}
+                            className="px-3 py-1 text-sm bg-error/10 border border-error text-error hover:bg-error hover:text-white rounded-md transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -405,12 +439,12 @@ export default function MenuManagementPage() {
       </div>
 
       {/* Menu Item Form Modal */}
-      {isFormOpen && (
+      {isFormOpen && isOwner && (
         <MenuItemForm item={editingItem} onClose={handleFormClose} />
       )}
 
       {/* Delete Confirmation Dialog */}
-      {deleteItemId && (
+      {deleteItemId && isOwner && (
         <ConfirmDialog
           isOpen={true}
           onClose={() => setDeleteItemId(null)}

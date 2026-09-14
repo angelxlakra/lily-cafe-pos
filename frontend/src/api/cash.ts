@@ -49,4 +49,13 @@ export const cashApi = {
     const response = await apiClient.get<CashCounterHistoryResponse>('/cash-counter/history', { params });
     return response.data;
   },
+
+  /**
+   * Reopen a closed counter so the cash can be recounted.
+   * Authorized by the owner password, and requires a login.
+   */
+  reopenCounter: async (id: number, data: CashCounterVerify): Promise<DailyCashCounter> => {
+    const response = await apiClient.post<DailyCashCounter>(`/cash-counter/reopen/${id}`, data);
+    return response.data;
+  },
 };

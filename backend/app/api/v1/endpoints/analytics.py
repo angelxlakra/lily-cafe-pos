@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from openai import OpenAI
 
 from app.api.deps import get_db, get_current_owner, get_current_user
+from app.core import access
 from app.core.config import settings
 from app.models.models import Order, OrderItem, Payment, PaymentMethod, OrderStatus, MenuItem
 from app import schemas
@@ -747,6 +748,12 @@ def get_dish_frequency(
 
     Rows are sorted in descending order of total quantity.
     """
+
+    # Same role rule as order history: the admin login sees today only, so the
+    # dish report cannot be used to read what was sold on a previous day.
+    start_date, end_date = access.restrict_history_range(
+        current_user, start_date, end_date
+    )
     try:
         start_dt, end_dt = _ist_day_to_utc_bounds(start_date, end_date)
     except ValueError:
