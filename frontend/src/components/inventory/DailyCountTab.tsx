@@ -174,7 +174,7 @@ export default function DailyCountTab() {
             <p className="text-neutral-text-muted mb-6">
               {isOwner
                 ? 'Get started by importing your items from WhatsApp template or add them manually in the Items tab.'
-                : 'No items to count yet. Ask the owner to add inventory items.'}
+                : 'No items to count yet.'}
             </p>
           </div>
           {isOwner && (

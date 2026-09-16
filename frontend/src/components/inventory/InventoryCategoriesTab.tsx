@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, PencilSimple, Trash, X, Check, LockSimple } from '@phosphor-icons/react';
+import { Plus, PencilSimple, Trash, X, Check } from '@phosphor-icons/react';
 import { useInventoryCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../../hooks/useInventory';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -64,7 +64,7 @@ export default function InventoryCategoriesTab() {
       {/* Header & Actions */}
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-heading text-coffee-brown dark:text-cream">Categories</h2>
-        {isOwner ? (
+        {isOwner && (
           <button
             onClick={() => setIsCreating(true)}
             className="btn-primary flex items-center gap-2"
@@ -73,11 +73,6 @@ export default function InventoryCategoriesTab() {
             <Plus weight="bold" />
             <span>Add Category</span>
           </button>
-        ) : (
-          <span className="flex items-center gap-2 text-sm text-neutral-text-muted">
-            <LockSimple size={16} weight="duotone" aria-hidden="true" />
-            Owner login required to edit categories
-          </span>
         )}
       </div>
 

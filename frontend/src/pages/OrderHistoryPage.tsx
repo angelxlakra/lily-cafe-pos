@@ -14,7 +14,7 @@ import { useAppConfig } from '../hooks/useConfig';
 import { useSortableTable } from '../hooks/useSortableTable';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatDateTime } from '../utils/formatDateTime';
-import { CalendarDots, Printer, PencilSimple, MagnifyingGlass, X, CaretLeft, CaretRight, Trash, LockSimple } from '@phosphor-icons/react';
+import { CalendarDots, Printer, PencilSimple, MagnifyingGlass, X, CaretLeft, CaretRight, Trash } from '@phosphor-icons/react';
 import { UpiIcon, CashIcon, CardIcon } from '../components/icons/PaymentIcons';
 import DailyRevenueModal from '../components/DailyRevenueModal';
 import EditPaymentsModal from '../components/EditPaymentsModal';
@@ -302,7 +302,6 @@ export default function OrderHistoryPage() {
               }}
               max={today}
               todayOnly={!isOwner}
-              todayOnlyNote="Owner login required to view previous days"
             />
 
             {/* Search Bar */}
@@ -578,7 +577,7 @@ export default function OrderHistoryPage() {
                                 <Printer size={16} weight="bold" />
                                 <span className="hidden lg:inline">Print</span>
                               </button>
-                              {isOwner ? (
+                              {isOwner && (
                                 <button
                                   onClick={() => handleEditPayments(order)}
                                   className="px-3 py-1 text-sm bg-coffee-brown/10 border border-coffee-brown text-coffee-brown hover:bg-coffee-brown hover:text-white rounded-md transition-colors flex items-center gap-1"
@@ -587,14 +586,6 @@ export default function OrderHistoryPage() {
                                   <PencilSimple size={16} weight="bold" />
                                   <span className="hidden lg:inline">Edit</span>
                                 </button>
-                              ) : (
-                                <span
-                                  className="px-3 py-1 text-sm border border-neutral-border text-neutral-text-light rounded-md flex items-center gap-1 cursor-not-allowed"
-                                  title="Owner login required to change a bill that has already been generated"
-                                >
-                                  <LockSimple size={16} weight="duotone" />
-                                  <span className="hidden lg:inline">Edit</span>
-                                </span>
                               )}
                             </>
                           )}
