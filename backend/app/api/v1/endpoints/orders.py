@@ -11,7 +11,8 @@ from io import BytesIO
 
 from app import schemas, crud
 from app.models.models import OrderStatus
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, get_current_user, get_current_owner, get_optional_user
+from app.core import access
 from app.utils.pdf_generator import generate_receipt
 from app.utils.printer import print_receipt
 from app.utils.print_queue import enqueue_chit_jobs
@@ -43,6 +44,7 @@ def list_orders(
     table_number: Optional[int] = None,
     today_only: bool = False,
     db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_user),
 ):
     """
     Get all orders with optional filtering.
@@ -51,7 +53,13 @@ def list_orders(
     - status: Filter by order status (active, completed, cancelled)
     - table_number: Filter by table number
     - today_only: Only show today's orders (default: false)
+
+    Requires authentication. The admin login is always scoped to today —
+    only the owner can list orders from previous days.
     """
+    if not access.is_owner(current_user):
+        today_only = True
+
     return crud.get_orders(
         db, status=status, table_number=table_number, today_only=today_only
     )
@@ -66,6 +74,7 @@ def get_order_history(
     page: int = 1,
     size: int = 50,
     db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_user),
 ):
     """
     Get order history with optional date filtering and pagination.
@@ -77,12 +86,20 @@ def get_order_history(
     - status: Filter by order status (if not specified, shows PAID and CANCELED orders)
     - page: Page number (default: 1)
     - size: Items per page (default: 50)
+
+    Requires authentication. The admin login may only read the current day;
+    requesting any other date returns 403. The owner login has no date limit.
     """
     try:
         # Legacy support: if `date` is provided, treat it as start=end
         if date and not start_date and not end_date:
             start_date = date
             end_date = date
+
+        # Role-based date window: admin is limited to today, owner is not.
+        start_date, end_date = access.restrict_history_range(
+            current_user, start_date, end_date
+        )
 
         skip = (page - 1) * size
 
@@ -115,11 +132,31 @@ def get_order_history(
 
 
 @router.get("/{order_id}", response_model=schemas.Order)
-def get_order(order_id: int, db: Session = Depends(get_db)):
-    """Get a single order by ID."""
+def get_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: Optional[schemas.TokenData] = Depends(get_optional_user),
+):
+    """
+    Get a single order by ID.
+
+    Active orders stay readable without a login so the waiter screens keep
+    working. Anything already billed or canceled needs a login, and the admin
+    login can only reach orders from the current day.
+    """
     order = crud.get_order(db, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+
+    if order.status != OrderStatus.ACTIVE:
+        if current_user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        access.require_order_visible(current_user, order)
+
     return order
 
 
@@ -161,8 +198,26 @@ def update_order(
     order_id: int,
     order: schemas.OrderUpdate,
     db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_user),
 ):
-    """Update an order (e.g., change status, customer name)."""
+    """
+    Update an order's status or customer name.
+
+    Requires authentication. An order that has been billed or canceled can
+    only be changed by the owner — otherwise the reception admin could flip a
+    canceled order back to paid and erase the cancellation from the records.
+    """
+    existing_order = crud.get_order(db, order_id)
+    if not existing_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    access.require_order_visible(current_user, existing_order)
+
+    if existing_order.status != OrderStatus.ACTIVE:
+        access.require_owner(
+            current_user, "change an order after the bill has been generated"
+        )
+
     updated_order = crud.update_order(db, order_id, order)
     if not updated_order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -174,16 +229,33 @@ def admin_edit_order(
     order_id: int,
     order_update: schemas.OrderItemsUpdate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: schemas.TokenData = Depends(get_current_user),
 ):
     """
-    Admin endpoint to edit order items and recalculate totals.
+    Endpoint to edit order items and recalculate totals.
 
     Requires authentication. Replaces all items in the order.
     Used to fix order mistakes or handle customer change requests.
+
+    The admin login may correct an order while it is still open (ACTIVE).
+    Once the bill has been generated the order is locked: only the owner
+    login can change a billed order.
     """
+    existing_order = crud.get_order(db, order_id)
+    if not existing_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    access.require_order_visible(current_user, existing_order)
+
+    if existing_order.status != OrderStatus.ACTIVE:
+        access.require_owner(
+            current_user, "change an order after the bill has been generated"
+        )
+
     try:
-        updated_order = crud.admin_edit_order(db, order_id, order_update)
+        updated_order = crud.admin_edit_order(
+            db, order_id, order_update, edited_by=current_user.username
+        )
         if not updated_order:
             raise HTTPException(status_code=404, detail="Order not found")
 
@@ -195,18 +267,38 @@ def admin_edit_order(
 @router.delete("/{order_id}")
 def cancel_order(
     order_id: int,
+    body: Optional[schemas.OrderCancelRequest] = None,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: schemas.TokenData = Depends(get_current_user),
 ):
     """
-    Admin endpoint to cancel an order (soft delete).
+    Cancel an order (soft delete).
 
-    Requires authentication. Sets order status to CANCELED.
-    Canceled orders remain in database for record keeping.
-    Cannot cancel orders that have already been paid.
+    Requires authentication. Sets order status to CANCELED and stamps the
+    order with who canceled it and when, so the cancellation stays visible
+    in order history instead of the order simply disappearing.
+
+    The admin login may cancel an order that is still open. Voiding an order
+    whose bill has already been generated requires the owner login.
     """
+    existing_order = crud.get_order(db, order_id)
+    if not existing_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    access.require_order_visible(current_user, existing_order)
+
+    if existing_order.status == OrderStatus.PAID:
+        access.require_owner(
+            current_user, "void an order after the bill has been generated"
+        )
+
     try:
-        canceled_order = crud.cancel_order(db, order_id)
+        canceled_order = crud.cancel_order(
+            db,
+            order_id,
+            canceled_by=current_user.username,
+            reason=body.reason if body else None,
+        )
         if not canceled_order:
             raise HTTPException(status_code=404, detail="Order not found")
         return {"message": "Order canceled successfully", "order_id": order_id}
@@ -368,7 +460,7 @@ def update_order_payments(
     order_id: int,
     payment_batch: schemas.PaymentBatchCreate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: schemas.TokenData = Depends(get_current_owner)
 ):
     """
     Replace all payments for an order (edit payment methods).
@@ -379,7 +471,8 @@ def update_order_payments(
     - Deletes all existing payments
     - Creates new payments with provided methods
     - Validates total matches order total
-    - Requires authentication (admin only)
+    - Requires the OWNER login: a bill that has already been generated can
+      only be corrected by the owner, not by the reception admin
 
     Example request:
     {
@@ -389,7 +482,9 @@ def update_order_payments(
     }
     """
     try:
-        return crud.replace_order_payments(db, order_id, payment_batch.payments)
+        return crud.replace_order_payments(
+            db, order_id, payment_batch.payments, edited_by=current_user.username
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 

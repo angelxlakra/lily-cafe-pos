@@ -47,8 +47,11 @@ def test_create_split_payments(client, test_db, sample_order, auth_token):
     assert len(payments) == 2
     assert sum(p["amount"] for p in payments) == sample_order.total_amount
 
-    # Verify order is marked as paid
-    order_response = client.get(f"/api/v1/orders/{sample_order.id}")
+    # Verify order is marked as paid (paid orders require auth to read)
+    order_response = client.get(
+        f"/api/v1/orders/{sample_order.id}",
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
     assert order_response.json()["status"] == "paid"
 
 

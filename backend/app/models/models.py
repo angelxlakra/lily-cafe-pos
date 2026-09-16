@@ -74,8 +74,23 @@ class Order(Base):
     gst_amount = Column(Integer, nullable=False)  # GST amount in paise
     total_amount = Column(Integer, nullable=False)  # Final total in paise
     status = Column(SQLEnum(OrderStatus), default=OrderStatus.ACTIVE, nullable=False, index=True)
+    # Free-text instruction for the kitchen/bar, printed in the NOTES section of
+    # the chit (e.g. "no onion", "extra spicy"). Holds the note from the most
+    # recent round of items, since a chit is printed per round.
+    notes = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    # Audit trail - who canceled (soft-deleted) this order and when.
+    # Kept on the order itself so cancellations stay visible in order history.
+    canceled_at = Column(DateTime, nullable=True)
+    canceled_by = Column(String(50), nullable=True)  # Username of the user who canceled
+    cancel_reason = Column(String(255), nullable=True)
+
+    # Audit trail - last correction made after the order was created/billed
+    last_edited_at = Column(DateTime, nullable=True)
+    last_edited_by = Column(String(50), nullable=True)
+    edit_count = Column(Integer, default=0, nullable=False)
 
     # Relationships
     order_items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")

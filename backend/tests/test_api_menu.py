@@ -125,7 +125,7 @@ class TestGetMenuItem:
 class TestCreateMenuItem:
     """Tests for POST /api/v1/menu endpoint."""
 
-    def test_create_menu_item_success(self, client, auth_headers, sample_categories):
+    def test_create_menu_item_success(self, client, owner_headers, sample_categories):
         """Test creating a new menu item with authentication."""
         item_data = {
             "name": "Idli",
@@ -137,7 +137,7 @@ class TestCreateMenuItem:
         response = client.post(
             "/api/v1/menu",
             json=item_data,
-            headers=auth_headers,
+            headers=owner_headers,
         )
 
         assert response.status_code == status.HTTP_201_CREATED
@@ -151,7 +151,7 @@ class TestCreateMenuItem:
         assert "id" in data
         assert "created_at" in data
 
-    def test_create_menu_item_minimal_data(self, client, auth_headers, sample_categories):
+    def test_create_menu_item_minimal_data(self, client, owner_headers, sample_categories):
         """Test creating a menu item with only required fields."""
         item_data = {
             "name": "Simple Item",
@@ -162,7 +162,7 @@ class TestCreateMenuItem:
         response = client.post(
             "/api/v1/menu",
             json=item_data,
-            headers=auth_headers,
+            headers=owner_headers,
         )
 
         assert response.status_code == status.HTTP_201_CREATED
@@ -184,13 +184,13 @@ class TestCreateMenuItem:
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_create_menu_item_missing_required_fields(self, client, auth_headers):
+    def test_create_menu_item_missing_required_fields(self, client, owner_headers):
         """Test creating a menu item without required fields fails."""
         # Missing name
         response = client.post(
             "/api/v1/menu",
             json={"price": 5000, "category_id": 1},
-            headers=auth_headers,
+            headers=owner_headers,
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
@@ -198,7 +198,7 @@ class TestCreateMenuItem:
         response = client.post(
             "/api/v1/menu",
             json={"name": "Test", "category_id": 1},
-            headers=auth_headers,
+            headers=owner_headers,
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
@@ -206,17 +206,17 @@ class TestCreateMenuItem:
         response = client.post(
             "/api/v1/menu",
             json={"name": "Test", "price": 5000},
-            headers=auth_headers,
+            headers=owner_headers,
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    def test_create_menu_item_invalid_price(self, client, auth_headers, sample_categories):
+    def test_create_menu_item_invalid_price(self, client, owner_headers, sample_categories):
         """Test creating a menu item with invalid price."""
         # Negative price
         response = client.post(
             "/api/v1/menu",
             json={"name": "Test", "price": -100, "category_id": sample_categories[0].id},
-            headers=auth_headers,
+            headers=owner_headers,
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
@@ -224,11 +224,11 @@ class TestCreateMenuItem:
         response = client.post(
             "/api/v1/menu",
             json={"name": "Test", "price": 0, "category_id": sample_categories[0].id},
-            headers=auth_headers,
+            headers=owner_headers,
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    def test_create_menu_item_invalid_category(self, client, auth_headers):
+    def test_create_menu_item_invalid_category(self, client, owner_headers):
         """Test creating a menu item with non-existent category."""
         item_data = {
             "name": "Test Item",
@@ -239,7 +239,7 @@ class TestCreateMenuItem:
         response = client.post(
             "/api/v1/menu",
             json=item_data,
-            headers=auth_headers,
+            headers=owner_headers,
         )
 
         # Should fail due to foreign key constraint
@@ -249,7 +249,7 @@ class TestCreateMenuItem:
 class TestUpdateMenuItem:
     """Tests for PATCH /api/v1/menu/{item_id} endpoint."""
 
-    def test_update_menu_item_name(self, client, auth_headers, sample_menu_items):
+    def test_update_menu_item_name(self, client, owner_headers, sample_menu_items):
         """Test updating menu item name."""
         item_id = sample_menu_items[0].id
         update_data = {"name": "Special Masala Dosa"}
@@ -257,7 +257,7 @@ class TestUpdateMenuItem:
         response = client.patch(
             f"/api/v1/menu/{item_id}",
             json=update_data,
-            headers=auth_headers,
+            headers=owner_headers,
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -266,7 +266,7 @@ class TestUpdateMenuItem:
         assert data["name"] == "Special Masala Dosa"
         assert data["price"] == sample_menu_items[0].price  # Unchanged
 
-    def test_update_menu_item_price(self, client, auth_headers, sample_menu_items):
+    def test_update_menu_item_price(self, client, owner_headers, sample_menu_items):
         """Test updating menu item price."""
         item_id = sample_menu_items[0].id
         update_data = {"price": 9000}
@@ -274,7 +274,7 @@ class TestUpdateMenuItem:
         response = client.patch(
             f"/api/v1/menu/{item_id}",
             json=update_data,
-            headers=auth_headers,
+            headers=owner_headers,
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -282,7 +282,7 @@ class TestUpdateMenuItem:
 
         assert data["price"] == 9000
 
-    def test_update_menu_item_availability(self, client, auth_headers, sample_menu_items):
+    def test_update_menu_item_availability(self, client, owner_headers, sample_menu_items):
         """Test updating menu item availability."""
         item_id = sample_menu_items[0].id
         update_data = {"is_available": False}
@@ -290,7 +290,7 @@ class TestUpdateMenuItem:
         response = client.patch(
             f"/api/v1/menu/{item_id}",
             json=update_data,
-            headers=auth_headers,
+            headers=owner_headers,
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -298,7 +298,7 @@ class TestUpdateMenuItem:
 
         assert data["is_available"] is False
 
-    def test_update_menu_item_multiple_fields(self, client, auth_headers, sample_menu_items):
+    def test_update_menu_item_multiple_fields(self, client, owner_headers, sample_menu_items):
         """Test updating multiple fields at once."""
         item_id = sample_menu_items[0].id
         update_data = {
@@ -311,7 +311,7 @@ class TestUpdateMenuItem:
         response = client.patch(
             f"/api/v1/menu/{item_id}",
             json=update_data,
-            headers=auth_headers,
+            headers=owner_headers,
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -331,19 +331,19 @@ class TestUpdateMenuItem:
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_update_menu_item_not_found(self, client, auth_headers):
+    def test_update_menu_item_not_found(self, client, owner_headers):
         """Test updating a non-existent menu item."""
         update_data = {"name": "Test"}
 
         response = client.patch(
             "/api/v1/menu/9999",
             json=update_data,
-            headers=auth_headers,
+            headers=owner_headers,
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_update_menu_item_empty_update(self, client, auth_headers, sample_menu_items):
+    def test_update_menu_item_empty_update(self, client, owner_headers, sample_menu_items):
         """Test updating with no fields still succeeds."""
         item_id = sample_menu_items[0].id
         update_data = {}
@@ -351,7 +351,7 @@ class TestUpdateMenuItem:
         response = client.patch(
             f"/api/v1/menu/{item_id}",
             json=update_data,
-            headers=auth_headers,
+            headers=owner_headers,
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -360,13 +360,13 @@ class TestUpdateMenuItem:
 class TestDeleteMenuItem:
     """Tests for DELETE /api/v1/menu/{item_id} endpoint."""
 
-    def test_delete_menu_item_success(self, client, auth_headers, sample_menu_items):
+    def test_delete_menu_item_success(self, client, owner_headers, sample_menu_items):
         """Test soft deleting a menu item."""
         item_id = sample_menu_items[0].id
 
         response = client.delete(
             f"/api/v1/menu/{item_id}",
-            headers=auth_headers,
+            headers=owner_headers,
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -377,12 +377,12 @@ class TestDeleteMenuItem:
         data = get_response.json()
         assert data["is_available"] is False
 
-    def test_delete_menu_item_not_in_available_list(self, client, auth_headers, sample_menu_items):
+    def test_delete_menu_item_not_in_available_list(self, client, owner_headers, sample_menu_items):
         """Test that deleted items don't appear in available-only list."""
         item_id = sample_menu_items[0].id
 
         # Delete the item
-        client.delete(f"/api/v1/menu/{item_id}", headers=auth_headers)
+        client.delete(f"/api/v1/menu/{item_id}", headers=owner_headers)
 
         # Get available items
         list_response = client.get("/api/v1/menu?available_only=true")
@@ -391,12 +391,12 @@ class TestDeleteMenuItem:
         # Deleted item should not be in the list
         assert not any(item["id"] == item_id for item in items)
 
-    def test_delete_menu_item_in_all_list(self, client, auth_headers, sample_menu_items):
+    def test_delete_menu_item_in_all_list(self, client, owner_headers, sample_menu_items):
         """Test that deleted items appear in all items list."""
         item_id = sample_menu_items[0].id
 
         # Delete the item
-        client.delete(f"/api/v1/menu/{item_id}", headers=auth_headers)
+        client.delete(f"/api/v1/menu/{item_id}", headers=owner_headers)
 
         # Get all items
         list_response = client.get("/api/v1/menu?available_only=false")
@@ -415,22 +415,22 @@ class TestDeleteMenuItem:
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_delete_menu_item_not_found(self, client, auth_headers):
+    def test_delete_menu_item_not_found(self, client, owner_headers):
         """Test deleting a non-existent menu item."""
-        response = client.delete("/api/v1/menu/9999", headers=auth_headers)
+        response = client.delete("/api/v1/menu/9999", headers=owner_headers)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_delete_menu_item_twice(self, client, auth_headers, sample_menu_items):
+    def test_delete_menu_item_twice(self, client, owner_headers, sample_menu_items):
         """Test deleting an already deleted menu item."""
         item_id = sample_menu_items[0].id
 
         # Delete once
-        response1 = client.delete(f"/api/v1/menu/{item_id}", headers=auth_headers)
+        response1 = client.delete(f"/api/v1/menu/{item_id}", headers=owner_headers)
         assert response1.status_code == status.HTTP_204_NO_CONTENT
 
         # Delete again
-        response2 = client.delete(f"/api/v1/menu/{item_id}", headers=auth_headers)
+        response2 = client.delete(f"/api/v1/menu/{item_id}", headers=owner_headers)
         # Should still succeed (idempotent)
         assert response2.status_code == status.HTTP_204_NO_CONTENT
 
@@ -438,7 +438,7 @@ class TestDeleteMenuItem:
 class TestMenuIntegration:
     """Integration tests for menu item endpoints."""
 
-    def test_create_update_delete_flow(self, client, auth_headers, sample_categories):
+    def test_create_update_delete_flow(self, client, owner_headers, sample_categories):
         """Test complete CRUD flow for menu items."""
         # Create
         create_data = {
@@ -449,7 +449,7 @@ class TestMenuIntegration:
         create_response = client.post(
             "/api/v1/menu",
             json=create_data,
-            headers=auth_headers,
+            headers=owner_headers,
         )
         assert create_response.status_code == status.HTTP_201_CREATED
         created_item = create_response.json()
@@ -459,7 +459,7 @@ class TestMenuIntegration:
         update_response = client.patch(
             f"/api/v1/menu/{created_item['id']}",
             json=update_data,
-            headers=auth_headers,
+            headers=owner_headers,
         )
         assert update_response.status_code == status.HTTP_200_OK
         updated_item = update_response.json()
@@ -469,7 +469,7 @@ class TestMenuIntegration:
         # Delete
         delete_response = client.delete(
             f"/api/v1/menu/{created_item['id']}",
-            headers=auth_headers,
+            headers=owner_headers,
         )
         assert delete_response.status_code == status.HTTP_204_NO_CONTENT
 
@@ -477,7 +477,7 @@ class TestMenuIntegration:
         get_response = client.get(f"/api/v1/menu/{created_item['id']}")
         assert get_response.json()["is_available"] is False
 
-    def test_menu_items_persist_across_requests(self, client, auth_headers, sample_categories):
+    def test_menu_items_persist_across_requests(self, client, owner_headers, sample_categories):
         """Test that menu items persist across multiple requests."""
         # Create item
         create_data = {
@@ -488,7 +488,7 @@ class TestMenuIntegration:
         create_response = client.post(
             "/api/v1/menu",
             json=create_data,
-            headers=auth_headers,
+            headers=owner_headers,
         )
         item_id = create_response.json()["id"]
 

@@ -5,6 +5,7 @@ from decimal import Decimal
 
 import pytest
 
+from app import schemas
 from app.main import app
 from app.api.deps import get_current_user
 from app.models import models
@@ -13,9 +14,16 @@ from app.models.cash_models import DailyCashCounter
 
 @pytest.fixture
 def auth_override():
-    app.dependency_overrides[get_current_user] = lambda: type(
-        "TD", (), {"username": "admin", "role": "admin"}
-    )()
+    """
+    Sign in as the owner.
+
+    These tests look up fixed past dates to exercise the response shape and
+    the prev/next day links; only the owner may read previous days (the admin
+    case is covered in tests/test_cash_inventory_access.py).
+    """
+    app.dependency_overrides[get_current_user] = lambda: schemas.TokenData(
+        username="owner", role=schemas.UserRole.OWNER
+    )
     yield
     app.dependency_overrides.pop(get_current_user, None)
 

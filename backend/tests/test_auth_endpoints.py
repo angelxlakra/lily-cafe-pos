@@ -140,7 +140,7 @@ class TestProtectedEndpoints:
             status.HTTP_403_FORBIDDEN,
         ]
 
-    def test_protected_endpoint_with_valid_token(self, client, auth_headers, sample_category):
+    def test_protected_endpoint_with_valid_token(self, client, owner_headers, sample_category):
         """Test accessing protected endpoint with valid token."""
         response = client.post(
             "/api/v1/menu",
@@ -149,7 +149,7 @@ class TestProtectedEndpoints:
                 "price": 5000,
                 "category_id": sample_category.id,
             },
-            headers=auth_headers,
+            headers=owner_headers,
         )
 
         # Should succeed with valid token

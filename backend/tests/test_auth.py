@@ -117,7 +117,7 @@ class TestProtectedEndpoints:
 class TestAuthenticationToken:
     """Tests for JWT token usage."""
 
-    def test_valid_token_grants_access(self, client, auth_headers, sample_categories):
+    def test_valid_token_grants_access(self, client, owner_headers, sample_categories):
         """Test that valid token allows access to protected endpoints."""
         item_data = {
             "name": "Authorized Item",
@@ -128,7 +128,7 @@ class TestAuthenticationToken:
         response = client.post(
             "/api/v1/menu",
             json=item_data,
-            headers=auth_headers,
+            headers=owner_headers,
         )
 
         assert response.status_code == status.HTTP_201_CREATED
@@ -170,7 +170,7 @@ class TestAuthenticationToken:
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_token_works_across_multiple_requests(self, client, auth_headers, sample_categories):
+    def test_token_works_across_multiple_requests(self, client, owner_headers, sample_categories):
         """Test that token can be reused for multiple requests."""
         for i in range(3):
             item_data = {
@@ -182,7 +182,7 @@ class TestAuthenticationToken:
             response = client.post(
                 "/api/v1/menu",
                 json=item_data,
-                headers=auth_headers,
+                headers=owner_headers,
             )
 
             assert response.status_code == status.HTTP_201_CREATED
@@ -226,7 +226,7 @@ class TestAuthenticationIntegration:
         # Login
         login_response = client.post(
             "/api/v1/auth/login",
-            json={"username": "admin", "password": "changeme123"},
+            json={"username": "owner", "password": "owner123"},
         )
         assert login_response.status_code == status.HTTP_200_OK
         token = login_response.json()["access_token"]
@@ -263,7 +263,7 @@ class TestAuthenticationIntegration:
         # Login to get token
         login_response = client.post(
             "/api/v1/auth/login",
-            json={"username": "admin", "password": "changeme123"},
+            json={"username": "owner", "password": "owner123"},
         )
         token = login_response.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}

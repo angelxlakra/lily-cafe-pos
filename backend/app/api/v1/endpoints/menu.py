@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from fastapi.exceptions import ResponseValidationError
 
 from app import schemas, crud
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, get_current_owner
 
 router = APIRouter()
 
@@ -54,9 +54,9 @@ def get_menu_item(item_id: int, db: Session = Depends(get_db)):
 def create_menu_item(
     item: schemas.MenuItemCreate,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user),
+    current_user: schemas.TokenData = Depends(get_current_owner),
 ):
-    """Create a new menu item (admin only)."""
+    """Create a new menu item. Owner login only."""
     try:
         return crud.create_menu_item(db, item)
     except (IntegrityError, ResponseValidationError):
@@ -72,9 +72,9 @@ def update_menu_item(
     item_id: int,
     item: schemas.MenuItemUpdate,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user),
+    current_user: schemas.TokenData = Depends(get_current_owner),
 ):
-    """Update a menu item (admin only)."""
+    """Update a menu item. Owner login only."""
     updated_item = crud.update_menu_item(db, item_id, item)
     if not updated_item:
         raise HTTPException(status_code=404, detail="Menu item not found")
@@ -85,9 +85,9 @@ def update_menu_item(
 def delete_menu_item(
     item_id: int,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user),
+    current_user: schemas.TokenData = Depends(get_current_owner),
 ):
-    """Soft delete a menu item (admin only)."""
+    """Soft delete a menu item. Owner login only."""
     if not crud.delete_menu_item(db, item_id):
         raise HTTPException(status_code=404, detail="Menu item not found")
     return None
