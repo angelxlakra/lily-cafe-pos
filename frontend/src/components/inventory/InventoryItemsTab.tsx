@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, MagnifyingGlass, Warning, PencilSimple, Trash, X, LockSimple } from '@phosphor-icons/react';
+import { Plus, MagnifyingGlass, Warning, PencilSimple, Trash, X } from '@phosphor-icons/react';
 import { useInventoryItems, useInventoryCategories, useCreateItem, useUpdateItem, useDeleteItem } from '../../hooks/useInventory';
 import { useAuth } from '../../hooks/useAuth';
 import type { InventoryItem, InventoryItemCreate } from '../../types/inventory';
@@ -68,7 +68,7 @@ export default function InventoryItemsTab() {
           </button>
         </div>
 
-        {isOwner ? (
+        {isOwner && (
           <button
             onClick={() => setIsCreating(true)}
             className="btn-primary flex items-center gap-2 whitespace-nowrap"
@@ -76,11 +76,6 @@ export default function InventoryItemsTab() {
             <Plus weight="bold" />
             <span>Add Item</span>
           </button>
-        ) : (
-          <span className="flex items-center gap-2 whitespace-nowrap text-sm text-neutral-text-muted">
-            <LockSimple size={16} weight="duotone" aria-hidden="true" />
-            Owner login required to edit items
-          </span>
         )}
       </div>
 

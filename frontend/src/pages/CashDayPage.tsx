@@ -6,7 +6,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { CaretLeft, CaretRight, Money, LockSimple } from '@phosphor-icons/react';
+import { CaretLeft, CaretRight, Money } from '@phosphor-icons/react';
 import { cashApi } from '../api/cash';
 import { useAuth } from '../hooks/useAuth';
 import { formatTime } from '../utils/formatDateTime';
@@ -97,39 +97,33 @@ export default function CashDayPage() {
             )}
           </div>
 
-          <div className="flex items-stretch gap-2">
-            <button
-              onClick={() => setDay(shiftDay(day, -1))}
-              disabled={!isOwner}
-              aria-label="Previous day"
-              className="w-12 shrink-0 flex items-center justify-center rounded-xl border border-neutral-border bg-white dark:bg-gray-800 text-neutral-text active:scale-95 transition-transform disabled:opacity-40 disabled:active:scale-100"
-            >
-              <CaretLeft size={20} weight="bold" />
-            </button>
-            <input
-              type="date"
-              value={day}
-              max={today}
-              disabled={!isOwner}
-              onChange={(e) => setDay(e.target.value)}
-              className="flex-1 min-w-0 h-12 px-3 rounded-xl border border-neutral-border bg-white dark:bg-gray-800 text-neutral-text text-base text-center disabled:opacity-60"
-            />
-            <button
-              onClick={() => setDay(shiftDay(day, 1))}
-              disabled={!isOwner || day >= today}
-              aria-label="Next day"
-              className="w-12 shrink-0 flex items-center justify-center rounded-xl border border-neutral-border bg-white dark:bg-gray-800 text-neutral-text active:scale-95 transition-transform disabled:opacity-40 disabled:active:scale-100"
-            >
-              <CaretRight size={20} weight="bold" />
-            </button>
-          </div>
-          <p className="mt-2 text-center text-sm text-neutral-text-light">{prettyDay(day)}</p>
-          {!isOwner && (
-            <p className="mt-1 flex items-center justify-center gap-1.5 text-xs text-neutral-text-light">
-              <LockSimple size={14} weight="duotone" aria-hidden="true" />
-              Owner login required to view previous days
-            </p>
+          {isOwner && (
+            <div className="flex items-stretch gap-2">
+              <button
+                onClick={() => setDay(shiftDay(day, -1))}
+                aria-label="Previous day"
+                className="w-12 shrink-0 flex items-center justify-center rounded-xl border border-neutral-border bg-white dark:bg-gray-800 text-neutral-text active:scale-95 transition-transform"
+              >
+                <CaretLeft size={20} weight="bold" />
+              </button>
+              <input
+                type="date"
+                value={day}
+                max={today}
+                onChange={(e) => setDay(e.target.value)}
+                className="flex-1 min-w-0 h-12 px-3 rounded-xl border border-neutral-border bg-white dark:bg-gray-800 text-neutral-text text-base text-center"
+              />
+              <button
+                onClick={() => setDay(shiftDay(day, 1))}
+                disabled={day >= today}
+                aria-label="Next day"
+                className="w-12 shrink-0 flex items-center justify-center rounded-xl border border-neutral-border bg-white dark:bg-gray-800 text-neutral-text active:scale-95 transition-transform disabled:opacity-40 disabled:active:scale-100"
+              >
+                <CaretRight size={20} weight="bold" />
+              </button>
+            </div>
           )}
+          <p className="mt-2 text-center text-sm text-neutral-text-light">{prettyDay(day)}</p>
         </div>
       </div>
 

@@ -15,7 +15,7 @@ import { useSortableTable } from '../hooks/useSortableTable';
 import { formatCurrency } from '../utils/formatCurrency';
 import { toast } from '../utils/toast';
 import type { MenuItem } from '../types';
-import { ForkKnife, LockSimple } from '@phosphor-icons/react';
+import { ForkKnife } from '@phosphor-icons/react';
 
 export default function MenuManagementPage() {
   const { data: menuItems, isLoading, error } = useMenuItems();
@@ -124,23 +124,16 @@ export default function MenuManagementPage() {
                 Menu Management
               </h1>
               <p className="text-sm text-muted mt-1">
-                {isOwner
-                  ? 'Add, edit, and manage menu items'
-                  : 'View the menu — only the owner login can change items or prices'}
+                {isOwner ? 'Add, edit, and manage menu items' : 'Cafe menu and prices'}
               </p>
             </div>
-            {isOwner ? (
+            {isOwner && (
               <button
                 onClick={handleAddNew}
                 className="btn-primary whitespace-nowrap w-full sm:w-auto"
               >
                 + Add Item
               </button>
-            ) : (
-              <span className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-neutral-border text-neutral-text-light whitespace-nowrap">
-                <LockSimple size={16} weight="duotone" aria-hidden="true" />
-                Read-only — owner login required to edit
-              </span>
             )}
           </div>
         </header>
@@ -209,7 +202,7 @@ export default function MenuManagementPage() {
                   ? 'Try adjusting your search or selecting a different category.'
                   : isOwner
                   ? 'Add your first menu item to start building the cafe menu.'
-                  : 'The menu is empty. Ask the owner to add items.'
+                  : 'No menu items yet.'
               }
               actionLabel={
                 hasFilters ? 'Reset filters' : isOwner ? 'Add menu item' : undefined
@@ -266,9 +259,11 @@ export default function MenuManagementPage() {
                         onSort={requestSort}
                         align="center"
                       />
-                      <th className="px-6 py-3 text-right text-sm font-semibold text-neutral-text-light uppercase tracking-wider">
-                        Actions
-                      </th>
+                      {isOwner && (
+                        <th className="px-6 py-3 text-right text-sm font-semibold text-neutral-text-light uppercase tracking-wider">
+                          Actions
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-border">
@@ -319,34 +314,24 @@ export default function MenuManagementPage() {
                             {item.is_available ? 'Available' : 'Unavailable'}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center justify-end gap-2">
-                            {isOwner ? (
-                              <>
-                                <button
-                                  onClick={() => handleEdit(item)}
-                                  className="px-3 py-1 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={() => setDeleteItemId(item.id)}
-                                  className="px-3 py-1 text-sm bg-error/10 border border-error text-error hover:bg-error hover:text-white rounded-md transition-colors"
-                                >
-                                  Delete
-                                </button>
-                              </>
-                            ) : (
-                              <span
-                                className="inline-flex items-center gap-1 text-xs text-neutral-text-light"
-                                title="Owner login required to change menu items"
+                        {isOwner && (
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleEdit(item)}
+                                className="px-3 py-1 text-sm bg-cream border border-coffee-light text-coffee-brown hover:bg-coffee-light hover:text-white rounded-md transition-colors"
                               >
-                                <LockSimple size={14} weight="duotone" aria-hidden="true" />
-                                Owner only
-                              </span>
-                            )}
-                          </div>
-                        </td>
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => setDeleteItemId(item.id)}
+                                className="px-3 py-1 text-sm bg-error/10 border border-error text-error hover:bg-error hover:text-white rounded-md transition-colors"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

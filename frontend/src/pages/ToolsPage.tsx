@@ -10,7 +10,7 @@ import { useMenuItems } from '../hooks/useMenu';
 import { useAuth } from '../hooks/useAuth';
 import { analyticsApi } from '../api/analytics';
 import type { DishFrequencyParams } from '../api/analytics';
-import { Wrench, MagnifyingGlass, X, LockSimple } from '@phosphor-icons/react';
+import { Wrench, MagnifyingGlass, X } from '@phosphor-icons/react';
 
 // Local YYYY-MM-DD for an offset number of days ago (IST-ish, uses browser locale).
 function isoDaysAgo(days: number): string {
@@ -103,28 +103,39 @@ export default function ToolsPage() {
         {/* Controls */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-neutral-border p-5 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-neutral-text">From</span>
-              <input
-                type="date"
-                value={startDate}
-                max={endDate}
-                disabled={!isOwner}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="px-3 py-2 rounded-md border border-neutral-border bg-neutral-background text-neutral-text disabled:opacity-60 disabled:cursor-not-allowed"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-neutral-text">To</span>
-              <input
-                type="date"
-                value={endDate}
-                min={startDate}
-                disabled={!isOwner}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="px-3 py-2 rounded-md border border-neutral-border bg-neutral-background text-neutral-text disabled:opacity-60 disabled:cursor-not-allowed"
-              />
-            </label>
+            {isOwner ? (
+              <>
+                <label className="flex flex-col gap-1">
+                  <span className="text-sm font-medium text-neutral-text">From</span>
+                  <input
+                    type="date"
+                    value={startDate}
+                    max={endDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="px-3 py-2 rounded-md border border-neutral-border bg-neutral-background text-neutral-text"
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-sm font-medium text-neutral-text">To</span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    min={startDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="px-3 py-2 rounded-md border border-neutral-border bg-neutral-background text-neutral-text"
+                  />
+                </label>
+              </>
+            ) : (
+              <div className="flex flex-col gap-1 md:col-span-2">
+                <span className="text-sm font-medium text-neutral-text">Date</span>
+                <span className="px-3 py-2 rounded-md border border-neutral-border bg-neutral-background text-neutral-text">
+                  {new Date(`${endDate}T00:00:00`).toLocaleDateString(undefined, {
+                    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+                  })}
+                </span>
+              </div>
+            )}
             <label className="flex items-center gap-2 md:pb-2">
               <input
                 type="checkbox"
@@ -142,12 +153,6 @@ export default function ToolsPage() {
             </button>
           </div>
 
-          {!isOwner && (
-            <p className="mt-3 flex items-center gap-1.5 text-xs text-neutral-text-light">
-              <LockSimple size={14} weight="duotone" aria-hidden="true" />
-              Showing today only — owner login required to report on previous days.
-            </p>
-          )}
 
           {/* Dish picker */}
           <div className="mt-5">

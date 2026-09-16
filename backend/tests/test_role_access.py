@@ -234,12 +234,55 @@ class TestPostBillCorrections:
         assert response.json()["last_edited_by"] == "owner"
         assert response.json()["edit_count"] == 1
 
-    def test_admin_cannot_change_payments_on_a_billed_order(
-        self, client, auth_headers, todays_paid_order
+    def test_admin_can_change_the_payment_split_on_a_billed_order(
+        self, client, auth_headers, test_db, todays_paid_order
     ):
+        """
+        The customer says UPI, the bill prints, then they pay half in cash.
+        Reception handles that at the counter, so it is not owner-only.
+        """
+        half = todays_paid_order.total_amount // 2
         response = client.put(
             f"/api/v1/orders/{todays_paid_order.id}/payments",
-            json={"payments": [{"payment_method": "cash", "amount": todays_paid_order.total_amount}]},
+            json={
+                "payments": [
+                    {"payment_method": "cash", "amount": half},
+                    {
+                        "payment_method": "upi",
+                        "amount": todays_paid_order.total_amount - half,
+                    },
+                ]
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert len(response.json()) == 2
+
+        test_db.refresh(todays_paid_order)
+        assert todays_paid_order.last_edited_by == "admin"
+
+    def test_changing_the_split_cannot_change_the_amount(
+        self, client, auth_headers, todays_paid_order
+    ):
+        """The guard that keeps this from being a way to move money."""
+        response = client.put(
+            f"/api/v1/orders/{todays_paid_order.id}/payments",
+            json={
+                "payments": [
+                    {"payment_method": "cash", "amount": todays_paid_order.total_amount - 5000}
+                ]
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 400
+        assert "does not match" in response.json()["detail"]
+
+    def test_admin_cannot_change_payments_on_a_previous_day(
+        self, client, auth_headers, yesterdays_order
+    ):
+        response = client.put(
+            f"/api/v1/orders/{yesterdays_order.id}/payments",
+            json={"payments": [{"payment_method": "cash", "amount": yesterdays_order.total_amount}]},
             headers=auth_headers,
         )
         assert response.status_code == 403
