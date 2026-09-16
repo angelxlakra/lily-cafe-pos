@@ -577,16 +577,14 @@ export default function OrderHistoryPage() {
                                 <Printer size={16} weight="bold" />
                                 <span className="hidden lg:inline">Print</span>
                               </button>
-                              {isOwner && (
-                                <button
-                                  onClick={() => handleEditPayments(order)}
-                                  className="px-3 py-1 text-sm bg-coffee-brown/10 border border-coffee-brown text-coffee-brown hover:bg-coffee-brown hover:text-white rounded-md transition-colors flex items-center gap-1"
-                                  title="Edit Payments"
-                                >
-                                  <PencilSimple size={16} weight="bold" />
-                                  <span className="hidden lg:inline">Edit</span>
-                                </button>
-                              )}
+                              <button
+                                onClick={() => handleEditPayments(order)}
+                                className="px-3 py-1 text-sm bg-coffee-brown/10 border border-coffee-brown text-coffee-brown hover:bg-coffee-brown hover:text-white rounded-md transition-colors flex items-center gap-1"
+                                title="Edit Payments"
+                              >
+                                <PencilSimple size={16} weight="bold" />
+                                <span className="hidden lg:inline">Edit</span>
+                              </button>
                             </>
                           )}
                           <button
@@ -671,16 +669,14 @@ export default function OrderHistoryPage() {
                             <Printer size={16} weight="bold" />
                             Print
                           </button>
-                          {isOwner && (
-                            <button
-                              onClick={() => handleEditPayments(order)}
-                              className="px-4 py-2 text-sm bg-coffee-brown/10 border border-coffee-brown text-coffee-brown hover:bg-coffee-brown hover:text-white rounded-md transition-colors flex items-center justify-center gap-1"
-                              title="Edit Payments"
-                            >
-                              <PencilSimple size={16} weight="bold" />
-                              Edit
-                            </button>
-                          )}
+                          <button
+                            onClick={() => handleEditPayments(order)}
+                            className="px-4 py-2 text-sm bg-coffee-brown/10 border border-coffee-brown text-coffee-brown hover:bg-coffee-brown hover:text-white rounded-md transition-colors flex items-center justify-center gap-1"
+                            title="Edit Payments"
+                          >
+                            <PencilSimple size={16} weight="bold" />
+                            Edit
+                          </button>
                         </>
                       )}
                       <button
@@ -743,7 +739,9 @@ export default function OrderHistoryPage() {
           onSave={handleSavePayments}
           onClose={() => setEditPaymentsOrder(null)}
           isSaving={updatePaymentsMutation.isPending}
-          onCancelOrder={() => setCancelOrderId(editPaymentsOrder.id)}
+          onCancelOrder={
+            isOwner ? () => setCancelOrderId(editPaymentsOrder.id) : undefined
+          }
         />
       )}
 

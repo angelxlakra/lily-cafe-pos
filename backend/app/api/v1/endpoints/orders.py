@@ -11,7 +11,7 @@ from io import BytesIO
 
 from app import schemas, crud
 from app.models.models import OrderStatus
-from app.api.deps import get_db, get_current_user, get_current_owner, get_optional_user
+from app.api.deps import get_db, get_current_user, get_optional_user
 from app.core import access
 from app.utils.pdf_generator import generate_receipt
 from app.utils.printer import print_receipt
@@ -460,27 +460,41 @@ def update_order_payments(
     order_id: int,
     payment_batch: schemas.PaymentBatchCreate,
     db: Session = Depends(get_db),
-    current_user: schemas.TokenData = Depends(get_current_owner)
+    current_user: schemas.TokenData = Depends(get_current_user)
 ):
     """
     Replace all payments for an order (edit payment methods).
 
-    This endpoint allows editing payment methods for already-paid orders.
-    Useful for correcting payment method errors in order history.
+    Corrects how a bill was tendered — the customer says UPI, the bill is
+    generated, then they hand over half in cash. The reception admin handles
+    this at the counter, so it does not require the owner.
+
+    What stops this from being a way to move money: the new payments must sum
+    to the order total, so only the *split across methods* can change, never
+    the amount collected. Changing the amount means changing the order itself,
+    which stays owner-only once a bill exists.
 
     - Deletes all existing payments
     - Creates new payments with provided methods
-    - Validates total matches order total
-    - Requires the OWNER login: a bill that has already been generated can
-      only be corrected by the owner, not by the reception admin
+    - Validates total matches order total (rejects anything else)
+    - Records who made the change on the order's audit trail
+    - Admin is still limited to the current day; correcting a previous day's
+      bill needs the owner login
 
     Example request:
     {
         "payments": [
-            {"payment_method": "cash", "amount": 23600}
+            {"payment_method": "cash", "amount": 11800},
+            {"payment_method": "upi", "amount": 11800}
         ]
     }
     """
+    existing_order = crud.get_order(db, order_id)
+    if not existing_order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    access.require_order_visible(current_user, existing_order)
+
     try:
         return crud.replace_order_payments(
             db, order_id, payment_batch.payments, edited_by=current_user.username
