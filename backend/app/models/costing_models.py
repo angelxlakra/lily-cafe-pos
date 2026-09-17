@@ -15,7 +15,7 @@ class DishCosting(Base):
     __tablename__ = "dish_costings"
 
     id = Column(Integer, primary_key=True, index=True)
-    menu_item_id = Column(Integer, ForeignKey("menu_items.id"), nullable=False, unique=True, index=True)
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
     yield_units = Column(Numeric(12, 3), nullable=False, default=1)
     target_margin_percent = Column(Numeric(5, 2), nullable=True)
     notes = Column(String(500), nullable=True)
@@ -32,7 +32,8 @@ class DishCosting(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    menu_item = relationship("MenuItem")
+    # Relationships
+    menu_item = relationship("MenuItem", back_populates="costing")
     ingredients = relationship(
         "DishCostingIngredient",
         back_populates="costing",
@@ -40,7 +41,7 @@ class DishCosting(Base):
         order_by="DishCostingIngredient.sort_order",
     )
 
-
+ 
 class DishCostingIngredient(Base):
     """One ingredient row in a dish costing sheet."""
 
@@ -59,4 +60,4 @@ class DishCostingIngredient(Base):
     sort_order = Column(Integer, nullable=False, default=0)
 
     costing = relationship("DishCosting", back_populates="ingredients")
-    inventory_item = relationship("InventoryItem")
+    inventory_item = relationship("InventoryItem", back_populates="costing_ingredients")
