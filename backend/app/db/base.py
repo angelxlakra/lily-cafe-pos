@@ -22,6 +22,8 @@ from app.models.inventory_models import (  # noqa
 from app.models.cash_models import DailyCashCounter  # noqa
 from app.models.settings_model import AppSetting  # noqa
 
+from app.models.costing_models import ( DishCosting, DishCostingIngredient)
+
 __all__ = [
     "Base",
     "Category",
@@ -37,4 +39,6 @@ __all__ = [
     "TransactionType",
     "DailyCashCounter",
     "AppSetting",
+    "DishCosting", # Dish Costing
+    "DishCostingIngredient" # Dish Costing
 ]
