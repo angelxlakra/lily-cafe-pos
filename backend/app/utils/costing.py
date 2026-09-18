@@ -5,7 +5,7 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from app.core import settings_store
 from app.models.costing_models import OVERHEAD_KINDS
-from app.utils.units import convert
+from app.utils.units import convert, IncompatibleUnitError
 
 MONEY = Decimal("0.01")
 PERCENT = Decimal("0.01")
