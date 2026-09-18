@@ -34,12 +34,7 @@ class DishCosting(Base):
 
     # Relationships
     menu_item = relationship("MenuItem", back_populates="costing")
-    ingredients = relationship(
-        "DishCostingIngredient",
-        back_populates="costing",
-        cascade="all, delete-orphan",
-        order_by="DishCostingIngredient.sort_order",
-    )
+    ingredients = relationship("DishCostingIngredient",back_populates="costing",cascade="all, delete-orphan",order_by="DishCostingIngredient.sort_order",)
 
  
 class DishCostingIngredient(Base):
