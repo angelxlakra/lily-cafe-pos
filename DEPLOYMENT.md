@@ -175,10 +175,30 @@ No client ID or secret is needed; ChatGPT registers automatically.
 
 ### 5.3 Gemini
 
-Requires **Gemini Enterprise – Business Edition**, and only a **team
-administrator** can add a server (Manage team → Connected apps → Add MCP
-Server). Gemini does not register itself: it asks for a client ID and secret
-up front, so create one for it first.
+Gemini has two different products with two different setup paths. Check
+which one the owner has before starting.
+
+#### Personal Google Account (the consumer Gemini app, incl. Google AI Pro)
+
+Google's stated requirements: a **personal** Google Account (not a work or
+school account), the owner must be **18 or over and in the US**, and Keep
+Activity must be on. **The US restriction is the one that bites** — an owner
+signed in from India cannot add a custom app today, regardless of plan. If
+that changes, this is the easier path:
+
+1. gemini.google.com → **Settings → Connected Apps → Custom apps**
+2. Enter the server URL: `https://lily-cafe-pos.fly.dev/mcp`
+3. Click **Next**, sign in with the **owner** username and password, **Approve**
+
+Gemini registers itself (Dynamic Client Registration), exactly like ChatGPT.
+Leave the "Advanced features" credentials box empty — it is only for servers
+that cannot self-register, and this one can.
+
+#### Work account: Gemini Enterprise – Business Edition
+
+Only a **team administrator** can add a server (Manage team → Connected apps
+→ Add MCP Server). This edition does not register itself: it asks for a client
+ID and secret up front, so create one for it first.
 
 **a) Create Gemini's client (once per cafe).** Gemini's fixed callback URL is
 `https://vertexaisearch.cloud.google.com/oauth-redirect`:
