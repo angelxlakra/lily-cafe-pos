@@ -67,6 +67,15 @@ class Settings:
     # Restaurant logo path (local filesystem — not applicable in cloud deployment)
     RESTAURANT_LOGO_PATH: str = os.getenv("RESTAURANT_LOGO_PATH", "")
 
+    # MCP server — lets the owner connect an AI assistant (ChatGPT, Gemini) to
+    # read cafe analytics. Off unless a deployment opts in, because enabling it
+    # publishes an OAuth authorization server and a read-only data endpoint.
+    MCP_ENABLED: bool = os.getenv("MCP_ENABLED", "false").lower() == "true"
+    # Public HTTPS origin this backend is reachable at, with no trailing path
+    # (e.g. https://lily-cafe-pos.fly.dev). It is the OAuth issuer identifier,
+    # so it must match what clients actually connect to.
+    MCP_PUBLIC_URL: str = os.getenv("MCP_PUBLIC_URL", "").rstrip("/")
+
 
 # Create a singleton instance
 settings = Settings()

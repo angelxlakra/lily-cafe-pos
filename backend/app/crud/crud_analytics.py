@@ -30,7 +30,10 @@ def to_ist_timestamp(column):
     # For SQLite, use datetime function with timezone offset
     # For PostgreSQL, use AT TIME ZONE
     # Since we're using SQLite in development, we'll use SQLite syntax
-    return text(f"datetime({column.key}, '+330 minutes')")
+    # Qualify with the table name: a join whose other table also has this
+    # column (orders and menu_items both have created_at) is otherwise
+    # rejected as an ambiguous column reference.
+    return text(f"datetime({column.table.name}.{column.key}, '+330 minutes')")
 
 
 def get_time_filter(start_date: Optional[datetime], end_date: Optional[datetime]):
@@ -1123,7 +1126,7 @@ def get_inventory_usage_trends_tool(db: Session, start_date: Optional[str] = Non
     # Total values
     purchases_value = db.query(
         func.sum(InventoryTransaction.quantity * InventoryItem.cost_per_unit)
-    ).join(InventoryItem).filter(
+    ).select_from(InventoryTransaction).join(InventoryItem).filter(
         and_(
             InventoryTransaction.transaction_type == 'PURCHASE',
             *time_filters
@@ -1132,7 +1135,7 @@ def get_inventory_usage_trends_tool(db: Session, start_date: Optional[str] = Non
 
     usage_value = db.query(
         func.sum(func.abs(InventoryTransaction.quantity) * InventoryItem.cost_per_unit)
-    ).join(InventoryItem).filter(
+    ).select_from(InventoryTransaction).join(InventoryItem).filter(
         and_(
             InventoryTransaction.transaction_type == 'USAGE',
             *time_filters
@@ -1141,7 +1144,7 @@ def get_inventory_usage_trends_tool(db: Session, start_date: Optional[str] = Non
 
     waste_value = db.query(
         func.sum(func.abs(InventoryTransaction.quantity) * InventoryItem.cost_per_unit)
-    ).join(InventoryItem).filter(
+    ).select_from(InventoryTransaction).join(InventoryItem).filter(
         and_(
             InventoryTransaction.transaction_type == 'ADJUSTMENT',
             InventoryTransaction.quantity < 0,
@@ -1258,7 +1261,7 @@ def get_financial_summary_tool(db: Session, start_date: Optional[str] = None, en
 
     inventory_purchases = db.query(
         func.sum(InventoryTransaction.quantity * InventoryItem.cost_per_unit)
-    ).join(InventoryItem).filter(
+    ).select_from(InventoryTransaction).join(InventoryItem).filter(
         and_(
             InventoryTransaction.transaction_type == 'PURCHASE',
             *inv_time_filters
