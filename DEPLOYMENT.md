@@ -195,10 +195,13 @@ Leave the "Advanced features" credentials box empty — it is only for servers
 that cannot self-register, and this one can. Verified end to end: the app
 shows **Connected** with all 19 actions synced.
 
-**Asking it questions.** Gemini only routes to a custom app when it is
-@-mentioned — naming it in plain words ("use the Lily Cafe app") gets "I do
-not have access". Type `@`, pick the app from the popup so it attaches as a
-chip (its handle is shown under the app name, e.g. `@lilycafepos`), then ask:
+**Asking it questions — use Spark, not the normal chat.** Custom apps only
+run inside **Gemini Spark** (the agent mode). In a regular conversation the
+app is never called, even when @-mentioned: Gemini answers "I don't have
+access" and falls back to searching Gmail. Keep Activity must also be on.
+
+In Spark, type `@`, pick the app from the popup so it attaches as a chip (its
+handle is shown under the app name, e.g. `@lilycafepos`), then ask:
 
 > @lilycafepos how were my sales last week?
 
