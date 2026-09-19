@@ -13,13 +13,13 @@ The helpers here express those rules in one place so endpoints stay readable
 and the rules cannot drift apart between modules.
 """
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from typing import Optional
 
 from fastapi import HTTPException, status
 
 from app import schemas
-from app.core import business_time
+from app.core import business_day
 from app.models import models
 
 
@@ -30,9 +30,13 @@ def is_owner(user: Optional[schemas.TokenData]) -> bool:
 
 def business_today() -> date:
     """
-    The current business day: the IST calendar date (see ``business_time``).
+    The current business day: the local date in the configured timezone.
+
+    Order numbers and ``today_only`` filtering use the same convention (see
+    ``app.core.business_day``), so an order placed just after local midnight
+    is "today" everywhere even though its UTC timestamp is still yesterday.
     """
-    return business_time.business_today()
+    return business_day.business_today()
 
 
 def require_owner(user: schemas.TokenData, action: str) -> None:
@@ -96,20 +100,14 @@ def order_business_date(order: models.Order) -> Optional[date]:
     The business day an order belongs to.
 
     Read from the order number (``ORD-YYYYMMDD-####``), which is stamped with
-    the IST business date at creation time. Falls back to ``created_at``
-    (stored as naive UTC, converted to IST) when the order number is not in
-    the expected format.
+    the local business date at creation time. Falls back to ``created_at``
+    (stored in UTC, converted to the local date) when the order number is not
+    in the expected format.
     """
     try:
         return datetime.strptime(order.order_number.split("-")[1], "%Y%m%d").date()
     except (AttributeError, IndexError, ValueError):
-        if not order.created_at:
-            return None
-        return (
-            order.created_at.replace(tzinfo=timezone.utc)
-            .astimezone(business_time.IST)
-            .date()
-        )
+        return business_day.to_business_date(order.created_at) if order.created_at else None
 
 
 def require_order_visible(user: schemas.TokenData, order: models.Order) -> None:

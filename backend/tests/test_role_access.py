@@ -10,7 +10,7 @@ from datetime import date, datetime, timedelta
 
 import pytest
 
-from app.core import business_time
+from app.core import business_day
 from app.models import models
 
 
@@ -39,12 +39,12 @@ def _make_order(db, *, order_date: date, status=models.OrderStatus.PAID, seq=1):
 
 @pytest.fixture
 def yesterdays_order(test_db):
-    return _make_order(test_db, order_date=business_time.business_today() - timedelta(days=1))
+    return _make_order(test_db, order_date=business_day.business_today() - timedelta(days=1))
 
 
 @pytest.fixture
 def todays_paid_order(test_db):
-    return _make_order(test_db, order_date=business_time.business_today(), seq=2)
+    return _make_order(test_db, order_date=business_day.business_today(), seq=2)
 
 
 # ============================================================================

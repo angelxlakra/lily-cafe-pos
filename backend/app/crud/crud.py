@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 from app.models import models
 from app.schemas import schemas
-from app.core import business_time, settings_store
+from app.core import settings_store
+from app.core import business_day
 from app.utils.rounding import round_down_to_rupee
 
 
@@ -105,7 +106,7 @@ def update_menu_item(
     for field, value in update_data.items():
         setattr(db_item, field, value)
 
-    db_item.updated_at = datetime.utcnow()
+    db_item.updated_at = business_day.utcnow()
     db.commit()
     db.refresh(db_item)
     return db_item
@@ -138,13 +139,11 @@ def generate_order_number(db: Session) -> str:
     Example: ORD-20250130-0001
 
     Order numbers reset daily. The sequence increments for each order
-    created on the same day.
+    created on the same local business day.
     """
-    today = business_time.business_today()
-    today_str = today.strftime("%Y%m%d")
+    today_str = business_day.business_today().strftime("%Y%m%d")
 
-    # Get the last order created today.
-    # Use the order_number prefix instead of created_at since timestamps are stored in UTC.
+    # Get the last order created today, keyed on the order_number prefix.
     last_order = (
         db.query(models.Order)
         .filter(models.Order.order_number.like(f"ORD-{today_str}-%"))
@@ -195,56 +194,34 @@ def _get_orders_query(
     if table_number:
         query = query.filter(models.Order.table_number == table_number)
 
-    for clause in _order_date_filters(today_only, date_str, start_date, end_date):
-        query = query.filter(clause)
-
-    return query
-
-
-def _order_date_filters(
-    today_only: bool,
-    date_str: Optional[str],
-    start_date: Optional[str],
-    end_date: Optional[str],
-) -> list:
-    """
-    Build the ``created_at`` filter clauses for a date-scoped order query.
-
-    Dates are IST calendar days while ``created_at`` is stored as naive UTC,
-    so each day is converted to its UTC bounds rather than compared with
-    ``func.date(created_at)`` (which would be the UTC date and drift from the
-    IST date between 00:00 and 05:30 IST).
-    """
-    clauses = []
-
     if today_only:
-        start_dt, end_dt = business_time.today_utc_bounds()
-        clauses.append(models.Order.created_at >= start_dt)
-        clauses.append(models.Order.created_at <= end_dt)
+        query = query.filter(business_day.on_business_day(models.Order.created_at, business_day.business_today()))
 
     if date_str:
         try:
-            start_dt, end_dt = business_time.ist_day_to_utc_bounds(date_str, date_str)
+            from datetime import datetime
+            filter_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            query = query.filter(business_day.on_business_day(models.Order.created_at, filter_date))
         except ValueError:
             raise ValueError(f"Invalid date format: {date_str}. Expected YYYY-MM-DD")
-        clauses.append(models.Order.created_at >= start_dt)
-        clauses.append(models.Order.created_at <= end_dt)
 
     if start_date:
         try:
-            start_dt, _ = business_time.ist_day_to_utc_bounds(start_date, None)
+            from datetime import datetime
+            start = datetime.strptime(start_date, "%Y-%m-%d").date()
+            query = query.filter(business_day.on_or_after_business_day(models.Order.created_at, start))
         except ValueError:
             raise ValueError(f"Invalid start_date format: {start_date}. Expected YYYY-MM-DD")
-        clauses.append(models.Order.created_at >= start_dt)
 
     if end_date:
         try:
-            _, end_dt = business_time.ist_day_to_utc_bounds(None, end_date)
+            from datetime import datetime
+            end = datetime.strptime(end_date, "%Y-%m-%d").date()
+            query = query.filter(business_day.on_or_before_business_day(models.Order.created_at, end))
         except ValueError:
             raise ValueError(f"Invalid end_date format: {end_date}. Expected YYYY-MM-DD")
-        clauses.append(models.Order.created_at <= end_dt)
 
-    return clauses
+    return query
 
 
 def get_orders(
@@ -307,8 +284,29 @@ def get_orders_paginated(
         breakdown_query = breakdown_query.filter(models.Order.status == status)
     if table_number:
         breakdown_query = breakdown_query.filter(models.Order.table_number == table_number)
-    for clause in _order_date_filters(today_only, date_str, start_date, end_date):
-        breakdown_query = breakdown_query.filter(clause)
+    if today_only:
+        breakdown_query = breakdown_query.filter(business_day.on_business_day(models.Order.created_at, business_day.business_today()))
+    if date_str:
+        try:
+            from datetime import datetime
+            filter_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            breakdown_query = breakdown_query.filter(business_day.on_business_day(models.Order.created_at, filter_date))
+        except ValueError:
+            pass
+    if start_date:
+        try:
+            from datetime import datetime
+            start = datetime.strptime(start_date, "%Y-%m-%d").date()
+            breakdown_query = breakdown_query.filter(business_day.on_or_after_business_day(models.Order.created_at, start))
+        except ValueError:
+            pass
+    if end_date:
+        try:
+            from datetime import datetime
+            end = datetime.strptime(end_date, "%Y-%m-%d").date()
+            breakdown_query = breakdown_query.filter(business_day.on_or_before_business_day(models.Order.created_at, end))
+        except ValueError:
+            pass
             
     breakdown_results = breakdown_query.group_by(models.Payment.payment_method).all()
     
@@ -451,7 +449,7 @@ def create_order(db: Session, order: schemas.OrderCreate) -> tuple[models.Order,
         existing_order.subtotal = subtotal
         existing_order.gst_amount = gst_amount
         existing_order.total_amount = total_amount
-        existing_order.updated_at = datetime.utcnow()
+        existing_order.updated_at = business_day.utcnow()
 
         # Update customer name if provided
         if order.customer_name:
@@ -534,7 +532,7 @@ def update_order(
     for field, value in update_data.items():
         setattr(db_order, field, value)
 
-    db_order.updated_at = datetime.utcnow()
+    db_order.updated_at = business_day.utcnow()
     db.commit()
     db.refresh(db_order)
     return db_order
@@ -641,14 +639,14 @@ def admin_edit_order(
     db_order.subtotal = subtotal
     db_order.gst_amount = gst_amount
     db_order.total_amount = total_amount
-    db_order.updated_at = datetime.utcnow()
+    db_order.updated_at = business_day.utcnow()
 
     # Update customer name if provided
     if order_update.customer_name:
         db_order.customer_name = order_update.customer_name
 
     # Audit trail - record who corrected the order and how often it has changed
-    db_order.last_edited_at = datetime.utcnow()
+    db_order.last_edited_at = business_day.utcnow()
     db_order.last_edited_by = edited_by
     db_order.edit_count = (db_order.edit_count or 0) + 1
 
@@ -685,10 +683,10 @@ def cancel_order(
 
     # Allow canceling any order (including paid orders) for duplicate removal
     db_order.status = models.OrderStatus.CANCELED
-    db_order.canceled_at = datetime.utcnow()
+    db_order.canceled_at = business_day.utcnow()
     db_order.canceled_by = canceled_by
     db_order.cancel_reason = reason
-    db_order.updated_at = datetime.utcnow()
+    db_order.updated_at = business_day.utcnow()
     db.commit()
     db.refresh(db_order)
     return db_order
@@ -865,7 +863,7 @@ def create_payment(
     total_paid += payment.amount
     if total_paid >= order.total_amount:
         order.status = models.OrderStatus.PAID
-        order.updated_at = datetime.utcnow()
+        order.updated_at = business_day.utcnow()
         db.commit()
 
     return db_payment
@@ -931,7 +929,7 @@ def create_payments_batch(
     
 
     order.status = models.OrderStatus.PAID
-    order.updated_at = datetime.utcnow()
+    order.updated_at = business_day.utcnow()
 
     db.commit()
 
@@ -998,8 +996,8 @@ def replace_order_payments(
         created_payments.append(db_payment)
 
     # Update order timestamp and audit trail
-    order.updated_at = datetime.utcnow()
-    order.last_edited_at = datetime.utcnow()
+    order.updated_at = business_day.utcnow()
+    order.last_edited_at = business_day.utcnow()
     order.last_edited_by = edited_by
     order.edit_count = (order.edit_count or 0) + 1
 
