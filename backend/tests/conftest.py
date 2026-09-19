@@ -16,7 +16,16 @@ from app.db.base import Base  # Import Base with all models registered
 from app.api.deps import get_db  # Import get_db from deps (used by endpoints)
 from app.core import business_day
 from app.core.security import create_access_token
+from app.core.login_throttle import login_throttle
 from app.models import models
+
+
+@pytest.fixture(autouse=True)
+def _fresh_login_throttle():
+    """The sign-in limiter is process-wide state; start every test clean."""
+    login_throttle.reset()
+    yield
+    login_throttle.reset()
 
 
 # ============================================================================

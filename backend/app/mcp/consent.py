@@ -11,6 +11,7 @@ from mcp.server.auth.provider import construct_redirect_uri
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 
+from app.core.login_throttle import LOCKED_OUT_MESSAGE, client_ip, login_throttle
 from app.core.security import authenticate_user
 from app.mcp.oauth import (
     CafeOAuthProvider,
@@ -153,6 +154,22 @@ def register_consent_routes(mcp, provider: CafeOAuthProvider) -> None:
                 status_code=302,
             )
 
+        # Same limiter as /api/v1/auth/login: anyone can open fresh
+        # transactions via /register, so the per-transaction attempt cap
+        # alone would not bound how fast the owner password can be guessed.
+        source = client_ip(request)
+        retry_after = login_throttle.retry_after(source)
+        if retry_after:
+            return HTMLResponse(
+                _page(
+                    await _display_name(provider, client_id),
+                    txn,
+                    error=LOCKED_OUT_MESSAGE,
+                ),
+                status_code=429,
+                headers={"Retry-After": str(retry_after)},
+            )
+
         username = str(form.get("username", ""))
         password = str(form.get("password", ""))
         role = authenticate_user(username, password)
@@ -162,6 +179,7 @@ def register_consent_routes(mcp, provider: CafeOAuthProvider) -> None:
         # message stays the same either way so it does not reveal which login
         # exists.
         if role != UserRole.OWNER:
+            login_throttle.record_failure(source)
             still_open = record_failed_consent_attempt(txn)
             if not still_open:
                 return _expired()
@@ -174,6 +192,7 @@ def register_consent_routes(mcp, provider: CafeOAuthProvider) -> None:
                 status_code=401,
             )
 
+        login_throttle.record_success(source)
         result = complete_authorization(
             txn, subject=username, default_resource=provider.resource_url
         )
