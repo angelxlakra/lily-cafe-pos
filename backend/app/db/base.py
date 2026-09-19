@@ -21,6 +21,12 @@ from app.models.inventory_models import (  # noqa
 )
 from app.models.cash_models import DailyCashCounter  # noqa
 from app.models.settings_model import AppSetting  # noqa
+from app.models.oauth_models import (  # noqa
+    OAuthAuthorizationCode,
+    OAuthClient,
+    OAuthGrantToken,
+    OAuthPendingAuthorization,
+)
 
 __all__ = [
     "Base",
@@ -37,4 +43,8 @@ __all__ = [
     "TransactionType",
     "DailyCashCounter",
     "AppSetting",
+    "OAuthClient",
+    "OAuthPendingAuthorization",
+    "OAuthAuthorizationCode",
+    "OAuthGrantToken",
 ]

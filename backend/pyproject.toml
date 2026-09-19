@@ -32,6 +32,7 @@ dependencies = [
     "pdf2image>=1.17.0",
     "pillow>=12.0.0",
     "openai>=2.14.0",
+    "mcp>=2.2.0",
 ]
 
 # Optional dependencies for different use cases
@@ -67,11 +68,6 @@ inventory = [
 analytics = [
     "pandas>=2.1.0",
     "openpyxl>=3.1.0",  # Excel export
-]
-
-# Future: MCP server (v1.5+)
-mcp = [
-    "mcp>=0.1.0",  # When available
 ]
 
 [build-system]
