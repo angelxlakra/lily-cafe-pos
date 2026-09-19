@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models.models import OrderStatus
+from app.core.config import settings
 
 
 # ============================================================================
@@ -420,33 +421,51 @@ def test_cancel_order_requires_auth(client: TestClient, sample_menu_items):
     assert response.status_code == 401  # Unauthorized
 
 
-@pytest.mark.skip(reason="Requires auth implementation")
-def test_cannot_cancel_paid_order_api(client: TestClient, sample_menu_items, auth_headers, db: Session):
-    """Test that paid orders cannot be canceled."""
-    # Create order
+def _create_paid_order(client: TestClient, db: Session, menu_item_id: int) -> int:
     create_response = client.post(
         "/api/v1/orders",
         json={
             "table_number": 1,
-            "items": [{"menu_item_id": sample_menu_items[0].id, "quantity": 1}]
+            "items": [{"menu_item_id": menu_item_id, "quantity": 1}]
         }
     )
     order_id = create_response.json()["id"]
 
-    # Mark as paid
     from app.models.models import Order
     order = db.query(Order).filter(Order.id == order_id).first()
     order.status = OrderStatus.PAID
     db.commit()
+    return order_id
 
-    # Try to cancel
-    response = client.delete(
-        f"/api/v1/orders/{order_id}",
-        headers=auth_headers
-    )
 
-    assert response.status_code == 400
-    assert "Cannot cancel a paid order" in response.json()["detail"]
+def test_admin_cannot_cancel_paid_order_api(client: TestClient, sample_menu_items, auth_headers, db: Session):
+    """Voiding an order whose bill has been generated requires the owner login."""
+    order_id = _create_paid_order(client, db, sample_menu_items[0].id)
+
+    response = client.delete(f"/api/v1/orders/{order_id}", headers=auth_headers)
+
+    assert response.status_code == 403
+    assert "Owner login required" in response.json()["detail"]
+
+    from app.models.models import Order
+    db.expire_all()
+    assert db.query(Order).get(order_id).status == OrderStatus.PAID
+
+
+def test_owner_can_cancel_paid_order_api(client: TestClient, sample_menu_items, owner_headers, db: Session):
+    """The owner may void a paid order (e.g. to remove a duplicate)."""
+    order_id = _create_paid_order(client, db, sample_menu_items[0].id)
+
+    response = client.delete(f"/api/v1/orders/{order_id}", headers=owner_headers)
+
+    assert response.status_code == 200
+    assert response.json()["order_id"] == order_id
+
+    from app.models.models import Order
+    db.expire_all()
+    order = db.query(Order).get(order_id)
+    assert order.status == OrderStatus.CANCELED
+    assert order.canceled_by == settings.OWNER_USERNAME
 
 
 # ============================================================================
@@ -454,7 +473,9 @@ def test_cannot_cancel_paid_order_api(client: TestClient, sample_menu_items, aut
 # ============================================================================
 
 
-def test_list_orders_filter_by_status(client: TestClient, sample_menu_items, db: Session, auth_headers):
+def test_list_orders_filter_by_status(
+    client: TestClient, sample_menu_items, db: Session, auth_headers, frozen_clock
+):
     """Test filtering orders by status."""
     # Create multiple orders
     for i in range(3):
@@ -483,7 +504,9 @@ def test_list_orders_filter_by_status(client: TestClient, sample_menu_items, db:
     assert len(response.json()) == 1
 
 
-def test_list_orders_filter_by_table(client: TestClient, sample_menu_items, auth_headers):
+def test_list_orders_filter_by_table(
+    client: TestClient, sample_menu_items, auth_headers, frozen_clock
+):
     """Test filtering orders by table number."""
     # Create orders on different tables
     for table_num in [1, 2, 3]:

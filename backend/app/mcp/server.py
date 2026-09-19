@@ -48,12 +48,15 @@ def create_mcp_server() -> MCPServer:
             )
 
         base = settings.MCP_PUBLIC_URL
-        provider = CafeOAuthProvider(consent_url=f"{base}{CONSENT_PATH}")
+        resource_url = f"{base}{MCP_PATH}"
+        provider = CafeOAuthProvider(
+            consent_url=f"{base}{CONSENT_PATH}", resource_url=resource_url
+        )
         auth_settings = AuthSettings(
             issuer_url=AnyHttpUrl(base),
             # Binds tokens to this endpoint (RFC 8707), so a token minted for
             # this cafe cannot be replayed against another deployment.
-            resource_server_url=AnyHttpUrl(f"{base}{MCP_PATH}"),
+            resource_server_url=AnyHttpUrl(resource_url),
             validate_token_resource=True,
             required_scopes=[READ_SCOPE],
             # ChatGPT and Gemini have no way to pre-register with each cafe,

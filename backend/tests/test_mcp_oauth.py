@@ -374,3 +374,92 @@ def test_revoking_the_refresh_token_kills_the_access_token_too(client):
     assert response.status_code == 200, response.text
 
     assert _call_mcp(client, tokens["access_token"]).status_code == 401
+
+
+# ============================================================================
+# Gemini-style confidential client (pre-registered, secret in the POST body)
+# ============================================================================
+
+GEMINI_CALLBACK = "https://vertexaisearch.cloud.google.com/oauth-redirect"
+
+
+def test_gemini_style_confidential_client_flow(client):
+    """Gemini cannot self-register with discovery; the owner registers it once
+    and pastes the id/secret into Gemini's form. Mirrors DEPLOYMENT.md 5.3."""
+    response = client.post(
+        "/register",
+        json={
+            "client_name": "Gemini",
+            "redirect_uris": [GEMINI_CALLBACK],
+            "grant_types": ["authorization_code", "refresh_token"],
+            "response_types": ["code"],
+            "token_endpoint_auth_method": "client_secret_post",
+            "scope": "cafe:read",
+        },
+    )
+    assert response.status_code == 201, response.text
+    registration = response.json()
+    assert registration["client_secret"], "a confidential client must get a secret"
+
+    verifier, challenge = _pkce()
+    response = client.get(
+        "/authorize",
+        params={
+            "response_type": "code",
+            "client_id": registration["client_id"],
+            "redirect_uri": GEMINI_CALLBACK,
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
+            "state": "g1",
+            "scope": "cafe:read",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 302, response.text
+    txn = parse_qs(urlparse(response.headers["location"]).query)["txn"][0]
+
+    approval = _approve(client, txn, *_owner_credentials())
+    assert approval.status_code == 302, approval.text
+    location = approval.headers["location"]
+    assert location.startswith(GEMINI_CALLBACK)
+    code = parse_qs(urlparse(location).query)["code"][0]
+
+    # Secret in the body, no client secret -> refused; with it -> tokens.
+    base = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "code_verifier": verifier,
+        "client_id": registration["client_id"],
+        "redirect_uri": GEMINI_CALLBACK,
+    }
+    assert client.post("/token", data=base).status_code == 401
+    good = client.post(
+        "/token", data={**base, "client_secret": registration["client_secret"]}
+    )
+    assert good.status_code == 200, good.text
+    assert _call_mcp(client, good.json()["access_token"]).status_code == 200
+
+
+def test_token_minted_for_another_resource_is_refused(client):
+    """Defaulting a missing resource must not loosen audience binding."""
+    registration = _register(client)
+    verifier, challenge = _pkce()
+    response = client.get(
+        "/authorize",
+        params={
+            "response_type": "code",
+            "client_id": registration["client_id"],
+            "redirect_uri": REDIRECT_URI,
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
+            "resource": "http://other-cafe.example/mcp",
+        },
+        follow_redirects=False,
+    )
+    txn = parse_qs(urlparse(response.headers["location"]).query)["txn"][0]
+    approval = _approve(client, txn, *_owner_credentials())
+    code = parse_qs(urlparse(approval.headers["location"]).query)["code"][0]
+
+    tokens = _exchange(client, registration["client_id"], verifier, code).json()
+
+    assert _call_mcp(client, tokens["access_token"]).status_code == 401

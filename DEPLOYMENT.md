@@ -122,6 +122,130 @@ Place a test order from the tablet — the chit should print within 1–2 second
 
 ---
 
+## 5. Connect an AI Assistant (optional)
+
+Lets the owner ask ChatGPT or Gemini questions about the cafe ("what sold
+best last week?", "is anything low on stock?"). The backend exposes a
+read-only MCP server behind OAuth. It is **off by default** — nothing below
+is reachable until you enable it.
+
+What the assistant can do: read sales, menu performance, stock levels and
+cash counter records. What it cannot do: change anything. Only the **owner**
+login can approve a connection; the admin login is refused.
+
+### 5.1 Enable it on Fly.io
+
+```bash
+fly secrets set \
+  MCP_ENABLED=true \
+  MCP_PUBLIC_URL=https://lily-cafe-pos.fly.dev
+```
+
+`MCP_PUBLIC_URL` must be the exact public origin (scheme + host, no path, no
+trailing slash). It is the OAuth issuer identifier; requests to any other
+hostname are rejected. The backend creates the OAuth tables on next start.
+
+Confirm it is up:
+
+```bash
+# OAuth discovery — should return JSON with authorization_endpoint etc.
+curl https://lily-cafe-pos.fly.dev/.well-known/oauth-authorization-server
+
+# The data endpoint must refuse anonymous calls (expect HTTP 401)
+curl -i -X POST https://lily-cafe-pos.fly.dev/mcp \
+  -H "Accept: application/json, text/event-stream" \
+  -H "Content-Type: application/json" -d '{}'
+```
+
+### 5.2 ChatGPT
+
+Requires ChatGPT **Pro, Team, Enterprise or Edu** — Developer Mode is not on
+Free or Plus. On Team/Enterprise an admin may need to allow it first.
+
+1. ChatGPT → **Settings → Apps & Connectors** → turn on **Developer Mode**
+2. **Create** a connector:
+   - Name: the cafe's name
+   - Server URL: `https://lily-cafe-pos.fly.dev/mcp` — the `/mcp` path is
+     required
+   - Authentication: **OAuth**
+3. ChatGPT registers itself and opens the sign-in page. Sign in with the
+   **owner** username and password and click **Approve**.
+
+No client ID or secret is needed; ChatGPT registers automatically.
+
+### 5.3 Gemini
+
+Requires **Gemini Enterprise – Business Edition**, and only a **team
+administrator** can add a server (Manage team → Connected apps → Add MCP
+Server). Gemini does not register itself: it asks for a client ID and secret
+up front, so create one for it first.
+
+**a) Create Gemini's client (once per cafe).** Gemini's fixed callback URL is
+`https://vertexaisearch.cloud.google.com/oauth-redirect`:
+
+```bash
+curl -s -X POST https://lily-cafe-pos.fly.dev/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_name": "Gemini",
+    "redirect_uris": ["https://vertexaisearch.cloud.google.com/oauth-redirect"],
+    "grant_types": ["authorization_code", "refresh_token"],
+    "response_types": ["code"],
+    "token_endpoint_auth_method": "client_secret_post",
+    "scope": "cafe:read"
+  }'
+```
+
+Copy `client_id` and `client_secret` from the response. The secret is shown
+once; treat it like a password.
+
+**b) In Gemini, fill in:**
+
+| Field | Value |
+|-------|-------|
+| Server URL | `https://lily-cafe-pos.fly.dev/mcp` |
+| Name | the cafe's name |
+| Authorization URL | `https://lily-cafe-pos.fly.dev/authorize` |
+| Token URL | `https://lily-cafe-pos.fly.dev/token` |
+| Client ID | from step a |
+| Client Secret | from step a |
+| Scopes | `cafe:read` |
+
+Then connect: the owner signs in on the consent page and approves.
+
+**Known unknown:** the server requires PKCE (`code_challenge`, S256), which
+OAuth 2.1 mandates and ChatGPT sends. Google's documentation does not say
+whether Gemini sends it. If Gemini's connection fails at the sign-in step
+with `invalid_request`, that is the cause — report it before changing
+anything, as relaxing PKCE weakens the flow for every client.
+
+### 5.4 Disconnecting an assistant
+
+Revoke from the assistant's own connector settings, or disable everything
+at once:
+
+```bash
+fly secrets set MCP_ENABLED=false
+```
+
+Existing tokens stop working immediately because the endpoints disappear.
+Registrations and tokens stay in the database and resume if re-enabled.
+
+### 5.5 Rotating the owner password
+
+Changing `OWNER_PASSWORD` does **not** disconnect assistants that were already
+approved — the password is only checked at approval time, and their tokens
+stay valid for up to 30 days (refreshing without a sign-in). To force every
+assistant to re-approve, clear the issued tokens:
+
+```bash
+fly ssh console -C "python -c \"import sqlite3; c=sqlite3.connect('/data/restaurant.db'); c.execute('DELETE FROM oauth_tokens'); c.commit()\""
+```
+
+(`/data/restaurant.db` is the `DATABASE_URL` set in the Dockerfile.)
+
+---
+
 ## Printer Detection (USB)
 
 On the cafe PC, find vendor/product IDs:

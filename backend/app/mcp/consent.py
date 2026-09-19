@@ -193,7 +193,9 @@ def register_consent_routes(mcp, provider: CafeOAuthProvider) -> None:
             )
 
         login_throttle.record_success(source)
-        result = complete_authorization(txn, subject=username)
+        result = complete_authorization(
+            txn, subject=username, default_resource=provider.resource_url
+        )
         if result is None:
             return _expired()
         code, state = result

@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from openai import OpenAI
 
 from app.api.deps import get_db, get_current_owner, get_current_user
-from app.core import access
+from app.core import access, business_day
 from app.core.config import settings
 from app.models.models import Order, OrderItem, Payment, PaymentMethod, OrderStatus, MenuItem
 from app import schemas
@@ -699,32 +699,21 @@ class DishFrequencyResponse(BaseModel):
     rows: List[DishCountRow]
 
 
-# IST is UTC+5:30. created_at is stored as naive UTC.
-_IST = timezone(timedelta(hours=5, minutes=30))
-
-
 def _ist_day_to_utc_bounds(start: Optional[str], end: Optional[str]):
-    """Interpret start/end as IST calendar days (YYYY-MM-DD) and
-    return naive-UTC datetime bounds suitable for comparing against
-    Order.created_at. Either bound may be None (open-ended)."""
-    from datetime import date as _date, time as _time
+    """Interpret start/end as local business days (YYYY-MM-DD, in the
+    configured timezone) and return naive-UTC datetime bounds suitable for
+    comparing against Order.created_at. Either bound may be None
+    (open-ended). Uses app.core.business_day so analytics and order
+    filtering agree on what a day is."""
+    from datetime import date as _date
 
     start_dt = None
     end_dt = None
     if start:
-        d = _date.fromisoformat(start)
-        start_dt = (
-            datetime.combine(d, _time.min, _IST)
-            .astimezone(timezone.utc)
-            .replace(tzinfo=None)
-        )
+        start_dt, _ = business_day.business_day_utc_bounds(_date.fromisoformat(start))
     if end:
-        d = _date.fromisoformat(end)
-        end_dt = (
-            datetime.combine(d, _time.max, _IST)
-            .astimezone(timezone.utc)
-            .replace(tzinfo=None)
-        )
+        _, end_exclusive = business_day.business_day_utc_bounds(_date.fromisoformat(end))
+        end_dt = end_exclusive - timedelta(microseconds=1)
     return start_dt, end_dt
 
 

@@ -71,9 +71,13 @@ class CafeOAuthProvider(
 ):
     """Authorization server backed by the POS database."""
 
-    def __init__(self, consent_url: str):
+    def __init__(self, consent_url: str, resource_url: str):
         # Where the owner is sent to sign in and approve a connection.
         self._consent_url = consent_url
+        # The one resource this server protects. Tokens are bound to it
+        # (RFC 8707), and a client that never names a resource — Gemini's
+        # connector form has no field for it — gets bound to it by default.
+        self.resource_url = resource_url
 
     # ------------------------------------------------------------------
     # Client registration
@@ -280,11 +284,14 @@ def discard_pending_authorization(txn_id: str) -> None:
             db.commit()
 
 
-def complete_authorization(txn_id: str, subject: str) -> tuple[str, str | None] | None:
+def complete_authorization(
+    txn_id: str, subject: str, default_resource: str
+) -> tuple[str, str | None] | None:
     """Mint an authorization code for an approved request.
 
     Returns the code and the state to hand back, or None if the transaction
-    has expired or was already used.
+    has expired or was already used. A request that named no resource is
+    bound to default_resource, the only one this server has.
     """
     with _session() as db:
         pending = _live_pending(db, txn_id)
@@ -301,7 +308,7 @@ def complete_authorization(txn_id: str, subject: str) -> tuple[str, str | None] 
                 code_challenge=params.code_challenge,
                 redirect_uri=str(params.redirect_uri),
                 redirect_uri_provided_explicitly=params.redirect_uri_provided_explicitly,
-                resource=params.resource,
+                resource=params.resource or default_resource,
                 subject=subject,
                 expires_at=time.time() + AUTHORIZATION_CODE_TTL,
             )
