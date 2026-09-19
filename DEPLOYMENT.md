@@ -192,7 +192,17 @@ that changes, this is the easier path:
 
 Gemini registers itself (Dynamic Client Registration), exactly like ChatGPT.
 Leave the "Advanced features" credentials box empty — it is only for servers
-that cannot self-register, and this one can.
+that cannot self-register, and this one can. Verified end to end: the app
+shows **Connected** with all 19 actions synced.
+
+**Asking it questions.** Gemini only routes to a custom app when it is
+@-mentioned — naming it in plain words ("use the Lily Cafe app") gets "I do
+not have access". Type `@`, pick the app from the popup so it attaches as a
+chip (its handle is shown under the app name, e.g. `@lilycafepos`), then ask:
+
+> @lilycafepos how were my sales last week?
+
+Give a period every time; without one the tools return all-time totals.
 
 #### Work account: Gemini Enterprise – Business Edition
 
@@ -233,11 +243,12 @@ once; treat it like a password.
 
 Then connect: the owner signs in on the consent page and approves.
 
-**Known unknown:** the server requires PKCE (`code_challenge`, S256), which
-OAuth 2.1 mandates and ChatGPT sends. Google's documentation does not say
-whether Gemini sends it. If Gemini's connection fails at the sign-in step
-with `invalid_request`, that is the cause — report it before changing
-anything, as relaxing PKCE weakens the flow for every client.
+**PKCE.** The server requires PKCE (`code_challenge`, S256) on every
+authorization, as OAuth 2.1 mandates. The consumer Gemini app has been
+confirmed to send it (it connects). The Business Edition has not been tested;
+if it fails at the sign-in step with `invalid_request`, that is the cause —
+report it before changing anything, as relaxing PKCE weakens the flow for
+every client.
 
 ### 5.4 Disconnecting an assistant
 
