@@ -351,7 +351,7 @@ def paid_order(test_db, sample_menu_items):
         customer_name="Paid Customer",
         items=[{"menu_item_id": sample_menu_items[0].id, "quantity": 1}]
     )
-    order = crud.create_order(test_db, order_data)
+    order, _ = crud.create_order(test_db, order_data)
 
     payment_data = PaymentCreate(
         payment_method="cash",

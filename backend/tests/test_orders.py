@@ -674,9 +674,13 @@ def test_cancel_nonexistent_order(db: Session):
     assert result is None
 
 
-def test_cannot_cancel_paid_order(db: Session, sample_menu_items):
-    """Test that paid orders cannot be canceled."""
-    # Create and pay order
+def test_crud_cancel_allows_paid_order(db: Session, sample_menu_items):
+    """
+    The CRUD layer lets a PAID order be canceled (duplicate/mistake removal).
+
+    The owner-only restriction on voiding a billed order is enforced at the
+    endpoint (see test_order_endpoints.py), not here.
+    """
     order_data = OrderCreate(
         table_number=1,
         items=[OrderItemCreate(menu_item_id=sample_menu_items[0].id, quantity=1)]
@@ -685,9 +689,13 @@ def test_cannot_cancel_paid_order(db: Session, sample_menu_items):
     order.status = OrderStatus.PAID
     db.commit()
 
-    # Try to cancel
-    with pytest.raises(ValueError, match="Cannot cancel a paid order"):
-        crud.cancel_order(db, order.id)
+    canceled = crud.cancel_order(db, order.id, canceled_by="owner", reason="duplicate")
+
+    assert canceled is not None
+    assert canceled.status == OrderStatus.CANCELED
+    assert canceled.canceled_by == "owner"
+    assert canceled.cancel_reason == "duplicate"
+    assert canceled.canceled_at is not None
 
 
 def test_canceled_order_not_in_active_list(db: Session, sample_menu_items):
@@ -852,19 +860,26 @@ def test_get_orders_paginated_and_date_range(db: Session, sample_menu_items):
     db.commit()
     
     # Test pagination (Page 1, Limit 1)
-    items, total = crud.get_orders_paginated(db, status=OrderStatus.PAID, limit=1)
+    items, total, total_revenue, payment_breakdown = crud.get_orders_paginated(
+        db, status=OrderStatus.PAID, limit=1
+    )
     assert len(items) == 1
     assert total == 2
+    # Revenue/breakdown cover the whole filtered set, not just the page
+    assert total_revenue == 1050 + 2100
+    assert payment_breakdown == {"cash": 0, "upi": 0, "card": 0}
     # Should return newest first (Today's order)
     assert items[0].id == order2.id
     
     # Test pagination (Page 2, Limit 1) -> Skip 1
-    items_p2, total_p2 = crud.get_orders_paginated(db, status=OrderStatus.PAID, skip=1, limit=1)
+    items_p2, total_p2, _, _ = crud.get_orders_paginated(
+        db, status=OrderStatus.PAID, skip=1, limit=1
+    )
     assert len(items_p2) == 1
     assert items_p2[0].id == order1.id
     
     # Test date range (Today only)
-    items_today, total_today = crud.get_orders_paginated(
+    items_today, total_today, revenue_today, _ = crud.get_orders_paginated(
         db, 
         status=OrderStatus.PAID,
         start_date=today.strftime("%Y-%m-%d"),
@@ -873,9 +888,10 @@ def test_get_orders_paginated_and_date_range(db: Session, sample_menu_items):
     assert len(items_today) == 1
     assert items_today[0].id == order2.id
     assert total_today == 1
+    assert revenue_today == 2100
     
     # Test date range (Yesterday only)
-    items_yesterday, total_yesterday = crud.get_orders_paginated(
+    items_yesterday, total_yesterday, revenue_yesterday, _ = crud.get_orders_paginated(
         db, 
         status=OrderStatus.PAID,
         start_date=yesterday.strftime("%Y-%m-%d"),
@@ -883,3 +899,4 @@ def test_get_orders_paginated_and_date_range(db: Session, sample_menu_items):
     )
     assert len(items_yesterday) == 1
     assert items_yesterday[0].id == order1.id
+    assert revenue_yesterday == 1050
