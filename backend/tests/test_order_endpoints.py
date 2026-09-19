@@ -473,7 +473,9 @@ def test_owner_can_cancel_paid_order_api(client: TestClient, sample_menu_items, 
 # ============================================================================
 
 
-def test_list_orders_filter_by_status(client: TestClient, sample_menu_items, db: Session, auth_headers):
+def test_list_orders_filter_by_status(
+    client: TestClient, sample_menu_items, db: Session, auth_headers, frozen_clock
+):
     """Test filtering orders by status."""
     # Create multiple orders
     for i in range(3):
@@ -502,7 +504,9 @@ def test_list_orders_filter_by_status(client: TestClient, sample_menu_items, db:
     assert len(response.json()) == 1
 
 
-def test_list_orders_filter_by_table(client: TestClient, sample_menu_items, auth_headers):
+def test_list_orders_filter_by_table(
+    client: TestClient, sample_menu_items, auth_headers, frozen_clock
+):
     """Test filtering orders by table number."""
     # Create orders on different tables
     for table_num in [1, 2, 3]:
