@@ -3,11 +3,11 @@ SQLAlchemy database models for Lily Cafe POS System.
 Defines the schema for menu items, orders, payments, and categories.
 """
 
-from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 import enum
 from app.db.session import Base
+from app.core import business_time
 
 
 class OrderStatus(str, enum.Enum):
@@ -33,7 +33,7 @@ class Category(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), unique=True, nullable=False, index=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: business_time.utc_now())
 
     # Relationships
     menu_items = relationship("MenuItem", back_populates="category")
@@ -53,8 +53,8 @@ class MenuItem(Base):
     is_vegetarian = Column(Boolean, default=True)  # True for veg, False for non-veg
     is_beverage = Column(Boolean, default=False)  # True for beverages (tea, coffee, juice, etc.)
     is_available = Column(Boolean, default=True)  # Soft delete flag
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: business_time.utc_now())
+    updated_at = Column(DateTime, default=lambda: business_time.utc_now(), onupdate=lambda: business_time.utc_now())
 
     # Relationships
     category = relationship("Category", back_populates="menu_items")
@@ -78,8 +78,8 @@ class Order(Base):
     # the chit (e.g. "no onion", "extra spicy"). Holds the note from the most
     # recent round of items, since a chit is printed per round.
     notes = Column(String(500), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: business_time.utc_now(), index=True)
+    updated_at = Column(DateTime, default=lambda: business_time.utc_now(), onupdate=lambda: business_time.utc_now())
 
     # Audit trail - who canceled (soft-deleted) this order and when.
     # Kept on the order itself so cancellations stay visible in order history.
@@ -130,7 +130,7 @@ class Payment(Base):
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
     payment_method = Column(SQLEnum(PaymentMethod), nullable=False)
     amount = Column(Integer, nullable=False)  # Amount in paise
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: business_time.utc_now())
 
     # Relationships
     order = relationship("Order", back_populates="payments")

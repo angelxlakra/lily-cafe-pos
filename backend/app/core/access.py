@@ -13,12 +13,13 @@ The helpers here express those rules in one place so endpoints stay readable
 and the rules cannot drift apart between modules.
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from fastapi import HTTPException, status
 
 from app import schemas
+from app.core import business_time
 from app.models import models
 
 
@@ -29,12 +30,9 @@ def is_owner(user: Optional[schemas.TokenData]) -> bool:
 
 def business_today() -> date:
     """
-    The current business day.
-
-    Matches the convention used elsewhere in the app (order numbers and
-    ``today_only`` filtering both use the server's local date).
+    The current business day: the IST calendar date (see ``business_time``).
     """
-    return date.today()
+    return business_time.business_today()
 
 
 def require_owner(user: schemas.TokenData, action: str) -> None:
@@ -98,13 +96,20 @@ def order_business_date(order: models.Order) -> Optional[date]:
     The business day an order belongs to.
 
     Read from the order number (``ORD-YYYYMMDD-####``), which is stamped with
-    the local business date at creation time. Falls back to ``created_at``
-    (stored in UTC) when the order number is not in the expected format.
+    the IST business date at creation time. Falls back to ``created_at``
+    (stored as naive UTC, converted to IST) when the order number is not in
+    the expected format.
     """
     try:
         return datetime.strptime(order.order_number.split("-")[1], "%Y%m%d").date()
     except (AttributeError, IndexError, ValueError):
-        return order.created_at.date() if order.created_at else None
+        if not order.created_at:
+            return None
+        return (
+            order.created_at.replace(tzinfo=timezone.utc)
+            .astimezone(business_time.IST)
+            .date()
+        )
 
 
 def require_order_visible(user: schemas.TokenData, order: models.Order) -> None:

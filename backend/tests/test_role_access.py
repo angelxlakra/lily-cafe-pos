@@ -10,6 +10,7 @@ from datetime import date, datetime, timedelta
 
 import pytest
 
+from app.core import business_time
 from app.models import models
 
 
@@ -38,12 +39,12 @@ def _make_order(db, *, order_date: date, status=models.OrderStatus.PAID, seq=1):
 
 @pytest.fixture
 def yesterdays_order(test_db):
-    return _make_order(test_db, order_date=date.today() - timedelta(days=1))
+    return _make_order(test_db, order_date=business_time.business_today() - timedelta(days=1))
 
 
 @pytest.fixture
 def todays_paid_order(test_db):
-    return _make_order(test_db, order_date=date.today(), seq=2)
+    return _make_order(test_db, order_date=business_time.business_today(), seq=2)
 
 
 # ============================================================================
@@ -343,7 +344,7 @@ class TestCancellationAuditTrail:
         assert sample_order.cancel_reason is None
 
     def test_canceled_order_stays_in_history_with_audit_fields(
-        self, client, auth_headers, sample_order
+        self, client, auth_headers, frozen_clock, sample_order
     ):
         client.request(
             "DELETE",

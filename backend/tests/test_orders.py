@@ -17,6 +17,7 @@ from datetime import date, datetime, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
+from app.core import business_time
 from app.db.session import Base
 from app.models.models import Order, OrderItem, MenuItem, Category, OrderStatus, PaymentMethod
 from app.schemas.schemas import OrderCreate, OrderItemCreate, OrderItemsUpdate
@@ -94,7 +95,7 @@ def sample_menu_items(db: Session, sample_category: Category) -> list[MenuItem]:
 def test_order_number_generation_first_order(db: Session):
     """Test that first order of the day gets number 0001."""
     order_number = crud.generate_order_number(db)
-    today_str = date.today().strftime("%Y%m%d")
+    today_str = business_time.business_today().strftime("%Y%m%d")
     assert order_number == f"ORD-{today_str}-0001"
 
 
@@ -114,7 +115,7 @@ def test_order_number_generation_sequential(db: Session, sample_menu_items):
     )
     order2, _ = crud.create_order(db, order2_data)
 
-    today_str = date.today().strftime("%Y%m%d")
+    today_str = business_time.business_today().strftime("%Y%m%d")
     assert order1.order_number == f"ORD-{today_str}-0001"
     assert order2.order_number == f"ORD-{today_str}-0002"
 
@@ -122,7 +123,7 @@ def test_order_number_generation_sequential(db: Session, sample_menu_items):
 def test_order_number_generation_daily_reset(db: Session, sample_menu_items):
     """Test that order numbers reset daily."""
     # Create an order with yesterday's date
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = business_time.business_today() - timedelta(days=1)
     yesterday_order = Order(
         order_number=f"ORD-{yesterday.strftime('%Y%m%d')}-0005",
         table_number=1,
@@ -137,7 +138,7 @@ def test_order_number_generation_daily_reset(db: Session, sample_menu_items):
 
     # Generate new order number for today
     order_number = crud.generate_order_number(db)
-    today_str = date.today().strftime("%Y%m%d")
+    today_str = business_time.business_today().strftime("%Y%m%d")
     assert order_number == f"ORD-{today_str}-0001"
 
 
@@ -825,7 +826,7 @@ def test_customer_name_updated(db: Session, sample_menu_items):
 def test_get_orders_paginated_and_date_range(db: Session, sample_menu_items):
     """Test pagination and date range filtering."""
     # Create orders on different dates manually to control created_at
-    today = date.today()
+    today = business_time.business_today()
     yesterday = today - timedelta(days=1)
     
     # Order 1: Yesterday

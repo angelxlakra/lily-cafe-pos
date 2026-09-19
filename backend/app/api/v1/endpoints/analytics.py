@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from openai import OpenAI
 
 from app.api.deps import get_db, get_current_owner, get_current_user
-from app.core import access
+from app.core import access, business_time
 from app.core.config import settings
 from app.models.models import Order, OrderItem, Payment, PaymentMethod, OrderStatus, MenuItem
 from app import schemas
@@ -699,33 +699,10 @@ class DishFrequencyResponse(BaseModel):
     rows: List[DishCountRow]
 
 
-# IST is UTC+5:30. created_at is stored as naive UTC.
-_IST = timezone(timedelta(hours=5, minutes=30))
-
-
-def _ist_day_to_utc_bounds(start: Optional[str], end: Optional[str]):
-    """Interpret start/end as IST calendar days (YYYY-MM-DD) and
-    return naive-UTC datetime bounds suitable for comparing against
-    Order.created_at. Either bound may be None (open-ended)."""
-    from datetime import date as _date, time as _time
-
-    start_dt = None
-    end_dt = None
-    if start:
-        d = _date.fromisoformat(start)
-        start_dt = (
-            datetime.combine(d, _time.min, _IST)
-            .astimezone(timezone.utc)
-            .replace(tzinfo=None)
-        )
-    if end:
-        d = _date.fromisoformat(end)
-        end_dt = (
-            datetime.combine(d, _time.max, _IST)
-            .astimezone(timezone.utc)
-            .replace(tzinfo=None)
-        )
-    return start_dt, end_dt
+# IST is UTC+5:30. created_at is stored as naive UTC. The conversion lives in
+# app.core.business_time so order filtering and analytics agree on "today".
+_IST = business_time.IST
+_ist_day_to_utc_bounds = business_time.ist_day_to_utc_bounds
 
 
 @router.get("/dish-frequency", response_model=DishFrequencyResponse)

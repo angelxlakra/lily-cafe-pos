@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 from app.models import models
 from app.schemas import schemas
-from app.core import settings_store
+from app.core import business_time, settings_store
 from app.utils.rounding import round_down_to_rupee
 
 
@@ -140,7 +140,7 @@ def generate_order_number(db: Session) -> str:
     Order numbers reset daily. The sequence increments for each order
     created on the same day.
     """
-    today = date.today()
+    today = business_time.business_today()
     today_str = today.strftime("%Y%m%d")
 
     # Get the last order created today.
@@ -195,35 +195,56 @@ def _get_orders_query(
     if table_number:
         query = query.filter(models.Order.table_number == table_number)
 
+    for clause in _order_date_filters(today_only, date_str, start_date, end_date):
+        query = query.filter(clause)
+
+    return query
+
+
+def _order_date_filters(
+    today_only: bool,
+    date_str: Optional[str],
+    start_date: Optional[str],
+    end_date: Optional[str],
+) -> list:
+    """
+    Build the ``created_at`` filter clauses for a date-scoped order query.
+
+    Dates are IST calendar days while ``created_at`` is stored as naive UTC,
+    so each day is converted to its UTC bounds rather than compared with
+    ``func.date(created_at)`` (which would be the UTC date and drift from the
+    IST date between 00:00 and 05:30 IST).
+    """
+    clauses = []
+
     if today_only:
-        today = date.today()
-        query = query.filter(func.date(models.Order.created_at) == today)
+        start_dt, end_dt = business_time.today_utc_bounds()
+        clauses.append(models.Order.created_at >= start_dt)
+        clauses.append(models.Order.created_at <= end_dt)
 
     if date_str:
         try:
-            from datetime import datetime
-            filter_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-            query = query.filter(func.date(models.Order.created_at) == filter_date)
+            start_dt, end_dt = business_time.ist_day_to_utc_bounds(date_str, date_str)
         except ValueError:
             raise ValueError(f"Invalid date format: {date_str}. Expected YYYY-MM-DD")
+        clauses.append(models.Order.created_at >= start_dt)
+        clauses.append(models.Order.created_at <= end_dt)
 
     if start_date:
         try:
-            from datetime import datetime
-            start = datetime.strptime(start_date, "%Y-%m-%d").date()
-            query = query.filter(func.date(models.Order.created_at) >= start)
+            start_dt, _ = business_time.ist_day_to_utc_bounds(start_date, None)
         except ValueError:
             raise ValueError(f"Invalid start_date format: {start_date}. Expected YYYY-MM-DD")
+        clauses.append(models.Order.created_at >= start_dt)
 
     if end_date:
         try:
-            from datetime import datetime
-            end = datetime.strptime(end_date, "%Y-%m-%d").date()
-            query = query.filter(func.date(models.Order.created_at) <= end)
+            _, end_dt = business_time.ist_day_to_utc_bounds(None, end_date)
         except ValueError:
             raise ValueError(f"Invalid end_date format: {end_date}. Expected YYYY-MM-DD")
+        clauses.append(models.Order.created_at <= end_dt)
 
-    return query
+    return clauses
 
 
 def get_orders(
@@ -286,30 +307,8 @@ def get_orders_paginated(
         breakdown_query = breakdown_query.filter(models.Order.status == status)
     if table_number:
         breakdown_query = breakdown_query.filter(models.Order.table_number == table_number)
-    if today_only:
-        today = date.today()
-        breakdown_query = breakdown_query.filter(func.date(models.Order.created_at) == today)
-    if date_str:
-        try:
-            from datetime import datetime
-            filter_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-            breakdown_query = breakdown_query.filter(func.date(models.Order.created_at) == filter_date)
-        except ValueError:
-            pass
-    if start_date:
-        try:
-            from datetime import datetime
-            start = datetime.strptime(start_date, "%Y-%m-%d").date()
-            breakdown_query = breakdown_query.filter(func.date(models.Order.created_at) >= start)
-        except ValueError:
-            pass
-    if end_date:
-        try:
-            from datetime import datetime
-            end = datetime.strptime(end_date, "%Y-%m-%d").date()
-            breakdown_query = breakdown_query.filter(func.date(models.Order.created_at) <= end)
-        except ValueError:
-            pass
+    for clause in _order_date_filters(today_only, date_str, start_date, end_date):
+        breakdown_query = breakdown_query.filter(clause)
             
     breakdown_results = breakdown_query.group_by(models.Payment.payment_method).all()
     

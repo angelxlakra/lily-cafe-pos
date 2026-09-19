@@ -3,7 +3,7 @@ Pytest configuration and fixtures for Lily Cafe POS System tests.
 Provides test database, client, and authentication utilities.
 """
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 import pytest
 from sqlalchemy import create_engine
@@ -14,8 +14,27 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.db.base import Base  # Import Base with all models registered
 from app.api.deps import get_db  # Import get_db from deps (used by endpoints)
+from app.core import business_time
 from app.core.security import create_access_token
 from app.models import models
+
+
+# ============================================================================
+# Clock
+# ============================================================================
+
+# 22:07 UTC is 03:37 IST the next day: the UTC and IST calendar dates disagree,
+# which is the window in which a naive "func.date(created_at) == today"
+# comparison drops freshly created orders. Freezing here keeps the tests
+# deterministic and doubles as a regression check for that bug.
+FROZEN_UTC_NOW = datetime(2026, 9, 20, 22, 7, 0, tzinfo=timezone.utc)
+
+
+@pytest.fixture
+def frozen_clock(monkeypatch):
+    """Pin the application clock to FROZEN_UTC_NOW for the duration of a test."""
+    monkeypatch.setattr(business_time, "utc_now", lambda: FROZEN_UTC_NOW)
+    return FROZEN_UTC_NOW
 
 
 # ============================================================================
@@ -256,7 +275,7 @@ def sample_order(test_db, sample_menu_items):
     # Stamp today's business date so role-based "today only" rules see this
     # order as current (order numbers carry the business date: ORD-YYYYMMDD-####)
     order = models.Order(
-        order_number=f"ORD-{date.today().strftime('%Y%m%d')}-0001",
+        order_number=f"ORD-{business_time.business_today().strftime('%Y%m%d')}-0001",
         table_number=5,
         customer_name="Test Customer",
         subtotal=12000,  # ₹120
