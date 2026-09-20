@@ -87,7 +87,7 @@ def calculate_quartiles(values):
 
 
 # ============================================================================
-# Tool Calling for C1
+# Analytics tool functions — shared by the MCP server (app.mcp) and Ask (app.ask)
 # ============================================================================
 
 
