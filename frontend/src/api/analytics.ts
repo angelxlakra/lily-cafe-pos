@@ -62,15 +62,6 @@ export interface CalendarHeatmapResponse {
   data: CalendarHeatmapPoint[];
 }
 
-export interface C1QueryRequest {
-  prompt: string;
-  c1_response?: string;
-}
-
-export interface C1QueryResponse {
-  content: string;
-}
-
 export interface AnalyticsQueryParams {
   start_date?: string;
   end_date?: string;
@@ -405,17 +396,6 @@ export const analyticsApi = {
   },
   async getOrderTimeline(params?: AnalyticsQueryParams & { date?: string }): Promise<OrdersTimelineResponse> {
     const response = await apiClient.get(`/analytics/order-timeline`, { params });
-    return response.data;
-  },
-
-  /**
-   * Query Thesys C1 for conversational analytics
-   */
-  async queryC1(request: C1QueryRequest): Promise<C1QueryResponse> {
-    const response = await apiClient.post(
-      `/analytics/query`,
-      request
-    );
     return response.data;
   },
 };

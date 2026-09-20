@@ -1,6 +1,6 @@
 # Analytics Dashboard Setup Guide
 
-This guide explains how to set up the Analytics Dashboard powered by Thesys C1.
+This guide explains how to set up the Analytics Dashboard and the Ask screen.
 
 ## Features
 
@@ -11,29 +11,33 @@ The analytics dashboard provides:
 - **Order Statistics**: Order counts by status, peak hours analysis
 - **Payment Method Breakdown**: Revenue split by payment methods (Cash, UPI, Card)
 - **Time Range Filters**: Real-time, historical trends, custom date ranges, comparative analysis
-- **Thesys C1 Integration**: (Coming soon) Natural language queries for data exploration
+- **Ask**: plain-language questions (English, Hindi, Hinglish) answered by fixed reports
 
 ## Backend Setup
 
 ### 1. Install Dependencies
 
-Dependencies are already installed via `uv`. The OpenAI SDK is used for Thesys C1 integration.
+Dependencies are already installed via `uv`. The OpenAI SDK is used by Ask.
 
-### 2. Configure Thesys API Key
+### 2. Configure the Ask model key (optional)
 
-1. Get your API key from [https://thesys.dev](https://thesys.dev)
-2. Create a `.env` file in the `backend` directory (or copy from `.env.example`):
+The dashboard works without it. Ask needs an OpenAI API key:
+
+1. Create a `.env` file in the `backend` directory (or copy from `.env.example`):
 
 ```bash
 cd backend
 cp .env.example .env
 ```
 
-3. Add your Thesys API key to the `.env` file:
+2. Add the key (and, optionally, a model — the default is `gpt-5.6-luna`):
 
 ```env
-THESYS_API_KEY=your-thesys-api-key-here
+OPENAI_API_KEY=sk-...
+ASK_MODEL=gpt-5.6-luna
 ```
+
+Without a key, the Ask screen shows "Ask isn't set up on this server yet".
 
 ### 3. Start the Backend
 
@@ -46,15 +50,14 @@ The analytics endpoints will be available at:
 - `GET /api/v1/analytics/revenue` - Revenue analytics
 - `GET /api/v1/analytics/products` - Product performance
 - `GET /api/v1/analytics/orders` - Order statistics
-- `POST /api/v1/analytics/query` - Thesys C1 conversational queries
+- `POST /api/v1/ask` - Ask: a question in, a report out (owner login only)
 
 ## Frontend Setup
 
 ### 1. Install Dependencies
 
 Dependencies are already installed via npm, including:
-- `@thesysai/genui-sdk` - Thesys C1 React components
-- `recharts` - Charting library
+- `recharts` - Charting library (with shadcn's chart wrapper in `src/components/ui/chart.tsx`)
 - `date-fns` - Date manipulation
 
 ### 2. Start the Frontend
@@ -130,21 +133,35 @@ Example:
 GET /api/v1/analytics/revenue?start_date=2024-01-01T00:00:00Z&end_date=2024-01-31T23:59:59Z
 ```
 
-## Thesys C1 Conversational Analytics (Coming Soon)
+## Ask
 
-The next update will include full Thesys C1 integration, allowing you to:
+On the Analytics page, switch to **Ask Questions**. The owner types a question and gets one of a fixed set of reports back, with the period it covers shown on the card:
 
-- Ask natural language questions: "Show me sales trends for last month"
-- Get dynamic visualizations: "Which products perform best on weekends?"
-- Compare periods: "Compare revenue from last week vs this week"
-- Drill down into data: "Show me all orders over ₹1000"
+- "how were sales last week" · "which dish performed best since August"
+- "which day was the highest revenue day since May" · "everything about July"
+- "kal ka cash counter" · "august mein kaunsi dish sabse zyada biki"
+- Follow-ups keep context: "how did masala tea do this month" → "and last month?"
+
+How it stays trustworthy: the model only decides *which report, which dish, which period*. Every figure is computed by the backend from the same queries as the dashboard; the model never produces a number. If a question can't be answered by any report, it says so and suggests the nearest one.
+
+To check routing quality against the real model on the phrasings your owners use:
+
+```bash
+cd backend && uv run python scripts/ask_eval.py
+```
+
+To load a local database with eight weeks of demo orders for trying it out:
+
+```bash
+cd backend && DATABASE_URL=sqlite:///./demo.db uv run python -m scripts.seed_demo_orders
+```
 
 ## Troubleshooting
 
 ### Backend Issues
 
-**Error: "Thesys API key not configured"**
-- Solution: Add `THESYS_API_KEY` to your `.env` file
+**Ask says "isn't set up on this server yet"**
+- Solution: Add `OPENAI_API_KEY` to `backend/.env`
 
 **Error: "No module named 'openai'"**
 - Solution: Run `cd backend && uv add openai`
@@ -165,7 +182,7 @@ The next update will include full Thesys C1 integration, allowing you to:
 ### Backend
 - **Framework**: FastAPI with SQLAlchemy ORM
 - **Analytics Engine**: Custom SQL queries with aggregations
-- **AI Integration**: OpenAI SDK → Thesys C1 API
+- **Ask**: OpenAI SDK (GPT-5.6 Luna, strict structured output) → report registry in `app/ask`
 
 ### Frontend
 - **Framework**: React 18 + TypeScript
@@ -175,7 +192,6 @@ The next update will include full Thesys C1 integration, allowing you to:
 
 ## Future Enhancements
 
-- [ ] Full Thesys C1 conversational interface
 - [ ] Export analytics to PDF/Excel
 - [ ] Advanced filters (by waiter, table, category)
 - [ ] Predictive analytics and forecasting
@@ -187,4 +203,3 @@ The next update will include full Thesys C1 integration, allowing you to:
 For issues or questions:
 1. Check the main README.md
 2. Review API documentation at `/docs` (FastAPI auto-generated)
-3. Consult Thesys documentation at [https://docs.thesys.dev](https://docs.thesys.dev)
