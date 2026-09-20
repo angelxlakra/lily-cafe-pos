@@ -102,7 +102,7 @@ export default function AskView() {
       </div>
 
       {/* Thread */}
-      <div className="flex-1 space-y-3 overflow-y-auto pb-4">
+      <div className="flex-1 space-y-3 overflow-y-auto pb-28 lg:pb-4">
         {messages.length === 0 && (
           <div className="rounded-xl border border-dashed border-neutral-border p-4 text-sm text-neutral-text-light">
             Ask in English, Hindi or Hinglish — “which dish sold best since August?”, “kal ka cash counter”,
@@ -121,7 +121,9 @@ export default function AskView() {
           e.preventDefault();
           send(draft);
         }}
-        className="sticky bottom-0 -mx-4 flex items-center gap-2 border-t border-neutral-border bg-neutral-background px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        // Below lg the admin layout scrolls as a document, so "sticky" would
+        // just sit at the end of the thread; pin to the viewport instead.
+        className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t border-neutral-border bg-neutral-background px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:sticky lg:inset-x-auto lg:-mx-4"
       >
         {messages.length > 0 && (
           <button
@@ -192,7 +194,7 @@ function MessageView({ message, onPick }: { message: Message; onPick: (q: string
   if (r.kind === 'report' && r.report_id && r.data) {
     return (
       <Card>
-        <div className="mb-3 flex items-baseline justify-between gap-3">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <h2 className="text-base font-semibold text-neutral-text-dark">
             {r.title}
             {r.dish ? ` · ${r.dish}` : ''}
@@ -201,6 +203,7 @@ function MessageView({ message, onPick }: { message: Message; onPick: (q: string
             <span className="shrink-0 rounded-full bg-cream px-2 py-0.5 text-xs text-neutral-text-body">{r.period_label}</span>
           )}
         </div>
+        {r.caption && <p className="mb-4 text-sm leading-relaxed text-neutral-text-body">{r.caption}</p>}
         <ReportView reportId={r.report_id} data={r.data} />
       </Card>
     );

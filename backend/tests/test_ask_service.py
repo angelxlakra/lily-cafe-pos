@@ -331,3 +331,92 @@ def test_period_kinds_still_parse_without_a_discriminator():
     ):
         parsed = decision(period=raw).period
         assert parsed.kind == raw["kind"]
+
+
+# ============================================================================
+# Captions — written by code, from the report's own numbers
+# ============================================================================
+
+
+def test_every_report_gets_a_caption_on_real_data(seeded):
+    from app.ask.captions import caption_for
+
+    for report_id, report in REPORTS.items():
+        extra = {}
+        if report.needs_dish:
+            extra["dish"] = "filter coffee"
+        if report.needs_comparison:
+            extra["comparison"] = Comparison.THIS_WEEK_VS_LAST_WEEK
+        result = ask(seeded, report_id, FakeRouter(decision(report=report_id, **extra)), today=TODAY)
+
+        assert result.kind == "report", report_id
+        assert result.caption, f"{report_id} has no caption"
+        assert result.caption == caption_for(report_id, result.data, result.period_label, result.dish)
+        assert result.caption.endswith("."), report_id
+
+
+def test_caption_quotes_the_cards_numbers(seeded):
+    result = ask(seeded, "sales", FakeRouter(decision(
+        report="sales_summary", period={"kind": "named", "name": "last_7_days"},
+    )), today=TODAY)
+
+    assert result.caption == "₹1,800 from 3 paid orders in the last 7 days — ₹600 per order, mostly UPI."
+
+
+def test_best_day_caption_names_the_days(seeded):
+    result = ask(seeded, "best day", FakeRouter(decision(
+        report="best_days", period={"kind": "since", "start": "2026-09-01"},
+    )), today=TODAY)
+
+    assert result.caption == (
+        "Best day so far in September was Sat 19 Sep at ₹900; the quietest was Fri 18 Sep at ₹300. "
+        "Average ₹600 a day over 3 trading days."
+    )
+
+
+def test_captions_survive_empty_data():
+    from app.ask.captions import caption_for
+
+    for report_id in REPORTS:
+        text = caption_for(report_id, {}, "Today, Sun 20 Sep", None)
+        assert text is None or isinstance(text, str), report_id
+
+
+def test_indian_grouping():
+    from app.ask.captions import rupees
+
+    assert rupees(0) == "₹0"
+    assert rupees(999) == "₹999"
+    assert rupees(1000) == "₹1,000"
+    assert rupees(28392) == "₹28,392"
+    assert rupees(128027) == "₹1,28,027"
+    assert rupees(12345678) == "₹1,23,45,678"
+    assert rupees(-1500) == "₹-1,500"
+
+
+def test_caption_rounds_like_the_card():
+    """7654.5 must read ₹7,655, as Intl.NumberFormat shows it — not Python's
+    half-to-even ₹7,654. Seen live: caption and card disagreed by a rupee."""
+    from app.ask.captions import pct, rupees
+
+    assert rupees(7654.5) == "₹7,655"
+    assert rupees(1732.5) == "₹1,733"
+    assert rupees(2.5) == "₹3"
+    assert rupees(-2.5) == "₹-3"
+    assert pct(12.5) == "13%"
+
+
+def test_period_phrases_read_naturally():
+    from app.ask.captions import during
+
+    assert during("Today, Sun 20 Sep") == " today"
+    assert during("Yesterday, Sat 19 Sep") == " yesterday"
+    assert during("Last week, 7–13 Sep 2026") == " last week"
+    assert during("This week so far, 14–20 Sep 2026") == " this week so far"
+    assert during("September so far, 1–20 Sep 2026") == " so far in September"
+    assert during("2026 so far, 1 Jan – 20 Sep 2026") == " so far in 2026"
+    assert during("Last 7 days, 14–20 Sep 2026") == " in the last 7 days"
+    assert during("August 2026") == " in August 2026"
+    assert during("1 Aug – 20 Sep 2026") == " between 1 Aug and 20 Sep 2026"
+    assert during("Fri 18 Sep 2026") == " on Fri 18 Sep 2026"
+    assert during("All time") == ""
