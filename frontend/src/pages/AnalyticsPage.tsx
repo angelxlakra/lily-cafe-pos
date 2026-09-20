@@ -1,14 +1,14 @@
 
 // ========================================
 // Analytics Dashboard Page
-// Powered by Thesys C1 Generative UI
+// Dashboard, plus Ask: questions answered by fixed reports
 // ========================================
 
 import { useState } from 'react';
 import { useSidebar } from '../context/SidebarContext';
 import { useTheme } from '../contexts/ThemeContext';
 import AnalyticsDashboard from './analytics/AnalyticsDashboard';
-import AskQuestionsView from './analytics/AskQuestionsView';
+import AskView from './analytics/AskView';
 import { ChartLine, ChatCircleDots } from '@phosphor-icons/react';
 
 type ViewMode = 'dashboard' | 'ask';
@@ -42,16 +42,16 @@ export default function AnalyticsPage() {
               <p className="text-neutral-text-light">
                 {viewMode === 'dashboard'
                   ? 'View sales, revenue, and performance metrics'
-                  : 'Interactive conversational analytics powered by Thesys C1'}
+                  : 'Ask about sales, items, stock and cash in plain words'}
               </p>
             </div>
           </div>
 
           {/* View Toggle */}
-          <div className="flex p-1 rounded-lg border border-neutral-border bg-neutral-surface" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
+          <div className="flex w-full md:w-auto p-1 rounded-lg border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
             <button
               onClick={() => setViewMode('dashboard')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all ${
+              className={`flex flex-1 md:flex-none items-center justify-center gap-2 px-4 py-2 rounded-md transition-all ${
                 viewMode === 'dashboard'
                   ? 'bg-coffee-brown text-white shadow-sm'
                   : 'text-neutral-text hover:bg-neutral-light dark:hover:bg-gray-700'
@@ -62,7 +62,7 @@ export default function AnalyticsPage() {
             </button>
             <button
               onClick={() => setViewMode('ask')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all ${
+              className={`flex flex-1 md:flex-none items-center justify-center gap-2 px-4 py-2 rounded-md transition-all ${
                 viewMode === 'ask'
                   ? 'bg-coffee-brown text-white shadow-sm'
                   : 'text-neutral-text hover:bg-neutral-light dark:hover:bg-gray-700'
@@ -79,7 +79,7 @@ export default function AnalyticsPage() {
           {viewMode === 'dashboard' ? (
             <AnalyticsDashboard />
           ) : (
-            <AskQuestionsView />
+            <AskView />
           )}
         </div>
       </div>

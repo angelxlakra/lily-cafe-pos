@@ -53,6 +53,13 @@ def paise_to_rupees(paise: int) -> float:
     return float(paise)
 
 
+def _hour_label(hour: int) -> str:
+    """0-23 → '12 am', '9 am', '12 pm', '9 pm'. Without the suffix 9 am and 9 pm collide."""
+    suffix = "am" if hour < 12 else "pm"
+    twelve = hour % 12 or 12
+    return f"{twelve} {suffix}"
+
+
 def calculate_quartiles(values):
     """Calculate quartiles for box plots."""
     if not values:
@@ -604,7 +611,7 @@ def get_peak_hours_detailed_tool(db: Session, start_date: Optional[str] = None, 
 
         peak_hours.append({
             "hour": hour_int,
-            "hour_label": f"{hour_int}:00" if hour_int < 12 else (f"{hour_int}:00" if hour_int == 12 else f"{hour_int-12}:00"),
+            "hour_label": _hour_label(hour_int),
             "order_count": order_count,
             "revenue_rupees": paise_to_rupees(revenue),
             "avg_order_value_rupees": paise_to_rupees(avg_order_value),
