@@ -1,14 +1,14 @@
 
 // ========================================
 // Analytics Dashboard Page
-// Powered by Thesys C1 Generative UI
+// Dashboard, plus Ask: questions answered by fixed reports
 // ========================================
 
 import { useState } from 'react';
 import { useSidebar } from '../context/SidebarContext';
 import { useTheme } from '../contexts/ThemeContext';
 import AnalyticsDashboard from './analytics/AnalyticsDashboard';
-import AskQuestionsView from './analytics/AskQuestionsView';
+import AskView from './analytics/AskView';
 import { ChartLine, ChatCircleDots } from '@phosphor-icons/react';
 
 type ViewMode = 'dashboard' | 'ask';
@@ -42,7 +42,7 @@ export default function AnalyticsPage() {
               <p className="text-neutral-text-light">
                 {viewMode === 'dashboard'
                   ? 'View sales, revenue, and performance metrics'
-                  : 'Interactive conversational analytics powered by Thesys C1'}
+                  : 'Ask about sales, items, stock and cash in plain words'}
               </p>
             </div>
           </div>
@@ -79,7 +79,7 @@ export default function AnalyticsPage() {
           {viewMode === 'dashboard' ? (
             <AnalyticsDashboard />
           ) : (
-            <AskQuestionsView />
+            <AskView />
           )}
         </div>
       </div>

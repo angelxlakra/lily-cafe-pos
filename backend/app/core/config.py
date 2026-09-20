@@ -72,6 +72,10 @@ class Settings:
     LOGIN_MAX_FAILURES: int = int(os.getenv("LOGIN_MAX_FAILURES", "10"))
     LOGIN_FAILURE_WINDOW_MINUTES: int = int(os.getenv("LOGIN_FAILURE_WINDOW_MINUTES", "15"))
 
+    # Ask — natural-language questions routed to fixed reports (app.ask).
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    ASK_MODEL: str = os.getenv("ASK_MODEL", "gpt-5.6-luna")
+
     # MCP server — lets the owner connect an AI assistant (ChatGPT, Gemini) to
     # read cafe analytics. Off unless a deployment opts in, because enabling it
     # publishes an OAuth authorization server and a read-only data endpoint.
