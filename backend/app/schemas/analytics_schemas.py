@@ -57,9 +57,3 @@ class CalendarHeatmapData(BaseModel):
     """Calendar heatmap analytics data."""
     data: List[CalendarHeatmapPoint]
 
-
-class C1QueryRequest(BaseModel):
-    """Request for Thesys C1 conversational query."""
-    prompt: dict  # OpenAI message format: {"role": "user", "content": "..."}
-    threadId: Optional[str] = None
-    responseId: Optional[str] = None

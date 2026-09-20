@@ -3,8 +3,8 @@
 // Custom hooks for analytics data fetching
 // ========================================
 
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { analyticsApi, type AnalyticsQueryParams, type C1QueryRequest } from '../api/analytics';
+import { useQuery } from '@tanstack/react-query';
+import { analyticsApi, type AnalyticsQueryParams } from '../api/analytics';
 
 /**
  * Hook to fetch revenue analytics
@@ -188,11 +188,3 @@ export function useOrderTimeline(params?: AnalyticsQueryParams & { date?: string
 }
 
 
-/**
- * Hook to query Thesys C1 conversational analytics
- */
-export function useC1Query() {
-  return useMutation({
-    mutationFn: (request: C1QueryRequest) => analyticsApi.queryC1(request),
-  });
-}
