@@ -98,7 +98,7 @@ def _order(db, rng, menu, weights, created_at, n):
     subtotal = 0
     order = Order(
         order_number=f"D{created_at:%y%m%d}-{n:05d}",
-        table_number=0 if is_parcel else rng.randint(1, 10),
+        table_number=rng.randint(1, 10),
         subtotal=0, gst_amount=0, total_amount=0,
         status=OrderStatus.PAID, created_at=created_at, updated_at=created_at,
     )

@@ -13,6 +13,7 @@ from typing import Any, Literal
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.ask.captions import caption_for
 from app.ask.entities import match_dish
 from app.ask.periods import NamedSpec, PeriodError, ResolvedPeriod, resolve, today_ist
 from app.ask.reports import REPORTS, Report, ReportContext
@@ -30,6 +31,8 @@ class AskResponse(BaseModel):
     title: str | None = None
     period_label: str | None = None
     dish: str | None = None
+    # One sentence written by code from the report's own numbers.
+    caption: str | None = None
     data: dict[str, Any] | None = None
     # clarify / unsupported
     message: str | None = None
@@ -96,12 +99,14 @@ def ask(
     limit = max(1, min(decision.limit or DEFAULT_LIMIT, MAX_LIMIT))
     data = report.run(db, ReportContext(period, dish, decision.comparison, limit))
 
+    period_label = period.label if period else None
     return AskResponse(
         kind="report",
         report_id=report.id,
         title=report.title,
-        period_label=period.label if period else None,
+        period_label=period_label,
         dish=dish,
+        caption=caption_for(report.id, data, period_label, dish),
         data=data,
         decision=_normalized(decision, report, dish),
     )

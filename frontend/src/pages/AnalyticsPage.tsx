@@ -48,10 +48,10 @@ export default function AnalyticsPage() {
           </div>
 
           {/* View Toggle */}
-          <div className="flex p-1 rounded-lg border border-neutral-border bg-neutral-surface" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
+          <div className="flex w-full md:w-auto p-1 rounded-lg border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
             <button
               onClick={() => setViewMode('dashboard')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all ${
+              className={`flex flex-1 md:flex-none items-center justify-center gap-2 px-4 py-2 rounded-md transition-all ${
                 viewMode === 'dashboard'
                   ? 'bg-coffee-brown text-white shadow-sm'
                   : 'text-neutral-text hover:bg-neutral-light dark:hover:bg-gray-700'
@@ -62,7 +62,7 @@ export default function AnalyticsPage() {
             </button>
             <button
               onClick={() => setViewMode('ask')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all ${
+              className={`flex flex-1 md:flex-none items-center justify-center gap-2 px-4 py-2 rounded-md transition-all ${
                 viewMode === 'ask'
                   ? 'bg-coffee-brown text-white shadow-sm'
                   : 'text-neutral-text hover:bg-neutral-light dark:hover:bg-gray-700'

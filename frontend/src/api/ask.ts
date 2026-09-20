@@ -28,6 +28,8 @@ export interface AskResponse {
   title: string | null;
   period_label: string | null;
   dish: string | null;
+  /** One sentence written by the backend from the report's own numbers. */
+  caption: string | null;
   data: Record<string, unknown> | null;
   message: string | null;
   candidates: string[];
