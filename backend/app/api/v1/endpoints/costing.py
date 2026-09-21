@@ -1,6 +1,5 @@
 from decimal import Decimal
 from typing import List
-from backend.app.api.v1.endpoints import menu
 from fastapi import APIRouter , Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -255,7 +254,7 @@ def preview_costing(data: costing_schemas.DishCostingIn, db: Session = Depends(g
 
 # CREATE
 
-@router.post("", resopnse_model=costing_schemas.DishCostingOut, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=costing_schemas.DishCostingOut, status_code=status.HTTP_201_CREATED)
 def create_costing(data: costing_schemas.DishCostingIn, db: Session = Depends(get_db), current_user: TokenData=_OWNER):
     # Create a dish costing.
     menu_item = costing_crud.get_menu_item(db, data.menu_item_id)
