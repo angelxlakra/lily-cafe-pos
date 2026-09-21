@@ -128,7 +128,11 @@ def compute(
     overhead_lines: list[OverheadLine] = []
     overhead_cost = Decimal("0")
     for kind in OVERHEAD_KINDS:
-        cfg = overheads[kind]
+        # cfg = overheads[kind]
+        cfg = overheads.get(kind)
+        if cfg is None: 
+            raise ValueError(f"Missing overhead configuration for {kind}.")
+            
         if cfg.mode == "percent":
             amount = money(raw * Decimal(cfg.value) / 100)
             percent = pct(cfg.value)
@@ -187,7 +191,8 @@ def compute(
         food_cost_percent=food_cost_percent,
         target_margin_percent=target,
         suggested_price=suggested_price,
-        is_complete=not any(line.price_missing for line in lines),
+        # is_complete=not any(line.price_missing for line in lines),
+        is_complete=not any(line.price_missing or not line.is_active for line in lines),
         warnings=warnings,
     )
 
