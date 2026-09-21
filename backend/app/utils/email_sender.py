@@ -8,7 +8,8 @@ import logging
 from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import List, Dict, Any
+from html import escape
+from typing import List, Dict, Any, Optional
 
 from app.core.config import settings
 from app.core import settings_store
@@ -49,6 +50,7 @@ def build_inventory_report_html(
     changes: List[Dict[str, Any]],
     recorded_by: str,
     timestamp: str,
+    summary: Optional[Dict[str, Any]] = None,
 ) -> str:
     """
     Build an inline-CSS HTML email with two sections:
@@ -137,6 +139,20 @@ def build_inventory_report_html(
             </table>
         </div>"""
 
+    # Count coverage: checked vs. skipped, so the owner can trust the numbers.
+    summary_section = ""
+    if summary:
+        skipped_names = summary.get("skipped_names") or []
+        skipped_line = (
+            f'<p style="margin: 8px 0 0; color: #b45309;">Not counted: {escape(", ".join(skipped_names))}</p>'
+            if skipped_names else ""
+        )
+        summary_section = f"""
+        <div style="margin-bottom: 24px; padding: 16px; background-color: #f8fafc; border-radius: 8px;">
+            <strong>{summary["checked"]} checked · {summary["changed"]} changed · {summary["skipped"]} not counted</strong>
+            {skipped_line}
+        </div>"""
+
     return f"""
     <html>
     <body style="font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px; color: #333;">
@@ -146,6 +162,7 @@ def build_inventory_report_html(
         <p style="color: #64748b; margin-bottom: 20px;">
             Recorded by <strong>{recorded_by}</strong> on {timestamp}
         </p>
+        {summary_section}
         {low_stock_section}
         {changes_section}
         <p style="color: #94a3b8; font-size: 12px; margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
@@ -159,6 +176,7 @@ def send_inventory_report(
     low_stock_items: List[Dict[str, Any]],
     changes: List[Dict[str, Any]],
     recorded_by: str,
+    summary: Optional[Dict[str, Any]] = None,
 ) -> None:
     """
     Entry point for BackgroundTasks. Builds HTML report and sends email.
@@ -171,7 +189,7 @@ def send_inventory_report(
             return
 
         timestamp = datetime.now().strftime("%B %d, %Y at %I:%M %p")
-        html_body = build_inventory_report_html(low_stock_items, changes, recorded_by, timestamp)
+        html_body = build_inventory_report_html(low_stock_items, changes, recorded_by, timestamp, summary)
 
         subject = f"Inventory Report - {settings_store.get('restaurant.name')}"
         if low_stock_items:
