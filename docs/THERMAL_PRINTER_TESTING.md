@@ -141,7 +141,7 @@ Before printing, verify the PDF contains:
 
 ### Calculations
 - [ ] Subtotal amount
-- [ ] GST amount (18%)
+- [ ] GST amount (at the configured rate, 5% by default)
 - [ ] Total amount (bold)
 - [ ] All amounts in ₹ (Rupee symbol)
 
@@ -244,7 +244,7 @@ After printing, check:
 - [ ] Prices match expected values
 - [ ] Calculations accurate:
   - Subtotal = sum of item subtotals
-  - GST = 18% of subtotal
+  - GST = the configured rate applied to the subtotal (5% by default)
   - Total = subtotal + GST
 - [ ] Payment methods listed correctly
 - [ ] Payment amounts sum to total
@@ -500,7 +500,7 @@ Before deploying to production:
 
 ### GST Compliance
 - [ ] GSTIN displays on all receipts
-- [ ] GST breakdown accurate (18%)
+- [ ] GST breakdown accurate, split into equal CGST and SGST lines
 - [ ] All required information present:
   - [ ] Business name and address
   - [ ] GSTIN

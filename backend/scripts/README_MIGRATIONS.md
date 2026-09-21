@@ -256,6 +256,6 @@ A: Yes, but always backup first! See deployment guide for production procedures.
 
 ## Related Documentation
 
-- [Migration Guide v0.2.0](../../docs/MIGRATION_V0.2.md) - Upgrading from v0.1.x
-- [Database Schema](../../docs/DATABASE_SCHEMA.md) - Complete schema documentation
-- [Deployment Guide](../../docs/DEPLOYMENT.md) - Production deployment procedures
+- [Migration Guide v0.2.0](../../docs/history/MIGRATION_V0.2.md) - Upgrading from v0.1.x
+- [Database tables](../../README.md#tables) - Table overview in the project README
+- [Deployment Guide](../../DEPLOYMENT.md) - Production deployment procedures

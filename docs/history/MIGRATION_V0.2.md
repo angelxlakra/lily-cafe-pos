@@ -1,5 +1,9 @@
 # Migration Guide: v0.1.x → v0.2.0
 
+> **Historical record.** This document describes the project as it was when it
+> was written and is no longer maintained. See [docs/history/README.md](README.md)
+> for context, and the [project README](../../README.md) for current docs.
+
 **Last Updated:** 2025-12-30
 **Estimated Time:** 15-20 minutes
 **Downtime Required:** 5-10 minutes
@@ -617,7 +621,7 @@ Migration is considered successful when:
 
 ## Changelog Reference
 
-For complete list of changes in v0.2.0, see [CHANGELOG.md](../CHANGELOG.md#020---2025-12-30)
+For complete list of changes in v0.2.0, see [CHANGELOG.md](../../CHANGELOG.md#020---2025-12-30)
 
 ---
 

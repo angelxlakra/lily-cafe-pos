@@ -56,37 +56,32 @@ notepad .env
 ```
 
 **Minimum changes:**
-- Change `ADMIN_PASSWORD`
-- Update `RESTAURANT_NAME`
-- Update `RESTAURANT_ADDRESS_LINE1` and `LINE2`
-- Update `RESTAURANT_PHONE`, `EMAIL`, `GSTIN`
+- Change `ADMIN_PASSWORD` and `OWNER_PASSWORD`
+- Set a strong `SECRET_KEY`
+
+The restaurant name, address, phone, email, GSTIN and GST rate are **not**
+environment variables — they are stored in the database and edited by the owner
+on the Settings page once the system is running.
 
 ---
 
-## Step 4: Create Startup Script
+## Step 4: Use the Startup Script
 
-Create file: `C:\lily-cafe-pos\START.bat`
+The repository ships the startup scripts — there is nothing to create.
 
-```batch
-@echo off
-echo Starting Lily Cafe POS...
+- `scripts\windows\start.bat` — production launcher (built frontend on port
+  4173, backend on 8000)
+- `scripts\windows\start-dev.bat` — development launcher, both with hot reload
 
-start "Backend" cmd /k "cd C:\lily-cafe-pos\backend && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000"
-timeout /t 5 /nobreak > nul
-start "Frontend" cmd /k "cd C:\lily-cafe-pos\frontend && npm run dev -- --host 0.0.0.0"
-
-timeout /t 10 /nobreak > nul
-start http://localhost:5173
-
-echo System starting... Wait 15 seconds, then open http://localhost:5173
-pause
-```
+For automatic nightly updates, run `scripts\windows\setup.bat` once as
+Administrator. See [scripts/README.md](scripts/README.md) for the full set and
+[AUTO_UPDATE_SETUP.md](AUTO_UPDATE_SETUP.md) for the update scheduling.
 
 ---
 
 ## Step 5: Run It!
 
-1. Double-click `START.bat`
+1. Double-click `scripts\windows\start.bat`
 2. Wait 15 seconds
 3. Browser opens automatically
 4. Login with your admin credentials
@@ -123,7 +118,7 @@ Open browser → `http://192.168.1.100:5173`
 ## Daily Use
 
 **Start:**
-- Double-click `START.bat`
+- Double-click `scripts\windows\start.bat`
 - Wait 15 seconds
 - Open `http://localhost:5173`
 

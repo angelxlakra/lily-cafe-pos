@@ -1,5 +1,9 @@
 # High Priority UI Improvements - Implementation Report
 
+> **Historical record.** This document describes the project as it was when it
+> was written and is no longer maintained. See [docs/history/README.md](README.md)
+> for context, and the [project README](../../README.md) for current docs.
+
 **Date:** January 2, 2026
 **Status:** ✅ ALL HIGH PRIORITY ITEMS COMPLETE
 **Build Status:** ✅ TypeScript compilation successful

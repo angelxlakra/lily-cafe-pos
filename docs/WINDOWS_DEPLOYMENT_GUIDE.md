@@ -2,6 +2,12 @@
 
 Complete guide to deploy and run the POS system on a Windows laptop in your cafe.
 
+> **Which deployment does this apply to?**
+> This is the **on-premises Windows install**, where the backend and frontend
+> both run on the cafe PC. If the cafe is on the **cloud deployment** (backend
+> on Fly.io, frontend on Vercel, and only the print agent on the PC), follow
+> [DEPLOYMENT.md](../DEPLOYMENT.md) instead.
+
 ---
 
 ## 📋 Table of Contents
@@ -325,63 +331,22 @@ npm run dev -- --host 0.0.0.0
 - **Backend API:** http://localhost:8000
 - **API Docs:** http://localhost:8000/docs
 
-### Method 2: Simple Startup Scripts (Recommended)
+### Method 2: The Shipped Startup Scripts (Recommended)
 
-#### Create Backend Startup Script
-1. Create file: `C:\lily-cafe-pos\start-backend.bat`
-2. Add content:
-```batch
-@echo off
-cd C:\lily-cafe-pos\backend
-echo Starting Lily Cafe Backend...
-uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
-pause
-```
+The repository ships these — there is nothing to create by hand:
 
-#### Create Frontend Startup Script
-1. Create file: `C:\lily-cafe-pos\start-frontend.bat`
-2. Add content:
-```batch
-@echo off
-cd C:\lily-cafe-pos\frontend
-echo Starting Lily Cafe Frontend...
-npm run dev -- --host 0.0.0.0
-pause
-```
+| Script | What it does |
+|--------|--------------|
+| `scripts\windows\start.bat` | Production: backend on 8000, built frontend on 4173 |
+| `scripts\windows\start-dev.bat` | Development: both with hot reload |
+| `scripts\windows\update.bat` | Pull, install, rebuild, with a database backup first |
+| `scripts\windows\logs.bat` | View update logs |
+| `scripts\windows\setup.bat` | One-time: register the nightly update task (run as Administrator) |
 
-#### Create Combined Startup Script
-1. Create file: `C:\lily-cafe-pos\start-cafe-pos.bat`
-2. Add content:
-```batch
-@echo off
-echo ====================================
-echo Starting Lily Cafe POS System
-echo ====================================
-echo.
+Double-click `scripts\windows\start.bat` for daily use. See
+[scripts/README.md](../scripts/README.md) for the details of each, and
+[AUTO_UPDATE_SETUP.md](../AUTO_UPDATE_SETUP.md) for update scheduling.
 
-echo Starting Backend...
-start "Lily Cafe Backend" cmd /k "cd C:\lily-cafe-pos\backend && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000"
-
-timeout /t 3 /nobreak > nul
-
-echo Starting Frontend...
-start "Lily Cafe Frontend" cmd /k "cd C:\lily-cafe-pos\frontend && npm run dev -- --host 0.0.0.0"
-
-echo.
-echo ====================================
-echo System is starting...
-echo.
-echo Backend will be at: http://localhost:8000
-echo Frontend will be at: http://localhost:5173
-echo.
-echo Wait 10 seconds, then open: http://localhost:5173
-echo ====================================
-pause
-```
-
-3. **Create a desktop shortcut** to this file for easy access!
-
----
 
 ## 🌐 Network Setup for Multiple Devices
 
@@ -487,7 +452,7 @@ Start-Process "http://localhost:5173"
 #### Option B: Startup Folder (Simpler)
 1. Press `Win + R`
 2. Type: `shell:startup`
-3. Create shortcut to `C:\lily-cafe-pos\start-cafe-pos.bat`
+3. Create shortcut to `C:\lily-cafe-pos\scripts\windows\start.bat`
 
 ---
 
@@ -503,7 +468,7 @@ Start-Process "http://localhost:5173"
 5. Log in with admin credentials
 
 **If Manual Start:**
-1. Double-click `start-cafe-pos.bat` on desktop
+1. Double-click the `start.bat` shortcut on the desktop
 2. Wait 15 seconds
 3. Open `http://localhost:5173` in browser
 4. Log in
@@ -533,7 +498,9 @@ Your database is at: `C:\lily-cafe-pos\backend\restaurant.db`
 
 **Automated Backup Script:**
 
-Create file: `C:\lily-cafe-pos\backup-database.bat`
+The repository ships a backup script at `backend/scripts/backup_database.py`.
+To schedule a Windows-native copy instead, create
+`C:\lily-cafe-pos\backup-database.bat`:
 
 ```batch
 @echo off
@@ -560,7 +527,8 @@ pause
 **Schedule this to run daily:**
 1. Use Task Scheduler
 2. Trigger: Daily at 11:59 PM
-3. Action: Run `backup-database.bat`
+3. Action: Run `backup-database.bat`, or
+   `uv run python -m scripts.backup_database` from `backend\`
 
 ### Weekly Maintenance
 

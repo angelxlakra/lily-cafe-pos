@@ -1,5 +1,9 @@
 # Aesthetic Overhaul — Design Spec
 
+> **Status: not implemented.** As of 2026-09-21 this spec has not been built.
+> The components and tokens it describes do not exist in `frontend/src/`.
+> Treat it as a proposal, not a description of the current UI.
+
 **Date:** 2026-03-17
 **Scope:** Full app — waiter-facing POS view + admin dashboard
 **Status:** Draft

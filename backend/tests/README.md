@@ -19,7 +19,7 @@ Tests the CRUD layer logic directly:
 - ✅ One active order per table business rule
 
 #### GST Calculations
-- ✅ 18% GST calculated correctly
+- ✅ GST calculated correctly at the configured rate
 - ✅ GST on multiple items
 - ✅ GST recalculated on order updates
 - ✅ Server-side calculation (never trust client)
@@ -200,7 +200,7 @@ Defined in `conftest.py`:
    - Requires authentication
 
 6. **GST Calculations**
-   - Always 18% on subtotal
+   - Applied to the subtotal at the configured rate (`app.gst_rate`, default 5%)
    - Calculated server-side
    - Integer arithmetic (paise) to avoid float precision issues
 

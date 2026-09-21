@@ -1,5 +1,9 @@
 # Medium Priority UI Improvements - Implementation Report
 
+> **Historical record.** This document describes the project as it was when it
+> was written and is no longer maintained. See [docs/history/README.md](README.md)
+> for context, and the [project README](../../README.md) for current docs.
+
 **Date:** January 2, 2026
 **Status:** ✅ 3 OF 5 MEDIUM PRIORITY ITEMS COMPLETE
 **Build Status:** ✅ TypeScript compilation successful
