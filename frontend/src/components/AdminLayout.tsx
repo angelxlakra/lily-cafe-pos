@@ -10,7 +10,7 @@ export default function AdminLayout() {
       <Sidebar />
       <main
         className={`
-          flex-1 transition-all duration-300 ease-in-out
+          flex-1 min-w-0 transition-all duration-300 ease-in-out
           ${isCollapsed ? "lg:ml-20" : "lg:ml-60"}
         `}
       >
