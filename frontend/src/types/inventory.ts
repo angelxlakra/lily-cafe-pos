@@ -85,13 +85,12 @@ export interface UsageItem {
 
 export interface UsageCreate {
   items: UsageItem[];
-  recorded_by: string;
 }
 
 export interface AdjustmentCreate {
   item_id: number;
   new_quantity: number;
-  notes: string;
+  notes?: string;
 }
 
 export interface AdjustmentItem {
