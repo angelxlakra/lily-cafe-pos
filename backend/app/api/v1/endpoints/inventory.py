@@ -14,7 +14,7 @@ from app.models.inventory_models import (
     InventoryTransaction,
     TransactionType,
 )
-from app.core.business_day import business_today
+from app.core.business_day import count_night
 from app.schemas import inventory_schemas
 from app.core import settings_store
 from app.api.deps import get_current_user, get_current_owner
@@ -664,7 +664,7 @@ def save_count(
     )
 
     count = InventoryCount(
-        business_date=business_today(),
+        business_date=count_night(),
         counted_by=current_user.username,
         items_total=len(items),
         items_checked=0,
@@ -714,7 +714,10 @@ def save_count(
     db.commit()
     db.refresh(count)
 
-    emailed = settings_store.get_bool("smtp.enabled", False)
+    # Only claim an email when one will actually be attempted.
+    emailed = settings_store.get_bool("smtp.enabled", False) and bool(
+        settings_store.get("smtp.report_emails", "").strip()
+    )
     if emailed:
         low_stock_data = [
             {
@@ -754,10 +757,10 @@ def save_count(
 
 @router.get("/counts/today", response_model=Optional[inventory_schemas.CountSummary])
 def get_todays_count(db: Session = Depends(get_db), current_user: TokenData = _READ):
-    """The latest count saved today (business day), or null if none yet."""
+    """The latest count for tonight (before 04:00 counts as last night), or null."""
     count = (
         db.query(InventoryCount)
-        .filter(InventoryCount.business_date == business_today())
+        .filter(InventoryCount.business_date == count_night())
         .order_by(desc(InventoryCount.id))
         .first()
     )

@@ -40,6 +40,20 @@ def business_today() -> date:
     return to_business_date(utcnow())
 
 
+# The nightly stock count happens at close and often runs past midnight.
+COUNT_NIGHT_CUTOFF_HOUR = 4
+
+
+def count_night() -> date:
+    """
+    The night a stock count belongs to: the local date, except that anything
+    before 04:00 still counts toward the previous night, so a count finished
+    at 00:05 isn't filed under the next day.
+    """
+    local_now = utcnow().replace(tzinfo=timezone.utc).astimezone(business_timezone())
+    return (local_now - timedelta(hours=COUNT_NIGHT_CUTOFF_HOUR)).date()
+
+
 def business_day_utc_bounds(day: date) -> tuple[datetime, datetime]:
     """
     Half-open UTC range ``[start, end)`` covering the given local business day.
