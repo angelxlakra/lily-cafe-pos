@@ -46,3 +46,34 @@ export async function askQuestion(request: AskRequest): Promise<AskResponse> {
   const response = await apiClient.post<AskResponse>('/ask', request);
   return response.data;
 }
+
+// ========================================
+// Morning digest — computed in code, no model involved
+// ========================================
+
+export interface DigestLine {
+  /** 'revenue' | 'top_item' | 'cash' | 'stock' | 'month' */
+  kind: string;
+  text: string;
+  numbers: Record<string, unknown>;
+}
+
+export interface DigestFlag {
+  rule: string;
+  severity: 'info' | 'warn';
+  sentence: string;
+  numbers: Record<string, unknown>;
+}
+
+export interface Digest {
+  /** The IST calendar day the digest is about. */
+  date: string;
+  lines: DigestLine[];
+  flags: DigestFlag[];
+  email_sent_at: string | null;
+}
+
+export async function fetchDigest(): Promise<Digest | null> {
+  const response = await apiClient.get<{ digest: Digest | null }>('/ask/digest');
+  return response.data.digest;
+}

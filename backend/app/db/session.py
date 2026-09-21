@@ -85,6 +85,7 @@ def init_db():
     """
     from app.models import models  # noqa
     from app.models.settings_model import AppSetting  # noqa - ensures app_settings table is created
+    from app.models.digest_models import DailyDigest  # noqa - ensures daily_digests table is created
 
     Base.metadata.create_all(bind=engine)
 

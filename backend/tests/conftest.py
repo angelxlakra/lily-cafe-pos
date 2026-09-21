@@ -21,6 +21,20 @@ from app.models import models
 
 
 @pytest.fixture(autouse=True)
+def _no_digest_scheduler(monkeypatch):
+    """Keep the daily digest loop out of tests.
+
+    The `client` fixture runs the real application lifespan, which would
+    otherwise start the digest background task — against the production
+    SessionLocal, not the in-memory test database. Tests that want a digest
+    build one directly.
+    """
+    from app.ask import scheduler
+
+    monkeypatch.setattr(scheduler, "start", lambda app: None)
+
+
+@pytest.fixture(autouse=True)
 def _fresh_login_throttle():
     """The sign-in limiter is process-wide state; start every test clean."""
     login_throttle.reset()

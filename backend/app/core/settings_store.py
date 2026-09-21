@@ -42,6 +42,17 @@ DEFAULTS: dict[str, str] = {
     "smtp.username": "",
     "smtp.sender_email": "",
     "smtp.report_emails": "",
+    # Morning digest (Ask v2). send_at is IST wall-clock; the scheduler
+    # resolves it against IST regardless of the machine's timezone.
+    "digest.enabled": "true",
+    "digest.send_at": "08:00",
+    "digest.email_enabled": "false",
+    "digest.email_to": "",
+    "digest.revenue_low_pct": "25",
+    "digest.revenue_high_pct": "40",
+    "digest.aov_shift_pct": "20",
+    "digest.cash_short_days": "3",
+    "digest.dish_stalled_days": "5",
 }
 
 KNOWN_KEYS: frozenset[str] = frozenset(DEFAULTS.keys())
