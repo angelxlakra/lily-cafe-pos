@@ -46,9 +46,6 @@ class Settings:
     # API Configuration
     API_V1_PREFIX: str = "/api/v1"
 
-    # Thesys C1 Configuration
-    THESYS_API_KEY: str = os.getenv("THESYS_API_KEY", "")
-
     # Print Agent API Key (shared secret between backend and agent.py)
     PRINT_AGENT_API_KEY: str = os.getenv("PRINT_AGENT_API_KEY", "change-me-in-production")
 
@@ -71,6 +68,10 @@ class Settings:
     # has this many failed logins inside the window (see core/login_throttle).
     LOGIN_MAX_FAILURES: int = int(os.getenv("LOGIN_MAX_FAILURES", "10"))
     LOGIN_FAILURE_WINDOW_MINUTES: int = int(os.getenv("LOGIN_FAILURE_WINDOW_MINUTES", "15"))
+
+    # Ask — natural-language questions routed to fixed reports (app.ask).
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    ASK_MODEL: str = os.getenv("ASK_MODEL", "gpt-5.6-luna")
 
     # MCP server — lets the owner connect an AI assistant (ChatGPT, Gemini) to
     # read cafe analytics. Off unless a deployment opts in, because enabling it

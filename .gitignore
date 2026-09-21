@@ -76,6 +76,7 @@ uv.lock
 *.sqlite
 *.sqlite3
 restaurant.db
+demo.db
 
 # Logs
 *.log

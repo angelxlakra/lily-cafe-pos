@@ -50,7 +50,6 @@ from app.schemas.analytics_schemas import (
     HeatmapData,
     CalendarHeatmapPoint,
     CalendarHeatmapData,
-    C1QueryRequest,
 )
 
 __all__ = [
@@ -99,5 +98,4 @@ __all__ = [
     "HeatmapData",
     "CalendarHeatmapPoint",
     "CalendarHeatmapData",
-    "C1QueryRequest",
 ]

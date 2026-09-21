@@ -6,7 +6,7 @@ export default function AdminLayout() {
   const { isCollapsed } = useSidebar();
 
   return (
-    <div className="flex min-h-screen bg-neutral-background">
+    <div className="flex min-h-screen overflow-x-hidden bg-neutral-background">
       <Sidebar />
       <main
         className={`
