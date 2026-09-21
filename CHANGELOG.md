@@ -7,6 +7,105 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Nothing has been version-tagged since 0.2.0; the version strings in
+`backend/app/version.py`, `frontend/src/version.ts`, `backend/pyproject.toml`
+and `frontend/package.json` still read `0.2.0`. Everything below is on `main`
+and deployed.
+
+### Added
+
+#### 🤖 Ask — plain-language questions
+- Questions in English, Hindi or Hinglish routed to a fixed set of reports
+- The model chooses only the report, dish and period; every figure is computed
+  by the backend from the same queries as the dashboard
+- Follow-up questions keep context
+- One-line captions generated from the report's own numbers
+- Phone-first layout with a pinned composer
+- Owner login required; `scripts/ask_eval.py` checks routing quality
+- See [ANALYTICS_SETUP.md](ANALYTICS_SETUP.md)
+
+#### 🔌 Read-only MCP server (opt-in)
+- Lets the owner connect ChatGPT or Gemini to read cafe analytics
+- OAuth 2.1 authorization server with PKCE, dynamic client registration and a
+  consent page; only the owner login can approve
+- Read-only: sales, menu performance, stock levels, cash counter records
+- Off unless `MCP_ENABLED=true`; see [DEPLOYMENT.md](DEPLOYMENT.md) section 5
+
+#### ⚙️ Owner-only Settings page
+- Non-secret settings moved out of environment variables into an `app_settings`
+  table, with an in-memory cache loaded at startup
+- Restaurant details, GST rate, table count, timezone, token expiry, receipt
+  paper size, review and feedback URLs, SMTP — all editable in the UI
+- Owner-only `GET`/`PUT /api/v1/settings`
+- **Environment variables for these settings no longer have any effect.**
+
+#### 📊 Analytics
+- Comprehensive analytics endpoints: revenue, products, orders, category
+  performance, payment trends, revenue composition, order status flow,
+  day-of-week stats, order value and item quantity distributions, order flow
+  (Sankey), revenue and inventory waterfalls, heatmaps, order timeline
+- Analytics dashboard with dark mode support throughout
+- Dish-frequency report under Tools
+- Hidden cash-by-day page for cash counter detail
+- Revenue statistics in order history
+
+#### ☁️ Cloud deployment
+- Dockerfile and `fly.toml` for Fly.io; `vercel.json` for SPA routing
+- Print relay: `PrintJob` queue model, `/print-jobs` endpoints for agent
+  polling, and chit jobs queued on order creation instead of printing directly
+- Windows print agent (`agent/`) with `run-agent.bat`, a silent VBScript
+  launcher for boot startup, and absolute paths so Task Scheduler works
+- Frontend reads `VITE_API_BASE_URL` instead of hardcoded localhost
+
+#### 🖨️ Printing
+- Bar station support for order chits
+- Table number repeated at the bottom of kitchen, bar and parcel chits for
+  rail visibility
+- GST rows hidden on receipts when the rate is 0
+
+#### 🔐 Access control
+- Separate admin and owner roles: admin is limited to today's data, while menu
+  and bill edits, cash counter, inventory master data and analytics require the
+  owner
+- Failed sign-ins throttled per client IP on both login and MCP consent
+- Restricted controls are hidden rather than shown with an "owner login
+  required" hint
+
+#### 📦 Orders and inventory
+- Order cancellation for duplicate orders
+- Menu item search in the edit order modal
+- Kitchen notes on an order in place of a customer name
+- Admin can correct the payment split on a billed order
+- Payment time shown in order history
+- Inventory management UI improvements
+- Inventory report email utility with SMTP integration
+
+### Changed
+
+- **GST rate corrected from 18% to 5%** (2026-05-15), and the rate made
+  configurable. GST is now recomputed from `subtotal × rate` in the PDF,
+  printer, order history, active orders display and payment modal rather than
+  read from the stored database value.
+- Receipts and the payment breakdown show a rounded-down total
+- "Today" is computed on one timezone-aware business day for order filters and
+  order numbers, on the IST calendar day
+- Modern design system and shared components; admin layout and sidebar
+  streamlined
+
+### Removed
+
+- **Thesys C1 generative-UI chat**, superseded by Ask. `THESYS_C1_INTEGRATION.md`
+  was deleted with it.
+
+### Fixed
+
+- Decimal payment deadlock in the payment modal
+- Dark mode text and background visibility across analytics components
+- Text overlap in the active orders table header
+- Broken customer-name editor on the waiter Active Orders screen
+- `app_settings` table created on init; guards in `get_int`/`get_float`
+- `dotenv` import made optional in the migration script (not available on Fly.io)
+
 ---
 
 ## [0.2.0] - 2025-12-30
@@ -145,7 +244,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **New API Clients**
   - `api/inventory.ts` - Inventory API integration
-  - `api/cashCounter.ts` - Cash counter API integration
+  - `api/cash.ts` - Cash counter API integration
 
 - **New Hooks**
   - `useInventory.ts` - Inventory state management

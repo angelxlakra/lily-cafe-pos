@@ -1,5 +1,9 @@
 # ANG-36 Pre-Merge Checklist
 
+> **Historical record.** This document describes the project as it was when it
+> was written and is no longer maintained. See [docs/history/README.md](README.md)
+> for context, and the [project README](../../README.md) for current docs.
+
 Complete these steps before merging the order management API implementation.
 
 ---

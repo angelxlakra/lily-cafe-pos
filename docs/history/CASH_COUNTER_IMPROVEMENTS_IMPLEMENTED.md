@@ -1,4 +1,8 @@
 # Cash Counter UX Improvements - Implementation Summary
+
+> **Historical record.** This document describes the project as it was when it
+> was written and is no longer maintained. See [docs/history/README.md](README.md)
+> for context, and the [project README](../../README.md) for current docs.
 **Date:** 2026-01-03
 **Status:** ✅ Phase 1 Complete
 **Build Status:** ✅ Successful (No TypeScript Errors)

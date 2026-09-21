@@ -1,4 +1,6 @@
 # Settings Page Design
+
+> **Status: implemented.** Shipped as `frontend/src/pages/SettingsPage.tsx`.
 **Date:** 2026-05-26  
 **Status:** Approved
 

@@ -1,5 +1,9 @@
 # ANG-36 Manual Testing Guide
 
+> **Historical record.** This document describes the project as it was when it
+> was written and is no longer maintained. See [docs/history/README.md](README.md)
+> for context, and the [project README](../../README.md) for current docs.
+
 This guide provides step-by-step instructions for manually testing the order management API.
 
 ## Prerequisites
@@ -114,8 +118,8 @@ curl -X POST "http://localhost:8000/api/v1/orders" \
 **✅ Verify**:
 - Order number format: `ORD-YYYYMMDD-0001`
 - Subtotal: 2×₹80 + 1×₹40 = ₹200 (20000 paise)
-- GST (18%): ₹36 (3600 paise)
-- Total: ₹236 (23600 paise)
+- GST (5%): ₹10 (1000 paise)
+- Total: ₹210 (21000 paise)
 - Order items have snapshots (menu_item_name, unit_price)
 
 ---
@@ -503,7 +507,7 @@ curl -X GET "http://localhost:8000/api/v1/orders/[order_id]"
 - [ ] Create new order on empty table
 - [ ] Update order on table with active order
 - [ ] Order numbers sequential within day
-- [ ] GST calculated at 18%
+- [ ] GST calculated at the configured rate (5% by default)
 - [ ] Order items snapshot prices/names
 - [ ] Get all active orders
 - [ ] Get order by ID

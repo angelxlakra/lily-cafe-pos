@@ -1,5 +1,9 @@
 # ANG-36 Implementation Summary
 
+> **Historical record.** This document describes the project as it was when it
+> was written and is no longer maintained. See [docs/history/README.md](README.md)
+> for context, and the [project README](../../README.md) for current docs.
+
 ## Overview
 Implemented comprehensive order management API with GST calculations for Lily Cafe POS System v0.1.
 

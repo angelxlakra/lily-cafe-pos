@@ -1,5 +1,9 @@
 # Admin Dashboard & Waiter View Redesign — Implementation Plan
 
+> **Status: not implemented.** As of 2026-09-21 this plan has not been built.
+> The components and tokens it describes do not exist in `frontend/src/`.
+> Treat it as a proposal, not a description of the current UI.
+
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Redesign all 6 admin pages and 3 waiter pages with a consistent branded aesthetic (cream backgrounds, Quesha italic titles, linen texture, amber accent) and add UX improvements including master-detail Active Orders, skeleton loading, keyboard nav, inline availability toggle, and clickable rows.

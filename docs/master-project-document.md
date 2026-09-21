@@ -63,7 +63,7 @@ Build a comprehensive, locally-hosted restaurant management system for Lily Cafe
 
 ### Must-Have Features (All Versions)
 1. ✅ Digital order taking and tracking
-2. ✅ GST-compliant billing (18% GST)
+2. ✅ GST-compliant billing (rate configurable, 5% by default)
 3. ✅ Receipt printing (thermal printer support)
 4. ✅ Menu management
 5. ✅ Order history
@@ -85,7 +85,7 @@ Build a comprehensive, locally-hosted restaurant management system for Lily Cafe
 ### Critical Business Rules
 1. **One active order per table** - No duplicate orders on same table
 2. **Orders are not billed immediately** - Customers order multiple times, pay at end
-3. **GST is 18%** - Applied to all items uniformly
+3. **GST is configurable** - 5% by default, set by the owner on the Settings page and applied to all items uniformly
 4. **Prices are whole numbers** - No decimal pricing (₹80, not ₹80.50)
 5. **Quantities are integers** - No fractional quantities (2 items, not 1.5 items)
 6. **Payment can be split** - Customer can pay with multiple methods
@@ -290,7 +290,7 @@ Inactive: text-light color
 - ✅ Table-based order management
 - ✅ Menu display with categories
 - ✅ Order taking (waiter mobile interface)
-- ✅ Bill generation with GST (18%)
+- ✅ Bill generation with GST (rate configurable, 5% by default)
 - ✅ Receipt printing (80mm thermal)
 - ✅ Split payment support
 - ✅ Basic menu management (admin)
@@ -1141,9 +1141,10 @@ Filter Coffee  1    50.00   50.00
   (Large)
 --------------------------------
               Subtotal:  400.00
-              GST(18%):   72.00
+             CGST(2.5%):   10.00
+             SGST(2.5%):   10.00
 --------------------------------
-         TOTAL:  472.00
+         TOTAL:  420.00
 ================================
 ```
 

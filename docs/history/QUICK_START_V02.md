@@ -1,5 +1,9 @@
 # Quick Start Guide - v0.2 Development
 
+> **Historical record.** This document describes the project as it was when it
+> was written and is no longer maintained. See [docs/history/README.md](README.md)
+> for context, and the [project README](../../README.md) for current docs.
+
 ## ✅ Current Status
 
 You're all set! Here's what was just completed:
@@ -260,10 +264,10 @@ git log --graph --oneline --all    # Visual graph
 
 ## 📚 Full Documentation
 
-- **Git Workflow:** [docs/GIT_WORKFLOW.md](GIT_WORKFLOW.md) - Complete workflow guide
-- **Version Management:** [docs/VERSION_MANAGEMENT.md](VERSION_MANAGEMENT.md) - How to bump versions
-- **v0.2 Spec:** [docs/v0.2-technical-spec.md](v0.2-technical-spec.md) - What to build
-- **CHANGELOG:** [CHANGELOG.md](../CHANGELOG.md) - Version history
+- **Git Workflow:** [docs/GIT_WORKFLOW.md](../GIT_WORKFLOW.md) - Complete workflow guide
+- **Version Management:** [docs/VERSION_MANAGEMENT.md](../VERSION_MANAGEMENT.md) - How to bump versions
+- **v0.2 Spec:** [docs/v0.2-technical-spec.md](../v0.2-technical-spec.md) - What to build
+- **CHANGELOG:** [CHANGELOG.md](../../CHANGELOG.md) - Version history
 
 ---
 
@@ -346,6 +350,6 @@ git checkout -b feature/dark-mode
 
 ---
 
-**Questions?** Refer to [GIT_WORKFLOW.md](GIT_WORKFLOW.md) for detailed explanations.
+**Questions?** Refer to [GIT_WORKFLOW.md](../GIT_WORKFLOW.md) for detailed explanations.
 
 **Last Updated:** November 12, 2025

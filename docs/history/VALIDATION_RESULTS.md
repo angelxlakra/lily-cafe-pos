@@ -1,5 +1,9 @@
 # ANG-36 Validation Results
 
+> **Historical record.** This document describes the project as it was when it
+> was written and is no longer maintained. See [docs/history/README.md](README.md)
+> for context, and the [project README](../../README.md) for current docs.
+
 **Date**: January 30, 2025 (Updated: Post-Merge)
 **Branch**: `ang-36`
 **Status**: ✅ **READY FOR MERGE** (Unit Tests Passing, API Tests Need Investigation)
