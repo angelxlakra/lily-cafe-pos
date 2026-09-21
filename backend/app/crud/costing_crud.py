@@ -9,13 +9,24 @@ from app.models.inventory_models import InventoryItem
 def get_costings(db: Session) -> List[DishCosting]:
     """Get all dish costings."""
     return (db.query(DishCosting).order_by(DishCosting.id.desc()).all)
-# def get_costing(db: Session, costing_id: int) -> Optional[DishCosting]:
-#     """
-#     Fetch one costing by its ID with all related data.
-#     """
-#     stmt = (select(DishCosting).options(selectinload(DishCosting.menu_item), selectinload(DishCosting.ingredients).selectinload(DishCostingIngredient.inventory_item)).where(DishCosting.id == costing_id))
-#     return db.scalar(stmt)
+    
+def get_costing(db: Session, costing_id: int) -> Optional[DishCosting]:
+    """
+    Fetch one costing by its ID with all related data.
+    """
+    stmt = (select(DishCosting).options(selectinload(DishCosting.menu_item), selectinload(DishCosting.ingredients).selectinload(DishCostingIngredient.inventory_item)).where(DishCosting.id == costing_id))
+    return db.scalar(stmt)
 
+# def get_costing(
+#     db: Session,
+#     costing_id: int,
+# ) -> Optional[DishCosting]:
+#     """Get a single dish costing by ID."""
+#     return (
+#         db.query(DishCosting)
+#         .filter(DishCosting.id == costing_id)
+#         .first()
+#     )
 def get_costing_by_menu_item(db: Session, menu_item_id: int) -> Optional[DishCosting]:
     """
     Fetch the costing belonging to one menu item.

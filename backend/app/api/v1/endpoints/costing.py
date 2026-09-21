@@ -1,9 +1,6 @@
 from decimal import Decimal
-from os import name
-from turtle import mode
-from typing import List, override
-from backend.app.api.v1.endpoints import inventory
-from backend.tests.test_cash_inventory_access import inventory_item
+from typing import List
+from backend.app.api.v1.endpoints import menu
 from fastapi import APIRouter , Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -152,3 +149,332 @@ def _build_costing_model(data: costing_schemas.DishCostingIn, inventory_items: d
     return costing, ingredients
 
 
+# Routes
+
+@router.get("", response_model=List[costing_schemas.DishCostingSummary])
+def get_costings(db: Session = Depends(get_db), current_user: TokenData = _READ):
+    # Get all dish costing.
+    costings = costing_crud.get_costings(db)
+    result = []
+    for costing in costings:
+        if costing.menu_item in None:
+            continue
+        breakdown = _compute_breakdown(costing, costing.menu_item)
+        
+        target = (breakdown.target_margin_percent if breakdown.target_margin_percent is not None else Decimal("0"))
+        
+        below_target = (breakdown.margin_percent is not None and breakdown.margin_percent < target)
+
+        result.append(costing_schemas.DishCostingSummary(
+            id=costing.id,
+            menu_item_id=costing.menu_item_id,
+            menu_item_name=costing.menu_item.name,
+            cost_per_unit=breakdown.cost_per_unit,
+            selling_price=breakdown.selling_price,
+            margin_percent=breakdown.margin_percent,
+            target_margin_percent=target,
+            below_target=below_target,
+            is_complete=breakdown.is_complete,
+        ))
+    
+    return result
+
+@router.get("/{costing_id}", response_model=costing_schemas.DishCostingOut)
+def get_costing(costing_id: int, db: Session = Depends(get_db), current_user: TokenData = _READ):
+    # Get single dish costing
+    costing = costing_crud.get_costing(db, costing_id)
+
+    if not costing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Costing not found.")
+    
+    return _costing_to_schema(costing)
+
+@router.get("/menu/{menu_item_id}", response_model=costing_schemas.DishCostingOut)
+def get_menu_item_costing(menu_item_id: int, db: Session = Depends(get_db), current_user: TokenData = _READ):
+    # Get costing for a specific menu item.
+    menu_item = costing_crud.get_menu_item(db, menu_item_id)
+
+    if not menu_item: 
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Menu item not found.")
+
+    costing = costing_crud.get_costing_by_menu_item(db, menu_item_id)
+
+    if not costing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No costing found for this menu item.")
+    
+    return _costing_to_schema(costing)
+
+# PREVIW
+
+@router.post("/preview", response_model=costing_schemas.CostBreakdownOut)
+def preview_costing(data: costing_schemas.DishCostingIn, db: Session = Depends(get_db), current_user: TokenData = _READ):
+    # Calculate costing without saving it.
+    menu_item = costing_crud.get_menu_item(
+        db,
+        data.menu_item_id,
+    )
+
+    if not menu_item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Menu item not found",
+        )
+
+    inventory_ids = {
+        ingredient.inventory_item_id
+        for ingredient in data.ingredients
+    }
+
+    inventory_items = (
+        db.query(InventoryItem)
+        .filter(InventoryItem.id.in_(inventory_ids))
+        .all()
+        if inventory_ids
+        else []
+    )
+
+    inventory_map = {
+        item.id: item
+        for item in inventory_items
+    }
+
+    costing, ingredient_rows = _build_costing_model(
+        data,
+        inventory_map,
+    )
+
+    costing.ingredients = ingredient_rows
+
+    breakdown = _compute_breakdown(
+        costing,
+        menu_item,
+    )
+
+    return _breakdown_to_schema(breakdown)
+
+
+# CREATE
+
+@router.post("", resopnse_model=costing_schemas.DishCostingOut, status_code=status.HTTP_201_CREATED)
+def create_costing(data: costing_schemas.DishCostingIn, db: Session = Depends(get_db), current_user: TokenData=_OWNER):
+    # Create a dish costing.
+    menu_item = costing_crud.get_menu_item(db, data.menu_item_id)
+    if not menu_item:
+         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Menu item not found")
+    
+    existing = costing_crud.get_costing_by_menu_item(db, data.menu_item_id)
+
+    if existing:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A costing already exists for this menu item.")
+    
+    inventory_ids = {ingredient.inventory_item_id for ingredient in data.ingredients}
+
+    inventory_items = (
+        db.query(InventoryItem).filter(InventoryItem.id.in_(inventory_ids)).all()
+        if inventory_ids
+        else []
+    )
+
+    inventory_map = {item.id: item for item in inventory_items}
+
+    costing, ingredient_rows = _build_costing_model(data, inventory_map)
+
+    costing.ingredients = ingredient_rows
+
+    # Validating the calculation before writing to DB
+    _compute_breakdown(costing, menu_item)
+
+    costing = costing_crud.create_costing(db, costing, ingredient_rows)
+
+    return _costing_to_schema(costing)
+
+
+# UPDATE
+
+@router.patch("/{costing_id}", response_model=costing_schemas.DishCostingOut)
+def update_costing(costing_id: int, data: costing_schemas.DishCostingIn, db: Session = Depends(get_db), current_user: TokenData = _OWNER):
+    # Update a dish costing.
+
+    costing = costing_crud.get_costing(db, costing_id)
+
+    if not costing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Costing not found")
+    
+    if costing.menu_item_id != data.menu_item_id:
+        existing = costing_crud.get_costing_by_menu_item(db, data.menu_item_id)
+
+        if existing and existing.id != costing_id:
+            raise HTTPException(sataus_code=status.HTTP_409_CONFLICT, detail="A costing already exists for this menu item.")
+        
+    menu_item = costing_crud.get_menu_item(db, data.menu_item_id)
+
+    if not menu_item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Menu item not found",
+        )
+    
+    inventory_ids = {ingredient.inventory_item_id for ingredient in data.ingredients}
+
+    inventory_items = (
+        db.query(InventoryItem).filter(InventoryItem.id.in_(inventory_ids)).all()
+        if inventory_ids
+        else []
+    )
+
+    inventory_map = {item.id: item for item in inventory_items}
+
+    new_costing, ingredient_rows = _build_costing_model(data, inventory_map)
+
+    # Keeping the existing costing ID.
+    new_costing.id = costing.id
+
+    _compute_breakdown(new_costing, menu_item)
+
+    update_data = {
+        "menu_item_id": data.menu_item_id,
+        "yield_units": data.yield_units,
+        "target_margin_percent": data.target_margin_percent,
+        "notes": data.notes,
+        "packaging_mode": data.packaging.mode,
+        "packaging_value": data.packaging.value,
+        "labour_mode": data.labour.mode,
+        "labour_value": data.labour.value,
+        "fixed_mode": data.fixed.mode,
+        "fixed_value": data.fixed.value,
+        "wastage_mode": data.wastage.mode,
+        "wastage_value": data.wastage.value,
+    }
+
+    costing = costing_crud.update_costing(db, costing, update_data, ingredient_rows)
+    return _costing_to_schema(costing)
+
+# DELETE
+
+@router.delete("/{costing_id}")
+def delete_costing(costing_id: int, db: Session = Depends(get_db), current_user: TokenData = _OWNER):
+    # Delete a dish costing.
+    costing = costing_crud.get_costing(db, costing_id)
+    if not costing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Costing not found.")
+    
+    costing_crud.delete_costing(db, costing)
+
+    return { "message": "Costing deleted successfully"}
+
+
+# APPLY SUGGESTED PRICE
+
+@router.post("/{costing_id}/apply-price", response_model=costing_schemas.DishCostingOut)
+def apply_suggested_price(costing_id: int, db: Session = Depends(get_db), current_user: TokenData = _OWNER):
+    # Apply the calculated suggested selling price to the menu item.
+    costing = costing_crud.get_costing(db, costing_id)
+
+    if not costing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Costing not found")
+
+    menu_item = costing.menu_item
+
+    if menu_item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Menu item not found")
+
+    breakdown = _compute_breakdown(costing, menu_item)
+
+    if breakdown.suggested_price is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No suggested price is available.")
+    
+    # MenuItem.price is stored in paise.
+    menu_item.price = int(breakdown.suggested_price * Decimal("100"))
+
+    db.commit()
+    db.refresh(menu_item)
+
+    return _costing_to_schema(costing)
+
+
+# REPRICING
+
+# Repricing supports
+def _get_reprice_impacts(db: Session, price_overrides: dict[int, Decimal]):
+    # Calculate the impact of changed inventory prices across all dishes.
+    costings = costing_crud.get_costings(db)
+    affected = []
+    unaffected_count = 0
+
+    for costing in costings:
+        if costing.menu_item is None:
+            continue
+
+        uses_changed_item = any(row.inventory_item_id in price_overrides for row in costing.ingredients)
+
+        if not uses_changed_item:
+            unaffected_count += 1
+            continue
+
+        before = _compute_breakdown(costing, costing.menu_item)
+        after = _compute_breakdown(costing, costing.menu_item, price_overrides=price_overrides)
+
+        target = costing_utils.resolve_target_margin(costing)
+
+        margin_before = before.margin_percent
+        margin_after = after.margin_percent
+
+        crosses_below_target = (margin_before is not None and margin_after is not None and margin_before >= target and margin_after < target)
+
+        affected.append(costing_schemas.DishImpact(
+            costing_id=costing.id, menu_item_name=costing.menu_item.name, cost_before=before.cost_per_unit, cost_after=after.cost_per_unit, margin_before=margin_before, margin_after=margin_after, crosses_below_target=crosses_below_target
+        ))
+
+    return affected, unaffected_count
+
+@router.post("/reprice/preview", response_model=costing_schemas.RepricePreview)
+def preview_reprice(data: costing_schemas.RepriceRequest, db: Session = Depends(get_db), current_user: TokenData = _OWNER):
+    # Preview the effect of inventory price changes without saving them.
+    if not data.prices:
+        return costing_schemas.RepricePreview(affected_dishes=[], unaffected_count=0)
+    
+    item_ids = {price.inventory_item_id for price in data.prices}
+
+    items = (db.query(InventoryItem).filter(InventoryItem.id.in_(item_ids)).all())
+
+    item_map = {item.id: item for item in items}
+
+    missing = item_ids - set(item_map.keys())
+
+    if missing: 
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Inventory items not found: {sorted(missing)}")
+
+    price_overrides = {price.inventory_item_id: price.new_cost_per_unit for price in data.prices}
+
+    affected, unaffected_count = _get_reprice_impacts(db, price_overrides)
+
+    return costing_schemas.RepricePreview(affected_dishes=affected, unaffected_count=unaffected_count)
+
+@router.post("/reprice")
+def reprice(data: costing_schemas.RepriceRequest, db: Session = Depends(get_db), current_user: TokenData = _OWNER):
+    # Apply new inventory prices and return affected dish costings.
+    if not data.prices:
+        return {
+            "message": "No prices supplied", "affected_dishes": [], "unaffected_count": 0,
+        }
+    item_ids = {price.inventory_item_id for price in data.prices}
+    items = (db.query(InventoryItem).filter(InventoryItem.id.in_(item_ids)).all())
+    item_map = {item.id: item for item in items}
+    missing = item_ids - set(item_map.keys())
+    if missing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Inventory items not found: {sorted(missing)}")
+    
+    price_overrides = {price.inventory_item_id: price.new_cost_per_unit for price in data.prices}
+
+    # Calculating impacts using the new prices beofre presisting them.
+    affected, unaffected_count  = _get_reprice_impacts(db, price_overrides)
+
+    # Persisting new inventory prices.
+    for item_id, new_price in price_overrides.items():
+        item_map[item_id].cost_per_unit = new_price
+
+    db.commit()
+
+    return {
+        "message": "Inventory prices updated successfully", "affected_dishes": [impact.model_dump() for impact in affected], "unaffected_count": unaffected_count
+    }
