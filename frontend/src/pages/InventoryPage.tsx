@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Package, Tag, ClockCounterClockwise, ClipboardText } from '@phosphor-icons/react';
 import { useSidebar } from '../context/SidebarContext';
 import { useAuth } from '../hooks/useAuth';
@@ -23,6 +23,20 @@ export default function InventoryPage() {
   const { isOwner } = useAuth();
   const tabs = TABS.filter(tab => isOwner || !tab.ownerOnly);
 
+  // One underline that slides to the selected tab, so the eye follows the
+  // switch instead of seeing one line vanish and another appear.
+  const tabRefs = useRef(new Map<Tab, HTMLButtonElement>());
+  const [indicator, setIndicator] = useState<{ left: number; width: number } | null>(null);
+  useLayoutEffect(() => {
+    const measure = () => {
+      const tab = tabRefs.current.get(activeTab);
+      if (tab) setIndicator({ left: tab.offsetLeft, width: tab.offsetWidth });
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [activeTab, tabs.length]);
+
   return (
     <div className="flex flex-col min-h-full bg-neutral-background">
       {/* Not sticky: on a phone a pinned title and tab row would eat a fifth of the screen. */}
@@ -40,7 +54,7 @@ export default function InventoryPage() {
           </button>
         </div>
 
-        <div role="tablist" aria-label="Inventory sections" className="flex gap-1 mt-4 -mx-1 overflow-x-auto scrollbar-hide">
+        <div role="tablist" aria-label="Inventory sections" className="relative flex gap-1 mt-4 -mx-1 overflow-x-auto scrollbar-hide">
           {tabs.map(tab => (
             <button
               key={tab.id}
@@ -48,17 +62,29 @@ export default function InventoryPage() {
               id={`inventory-tab-${tab.id}`}
               aria-selected={activeTab === tab.id}
               aria-controls="inventory-panel"
-              onClick={() => setActiveTab(tab.id)}
-              className={`shrink-0 min-h-12 flex items-center gap-2 px-3 border-b-2 text-sm font-medium whitespace-nowrap transition-colors ${
-                activeTab === tab.id
-                  ? 'border-coffee-brown text-coffee-brown'
-                  : 'border-transparent text-neutral-text-light hover:text-coffee-brown'
+              ref={element => {
+                if (element) tabRefs.current.set(tab.id, element);
+                else tabRefs.current.delete(tab.id);
+              }}
+              onClick={event => {
+                setActiveTab(tab.id);
+                event.currentTarget.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+              }}
+              className={`shrink-0 min-h-12 flex items-center gap-2 px-3 text-sm font-medium whitespace-nowrap transition-colors ${
+                activeTab === tab.id ? 'text-coffee-brown' : 'text-neutral-text-light hover:text-coffee-brown'
               }`}
             >
               {tab.icon}
               {tab.label}
             </button>
           ))}
+          {indicator && (
+            <span
+              aria-hidden
+              className="absolute bottom-0 left-0 h-0.5 rounded-full bg-coffee-brown transition-[translate,width] duration-250 ease-(--ease-settle) motion-reduce:transition-none"
+              style={{ translate: `${indicator.left}px 0`, width: indicator.width }}
+            />
+          )}
         </div>
       </header>
 
