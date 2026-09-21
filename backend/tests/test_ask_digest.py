@@ -647,3 +647,27 @@ def test_no_sentence_is_repeated_in_a_full_digest(db_session, menu):
     assert len(sentences) == len(set(sentences))
     assert sum("below your usual" in s for s in sentences) == 1
     assert sum("reorder" in s for s in sentences) == 1
+
+
+def test_cash_line_and_cash_flag_never_contradict(db_session, menu):
+    """A counter with a closing balance but no closed_at timestamp.
+
+    The app closes a counter by setting closing_balance, variance and
+    closed_at together, but `DailyCashCounter.status` keys off
+    closing_balance alone. A rule reading closed_at instead would call this
+    counter open while the digest's cash line reported its variance.
+    """
+    steady(db_session, menu)
+    sell(db_session, menu, TARGET)
+    db_session.add(DailyCashCounter(
+        date=TARGET, opening_balance=1000, closing_balance=1950,
+        expected_closing=2000, variance=-50, opened_by="admin", closed_by="admin",
+        closed_at=None,
+    ))
+    db_session.commit()
+
+    digest = digest_service.build_digest(db_session, TARGET)
+    sentences = digest.sentences
+
+    assert "Cash was ₹50 short." in sentences
+    assert not any("never closed" in s for s in sentences)

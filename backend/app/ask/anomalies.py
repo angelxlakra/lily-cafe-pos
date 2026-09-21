@@ -238,9 +238,14 @@ def cash_short_streak(db: Session, h: History) -> Flag | None:
     need = settings_store.get_int("digest.cash_short_days", 3)
     if need < 1:
         return None
+    # "Closed" is whatever the cash counter screen calls closed — see
+    # DailyCashCounter.status, which keys off closing_balance, not closed_at.
     rows = (
         db.query(DailyCashCounter)
-        .filter(DailyCashCounter.date <= h.day, DailyCashCounter.closed_at.isnot(None))
+        .filter(
+            DailyCashCounter.date <= h.day,
+            DailyCashCounter.closing_balance.isnot(None),
+        )
         .order_by(DailyCashCounter.date.desc())
         .limit(need)
         .all()
@@ -261,7 +266,9 @@ def cash_short_streak(db: Session, h: History) -> Flag | None:
 
 def cash_not_closed(db: Session, h: History) -> Flag | None:
     counter = db.query(DailyCashCounter).filter(DailyCashCounter.date == h.day).first()
-    if counter is None or counter.closed_at is not None:
+    # Same definition as DailyCashCounter.status, so this rule can never
+    # contradict the digest's own cash line.
+    if counter is None or counter.status != "open":
         return None
     return Flag(
         rule="cash_not_closed",
