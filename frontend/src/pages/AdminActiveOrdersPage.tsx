@@ -21,6 +21,7 @@ import PartialServeModal from '../components/PartialServeModal';
 import EditServedQuantityModal from '../components/EditServedQuantityModal';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatDateTime } from '../utils/formatDateTime';
+import { presenceClass, useListPresence } from '../hooks/useListPresence';
 import type { Order, OrderItem } from '../types';
 
 export default function AdminActiveOrdersPage() {
@@ -38,6 +39,9 @@ export default function AdminActiveOrdersPage() {
   const setServedQuantityMutation = useSetItemServedQuantity();
 
   const orders = activeOrders || [];
+  // New orders arrive with a highlight, orders that gain items are
+  // highlighted in place, and billed or cancelled orders fade out in place.
+  const orderRows = useListPresence(activeOrders, (before, after) => after.total_amount > before.total_amount);
 
   const handleServeItem = (orderId: number, itemId: number, quantityToServe: number) => {
     updateServedMutation.mutate(
@@ -142,7 +146,7 @@ export default function AdminActiveOrdersPage() {
           )}
 
           {/* Empty State */}
-          {!isLoading && !error && orders.length === 0 && (
+          {!isLoading && !error && orderRows.length === 0 && (
             <EmptyState
               icon={<ClipboardText size={32} weight="duotone" />}
               title="No active orders"
@@ -151,12 +155,13 @@ export default function AdminActiveOrdersPage() {
           )}
 
           {/* Orders Grid */}
-          {!isLoading && orders.length > 0 && (
+          {!isLoading && orderRows.length > 0 && (
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-              {orders.map((order) => (
+              {orderRows.map(({ item: order, presence }) => (
                 <OrderCard
                   key={order.id}
                   order={order}
+                  className={presence ? presenceClass[presence] : ''}
                   onEdit={() => setEditOrder(order)}
                   onGenerateBill={() => handleGenerateBill(order.id)}
                   onCancel={() => setCancelOrderId(order.id)}
@@ -245,6 +250,7 @@ export default function AdminActiveOrdersPage() {
 // Order Card Component
 interface OrderCardProps {
   order: Order;
+  className?: string;
   onEdit: () => void;
   onGenerateBill: () => void;
   onCancel: () => void;
@@ -252,12 +258,12 @@ interface OrderCardProps {
   onOpenEditModal: (item: OrderItem) => void;
 }
 
-function OrderCard({ order, onEdit, onGenerateBill, onCancel, onOpenServeModal, onOpenEditModal }: OrderCardProps) {
+function OrderCard({ order, className = '', onEdit, onGenerateBill, onCancel, onOpenServeModal, onOpenEditModal }: OrderCardProps) {
   const [showItems, setShowItems] = useState(false);
   const itemCount = order.order_items?.length || 0;
 
   return (
-    <div className="bg-off-white border border-neutral-border rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
+    <div className={`bg-off-white border border-neutral-border rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow ${className}`}>
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div>
