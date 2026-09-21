@@ -62,6 +62,19 @@
     from { transform: translateY(100%); }
   }
 
+  /* List rows: grow from zero height so neighbours move instead of jump.
+     Needs display:grid on the row and an overflow-hidden, min-h-0 child. */
+  --animate-row-in: row-in 200ms var(--ease-settle);
+  @keyframes row-in {
+    from { grid-template-rows: 0fr; opacity: 0; }
+    to { grid-template-rows: 1fr; opacity: 1; }
+  }
+
+  /* One-time stroke draw for a confirming checkmark (pathLength="1"). */
+  --animate-draw: draw 350ms var(--ease-settle) 50ms backwards;
+  @keyframes draw {
+    from { stroke-dashoffset: 1; }
+  }
 
   /* Touch-friendly minimums (48px = 3rem) */
   --min-height-touch: 3rem;
@@ -572,7 +585,9 @@ h3 {
     --enter-scale: 1;
   }
 
-  .animate-slide-up {
+  .animate-slide-up,
+  .animate-row-in,
+  .animate-draw {
     animation-name: fade-in;
   }
 
