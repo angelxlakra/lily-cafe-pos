@@ -87,7 +87,7 @@ export default function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in"
       onClick={(e) => {
         // Close dialog when clicking backdrop
         if (e.target === e.currentTarget && !isLoading) {
@@ -101,7 +101,7 @@ export default function ConfirmDialog({
     >
       <div
         ref={dialogRef}
-        className="bg-white dark:bg-neutral-800 rounded-lg shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200"
+        className="bg-white dark:bg-neutral-800 rounded-lg shadow-xl max-w-md w-full p-6 animate-scale-in"
       >
         {/* Header */}
         <div className="flex items-start gap-4 mb-4">

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 
 type Theme = 'light' | 'dark';
 
@@ -23,14 +23,27 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   });
 
   // Apply theme to document
+  const isFirstApply = useRef(true);
   useEffect(() => {
     // Update document root class
     const root = document.documentElement;
+
+    // Fade colours only during an actual switch, never on first paint
+    // (see .theme-switching in index.css).
+    let switchTimer: number | undefined;
+    if (!isFirstApply.current) {
+      root.classList.add('theme-switching');
+      switchTimer = window.setTimeout(() => root.classList.remove('theme-switching'), 300);
+    }
+    isFirstApply.current = false;
+
     root.classList.remove('light', 'dark');
     root.classList.add(theme);
 
     // Store preference
     localStorage.setItem(THEME_STORAGE_KEY, theme);
+
+    return () => window.clearTimeout(switchTimer);
   }, [theme]);
 
   const setTheme = (newTheme: Theme) => {

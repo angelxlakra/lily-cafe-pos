@@ -97,7 +97,7 @@ export default function MenuList({
                   <div
                     key={item.id}
                     className={`
-                    card p-4 fade-in
+                    card p-4 animate-fade-in
                     ${!isAvailable ? "opacity-50" : ""}
                   `}
                   >
