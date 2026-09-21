@@ -93,7 +93,7 @@ export default function InventoryItemsTab() {
           <button
             onClick={() => setShowLowStock(!showLowStock)}
             aria-pressed={showLowStock}
-            className={`btn-secondary flex items-center gap-2 whitespace-nowrap ${showLowStock ? 'border-[#b45309] text-[#b45309] dark:border-warning dark:text-warning' : ''}`}
+            className={`btn-secondary flex items-center gap-2 whitespace-nowrap ${showLowStock ? 'border-warning text-warning' : ''}`}
           >
             <Warning size={18} weight={showLowStock ? 'fill' : 'regular'} aria-hidden />
             Low stock
@@ -183,7 +183,7 @@ function ItemRow({ item, canEdit, onEdit, onDelete }: {
           {formatQty(item.current_quantity)} <span className="text-xs font-normal text-neutral-text-muted">{item.unit}</span>
         </div>
         {item.is_low_stock && (
-          <div className="inline-flex items-center gap-1 text-xs font-medium text-[#b45309] dark:text-warning">
+          <div className="inline-flex items-center gap-1 text-xs font-medium text-warning">
             <Warning size={12} weight="fill" aria-hidden /> Low
           </div>
         )}
@@ -200,7 +200,7 @@ function ItemRow({ item, canEdit, onEdit, onDelete }: {
           <button
             onClick={onDelete}
             aria-label={`Delete ${item.name}`}
-            className="size-12 grid place-items-center rounded-lg text-neutral-text-light hover:text-[#c0392b] hover:bg-error/10"
+            className="size-12 grid place-items-center rounded-lg text-neutral-text-light hover:text-error hover:bg-error/10"
           >
             <Trash size={18} aria-hidden />
           </button>
@@ -364,7 +364,7 @@ function ItemFormModal({ categories, item, onClose }: { categories: InventoryCat
           </div>
 
           {error && (
-            <div role="alert" className="text-sm font-medium text-[#c0392b] dark:text-error">Not saved. {error}</div>
+            <div role="alert" className="text-sm font-medium text-error">Not saved. {error}</div>
           )}
 
           <div className="flex justify-end gap-3 pt-2">

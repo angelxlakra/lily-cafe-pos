@@ -25,12 +25,15 @@
   --color-lily-green-light: #A8B89F;
   /* Filled "done" states (✓ buttons, settled checks): ≥4.5:1 against white. */
   --color-lily-green-deep: #5A6655;
+  /* Lily Leaf for text and icons on paper; plain lily-green is for fills. */
+  --color-lily-ink: #5A6655;
 
-  /* Functional colors */
-  --color-success: #4CAF50;
-  --color-error: #F44336;
-  --color-warning: #FF9800;
-  --color-info: #2196F3;
+  /* Functional colors: dark enough to read as text (≥4.5:1 on paper, page
+     and cream), and still usable as /10 tints behind it. */
+  --color-success: #276C2B;
+  --color-error: #B3342A;
+  --color-warning: #9E4A06;
+  --color-info: #1565C0;
 
   /* Neutral colors - Light Mode */
   --color-neutral-text-dark: #2C2420;
@@ -122,10 +125,11 @@
   --color-off-white: #2A2419;
 
   --color-lily-green: #9BAF91;
+  --color-lily-ink: #A8B89F;
 
   /* Functional colors - Dark Mode (slightly muted) */
   --color-success: #66BB6A;
-  --color-error: #EF5350;
+  --color-error: #F47B78;
   --color-warning: #FFA726;
   --color-info: #42A5F5;
 
@@ -426,12 +430,12 @@ h3 {
 
 @utility btn-success {
   @apply btn;
-  background: linear-gradient(135deg, #8b9d83, #6f8365);
+  background: linear-gradient(135deg, var(--color-lily-green-deep), #4a5546);
   color: #f6f1ea;
   box-shadow: 0 8px 16px -10px rgba(80, 110, 90, 0.45);
 
   &:hover:not(:disabled) {
-    background: linear-gradient(135deg, #6f8365, #54614f);
+    background: linear-gradient(135deg, #4a5546, #3c4539);
   }
 }
 

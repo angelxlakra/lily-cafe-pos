@@ -107,8 +107,8 @@ function CountRow({ item, counted, onChange, onStep }: CountRowProps) {
             {status === 'checked' && <>Matches · {formatQty(system)} {item.unit}</>}
             {status === 'changed' && (
               <>
-                {big && <Warning size={14} weight="fill" className="text-[#b45309] shrink-0" aria-hidden />}
-                <span className={big ? 'font-semibold text-[#b45309] dark:text-warning' : undefined}>
+                {big && <Warning size={14} weight="fill" className="text-warning shrink-0" aria-hidden />}
+                <span className={big ? 'font-semibold text-warning' : undefined}>
                   Was {formatQty(system)} · {diff > 0 ? '+' : '−'}{formatQty(Math.abs(diff))} {item.unit}
                   {big && <span className="sr-only"> (big difference)</span>}
                 </span>
@@ -116,7 +116,7 @@ function CountRow({ item, counted, onChange, onStep }: CountRowProps) {
             )}
           </div>
           {error && (
-            <div id={errorId} role="alert" className="mt-1 text-xs font-medium text-[#c0392b] dark:text-error">
+            <div id={errorId} role="alert" className="mt-1 text-xs font-medium text-error">
               {error}
             </div>
           )}
@@ -133,7 +133,7 @@ function CountRow({ item, counted, onChange, onStep }: CountRowProps) {
           className={`size-12 shrink-0 grid place-items-center rounded-lg border transition-colors duration-[var(--dur-press)] ${
             status === 'checked'
               ? 'bg-lily-green-deep border-lily-green-deep text-white'
-              : 'border-neutral-border text-neutral-text-muted hover:border-lily-green-deep hover:text-lily-green-deep'
+              : 'border-neutral-border text-neutral-text-muted hover:border-lily-ink hover:text-lily-ink'
           }`}
         >
           <Check size={22} weight="bold" aria-hidden />

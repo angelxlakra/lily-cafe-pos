@@ -69,7 +69,7 @@ export default function CountReviewSheet({
 
           {big.length > 0 && (
             <section className="mt-5" aria-labelledby="count-review-big">
-              <h3 id="count-review-big" className="font-sans! text-sm! font-semibold tracking-normal! leading-normal! text-[#b45309] dark:text-warning flex items-center gap-1.5">
+              <h3 id="count-review-big" className="font-sans! text-sm! font-semibold tracking-normal! leading-normal! text-warning flex items-center gap-1.5">
                 <Warning size={16} weight="fill" aria-hidden />
                 Big differences. Worth a second look
               </h3>

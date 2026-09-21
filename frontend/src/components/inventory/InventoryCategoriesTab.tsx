@@ -125,7 +125,7 @@ export default function InventoryCategoriesTab() {
               Cancel
             </button>
           </div>
-          {notice?.id === 'new' && <div role="alert" className="text-sm font-medium text-[#c0392b] dark:text-error">{notice.text}</div>}
+          {notice?.id === 'new' && <div role="alert" className="text-sm font-medium text-error">{notice.text}</div>}
         </form>
       )}
 
@@ -169,14 +169,14 @@ export default function InventoryCategoriesTab() {
                     <button
                       onClick={() => askDelete(category)}
                       aria-label={`Delete ${category.name}`}
-                      className="size-12 grid place-items-center rounded-lg text-neutral-text-light hover:text-[#c0392b] hover:bg-error/10"
+                      className="size-12 grid place-items-center rounded-lg text-neutral-text-light hover:text-error hover:bg-error/10"
                     >
                       <Trash size={18} aria-hidden />
                     </button>
                   </div>
                 )}
                 {notice?.id === category.id && (
-                  <div role="alert" className="pb-1 text-sm font-medium text-[#c0392b] dark:text-error">{notice.text}</div>
+                  <div role="alert" className="pb-1 text-sm font-medium text-error">{notice.text}</div>
                 )}
               </li>
             );

@@ -138,7 +138,7 @@ export default function InventoryCountPage() {
       <main className="min-h-dvh grid place-items-center bg-neutral-background px-6 py-10">
         <div className="w-full max-w-sm text-center animate-fade-in">
           <div className="mx-auto size-20 rounded-full bg-lily-green/20 grid place-items-center">
-            <svg className="size-10 text-lily-green-deep dark:text-lily-green-light" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <svg className="size-10 text-lily-ink" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path
                 d="M5 12.5l4.5 4.5L19 7.5"
                 pathLength={1}
@@ -271,7 +271,7 @@ export default function InventoryCountPage() {
                   } ${done ? 'cursor-pointer' : 'cursor-default'}`}
                 >
                   <h2 id={`count-group-${key}`} className="flex items-center gap-2 font-heading text-xl! leading-tight! text-neutral-text-dark">
-                    {done && <Check size={18} weight="bold" className="text-lily-green-deep dark:text-lily-green-light shrink-0" aria-hidden />}
+                    {done && <Check size={18} weight="bold" className="text-lily-ink shrink-0" aria-hidden />}
                     {groupName(group)}
                   </h2>
                   <span className="shrink-0 text-sm tabular-nums text-neutral-text-muted">
@@ -383,7 +383,7 @@ function CategoryJumpSheet({
                   className="w-full min-h-14 px-5 flex items-center justify-between gap-3 text-left hover:bg-cream/60"
                 >
                   <span className="font-medium text-neutral-text-dark truncate">{groupName(group)}</span>
-                  <span className={`shrink-0 text-sm tabular-nums inline-flex items-center gap-1 ${done ? 'text-lily-green-deep dark:text-lily-green-light font-medium' : 'text-neutral-text-muted'}`}>
+                  <span className={`shrink-0 text-sm tabular-nums inline-flex items-center gap-1 ${done ? 'text-lily-ink font-medium' : 'text-neutral-text-muted'}`}>
                     {done && <Check size={14} weight="bold" aria-hidden />}
                     {counted}/{group.items.length}
                   </span>

@@ -172,7 +172,7 @@ function SortableList({
       <div className="h-6 text-sm" aria-live="polite">
         {mutation.isPending && <span className="text-neutral-text-muted">Saving…</span>}
         {mutation.isError && (
-          <span className="text-[#c0392b] dark:text-error">
+          <span className="text-error">
             Order not saved. {describeApiError(mutation.error)}{' '}
             <button type="button" className="underline font-medium" onClick={() => mutation.mutate(order.map(row => row.id))}>
               Try again
