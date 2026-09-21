@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Package, Tag, ClockCounterClockwise, ClipboardText } from '@phosphor-icons/react';
 import { useSidebar } from '../context/SidebarContext';
+import { useAuth } from '../hooks/useAuth';
 import BottomNav from '../components/BottomNav';
 import DailyCountTab from '../components/inventory/DailyCountTab';
 import InventoryItemsTab from '../components/inventory/InventoryItemsTab';
@@ -12,6 +13,8 @@ type Tab = 'daily-count' | 'items' | 'categories' | 'transactions';
 export default function InventoryPage() {
   const [activeTab, setActiveTab] = useState<Tab>('daily-count');
   const { setMobileOpen } = useSidebar();
+  // Items and categories are owner-only master data: admins don't see them.
+  const { isOwner } = useAuth();
 
   return (
     <div className="flex flex-col h-full bg-neutral-background">
@@ -44,18 +47,18 @@ export default function InventoryPage() {
             icon={<ClipboardText size={20} />}
             label="Daily Count"
           />
-          <TabButton
+          {isOwner && <TabButton
             active={activeTab === 'items'}
             onClick={() => setActiveTab('items')}
             icon={<Package size={20} />}
             label="Items"
-          />
-          <TabButton
+          />}
+          {isOwner && <TabButton
             active={activeTab === 'categories'}
             onClick={() => setActiveTab('categories')}
             icon={<Tag size={20} />}
             label="Categories"
-          />
+          />}
           <TabButton
             active={activeTab === 'transactions'}
             onClick={() => setActiveTab('transactions')}
@@ -65,10 +68,10 @@ export default function InventoryPage() {
         </div>
       </header>
 
-      <main className="p-4 lg:p-6 max-w-7xl mx-auto">
+      <main className="p-4 lg:p-6 max-w-7xl w-full mx-auto">
         {activeTab === 'daily-count' && <DailyCountTab />}
-        {activeTab === 'items' && <InventoryItemsTab />}
-        {activeTab === 'categories' && <InventoryCategoriesTab />}
+        {isOwner && activeTab === 'items' && <InventoryItemsTab />}
+        {isOwner && activeTab === 'categories' && <InventoryCategoriesTab />}
         {activeTab === 'transactions' && <InventoryTransactionsTab />}
       </main>
 

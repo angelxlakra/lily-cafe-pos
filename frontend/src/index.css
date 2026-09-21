@@ -23,6 +23,8 @@
 
   --color-lily-green: #8B9D83;
   --color-lily-green-light: #A8B89F;
+  /* Filled "done" states (✓ buttons, settled checks): ≥4.5:1 against white. */
+  --color-lily-green-deep: #5A6655;
 
   /* Functional colors */
   --color-success: #4CAF50;
