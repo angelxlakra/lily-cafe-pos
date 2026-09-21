@@ -18,28 +18,32 @@ interface ItemCountRowProps {
 
 export default function ItemCountRow({ item, count, onChange, isChanged }: ItemCountRowProps) {
   const [isFocused, setIsFocused] = useState(false);
-
-
+  const [inputError, setInputError] = useState<string | null>(null);
+  const errorId = `count-error-${item.id}`;
 
   const handleIncrement = (amount: number) => {
     // If count is null, start from current_quantity
     // Ensure we treat the value as a number to avoid string concatenation
     const base = Number(count ?? item.current_quantity);
-    const newCount = Math.max(0, base + amount);
-    onChange(item.id, newCount);
+    setInputError(null);
+    onChange(item.id, Math.max(0, base + amount));
   };
 
   const handleDirectInput = (value: string) => {
     if (value === '') {
+      setInputError(null);
       onChange(item.id, null);
       return;
     }
-    
-    // Allow decimal input
+
     const parsed = parseFloat(value);
-    if (!isNaN(parsed) && parsed >= 0) {
-      onChange(item.id, parsed);
+    if (isNaN(parsed)) return;
+    if (parsed < 0) {
+      setInputError("Stock can't be below 0. Enter 0 if it's run out.");
+      return;
     }
+    setInputError(null);
+    onChange(item.id, parsed);
   };
 
   return (
@@ -113,7 +117,10 @@ export default function ItemCountRow({ item, count, onChange, isChanged }: ItemC
             placeholder={item.current_quantity.toString()}
             onChange={(e) => handleDirectInput(e.target.value)}
             onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
+            onBlur={() => { setIsFocused(false); setInputError(null); }}
+            aria-label={`Count for ${item.name}`}
+            aria-invalid={inputError !== null}
+            aria-describedby={inputError ? errorId : undefined}
             className="
               touch-target-large count-input-mobile
               flex-1 max-w-[100px] text-center
@@ -140,6 +147,12 @@ export default function ItemCountRow({ item, count, onChange, isChanged }: ItemC
             +5
           </button>
         </div>
+
+        {inputError && (
+          <div id={errorId} role="alert" className="mt-2 text-sm font-medium text-[#c0392b] dark:text-error">
+            {inputError}
+          </div>
+        )}
 
         {/* Change Indicator */}
         {isChanged && count !== null && (

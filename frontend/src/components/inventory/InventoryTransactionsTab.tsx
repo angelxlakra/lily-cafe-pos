@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, Minus, ArrowsLeftRight, ClockCounterClockwise } from '@phosphor-icons/react';
 import { useInventoryTransactions, useInventoryItems, useRecordPurchase, useRecordUsage, useRecordAdjustment } from '../../hooks/useInventory';
 import type { TransactionType } from '../../types/inventory';
+import { describeApiError } from '../../utils/apiError';
 
 export default function InventoryTransactionsTab() {
   const [activeAction, setActiveAction] = useState<'PURCHASE' | 'USAGE' | 'ADJUSTMENT' | null>(null);
@@ -136,7 +137,9 @@ function TransactionsHistory() {
 
 function TransactionFormModal({ type, onClose }: { type: 'PURCHASE' | 'USAGE' | 'ADJUSTMENT', onClose: () => void }) {
   const [itemId, setItemId] = useState<number | ''>('');
-  const [quantity, setQuantity] = useState<number | ''>('');
+  // Kept as the raw input string so 0 ("ran out") is a real value, not "empty".
+  const [quantity, setQuantity] = useState('');
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   
   // For search
@@ -148,7 +151,8 @@ function TransactionFormModal({ type, onClose }: { type: 'PURCHASE' | 'USAGE' | 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!itemId || !quantity) return;
+    if (!itemId || quantity === '') return;
+    setSubmitError(null);
 
     try {
       if (type === 'PURCHASE') {
@@ -169,9 +173,11 @@ function TransactionFormModal({ type, onClose }: { type: 'PURCHASE' | 'USAGE' | 
       }
       onClose();
     } catch (error) {
-      console.error("Failed to record transaction", error);
+      setSubmitError(describeApiError(error));
     }
   };
+
+  const isSubmitting = recordPurchase.isPending || recordUsage.isPending || recordAdjustment.isPending;
 
   const selectedItem = itemsData?.items.find(i => i.id === Number(itemId));
 
@@ -212,7 +218,7 @@ function TransactionFormModal({ type, onClose }: { type: 'PURCHASE' | 'USAGE' | 
                 step="0.01"
                 min="0"
                 value={quantity}
-                onChange={e => setQuantity(Number(e.target.value))}
+                onChange={e => setQuantity(e.target.value)}
                 className="input-field"
                 required
               />
@@ -236,10 +242,16 @@ function TransactionFormModal({ type, onClose }: { type: 'PURCHASE' | 'USAGE' | 
             />
           </div>
 
+          {submitError && (
+            <div role="alert" className="text-sm font-medium text-[#c0392b] dark:text-error">
+              Not saved. {submitError}
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 mt-6">
             <button type="button" onClick={onClose} className="btn-ghost">Cancel</button>
-            <button type="submit" className="btn-primary">
-              Save Record
+            <button type="submit" className="btn-primary" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving…' : 'Save Record'}
             </button>
           </div>
         </form>
