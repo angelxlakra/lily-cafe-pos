@@ -142,7 +142,7 @@ The system currently layers depth through soft shadows, gradient-filled primary 
 A roasted-coffee palette on cream paper, with one botanical green borrowed from the lily logo.
 
 ### Primary
-- **Roasted Coffee** (coffee-brown): primary actions, active chips, sticky inventory category headers, focus borders on inputs. It is the colour of "do this".
+- **Roasted Coffee** (coffee-brown): primary actions, active chips, focus borders on inputs. It is the colour of "do this".
 - **Espresso** (coffee-dark): the sidebar background and the deep end of the primary gradient. Hover state for primary buttons.
 - **Milky Latte** (coffee-light): sidebar dividers, secondary button borders, hover borders on chips.
 
@@ -198,7 +198,7 @@ The layout is mobile-first and follows an 8px rhythm. Tailwind's default spacing
 - **Waiter floor (phone):** a table grid that steps from 2 to 5 columns (`grid-cols-2 sm:3 md:4 lg:5`, 16px gap). There is a fixed bottom navigation bar with 48px items and a floating cart button, and content keeps a `pb-24` bottom pad to clear the bar.
 - **Counter and owner (desktop):** a left sidebar that collapses to an icon rail, becomes an overlay drawer below `lg` (1024px), and has content cards on the Warm Page background.
 - **Breakpoints:** Tailwind defaults (sm 640, md 768, lg 1024, xl 1280). `lg` is the sidebar and bottom-nav switch.
-- **Inventory count:** a single scrolling column with sticky Roasted Coffee category headers and full-width rows.
+- **Tonight's count:** full screen with one pinned bar (exit, current category, progress) and the actions pinned at the bottom, in thumb reach. Category headings scroll with the list, and finished categories fold into a one-line summary.
 
 **The 48px Floor Rule.** Every interactive control has a hit area of at least 48 × 48px (`--min-height-touch`, `touch-target-large`). This is non-negotiable on the waiter and count screens.
 

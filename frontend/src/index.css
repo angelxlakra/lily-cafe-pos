@@ -345,6 +345,16 @@ h3 {
   letter-spacing: 0.04em;
 }
 
+/* A small sans label heading. Plain h1–h3 get Quesha globally, so this
+   resets the family, size and tracking for operational subheadings. */
+@utility subheading {
+  font-family: var(--font-sans) !important;
+  font-size: 0.875rem !important;
+  line-height: 1.4 !important;
+  letter-spacing: normal !important;
+  font-weight: 600;
+}
+
 @utility text-muted {
   color: var(--color-neutral-text-muted);
 }
@@ -736,21 +746,6 @@ h3 {
     -webkit-appearance: none;
     margin: 0;
   }
-}
-
-/* Sticky category headers for inventory sections */
-@utility sticky-category-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background-color: var(--color-coffee-brown);
-  border-bottom: 2px solid var(--color-coffee-dark);
-  box-shadow: 0 2px 8px rgba(44, 36, 32, 0.1);
-}
-
-.dark .sticky-category-header {
-  background-color: #2A2419;
-  border-bottom-color: #1C1812;
 }
 
 /* Hide scrollbar utility */
