@@ -6,7 +6,7 @@
  * named afterwards and can be retried.
  */
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { X, Upload, CheckCircle, Warning } from '@phosphor-icons/react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { inventoryApi } from '../../api/inventory';
@@ -32,6 +32,7 @@ export default function TemplateImportModal({
 }: TemplateImportModalProps) {
   const queryClient = useQueryClient();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
 
   const [step, setStep] = useState<ImportStep>('input');
   const [templateText, setTemplateText] = useState('');
@@ -57,6 +58,11 @@ export default function TemplateImportModal({
 
   // Escape, focus trap and focus restore. Not while items are being created.
   useDialogFocus(dialogRef, handleClose, step === 'importing');
+  // Move focus into the dialog without opening the phone keyboard: the
+  // heading, not the textarea.
+  useEffect(() => {
+    if (isOpen) headingRef.current?.focus();
+  }, [isOpen]);
 
   const handleParse = () => {
     setError(null);
@@ -164,7 +170,7 @@ export default function TemplateImportModal({
       >
         <div className="flex items-start justify-between gap-3 p-4 md:p-6 border-b border-neutral-border shrink-0">
           <div>
-            <h2 id="import-title" className="font-heading text-2xl! text-neutral-text-dark">
+            <h2 id="import-title" ref={headingRef} tabIndex={-1} className="font-heading text-2xl! text-neutral-text-dark focus:outline-none">
               Import your checklist
             </h2>
             <p className="text-sm text-neutral-text-muted mt-1">
@@ -220,8 +226,8 @@ export default function TemplateImportModal({
           {step === 'preview' && (
             <div className="space-y-4">
               <p className="text-neutral-text-body tabular-nums">
-                Read <strong className="text-neutral-text-dark">{parsedItems.length} items</strong> in{' '}
-                <strong className="text-neutral-text-dark">{groups.length} categories</strong>. Check a few, then add them.
+                Read <strong className="text-neutral-text-dark">{parsedItems.length} item{parsedItems.length === 1 ? '' : 's'}</strong> in{' '}
+                <strong className="text-neutral-text-dark">{groups.length} categor{groups.length === 1 ? 'y' : 'ies'}</strong>. Check a few, then add them.
               </p>
 
               {groups.map(([category, items]) => (
@@ -329,7 +335,7 @@ export default function TemplateImportModal({
                 className="btn-primary inline-flex items-center gap-2"
               >
                 <Upload size={20} weight="fill" aria-hidden />
-                Add {parsedItems.length} items
+                Add {parsedItems.length} item{parsedItems.length === 1 ? '' : 's'}
               </button>
             </>
           )}
@@ -341,7 +347,7 @@ export default function TemplateImportModal({
                   onClick={() => startImport(result.failures.map(failure => failure.item))}
                   className="btn-secondary"
                 >
-                  Try the {result.failures.length} again
+                  {result.failures.length === 1 ? 'Try that one again' : `Try those ${result.failures.length} again`}
                 </button>
               ) : (
                 <button onClick={() => { setStep('input'); setTemplateText(''); setParsedItems([]); }} className="btn-ghost">
