@@ -8,6 +8,7 @@ import { ArrowCounterClockwise, PaperPlaneRight } from '@phosphor-icons/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { askQuestion, type AskResponse, type RouterDecision } from '../../api/ask';
+import TodayCard from '../../components/ask/TodayCard';
 import { ReportView } from '../../components/ask/renderers';
 import { cn } from '../../utils/cn';
 
@@ -103,6 +104,7 @@ export default function AskView() {
 
       {/* Thread */}
       <div className="flex-1 space-y-3 overflow-y-auto pb-28 lg:pb-4">
+        <TodayCard />
         {messages.length === 0 && (
           <div className="rounded-xl border border-dashed border-neutral-border p-4 text-sm text-neutral-text-light">
             Ask in English, Hindi or Hinglish — “which dish sold best since August?”, “kal ka cash counter”,

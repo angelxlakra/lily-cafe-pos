@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app import schemas
 from app.api.deps import get_current_owner, get_db
+from app.ask import digest as digest_service
 from app.ask.llm import OpenAIRouter
 from app.ask.router import Router, RouterDecision
 from app.ask.service import AskResponse, ask
@@ -46,3 +47,23 @@ def ask_question(
         previous=body.previous,
         previous_question=body.previous_question,
     )
+
+
+class DigestResponse(BaseModel):
+    """The latest stored digest, or nothing if none has been built yet."""
+
+    digest: dict | None = None
+
+
+@router.get("/digest", response_model=DigestResponse)
+def latest_digest(
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_owner),
+):
+    """The most recent morning digest. Owner only, like the rest of Ask.
+
+    Deliberately independent of the router dependency: the digest is computed
+    entirely in code, so it still works on a server with no model configured.
+    """
+    row = digest_service.latest_stored(db)
+    return DigestResponse(digest=digest_service.as_payload(row) if row else None)
