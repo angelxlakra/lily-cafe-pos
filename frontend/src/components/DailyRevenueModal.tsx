@@ -34,7 +34,7 @@ export default function DailyRevenueModal({
       <div
         className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
                    w-full max-w-md bg-neutral-background rounded-3xl shadow-2xl z-[70]
-                   flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200"
+                   flex flex-col overflow-hidden animate-scale-in"
         role="dialog"
         aria-modal="true"
       >

@@ -1,5 +1,5 @@
 from typing import Optional, List
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from pydantic import BaseModel, Field
 from app.models.inventory_models import TransactionType
@@ -16,6 +16,7 @@ class InventoryCategoryUpdate(BaseModel):
 
 class InventoryCategory(InventoryCategoryBase):
     id: int
+    sort_order: int = 0
     created_at: datetime
     updated_at: Optional[datetime] = None
 
@@ -45,6 +46,7 @@ class InventoryItem(InventoryItemBase):
     id: int
     current_quantity: Decimal
     is_active: bool
+    sort_order: int = 0
     created_at: datetime
     updated_at: Optional[datetime] = None
     category_name: Optional[str] = None # Computed in API
@@ -103,3 +105,47 @@ class InventoryTransaction(BaseModel):
 
 class LowStockItem(InventoryItem):
     percentage_remaining: float
+
+
+class SortOrderUpdate(BaseModel):
+    """Ids in the order they should appear in the nightly count."""
+    ids: List[int] = Field(..., min_length=1)
+
+
+# Nightly count
+class CountLineCreate(BaseModel):
+    item_id: int
+    # None = not counted (skipped). Equal to the system quantity = checked.
+    counted_quantity: Optional[Decimal] = Field(None, ge=0)
+
+
+class CountCreate(BaseModel):
+    lines: List[CountLineCreate]
+
+
+class CountChange(BaseModel):
+    item_id: int
+    item_name: str
+    previous_quantity: float
+    new_quantity: float
+    difference: float
+
+
+class CountSummary(BaseModel):
+    id: int
+    business_date: date
+    counted_by: str
+    created_at: Optional[datetime] = None
+    items_total: int
+    items_checked: int
+    items_changed: int
+    items_skipped: int
+
+    class Config:
+        from_attributes = True
+
+
+class CountResult(CountSummary):
+    changes: List[CountChange]
+    skipped_item_names: List[str]
+    emailed: bool

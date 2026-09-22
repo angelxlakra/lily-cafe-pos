@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, PencilSimple, Trash, X, Check } from '@phosphor-icons/react';
+import { Plus, PencilSimple, Trash, X, Check, ListNumbers } from '@phosphor-icons/react';
+import CountOrderEditor from './CountOrderEditor';
 import { useInventoryCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../../hooks/useInventory';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -15,6 +16,7 @@ export default function InventoryCategoriesTab() {
   const { isOwner } = useAuth();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
+  const [arranging, setArranging] = useState(false);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,20 +61,28 @@ export default function InventoryCategoriesTab() {
     return <div className="p-8 text-center text-neutral-text-muted">Loading categories...</div>;
   }
 
+  if (arranging) return <CountOrderEditor onDone={() => setArranging(false)} />;
+
   return (
     <div className="space-y-6">
       {/* Header & Actions */}
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-heading text-coffee-brown dark:text-cream">Categories</h2>
         {isOwner && (
-          <button
-            onClick={() => setIsCreating(true)}
-            className="btn-primary flex items-center gap-2"
-            disabled={isCreating}
-          >
-            <Plus weight="bold" />
-            <span>Add Category</span>
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => setArranging(true)} className="btn-secondary flex items-center gap-2">
+              <ListNumbers weight="bold" aria-hidden />
+              <span>Count order</span>
+            </button>
+            <button
+              onClick={() => setIsCreating(true)}
+              className="btn-primary flex items-center gap-2"
+              disabled={isCreating}
+            >
+              <Plus weight="bold" />
+              <span>Add Category</span>
+            </button>
+          </div>
         )}
       </div>
 

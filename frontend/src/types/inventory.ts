@@ -1,6 +1,7 @@
 export interface InventoryCategory {
   id: number;
   name: string;
+  sort_order: number;
   created_at: string;
   updated_at?: string;
 }
@@ -24,6 +25,7 @@ export interface InventoryItem {
   category_name?: string;
   is_active: boolean;
   is_low_stock: boolean;
+  sort_order: number;
   created_at: string;
   updated_at?: string;
 }
@@ -142,4 +144,41 @@ export interface TransactionsResponse {
   total: number;
   limit: number;
   offset: number;
+}
+
+// Nightly count
+
+/** One category's items, in the owner-set count order. */
+export interface CountSheetGroup {
+  category: InventoryCategory | null;
+  items: InventoryItem[];
+}
+
+export interface CountLine {
+  item_id: number;
+  /** null = not counted (skipped). */
+  counted_quantity: number | null;
+}
+
+export interface CountSummary {
+  id: number;
+  business_date: string;
+  counted_by: string;
+  created_at: string | null;
+  items_total: number;
+  items_checked: number;
+  items_changed: number;
+  items_skipped: number;
+}
+
+export interface CountResult extends CountSummary {
+  changes: Array<{
+    item_id: number;
+    item_name: string;
+    previous_quantity: number;
+    new_quantity: number;
+    difference: number;
+  }>;
+  skipped_item_names: string[];
+  emailed: boolean;
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, MagnifyingGlass, Warning, PencilSimple, Trash, X } from '@phosphor-icons/react';
+import { Plus, MagnifyingGlass, Warning, PencilSimple, Trash, X, ListNumbers } from '@phosphor-icons/react';
+import CountOrderEditor from './CountOrderEditor';
 import { useInventoryItems, useInventoryCategories, useCreateItem, useUpdateItem, useDeleteItem } from '../../hooks/useInventory';
 import { useAuth } from '../../hooks/useAuth';
 import type { InventoryItem, InventoryItemCreate } from '../../types/inventory';
@@ -10,6 +11,7 @@ export default function InventoryItemsTab() {
   const [showLowStock, setShowLowStock] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [arranging, setArranging] = useState(false);
 
   // Items are master data — they carry cost prices and reorder levels — so,
   // like the menu, only the owner may add, change or remove them. Admin can
@@ -31,6 +33,8 @@ export default function InventoryItemsTab() {
       await deleteItem.mutateAsync(id);
     }
   };
+
+  if (arranging) return <CountOrderEditor onDone={() => setArranging(false)} />;
 
   return (
     <div className="space-y-6">
@@ -69,13 +73,19 @@ export default function InventoryItemsTab() {
         </div>
 
         {isOwner && (
-          <button
-            onClick={() => setIsCreating(true)}
-            className="btn-primary flex items-center gap-2 whitespace-nowrap"
-          >
-            <Plus weight="bold" />
-            <span>Add Item</span>
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => setArranging(true)} className="btn-secondary flex items-center gap-2 whitespace-nowrap">
+              <ListNumbers weight="bold" aria-hidden />
+              <span>Count order</span>
+            </button>
+            <button
+              onClick={() => setIsCreating(true)}
+              className="btn-primary flex items-center gap-2 whitespace-nowrap"
+            >
+              <Plus weight="bold" />
+              <span>Add Item</span>
+            </button>
+          </div>
         )}
       </div>
 

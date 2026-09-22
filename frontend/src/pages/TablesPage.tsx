@@ -34,7 +34,7 @@ export default function TablesPage() {
 
       {/* Error State */}
       {error && (
-        <div className="px-4 mt-6 fade-in">
+        <div className="px-4 mt-6 animate-fade-in">
           <div className="max-w-3xl mx-auto bg-error/10 border-2 border-error rounded-xl p-5 shadow-soft">
             <div className="flex items-start gap-3">
               <svg className="w-6 h-6 text-error flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

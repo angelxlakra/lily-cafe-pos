@@ -347,33 +347,6 @@ function OrderDetailsModal({
           </button>
         </div>
       </div>
-
-      {/* Custom animations */}
-      <style>{`
-        @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
-        @keyframes scale-in {
-          from {
-            transform: scale(0.95);
-            opacity: 0;
-          }
-          to {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-
-        .animate-fade-in {
-          animation: fade-in 0.2s ease-out;
-        }
-
-        .animate-scale-in {
-          animation: scale-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-      `}</style>
     </>
   );
 }

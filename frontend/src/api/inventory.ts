@@ -14,6 +14,10 @@ import type {
   BatchAdjustmentCreate,
   BatchAdjustmentResponse,
   CategorizedItems,
+  CountLine,
+  CountResult,
+  CountSheetGroup,
+  CountSummary,
   TransactionsResponse,
   TransactionType
 } from '../types/inventory';
@@ -127,6 +131,45 @@ export const inventoryApi = {
     });
 
     return grouped;
+  },
+
+  /** Active items grouped by category, both in count order; uncategorized last. */
+  getCountSheet: async (): Promise<CountSheetGroup[]> => {
+    const [itemsResponse, categories] = await Promise.all([
+      inventoryApi.getItems({ is_active: true }),
+      inventoryApi.getCategories(),
+    ]);
+    const groups: CountSheetGroup[] = categories.map(category => ({ category, items: [] }));
+    const byId = new Map(groups.map(group => [group.category!.id, group]));
+    const uncategorized: CountSheetGroup = { category: null, items: [] };
+    // The API already returns items in count order.
+    itemsResponse.items.forEach(item => {
+      (byId.get(item.category_id ?? -1) ?? uncategorized).items.push(item);
+    });
+    return [...groups, uncategorized].filter(group => group.items.length > 0);
+  },
+
+  saveCount: async (lines: CountLine[]): Promise<CountResult> => {
+    const response = await apiClient.post<CountResult>('/inventory/counts', { lines });
+    return response.data;
+  },
+
+  getTodaysCount: async (): Promise<CountSummary | null> => {
+    const response = await apiClient.get<CountSummary | null>('/inventory/counts/today');
+    return response.data;
+  },
+
+  getCounts: async (limit = 7): Promise<CountSummary[]> => {
+    const response = await apiClient.get<CountSummary[]>('/inventory/counts', { params: { limit } });
+    return response.data;
+  },
+
+  reorderCategories: async (ids: number[]): Promise<void> => {
+    await apiClient.put('/inventory/categories/order', { ids });
+  },
+
+  reorderItems: async (ids: number[]): Promise<void> => {
+    await apiClient.put('/inventory/items/order', { ids });
   },
 
   getTransactions: async (params?: {

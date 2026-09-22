@@ -41,7 +41,7 @@ export default function KeyboardShortcutsHelp() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in"
       onClick={(e) => {
         if (e.target === e.currentTarget) setIsOpen(false)
       }}
@@ -49,7 +49,7 @@ export default function KeyboardShortcutsHelp() {
       aria-modal="true"
       aria-labelledby="shortcuts-title"
     >
-      <div className="bg-off-white dark:bg-neutral-800 rounded-2xl shadow-2xl max-w-2xl w-full p-6 animate-in zoom-in duration-300">
+      <div className="bg-off-white dark:bg-neutral-800 rounded-2xl shadow-2xl max-w-2xl w-full p-6 animate-scale-in">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">

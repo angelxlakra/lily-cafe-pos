@@ -25,9 +25,9 @@ export default function EmptyState({
   onSecondaryAction,
 }: EmptyStateProps) {
   return (
-    <div className="bg-off-white border border-neutral-border/70 rounded-2xl p-12 text-center shadow-sm flex flex-col items-center gap-6 max-w-lg mx-auto animate-in fade-in duration-300">
+    <div className="bg-off-white border border-neutral-border/70 rounded-2xl p-12 text-center shadow-sm flex flex-col items-center gap-6 max-w-lg mx-auto animate-fade-in">
       {/* Icon with subtle animation */}
-      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-cream to-coffee-brown/10 text-coffee-brown text-5xl shadow-md animate-in zoom-in duration-500">
+      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-cream to-coffee-brown/10 text-coffee-brown text-5xl shadow-md animate-scale-in">
         {icon}
       </div>
 
