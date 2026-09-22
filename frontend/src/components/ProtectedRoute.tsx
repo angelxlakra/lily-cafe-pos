@@ -6,6 +6,7 @@
 import { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import LoadingSpinner from './LoadingSpinner';
 import type { UserRole } from '../types';
 
 interface ProtectedRouteProps {
@@ -42,11 +43,22 @@ interface ProtectedRouteProps {
  * ```
  */
 export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { isAuthenticated, role } = useAuth();
+  const { isAuthenticated, role, isCheckingAuth } = useAuth();
 
   if (!isAuthenticated) {
     // Redirect to login page if not authenticated
     return <Navigate to="/login" replace />;
+  }
+
+  // The role arrives from /auth/verify a moment after mount. Redirecting
+  // while it is still unknown sent the owner away from their own pages.
+  if (requiredRole && isCheckingAuth) {
+    return (
+      <div className="min-h-dvh grid place-items-center bg-neutral-background">
+        <LoadingSpinner size="lg" className="text-coffee-brown" />
+        <span className="sr-only">Checking your access…</span>
+      </div>
+    );
   }
 
   // Check role requirement if specified

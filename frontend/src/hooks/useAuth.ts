@@ -17,6 +17,8 @@ interface UseAuthReturn {
   role: UserRole | null;
   /** True only for the owner login — gates past-day data and post-bill edits */
   isOwner: boolean;
+  /** True until the stored token has been checked and the role is known. */
+  isCheckingAuth: boolean;
 
   // Actions
   login: (credentials: LoginRequest) => Promise<LoginResponse>;
@@ -63,28 +65,34 @@ export const useAuth = (): UseAuthReturn => {
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(authApi.isAuthenticated());
   const [user, setUser] = useState<User | null>(null);
+  // The role arrives from /auth/verify, so it is unknown on the first render.
+  // Callers that gate on it must wait rather than treat "unknown" as "not owner".
+  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(authApi.isAuthenticated());
   const role = user?.role || null;
   const isOwner = role === 'owner';
 
   // Fetch user data if authenticated
   const fetchUser = async () => {
-    if (authApi.isAuthenticated()) {
-      try {
-        const userData = await authApi.verifyToken();
-        setUser(userData);
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Failed to verify token:', error);
-        // Only a 401 means the token is bad. A timeout or network blip (e.g. the
-        // backend cold-starting) must not sign the cashier out.
-        if ((error as { response?: { status?: number } }).response?.status !== 401) return;
-        authApi.logout();
-        setUser(null);
-        setIsAuthenticated(false);
-      }
-    } else {
+    if (!authApi.isAuthenticated()) {
       setUser(null);
       setIsAuthenticated(false);
+      setIsCheckingAuth(false);
+      return;
+    }
+    try {
+      const userData = await authApi.verifyToken();
+      setUser(userData);
+      setIsAuthenticated(true);
+    } catch (error) {
+      console.error('Failed to verify token:', error);
+      // Only a 401 means the token is bad. A timeout or network blip (e.g. the
+      // backend cold-starting) must not sign the cashier out.
+      if ((error as { response?: { status?: number } }).response?.status !== 401) return;
+      authApi.logout();
+      setUser(null);
+      setIsAuthenticated(false);
+    } finally {
+      setIsCheckingAuth(false);
     }
   };
 
@@ -138,6 +146,7 @@ export const useAuth = (): UseAuthReturn => {
 
   return {
     isAuthenticated,
+    isCheckingAuth,
     isLoggingIn: loginMutation.isPending,
     loginError: loginMutation.error ? (loginMutation.error as Error).message : null,
     user,
