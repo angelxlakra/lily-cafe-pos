@@ -74,8 +74,10 @@ export const useAuth = (): UseAuthReturn => {
         setUser(userData);
         setIsAuthenticated(true);
       } catch (error) {
-        // Token is invalid or expired
         console.error('Failed to verify token:', error);
+        // Only a 401 means the token is bad. A timeout or network blip (e.g. the
+        // backend cold-starting) must not sign the cashier out.
+        if ((error as { response?: { status?: number } }).response?.status !== 401) return;
         authApi.logout();
         setUser(null);
         setIsAuthenticated(false);
