@@ -78,6 +78,22 @@
     from { stroke-dashoffset: 1; }
   }
 
+  /* Something new arrived (an order): rise in, then a warm highlight fades.
+     "highlight" alone marks an existing card that changed. "depart" is the
+     short exit before a card is removed. */
+  --animate-arrive: scale-in 250ms var(--ease-settle), highlight 1600ms ease-out;
+  --animate-highlight: highlight 1600ms ease-out;
+  --animate-depart: depart 220ms ease-in forwards;
+  @keyframes highlight {
+    from {
+      background-color: color-mix(in oklab, var(--color-coffee-light) 22%, var(--color-off-white));
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-coffee-light) 55%, transparent);
+    }
+  }
+  @keyframes depart {
+    to { opacity: 0; transform: scale(var(--depart-scale)); }
+  }
+
   /* Touch-friendly minimums (48px = 3rem) */
   --min-height-touch: 3rem;
   --min-width-touch: 3rem;
@@ -92,6 +108,7 @@
   --dur-theme: 300ms;
   --enter-rise: 8px;
   --enter-scale: 0.98;
+  --depart-scale: 0.97;
 }
 
 /* Dark Mode Theme */
@@ -585,6 +602,7 @@ h3 {
   :root {
     --enter-rise: 0px;
     --enter-scale: 1;
+    --depart-scale: 1;
   }
 
   .animate-slide-up,

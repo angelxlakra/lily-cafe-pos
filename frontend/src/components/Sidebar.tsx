@@ -57,7 +57,7 @@ export default function Sidebar() {
                className={`object-contain shrink-0 transition-all duration-300 ${isCollapsed ? 'w-10 h-10' : 'w-11 h-11'}`}
              />
              {!isCollapsed && (
-               <div className="flex-1 text-left min-w-0">
+               <div className="flex-1 text-left min-w-0 animate-[fade-in_150ms_var(--ease-settle)_150ms_backwards]">
                  <span className="block font-heading text-xl tracking-[0.18em] leading-tight truncate">
                    Lily Cafe
                  </span>
@@ -172,7 +172,7 @@ export default function Sidebar() {
             <span className="text-lg shrink-0">
               <LogoutIcon size={22} />
             </span>
-            {!isCollapsed && <span className="font-medium whitespace-nowrap">Logout</span>}
+            {!isCollapsed && <span className="font-medium whitespace-nowrap animate-[fade-in_150ms_var(--ease-settle)_150ms_backwards]">Logout</span>}
             
             {/* Tooltip for collapsed state */}
             {isCollapsed && (
@@ -211,7 +211,7 @@ function NavItem({ to, icon, label, onClick, isCollapsed }: NavItemProps) {
       title={isCollapsed ? label : ""}
     >
       <span className="text-xl text-cream/80 shrink-0">{icon}</span>
-      {!isCollapsed && <span className="whitespace-nowrap overflow-hidden">{label}</span>}
+      {!isCollapsed && <span className="whitespace-nowrap overflow-hidden animate-[fade-in_150ms_var(--ease-settle)_150ms_backwards]">{label}</span>}
 
       {/* Tooltip for collapsed state */}
       {isCollapsed && (
