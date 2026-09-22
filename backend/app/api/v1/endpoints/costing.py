@@ -95,7 +95,7 @@ def _breakdown_to_schema(breakdown: costing_utils.CostBreakdown) -> costing_sche
 def _costing_to_schema(costing: DishCosting) -> costing_schemas.DishCostingOut:
     # Build the complete costing response.
 
-    if costing.menu_item in None:
+    if costing.menu_item is None:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, details="Costing has no associated menu item.")
     
     breakdown = _compute_breakdown(costing, costing.menu_item)
@@ -140,7 +140,7 @@ def _build_costing_model(data: costing_schemas.DishCostingIn, inventory_items: d
 
     for index, ingredient in enumerate(data.ingredients):
         item = inventory_items.get(ingredient.inventory_item_id)    
-        if item in None:
+        if item is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=(f"Inventory item {ingredient.inventory_item_id} not found."))
         
         ingredients.append(DishCostingIngredient(inventory_item_id=item.id, quantity=ingredient.quantity, unit=ingredient.unit, sort_order=index, inventory_item=item))
@@ -156,7 +156,7 @@ def get_costings(db: Session = Depends(get_db), current_user: TokenData = _READ)
     costings = costing_crud.get_costings(db)
     result = []
     for costing in costings:
-        if costing.menu_item in None:
+        if costing.menu_item is None:
             continue
         breakdown = _compute_breakdown(costing, costing.menu_item)
         

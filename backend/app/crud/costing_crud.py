@@ -8,7 +8,7 @@ from app.models.inventory_models import InventoryItem
 
 def get_costings(db: Session) -> List[DishCosting]:
     """Get all dish costings."""
-    return (db.query(DishCosting).order_by(DishCosting.id.desc()).all)
+    return (db.query(DishCosting).order_by(DishCosting.id.desc()).all())
     
 def get_costing(db: Session, costing_id: int) -> Optional[DishCosting]:
     """
