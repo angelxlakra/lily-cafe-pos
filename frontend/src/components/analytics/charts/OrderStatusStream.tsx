@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { useOrderStatusFlow } from '../../../hooks/useAnalytics';
-import { useTheme } from '../../../contexts/ThemeContext';
+import { useChartTheme } from '../../../hooks/useChartTheme';
 import { AnalyticsQueryParams } from '../../../api/analytics';
 
 interface OrderStatusStreamProps {
@@ -9,7 +9,7 @@ interface OrderStatusStreamProps {
 }
 
 const OrderStatusStream: React.FC<OrderStatusStreamProps> = ({ dateRange }) => {
-  const { theme } = useTheme();
+  const chart = useChartTheme();
   const params: AnalyticsQueryParams = {
     start_date: dateRange?.start ? `${dateRange.start}T00:00:00Z` : undefined,
     end_date: dateRange?.end ? `${dateRange.end}T23:59:59Z` : undefined,
@@ -45,21 +45,21 @@ const OrderStatusStream: React.FC<OrderStatusStreamProps> = ({ dateRange }) => {
           <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
           <XAxis 
              dataKey="date" 
-             stroke={theme === 'dark' ? '#9ca3af' : '#4b5563'}
+             stroke={chart.muted}
              tickFormatter={(val) => new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
           />
-          <YAxis stroke={theme === 'dark' ? '#9ca3af' : '#4b5563'} />
+          <YAxis stroke={chart.muted} />
           <Tooltip 
              contentStyle={{
-                 backgroundColor: theme === 'dark' ? '#1f2937' : '#fff',
-                 borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
-                 color: theme === 'dark' ? '#fff' : '#000'
+                 backgroundColor: chart.surface,
+                 borderColor: chart.grid,
+                 color: chart.ink
              }}
           />
           <Legend />
-          <Area type="monotone" dataKey="paid" stackId="1" stroke="#10b981" fill="#10b981" name="Paid" />
-          <Area type="monotone" dataKey="active" stackId="1" stroke="#f59e0b" fill="#f59e0b" name="Active" />
-          <Area type="monotone" dataKey="canceled" stackId="1" stroke="#ef4444" fill="#ef4444" name="Canceled" />
+          <Area type="monotone" dataKey="paid" stackId="1" stroke="var(--color-success)" fill="var(--color-success)" name="Paid" />
+          <Area type="monotone" dataKey="active" stackId="1" stroke="var(--color-warning)" fill="var(--color-warning)" name="Active" />
+          <Area type="monotone" dataKey="canceled" stackId="1" stroke="var(--color-error)" fill="var(--color-error)" name="Canceled" />
         </AreaChart>
       </ResponsiveContainer>
     </div>

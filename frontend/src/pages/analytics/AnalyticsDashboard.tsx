@@ -4,7 +4,8 @@ import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import DatePickerWithQuickFilters, { quickFilters } from '../../components/DatePickerWithQuickFilters';
 import { useRevenue, useProductPerformance, useOrderStatistics, useHeatmap, useCalendarHeatmap } from '../../hooks/useAnalytics';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { useTheme } from '../../contexts/ThemeContext';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import { useChartTheme } from '../../hooks/useChartTheme';
 import {
   ChartLine,
   Package,
@@ -48,7 +49,7 @@ export default function AnalyticsDashboard() {
 
   const [dateRange, setDateRange] = useState(initialRange);
   const [topDishesView, setTopDishesView] = useState<TopDishesView>('list');
-  const { theme } = useTheme();
+  const chart = useChartTheme();
 
   // Settings Modal State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -134,11 +135,11 @@ export default function AnalyticsDashboard() {
 
   // Theme-aware colors for charts
   const chartColors = {
-    grid: theme === 'dark' ? '#374151' : '#e5e5e5',
-    axis: theme === 'dark' ? '#9ca3af' : '#6b7280',
-    tooltipBg: theme === 'dark' ? '#1f2937' : '#ffffff',
-    tooltipBorder: theme === 'dark' ? '#374151' : '#e5e5e5',
-    tooltipText: theme === 'dark' ? '#f3f4f6' : '#111827',
+    grid: chart.grid,
+    axis: chart.muted,
+    tooltipBg: chart.surface,
+    tooltipBorder: chart.grid,
+    tooltipText: chart.ink,
   };
 
   // Payment method icons
@@ -245,7 +246,8 @@ export default function AnalyticsDashboard() {
   }, [productData]);
 
   // Colors for pie charts
-  const PIE_COLORS = ['#5C3D2E', '#8B6F47', '#A88B6A', '#C9A86A', '#E4C9A0'];
+  // Identity, not magnitude: the validated categorical series, in fixed order.
+  const PIE_COLORS = chart.series;
 
   return (
     <div>
@@ -258,7 +260,7 @@ export default function AnalyticsDashboard() {
 
         {/* Date Range Picker and Settings */}
         <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="flex-1 p-4 rounded-lg border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
+          <div className="flex-1 p-4 rounded-lg border border-neutral-border" style={{ backgroundColor: chart.surface }}>
             <DatePickerWithQuickFilters
               startDate={dateRange.start}
               endDate={dateRange.end}
@@ -270,8 +272,8 @@ export default function AnalyticsDashboard() {
             onClick={() => setIsSettingsOpen(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-border hover:bg-neutral-light transition-colors self-start md:self-stretch"
             style={{ 
-              backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
-              color: theme === 'dark' ? '#ffffff' : '#5C3D2E' 
+              backgroundColor: chart.surface,
+              color: chart.ink 
             }}
           >
             <Gear size={20} weight="duotone" />
@@ -281,8 +283,8 @@ export default function AnalyticsDashboard() {
 
         {/* Loading State */}
         {isLoading && (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-coffee-brown"></div>
+          <div className="flex items-center justify-center gap-3 py-12 text-neutral-text-muted">
+            <LoadingSpinner size="lg" className="text-coffee-brown" /> Loading…
           </div>
         )}
 
@@ -297,11 +299,11 @@ export default function AnalyticsDashboard() {
                   <h3 className="text-sm font-medium" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Total Revenue</h3>
                   <Wallet size={24} weight="duotone" style={{ color: 'rgba(255, 255, 255, 0.8)' }} />
                 </div>
-                <p className="text-3xl font-bold mb-1" style={{ color: '#ffffff' }}>
+                <p className="text-3xl font-bold mb-1 text-white">
                   {formatCurrency(revenueData?.total_revenue || 0)}
                 </p>
                 {revenueChange !== 0 && (
-                  <p className="text-sm flex items-center gap-1" style={{ color: revenueChange > 0 ? '#86efac' : '#fca5a5' }}>
+                  <p className="text-sm flex items-center gap-1" style={{ color: revenueChange > 0 ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.92)' }}>
                     <TrendUp size={16} weight="bold" className={revenueChange < 0 ? 'rotate-180' : ''} />
                     {Math.abs(revenueChange).toFixed(1)}% vs previous
                   </p>
@@ -309,43 +311,43 @@ export default function AnalyticsDashboard() {
               </div>
 
               {/* Total Orders Card */}
-              <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
+              <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: chart.surface }}>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : '#6b7280' }}>Total Orders</h3>
+                  <h3 className="text-sm font-medium" style={{ color: chart.muted }}>Total Orders</h3>
                   <Receipt size={24} weight="duotone" className="text-info" />
                 </div>
-                <p className="text-3xl font-bold mb-1" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
+                <p className="text-3xl font-bold mb-1" style={{ color: chart.ink }}>
                   {orderStats?.completed_orders || 0}
                 </p>
-                <p className="text-sm" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
+                <p className="text-sm" style={{ color: chart.muted }}>
                   {orderStats?.active_orders || 0} active orders
                 </p>
               </div>
 
               {/* Average Order Value Card */}
-              <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
+              <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: chart.surface }}>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : '#6b7280' }}>Avg Order Value</h3>
+                  <h3 className="text-sm font-medium" style={{ color: chart.muted }}>Avg Order Value</h3>
                   <ChartLine size={24} weight="duotone" className="text-lily-ink" />
                 </div>
-                <p className="text-3xl font-bold mb-1" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
+                <p className="text-3xl font-bold mb-1" style={{ color: chart.ink }}>
                   {formatCurrency(orderStats?.average_order_value || 0)}
                 </p>
-                <p className="text-sm" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
+                <p className="text-sm" style={{ color: chart.muted }}>
                   Per completed order
                 </p>
               </div>
 
               {/* Peak Hour Card */}
-              <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
+              <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: chart.surface }}>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : '#6b7280' }}>Peak Hour</h3>
+                  <h3 className="text-sm font-medium" style={{ color: chart.muted }}>Peak Hour</h3>
                   <Clock size={24} weight="duotone" className="text-warning" />
                 </div>
-                <p className="text-3xl font-bold mb-1" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
+                <p className="text-3xl font-bold mb-1" style={{ color: chart.ink }}>
                   {orderStats?.peak_hours?.[0]?.hour || 0}:00
                 </p>
-                <p className="text-sm" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
+                <p className="text-sm" style={{ color: chart.muted }}>
                   {orderStats?.peak_hours?.[0]?.order_count || 0} orders
                 </p>
               </div>
@@ -353,10 +355,10 @@ export default function AnalyticsDashboard() {
 
             {/* Calendar Heatmap (Yearly View) */}
              {visibleCharts.calendarHeatmap && (
-              <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
+              <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: chart.surface }}>
                 <div className="flex items-center gap-2 mb-4">
                   <Calendar size={24} weight="duotone" className="text-coffee-brown dark:text-gray-300" />
-                  <h2 className="font-heading text-xl" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
+                  <h2 className="font-heading text-xl" style={{ color: chart.ink }}>
                     Yearly Activity
                   </h2>
                 </div>
@@ -364,7 +366,7 @@ export default function AnalyticsDashboard() {
                  {calendarHeatmapData?.data && calendarHeatmapData.data.length > 0 ? (
                     <CalendarHeatmap data={calendarHeatmapData.data} />
                 ) : (
-                    <div className="flex items-center justify-center h-64" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
+                    <div className="flex items-center justify-center h-64" style={{ color: chart.muted }}>
                         <p>No activity data available</p>
                     </div>
                 )}
@@ -373,10 +375,10 @@ export default function AnalyticsDashboard() {
             
             {/* Revenue Trend Chart */}
             {visibleCharts.revenueTrend && (
-              <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
+              <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: chart.surface }}>
                 <div className="flex items-center gap-2 mb-4">
                   <ChartLine size={24} weight="duotone" className="text-coffee-brown dark:text-gray-300" />
-                  <h2 className="font-heading text-xl" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>Revenue Trend</h2>
+                  <h2 className="font-heading text-xl" style={{ color: chart.ink }}>Revenue Trend</h2>
                 </div>
 
                 {revenueTrendData.length > 0 ? (
@@ -406,16 +408,16 @@ export default function AnalyticsDashboard() {
                       <Line
                         type="monotone"
                         dataKey="revenue"
-                        stroke="#5C3D2E"
+                        stroke={chart.series[0]}
                         strokeWidth={2}
-                        dot={{ fill: '#5C3D2E', r: 4 }}
+                        dot={{ fill: chart.series[0], r: 4 }}
                         activeDot={{ r: 6 }}
                         name="Revenue (₹)"
                       />
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-64" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
+                  <div className="flex items-center justify-center h-64" style={{ color: chart.muted }}>
                     <p>No revenue data for selected period</p>
                   </div>
                 )}
@@ -424,16 +426,16 @@ export default function AnalyticsDashboard() {
 
             {/* Time-based Order Heatmap */}
             {visibleCharts.orderHeatmap && (
-              <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
+              <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: chart.surface }}>
                 <div className="flex items-center gap-2 mb-4">
                   <SquaresFour size={24} weight="duotone" className="text-coffee-brown dark:text-gray-300" />
-                  <h2 className="font-heading text-xl" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>Busy Times</h2>
+                  <h2 className="font-heading text-xl" style={{ color: chart.ink }}>Busy Times</h2>
                 </div>
                 
                 {heatmapData?.data && heatmapData.data.length > 0 ? (
                     <OrderHeatmap data={heatmapData.data} />
                 ) : (
-                    <div className="flex items-center justify-center h-64" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
+                    <div className="flex items-center justify-center h-64" style={{ color: chart.muted }}>
                         <p>No activity data for selected period</p>
                     </div>
                 )}
@@ -443,15 +445,15 @@ export default function AnalyticsDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Top Dishes with View Toggle */}
               {visibleCharts.topDishes && (
-                <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
+                <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: chart.surface }}>
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                       <Package size={24} weight="duotone" className="text-coffee-brown dark:text-gray-300" />
-                      <h2 className="font-heading text-xl" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>Top Dishes</h2>
+                      <h2 className="font-heading text-xl" style={{ color: chart.ink }}>Top Dishes</h2>
                     </div>
 
                     {/* View Toggle */}
-                    <div className="flex gap-1 p-1 rounded-lg border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#374151' : '#f5f5f5' }}>
+                    <div className="flex gap-1 p-1 rounded-lg border border-neutral-border" style={{ backgroundColor: chart.grid }}>
                       <button
                         onClick={() => setTopDishesView('list')}
                         className={`p-2 rounded transition-colors ${
@@ -490,13 +492,13 @@ export default function AnalyticsDashboard() {
                           <table className="w-full">
                             <thead>
                               <tr className="border-b border-neutral-border">
-                                <th className="text-left py-2 px-2 text-sm font-medium" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
+                                <th className="text-left py-2 px-2 text-sm font-medium" style={{ color: chart.muted }}>
                                   Dish
                                 </th>
-                                <th className="text-right py-2 px-2 text-sm font-medium" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
+                                <th className="text-right py-2 px-2 text-sm font-medium" style={{ color: chart.muted }}>
                                   Qty
                                 </th>
-                                <th className="text-right py-2 px-2 text-sm font-medium" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
+                                <th className="text-right py-2 px-2 text-sm font-medium" style={{ color: chart.muted }}>
                                   Revenue
                                 </th>
                               </tr>
@@ -504,13 +506,13 @@ export default function AnalyticsDashboard() {
                             <tbody>
                               {productData.top_products.slice(0, 10).map((product: any, index: number) => (
                                 <tr key={index} className="border-b border-neutral-border last:border-0">
-                                  <td className="py-3 px-2 text-sm font-medium" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
+                                  <td className="py-3 px-2 text-sm font-medium" style={{ color: chart.ink }}>
                                     {product.name}
                                   </td>
-                                  <td className="py-3 px-2 text-sm text-right" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.8)' : '#1f2937' }}>
+                                  <td className="py-3 px-2 text-sm text-right" style={{ color: chart.ink }}>
                                     {product.quantity_sold}
                                   </td>
-                                  <td className="py-3 px-2 text-sm text-right font-medium" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
+                                  <td className="py-3 px-2 text-sm text-right font-medium" style={{ color: chart.ink }}>
                                     {formatCurrency(product.revenue)}
                                   </td>
                                 </tr>
@@ -519,7 +521,7 @@ export default function AnalyticsDashboard() {
                           </table>
                         </div>
                       ) : (
-                        <div className="flex items-center justify-center h-64" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
+                        <div className="flex items-center justify-center h-64" style={{ color: chart.muted }}>
                           <p>No product data for selected period</p>
                         </div>
                       )}
@@ -557,23 +559,19 @@ export default function AnalyticsDashboard() {
                                 color: chartColors.tooltipText
                               }}
                             />
-                            <Legend />
-                            <Bar
-                              dataKey="quantity"
-                              fill="#8B6F47"
-                              name="Quantity"
-                              radius={[8, 8, 0, 0]}
-                            />
+                            {/* One measure per axis: rupees and "units sold" don't
+                                share a scale, and the quantity bars were invisible
+                                beside revenue. Quantities are in the list view. */}
                             <Bar
                               dataKey="revenue"
-                              fill="#5C3D2E"
-                              name="Revenue (₹)"
-                              radius={[8, 8, 0, 0]}
+                              fill={chart.series[0]}
+                              name="Revenue"
+                              radius={[4, 4, 0, 0]}
                             />
                           </BarChart>
                         </ResponsiveContainer>
                       ) : (
-                        <div className="flex items-center justify-center h-64" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
+                        <div className="flex items-center justify-center h-64" style={{ color: chart.muted }}>
                           <p>No product data for selected period</p>
                         </div>
                       )}
@@ -594,7 +592,7 @@ export default function AnalyticsDashboard() {
                                 labelLine={false}
                                 label={({ payload }) => `${payload.percentage}%`}
                                 outerRadius={90}
-                                fill="#8884d8"
+                                fill={chart.series[0]}
                                 dataKey="value"
                               >
                                 {topDishesPieData.map((_, index) => (
@@ -622,11 +620,11 @@ export default function AnalyticsDashboard() {
                                     className="w-3 h-3 rounded-full"
                                     style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}
                                   />
-                                  <span className="text-xs font-medium" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
+                                  <span className="text-xs font-medium" style={{ color: chart.ink }}>
                                     {entry.name}
                                   </span>
                                 </div>
-                                <span className="text-xs" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.8)' : '#6b7280' }}>
+                                <span className="text-xs" style={{ color: chart.muted }}>
                                   {formatCurrency(entry.value)} ({entry.percentage}%)
                                 </span>
                               </div>
@@ -634,7 +632,7 @@ export default function AnalyticsDashboard() {
                           </div>
                         </div>
                       ) : (
-                        <div className="flex items-center justify-center h-64" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
+                        <div className="flex items-center justify-center h-64" style={{ color: chart.muted }}>
                           <p>No product data for selected period</p>
                         </div>
                       )}
@@ -645,10 +643,10 @@ export default function AnalyticsDashboard() {
 
               {/* Revenue by Category Chart */}
               {visibleCharts.revenueByCategory && (
-                <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
+                <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: chart.surface }}>
                   <div className="flex items-center gap-2 mb-4">
                     <ChartBar size={24} weight="duotone" className="text-coffee-brown dark:text-gray-300" />
-                    <h2 className="font-heading text-xl" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>Revenue by Category</h2>
+                    <h2 className="font-heading text-xl" style={{ color: chart.ink }}>Revenue by Category</h2>
                   </div>
 
                   {categoryRevenueData.length > 0 ? (
@@ -677,14 +675,14 @@ export default function AnalyticsDashboard() {
                         <Legend />
                         <Bar
                           dataKey="revenue"
-                          fill="#5C3D2E"
+                          fill={chart.series[0]}
                           name="Revenue (₹)"
                           radius={[8, 8, 0, 0]}
                         />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex items-center justify-center h-64" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
+                    <div className="flex items-center justify-center h-64" style={{ color: chart.muted }}>
                       <p>No category data for selected period</p>
                     </div>
                   )}
@@ -694,10 +692,10 @@ export default function AnalyticsDashboard() {
 
             {/* Revenue by Payment Method - Pie Chart */}
             {visibleCharts.revenueByPaymentMethod && (
-              <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
+              <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: chart.surface }}>
                 <div className="flex items-center gap-2 mb-4">
                   <Wallet size={24} weight="duotone" className="text-coffee-brown dark:text-gray-300" />
-                  <h2 className="font-heading text-xl" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
+                  <h2 className="font-heading text-xl" style={{ color: chart.ink }}>
                     Revenue by Payment Method
                   </h2>
                 </div>
@@ -714,7 +712,7 @@ export default function AnalyticsDashboard() {
                             labelLine={false}
                             label={({ name, payload }) => `${name}: ${payload.percentage}%`}
                             outerRadius={100}
-                            fill="#8884d8"
+                            fill={chart.series[0]}
                             dataKey="value"
                           >
                             {paymentPieData.map((_, index) => (
@@ -745,11 +743,11 @@ export default function AnalyticsDashboard() {
                           <div>
                             <div className="flex items-center gap-2">
                               {paymentIcons[entry.name.toLowerCase()] || entry.name.toUpperCase()}
-                              <span className="text-sm font-medium" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
+                              <span className="text-sm font-medium" style={{ color: chart.ink }}>
                                 {entry.name}
                               </span>
                             </div>
-                            <p className="text-sm" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.8)' : '#6b7280' }}>
+                            <p className="text-sm" style={{ color: chart.muted }}>
                               {formatCurrency(entry.value)} ({entry.percentage}%)
                             </p>
                           </div>
@@ -758,7 +756,7 @@ export default function AnalyticsDashboard() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center h-64" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#6b7280' }}>
+                  <div className="flex items-center justify-center h-64" style={{ color: chart.muted }}>
                     <p>No payment data for selected period</p>
                   </div>
                 )}
@@ -772,40 +770,40 @@ export default function AnalyticsDashboard() {
             {/* --- Sales Performance Section --- */}
             {(visibleCharts.categoryTreemap || visibleCharts.productBubble || visibleCharts.revenueStacked || visibleCharts.revenueWaterfall || visibleCharts.paymentRadial) && (
              <div className="space-y-6">
-                 <h2 className="text-2xl font-bold font-heading" style={{ color: theme === 'dark' ? '#fff' : '#5C3D2E' }}>Sales Performance</h2>
+                 <h2 className="text-2xl font-bold font-heading" style={{ color: chart.ink }}>Sales Performance</h2>
                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                      
                      {visibleCharts.categoryTreemap && (
-                         <div className="p-6 rounded-lg shadow-md border border-neutral-border col-span-1 lg:col-span-2" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
-                             <h3 className="text-lg font-bold mb-4" style={{ color: theme === 'dark' ? '#fff' : '#5C3D2E' }}>Category Composition</h3>
+                         <div className="p-6 rounded-lg shadow-md border border-neutral-border col-span-1 lg:col-span-2" style={{ backgroundColor: chart.surface }}>
+                             <h3 className="text-lg font-bold mb-4" style={{ color: chart.ink }}>Category Composition</h3>
                              <CategoryTreemap dateRange={dateRange} />
                          </div>
                      )}
 
                      {visibleCharts.revenueStacked && (
-                         <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
-                             <h3 className="text-lg font-bold mb-4" style={{ color: theme === 'dark' ? '#fff' : '#5C3D2E' }}>Revenue Composition Trend</h3>
+                         <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: chart.surface }}>
+                             <h3 className="text-lg font-bold mb-4" style={{ color: chart.ink }}>Revenue Composition Trend</h3>
                              <RevenueStackedArea dateRange={dateRange} />
                          </div>
                      )}
 
                      {visibleCharts.revenueWaterfall && (
-                         <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
-                             <h3 className="text-lg font-bold mb-4" style={{ color: theme === 'dark' ? '#fff' : '#5C3D2E' }}>Revenue Breakdown (Waterfall)</h3>
+                         <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: chart.surface }}>
+                             <h3 className="text-lg font-bold mb-4" style={{ color: chart.ink }}>Revenue Breakdown (Waterfall)</h3>
                              <RevenueWaterfall date={dateRange.start} />
                          </div>
                      )}
 
                      {visibleCharts.productBubble && (
-                         <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
-                             <h3 className="text-lg font-bold mb-4" style={{ color: theme === 'dark' ? '#fff' : '#5C3D2E' }}>Product Matrix</h3>
+                         <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: chart.surface }}>
+                             <h3 className="text-lg font-bold mb-4" style={{ color: chart.ink }}>Product Matrix</h3>
                              <ProductBubbleChart dateRange={dateRange} />
                          </div>
                      )}
 
                      {visibleCharts.paymentRadial && (
-                         <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
-                             <h3 className="text-lg font-bold mb-4" style={{ color: theme === 'dark' ? '#fff' : '#5C3D2E' }}>Payment Trends</h3>
+                         <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: chart.surface }}>
+                             <h3 className="text-lg font-bold mb-4" style={{ color: chart.ink }}>Payment Trends</h3>
                              <PaymentRadialBar dateRange={dateRange} />
                          </div>
                      )}
@@ -816,47 +814,47 @@ export default function AnalyticsDashboard() {
             {/* --- Order Insights Section --- */}
             {(visibleCharts.orderFunnel || visibleCharts.orderStatusStream || visibleCharts.orderSankey || visibleCharts.orderTimeline || visibleCharts.dayRadar || visibleCharts.orderValueBox) && (
                 <div className="space-y-6">
-                    <h2 className="text-2xl font-bold font-heading" style={{ color: theme === 'dark' ? '#fff' : '#5C3D2E' }}>Order Insights</h2>
+                    <h2 className="text-2xl font-bold font-heading" style={{ color: chart.ink }}>Order Insights</h2>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                         {visibleCharts.orderSankey && (
-                            <div className="p-6 rounded-lg shadow-md border border-neutral-border col-span-1 lg:col-span-2" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
-                                <h3 className="text-lg font-bold mb-4" style={{ color: theme === 'dark' ? '#fff' : '#5C3D2E' }}>Category to Payment Flow</h3>
+                            <div className="p-6 rounded-lg shadow-md border border-neutral-border col-span-1 lg:col-span-2" style={{ backgroundColor: chart.surface }}>
+                                <h3 className="text-lg font-bold mb-4" style={{ color: chart.ink }}>Category to Payment Flow</h3>
                                 <OrderSankey dateRange={dateRange} />
                             </div>
                         )}
 
                         {visibleCharts.orderTimeline && (
-                            <div className="p-6 rounded-lg shadow-md border border-neutral-border col-span-1 lg:col-span-2" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
-                                <h3 className="text-lg font-bold mb-4" style={{ color: theme === 'dark' ? '#fff' : '#5C3D2E' }}>Order Timeline (Gantt)</h3>
+                            <div className="p-6 rounded-lg shadow-md border border-neutral-border col-span-1 lg:col-span-2" style={{ backgroundColor: chart.surface }}>
+                                <h3 className="text-lg font-bold mb-4" style={{ color: chart.ink }}>Order Timeline (Gantt)</h3>
                                 <OrderTimeline date={dateRange.start} />
                             </div>
                         )}
 
                         {visibleCharts.orderFunnel && (
-                            <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
-                                <h3 className="text-lg font-bold mb-4" style={{ color: theme === 'dark' ? '#fff' : '#5C3D2E' }}>Order Completion Funnel</h3>
+                            <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: chart.surface }}>
+                                <h3 className="text-lg font-bold mb-4" style={{ color: chart.ink }}>Order Completion Funnel</h3>
                                 <FunnelChart dateRange={dateRange} />
                             </div>
                         )}
                         
                         {visibleCharts.orderStatusStream && (
-                            <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
-                                <h3 className="text-lg font-bold mb-4" style={{ color: theme === 'dark' ? '#fff' : '#5C3D2E' }}>Order Status Flow</h3>
+                            <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: chart.surface }}>
+                                <h3 className="text-lg font-bold mb-4" style={{ color: chart.ink }}>Order Status Flow</h3>
                                 <OrderStatusStream dateRange={dateRange} />
                             </div>
                         )}
 
                         {visibleCharts.dayRadar && (
-                            <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
-                                <h3 className="text-lg font-bold mb-4" style={{ color: theme === 'dark' ? '#fff' : '#5C3D2E' }}>Daily Performance Radar</h3>
+                            <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: chart.surface }}>
+                                <h3 className="text-lg font-bold mb-4" style={{ color: chart.ink }}>Daily Performance Radar</h3>
                                 <DayOfWeekRadar dateRange={dateRange} />
                             </div>
                         )}
 
                         {visibleCharts.orderValueBox && (
-                            <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
-                                <h3 className="text-lg font-bold mb-4" style={{ color: theme === 'dark' ? '#fff' : '#5C3D2E' }}>Order Value Distribution</h3>
+                            <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: chart.surface }}>
+                                <h3 className="text-lg font-bold mb-4" style={{ color: chart.ink }}>Order Value Distribution</h3>
                                 <OrderValueBoxPlot dateRange={dateRange} />
                             </div>
                         )}
@@ -867,26 +865,26 @@ export default function AnalyticsDashboard() {
             {/* --- Inventory Section --- */}
             {(visibleCharts.inventoryTreemap || visibleCharts.inventoryWaterfall || visibleCharts.itemQuantityBox) && (
                 <div className="space-y-6">
-                    <h2 className="text-2xl font-bold font-heading" style={{ color: theme === 'dark' ? '#fff' : '#5C3D2E' }}>Inventory & Items</h2>
+                    <h2 className="text-2xl font-bold font-heading" style={{ color: chart.ink }}>Inventory & Items</h2>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         
                         {visibleCharts.inventoryTreemap && (
-                            <div className="p-6 rounded-lg shadow-md border border-neutral-border col-span-1 lg:col-span-2" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
-                                <h3 className="text-lg font-bold mb-4" style={{ color: theme === 'dark' ? '#fff' : '#5C3D2E' }}>Inventory Value Map</h3>
+                            <div className="p-6 rounded-lg shadow-md border border-neutral-border col-span-1 lg:col-span-2" style={{ backgroundColor: chart.surface }}>
+                                <h3 className="text-lg font-bold mb-4" style={{ color: chart.ink }}>Inventory Value Map</h3>
                                 <InventoryTreemap />
                             </div>
                         )}
 
                         {visibleCharts.inventoryWaterfall && (
-                            <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
-                                <h3 className="text-lg font-bold mb-4" style={{ color: theme === 'dark' ? '#fff' : '#5C3D2E' }}>Inventory Value Change</h3>
+                            <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: chart.surface }}>
+                                <h3 className="text-lg font-bold mb-4" style={{ color: chart.ink }}>Inventory Value Change</h3>
                                 <InventoryWaterfall date={dateRange.start} />
                             </div>
                         )}
 
                         {visibleCharts.itemQuantityBox && (
-                            <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
-                                <h3 className="text-lg font-bold mb-4" style={{ color: theme === 'dark' ? '#fff' : '#5C3D2E' }}>Item Quantity Distribution</h3>
+                            <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: chart.surface }}>
+                                <h3 className="text-lg font-bold mb-4" style={{ color: chart.ink }}>Item Quantity Distribution</h3>
                                 <ItemQuantityBoxPlot dateRange={dateRange} />
                             </div>
                         )}
