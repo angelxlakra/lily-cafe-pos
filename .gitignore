@@ -138,3 +138,5 @@ ui-inspection-screenshots/
 # Superpowers brainstorm sessions
 .superpowers/
 .worktrees/
+
+fly.toml
