@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Plus, MagnifyingGlass, Warning, PencilSimple, Trash, X, ListNumbers } from '@phosphor-icons/react';
+import { Plus, MagnifyingGlass, Warning, PencilSimple, Trash, X, ListNumbers, Upload } from '@phosphor-icons/react';
 import CountOrderEditor from './CountOrderEditor';
+import TemplateImportModal from './TemplateImportModal';
 import ConfirmDialog from '../ConfirmDialog';
 import LoadingSpinner from '../LoadingSpinner';
 import { useInventoryItems, useInventoryCategories, useCreateItem, useUpdateItem, useDeleteItem } from '../../hooks/useInventory';
@@ -17,6 +18,7 @@ export default function InventoryItemsTab() {
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [deletingItem, setDeletingItem] = useState<InventoryItem | null>(null);
   const [arranging, setArranging] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   // Items are master data (cost prices, reorder levels), so only the owner
   // may add, change or remove them. Enforced on the API too.
@@ -51,6 +53,10 @@ export default function InventoryItemsTab() {
         </p>
         {isOwner && (
           <div className="flex gap-2">
+            <button onClick={() => setImporting(true)} className="btn-secondary flex items-center gap-2 whitespace-nowrap">
+              <Upload weight="bold" aria-hidden />
+              Import list
+            </button>
             <button onClick={() => setArranging(true)} className="btn-secondary flex items-center gap-2 whitespace-nowrap">
               <ListNumbers weight="bold" aria-hidden />
               Count order
@@ -133,6 +139,12 @@ export default function InventoryItemsTab() {
           </section>
         ))
       )}
+
+      <TemplateImportModal
+        isOpen={importing && isOwner}
+        onClose={() => setImporting(false)}
+        existingCategories={categories}
+      />
 
       {(isCreating || editingItem) && isOwner && (
         <ItemFormModal
