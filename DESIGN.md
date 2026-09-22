@@ -41,12 +41,12 @@ typography:
     lineHeight: 1.25
     letterSpacing: "0.04em"
   body:
-    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
     fontSize: "1rem"
     fontWeight: 400
     lineHeight: 1.6
   label:
-    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
     fontSize: "0.75rem"
     fontWeight: 600
     lineHeight: 1.2
@@ -174,7 +174,7 @@ A roasted-coffee palette on cream paper, with one botanical green borrowed from 
 ## Typography
 
 **Display Font:** Quesha, self-hosted at `/fonts/Quesha.ttf` (fallback: Georgia, serif)
-**Body Font:** Inter (fallback: ui-sans-serif, system-ui). Inter is declared but not loaded, so in practice this renders in the system sans.
+**Body Font:** the system sans (`ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto…`). No webfont is downloaded for body text, so screens paint immediately on a phone and the app works on a local network with no internet. Quesha is the only face the app ships.
 **Label/Mono Font:** the system monospace via `font-mono`, for prices, totals, order numbers and counts.
 
 **Character:** a handwritten notebook heading over a plain working hand. The contrast is the brand. Quesha supplies the personality so that nothing else has to.

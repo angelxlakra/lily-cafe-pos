@@ -61,7 +61,7 @@ export default function Sidebar() {
                  <span className="block font-heading text-xl tracking-[0.18em] leading-tight truncate">
                    Lily Cafe
                  </span>
-                 <span className="block text-[0.65rem] uppercase tracking-[0.3em] text-cream/70 mt-1 truncate">
+                 <span className="block text-[0.6875rem] uppercase tracking-[0.25em] text-cream/80 mt-1 truncate">
                    Admin Portal
                  </span>
                </div>

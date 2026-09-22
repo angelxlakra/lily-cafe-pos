@@ -37,6 +37,20 @@ export default function InventoryPage() {
     return () => window.removeEventListener('resize', measure);
   }, [activeTab, tabs.length]);
 
+  // Tabs behave like tabs for the keyboard: one stop in the tab order, then
+  // arrows (and Home/End) move between them.
+  const onTabKeyDown = (event: React.KeyboardEvent) => {
+    const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+    let next = -1;
+    if (step) next = (tabs.findIndex(tab => tab.id === activeTab) + step + tabs.length) % tabs.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = tabs.length - 1;
+    if (next < 0) return;
+    event.preventDefault();
+    setActiveTab(tabs[next].id);
+    tabRefs.current.get(tabs[next].id)?.focus();
+  };
+
   return (
     <div className="flex flex-col min-h-full bg-neutral-background">
       {/* Not sticky: on a phone a pinned title and tab row would eat a fifth of the screen. */}
@@ -62,6 +76,8 @@ export default function InventoryPage() {
               id={`inventory-tab-${tab.id}`}
               aria-selected={activeTab === tab.id}
               aria-controls="inventory-panel"
+              tabIndex={activeTab === tab.id ? 0 : -1}
+              onKeyDown={onTabKeyDown}
               ref={element => {
                 if (element) tabRefs.current.set(tab.id, element);
                 else tabRefs.current.delete(tab.id);
