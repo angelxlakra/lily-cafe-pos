@@ -1,0 +1,30 @@
+# Frontend — not needed in backend image
+frontend/
+node_modules/
+
+# Agent
+agent/
+
+# Docs
+docs/
+*.md
+
+# Python artifacts
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/.venv
+
+# DB files
+backend/restaurant.db
+backend/test.db
+backend/chits/
+
+# Secrets
+backend/.env
+.env
+
+# Git
+.git/
+.claude/
+.worktrees/
