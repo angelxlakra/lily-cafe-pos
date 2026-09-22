@@ -372,7 +372,7 @@ export default function OrderHistoryPage() {
             <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
               <div className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-200">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-lily-green/10 dark:bg-lily-green/20 rounded-lg text-lily-green dark:text-lily-green-light">
+                  <div className="p-3 bg-lily-green/10 dark:bg-lily-green/20 rounded-lg text-lily-ink">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
@@ -571,7 +571,7 @@ export default function OrderHistoryPage() {
                             <>
                               <button
                                 onClick={() => handlePrintReceipt(order.id)}
-                                className="px-3 py-1 text-sm bg-lily-green/10 border border-lily-green text-lily-green hover:bg-lily-green hover:text-white rounded-md transition-colors flex items-center gap-1"
+                                className="px-3 py-1 text-sm bg-lily-green/10 border border-lily-green text-lily-ink hover:bg-lily-green hover:text-white rounded-md transition-colors flex items-center gap-1"
                                 title="Print Receipt"
                               >
                                 <Printer size={16} weight="bold" />
@@ -663,7 +663,7 @@ export default function OrderHistoryPage() {
                         <>
                           <button
                             onClick={() => handlePrintReceipt(order.id)}
-                            className="px-4 py-2 text-sm bg-lily-green/10 border border-lily-green text-lily-green hover:bg-lily-green hover:text-white rounded-md transition-colors flex items-center justify-center gap-1"
+                            className="px-4 py-2 text-sm bg-lily-green/10 border border-lily-green text-lily-ink hover:bg-lily-green hover:text-white rounded-md transition-colors flex items-center justify-center gap-1"
                             title="Print Receipt"
                           >
                             <Printer size={16} weight="bold" />
@@ -1004,7 +1004,7 @@ function OrderDetailsModal({
             <button
               onClick={() => order && onPrintReceipt(order.id)}
               disabled={!order}
-              className="flex-1 px-4 py-2 bg-lily-green/10 border border-lily-green text-lily-green hover:bg-lily-green hover:text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
+              className="flex-1 px-4 py-2 bg-lily-green/10 border border-lily-green text-lily-ink hover:bg-lily-green hover:text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
             >
               <Printer size={20} weight="bold" />
               Print Receipt

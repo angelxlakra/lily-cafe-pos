@@ -293,7 +293,7 @@ function TransactionFormModal({ type, onClose }: { type: Action; onClose: () => 
           </div>
 
           {submitError && (
-            <div role="alert" className="text-sm font-medium text-[#c0392b] dark:text-error">Not saved. {submitError}</div>
+            <div role="alert" className="text-sm font-medium text-error">Not saved. {submitError}</div>
           )}
 
           <div className="flex justify-end gap-3 pt-2">

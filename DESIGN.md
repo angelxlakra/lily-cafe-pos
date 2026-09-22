@@ -7,6 +7,8 @@ colors:
   coffee-light: "#A0826D"
   lily-green: "#8B9D83"
   lily-green-light: "#A8B89F"
+  lily-green-deep: "#5A6655"
+  lily-ink: "#5A6655"
   cream: "#F5E6D3"
   off-white: "#FAF8F5"
   neutral-background: "#FFFCF7"
@@ -15,10 +17,10 @@ colors:
   neutral-text-body: "#43352D"
   neutral-text-light: "#6B5D54"
   neutral-text-muted: "#736459"
-  success: "#4CAF50"
-  error: "#F44336"
-  warning: "#FF9800"
-  info: "#2196F3"
+  success: "#276C2B"
+  error: "#B3342A"
+  warning: "#9E4A06"
+  info: "#1565C0"
 typography:
   display:
     fontFamily: "Quesha, Georgia, 'Times New Roman', serif"
@@ -79,7 +81,7 @@ components:
     padding: "8px 16px"
     height: "48px"
   button-success:
-    backgroundColor: "{colors.lily-green}"
+    backgroundColor: "{colors.lily-green-deep}"
     textColor: "{colors.off-white}"
     rounded: "{rounded.sm}"
     padding: "8px 16px"
@@ -125,25 +127,30 @@ Density is moderate. Screens run from a phone-first waiter floor (table grid, bo
 
 The system currently layers depth through soft shadows, gradient-filled primary buttons and hover lift. That is recorded below exactly as implemented and flagged as drift. It is more ornament than a billing tool needs.
 
+**Motion** explains what changed; it never decorates or makes anyone wait. One decelerating curve (`--ease-settle`, `cubic-bezier(0.16, 1, 0.3, 1)`) and short timings: presses 120ms, state changes 200ms, overlays 250ms, theme fades 300ms. Entrances are `animate-fade-in` (scrims, banners), `animate-scale-in` (dialogs), `animate-slide-up` (bottom sheets) and `animate-row-in` (list rows). Changes on live lists use `animate-arrive`, `animate-highlight` and `animate-depart`. Money counts to its new value with `useCountUp`, and a finished action gets one `animate-draw` checkmark. The screen's one authored moment is the bill settling in the payment modal. Under `prefers-reduced-motion`, movement becomes a plain fade while colour and state changes stay.
+
 **Key Characteristics:**
 - Quesha, the handwritten display face, is used for headings and table numbers only. Everything operational is set in sans.
 - Warm roasted-brown primaries on cream and off-white paper, with lily green for positive and settled states.
 - Every tappable control is at least 48px. The floor is a touch surface.
 - Money and counts are set in monospace or tabular numerals.
 - Dark mode is espresso-warm, never cool grey.
+- Motion is short, decelerating and informative: counts roll, finished things get one checkmark, nothing bounces.
 
 ## Colors
 
 A roasted-coffee palette on cream paper, with one botanical green borrowed from the lily logo.
 
 ### Primary
-- **Roasted Coffee** (coffee-brown): primary actions, active chips, sticky inventory category headers, focus borders on inputs. It is the colour of "do this".
+- **Roasted Coffee** (coffee-brown): primary actions, active chips, focus borders on inputs. It is the colour of "do this".
 - **Espresso** (coffee-dark): the sidebar background and the deep end of the primary gradient. Hover state for primary buttons.
 - **Milky Latte** (coffee-light): sidebar dividers, secondary button borders, hover borders on chips.
 
 ### Secondary
-- **Lily Leaf** (lily-green): success buttons, paid or settled states, available tables, positive indicators. Taken from the lily mark.
+- **Lily Leaf** (lily-green): fills and tints for paid or settled states, available tables and positive indicators. Taken from the lily mark. Too light for text (2.7:1).
 - **Pale Lily Leaf** (lily-green-light): lighter tints behind green states.
+- **Deep Lily Leaf** (lily-green-deep): filled "done" controls with white icons, such as the count's ✓ and the success button.
+- **Lily Ink** (lily-ink): Lily Leaf for text and icons on paper. It re-tones to a pale green in dark mode.
 
 ### Neutral
 - **Cream Paper** (cream): secondary button fill, chips at rest, soft gradient backgrounds, text on dark brown.
@@ -155,10 +162,12 @@ A roasted-coffee palette on cream paper, with one botanical green borrowed from 
 - **Faded Ink** (neutral-text-light) and **Margin Note** (neutral-text-muted): secondary labels, placeholders and meta.
 
 ### Functional
-- **success / error / warning / info**: Material-standard green, red, orange and blue, used for toasts, status badges and destructive affordances. They are cooler and brighter than the rest of the palette. They sit in the system as semantic signals, not as brand colours.
+- **success / error / warning / info**: deep green, brick red, burnt amber and blue, used for status text, badges and destructive affordances, and as `/10` tints behind them. They are dark enough to read as text (at least 4.5:1 on paper, page and cream). In dark mode they re-tone lighter, so text on a solid status fill switches to dark (`dark:text-neutral-background`). They are semantic signals, not brand colours.
 
 ### Named Rules
 **The Brown Means Go Rule.** Roasted Coffee is the only colour for the primary action on a screen. Settled or paid outcomes get Lily Leaf, not brown.
+
+**The Readable Signal Rule.** Status and Lily Leaf text always uses a token that passes 4.5:1 (`text-success`, `text-warning`, `text-error`, `text-info`, `text-lily-ink`). Never hard-code a hex to get a darker shade.
 
 **The Espresso Dark Rule.** Dark mode re-tones every token to warm brown-black (page `#1C1812`, surface `#2A2419`, raised `#3A3128`, text `#F5F0E8`). Never introduce neutral greys (`neutral-800` and similar) in dark mode.
 
@@ -189,7 +198,7 @@ The layout is mobile-first and follows an 8px rhythm. Tailwind's default spacing
 - **Waiter floor (phone):** a table grid that steps from 2 to 5 columns (`grid-cols-2 sm:3 md:4 lg:5`, 16px gap). There is a fixed bottom navigation bar with 48px items and a floating cart button, and content keeps a `pb-24` bottom pad to clear the bar.
 - **Counter and owner (desktop):** a left sidebar that collapses to an icon rail, becomes an overlay drawer below `lg` (1024px), and has content cards on the Warm Page background.
 - **Breakpoints:** Tailwind defaults (sm 640, md 768, lg 1024, xl 1280). `lg` is the sidebar and bottom-nav switch.
-- **Inventory count:** a single scrolling column with sticky Roasted Coffee category headers and full-width rows.
+- **Tonight's count:** full screen with one pinned bar (exit, current category, progress) and the actions pinned at the bottom, in thumb reach. Category headings scroll with the list, and finished categories fold into a one-line summary.
 
 **The 48px Floor Rule.** Every interactive control has a hit area of at least 48 × 48px (`--min-height-touch`, `touch-target-large`). This is non-negotiable on the waiter and count screens.
 
@@ -248,6 +257,12 @@ Tactile and confident, and sized for a thumb.
 ### Table Tile (signature)
 This is the waiter's entry point. A square card carries the table number in Quesha display with a status pill underneath. Occupied tables show a soft blurred Lily Leaf glow in the corner. Tiles sit in a responsive 2 to 5 column grid.
 
+### Count Row (signature)
+One line per stock item in Tonight's Count. The name and a status line sit on the left. On the right, in right-thumb reach, are a 48px ✓ ("matches") and a `− value +` stepper with press-and-hold. Values display as ½, ¼ and ¾. The row tints Lily Leaf when checked and Cream when changed, and big differences get a burnt-amber warning. Finished categories fold into a one-line summary.
+
+### Settling Bill (signature)
+The payment modal's Remaining tile counts down as payments are added. When it lands on ₹0, the tile turns Lily Leaf, reads "Fully paid", a checkmark draws in, and Complete fills with brown from left to right. The button is enabled by the real balance, not by the animation.
+
 ### Badges
 Pill-shaped, 12px weight 600, with semantic tints for order and payment status.
 
@@ -262,6 +277,8 @@ Phosphor Icons. `duotone` is the default weight, with `bold` for emphasis and `f
 - **Do** set rupee amounts and counts in `font-mono` or `tabular-nums`.
 - **Do** use Lily Leaf for paid, served and available states, and Roasted Coffee for the next action.
 - **Do** define dark-mode colours by re-toning tokens under `.dark`, keeping them warm.
+- **Do** use the shared motion utilities (`animate-*`, `useCountUp`, `useListPresence`) and `--ease-settle` rather than new keyframes or curves.
+- **Do** give every async surface a plain-language error with a retry (`describeApiError`), and never lose what someone typed.
 
 ### Don't:
 - **Don't** set prices, buttons or form labels in Quesha.
@@ -269,3 +286,6 @@ Phosphor Icons. `duotone` is the default weight, with `bold` for emphasis and `f
 - **Don't** add new shadow levels, glass panels or gradients. Depth is already over-expressed.
 - **Don't** extend the `<Button>` component's divergent variant set. Align it with `.btn-*` or use the utilities directly.
 - **Don't** add more `!important` dark-mode patches to `index.css`. Fix the token instead.
+- **Don't** use bounce or elastic curves, infinite loops, hover lift, or staggered reveals across long lists.
+- **Don't** use browser `alert`/`confirm`. Use `ConfirmDialog` or an inline message.
+- **Don't** mark a card with a thick coloured left edge. Use a thin tinted border.

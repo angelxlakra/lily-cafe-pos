@@ -26,6 +26,13 @@ const formatBusinessDate = (value: string) => {
   return new Date(year, month - 1, day).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
 };
 
+/** Stored timestamps are UTC; SQLite returns them without an offset. */
+const savedAt = (count: CountSummary) =>
+  count.created_at
+    ? new Date(/([zZ]|[+-]\d\d:?\d\d)$/.test(count.created_at) ? count.created_at : `${count.created_at}Z`)
+        .toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' })
+    : null;
+
 const tally = (count: CountSummary) =>
   `${count.items_checked} checked · ${count.items_changed} changed · ${count.items_skipped} not counted`;
 
@@ -103,7 +110,7 @@ export default function DailyCountTab() {
               {draftEntries > 0
                 ? `In progress on this phone · ${Math.min(draftEntries, itemTotal)} of ${itemTotal} counted · started ${formatTime(new Date(draft!.startedAt))}`
                 : today
-                  ? `Counted tonight by ${today.counted_by} · ${tally(today)}`
+                  ? `Counted tonight${savedAt(today) ? ` at ${savedAt(today)}` : ''} by ${today.counted_by} · ${tally(today)}`
                   : `Not started · ${itemTotal} items to count`}
             </p>
           </div>
@@ -132,7 +139,9 @@ export default function DailyCountTab() {
               <li key={count.id} className="px-4 py-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                 <span className="font-medium text-neutral-text-dark">
                   {formatBusinessDate(count.business_date)}
-                  <span className="font-normal text-neutral-text-muted"> · {count.counted_by}</span>
+                  <span className="font-normal text-neutral-text-muted">
+                    {savedAt(count) && <> · {savedAt(count)}</>} · {count.counted_by}
+                  </span>
                 </span>
                 <span className={`text-sm tabular-nums ${count.items_skipped > 0 ? 'text-neutral-text-body' : 'text-neutral-text-muted'}`}>
                   {tally(count)}

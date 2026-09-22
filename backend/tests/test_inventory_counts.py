@@ -132,3 +132,23 @@ def test_reordering_unknown_ids_fails(client, owner_headers, stock):
         "/api/v1/inventory/items/order", headers=owner_headers, json={"ids": [9999]}
     )
     assert response.status_code == 404
+
+
+@pytest.mark.parametrize("utc_now, expected_night", [
+    ((2026, 9, 21, 17, 30), "2026-09-21"),  # 23:00 IST: that night
+    ((2026, 9, 21, 18, 35), "2026-09-21"),  # 00:05 IST: still last night
+    ((2026, 9, 21, 22, 29), "2026-09-21"),  # 03:59 IST: still last night
+    ((2026, 9, 21, 22, 31), "2026-09-22"),  # 04:01 IST: a new day
+])
+def test_counts_after_midnight_belong_to_the_night(client, auth_headers, stock, monkeypatch, utc_now, expected_night):
+    from datetime import datetime
+    from app.core import business_day
+
+    monkeypatch.setattr(business_day, "utcnow", lambda: datetime(*utc_now))
+    saved = client.post(
+        "/api/v1/inventory/counts",
+        headers=auth_headers,
+        json={"lines": [{"item_id": stock["Eggs"].id, "counted_quantity": 20}]},
+    ).json()
+    assert saved["business_date"] == expected_night
+    assert client.get("/api/v1/inventory/counts/today", headers=auth_headers).json()["id"] == saved["id"]

@@ -149,7 +149,9 @@ function SortableList({
   const rowKey = rows.map(row => row.id).join(',');
   useEffect(() => setOrder(rows), [rowKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const mutation = useMutation({ mutationFn: save, onSuccess: onSaved });
+  // Saves run one at a time, so quick taps can't land out of order and
+  // leave an older arrangement on the server.
+  const mutation = useMutation({ mutationFn: save, onSuccess: onSaved, scope: { id: `count-order-${label}` } });
   const move = (from: number, to: number) => {
     if (to < 0 || to >= order.length || from === to) return;
     const next = arrayMove(order, from, to);
@@ -172,7 +174,7 @@ function SortableList({
       <div className="h-6 text-sm" aria-live="polite">
         {mutation.isPending && <span className="text-neutral-text-muted">Saving…</span>}
         {mutation.isError && (
-          <span className="text-[#c0392b] dark:text-error">
+          <span className="text-error">
             Order not saved. {describeApiError(mutation.error)}{' '}
             <button type="button" className="underline font-medium" onClick={() => mutation.mutate(order.map(row => row.id))}>
               Try again

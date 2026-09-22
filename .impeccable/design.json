@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-21T08:14:31.926423+00:00",
+  "generatedAt": "2026-09-21T15:44:42.723337+00:00",
   "title": "Design System: Lily Cafe POS",
   "extensions": {
     "colorMeta": {
@@ -202,61 +202,91 @@
       "success": {
         "role": "functional",
         "displayName": "Success",
-        "canonical": "#4CAF50",
+        "canonical": "#276C2B",
         "tonalRamp": [
-          "#173518",
-          "#285C2A",
-          "#39843C",
-          "#4AAB4E",
-          "#6DC071",
-          "#94D197",
-          "#BFE3C0",
-          "#EDF7EE"
+          "#143816",
+          "#236127",
+          "#328B37",
+          "#41B448",
+          "#65C86B",
+          "#8FD693",
+          "#BCE7BE",
+          "#ECF8ED"
         ]
       },
       "error": {
         "role": "functional",
         "displayName": "Error",
-        "canonical": "#F44336",
+        "canonical": "#B3342A",
         "tonalRamp": [
-          "#490904",
-          "#7E0F07",
-          "#B3150A",
-          "#E81C0D",
-          "#F44639",
-          "#F7776E",
-          "#FAAEA8",
-          "#FEE8E7"
+          "#3E120F",
+          "#6B1F19",
+          "#992C24",
+          "#C63A2F",
+          "#D75F56",
+          "#E28A83",
+          "#EEB9B5",
+          "#FAEBEA"
         ]
       },
       "warning": {
         "role": "functional",
         "displayName": "Warning",
-        "canonical": "#FF9800",
+        "canonical": "#9E4A06",
         "tonalRamp": [
-          "#4C2E00",
-          "#854F00",
-          "#BD7000",
-          "#F59200",
-          "#FFAB2E",
-          "#FFC166",
-          "#FFDAA3",
-          "#FFF5E5"
+          "#4A2303",
+          "#803C05",
+          "#B65507",
+          "#EC6E09",
+          "#F78C36",
+          "#F9AB6C",
+          "#FCCDA7",
+          "#FEF1E6"
         ]
       },
       "info": {
         "role": "functional",
         "displayName": "Info",
-        "canonical": "#2196F3",
+        "canonical": "#1565C0",
         "tonalRamp": [
-          "#042A49",
-          "#07497E",
-          "#0A68B3",
-          "#0D87E8",
-          "#39A1F4",
-          "#6EBAF7",
-          "#A8D6FA",
-          "#E7F4FE"
+          "#082445",
+          "#0D3F78",
+          "#1359AA",
+          "#1874DD",
+          "#4391EA",
+          "#75AFF0",
+          "#ACCFF6",
+          "#E8F2FC"
+        ]
+      },
+      "lily-green-deep": {
+        "role": "secondary",
+        "displayName": "Deep Lily Leaf",
+        "canonical": "#5A6655",
+        "tonalRamp": [
+          "#252A23",
+          "#40483C",
+          "#5B6756",
+          "#76866F",
+          "#93A08D",
+          "#B0B9AC",
+          "#CFD5CD",
+          "#F2F3F1"
+        ]
+      },
+      "lily-ink": {
+        "role": "secondary",
+        "displayName": "Lily Ink",
+        "canonical": "#5A6655",
+        "tonalRamp": [
+          "#252A23",
+          "#40483C",
+          "#5B6756",
+          "#76866F",
+          "#93A08D",
+          "#B0B9AC",
+          "#CFD5CD",
+          "#F2F3F1"
         ]
       }
     },
@@ -306,19 +336,44 @@
     ],
     "motion": [
       {
-        "name": "ease-standard",
-        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
-        "purpose": "Button and state transitions (150–200ms)."
-      },
-      {
-        "name": "ease-out-expo",
+        "name": "ease-settle",
         "value": "cubic-bezier(0.16, 1, 0.3, 1)",
-        "purpose": "Drawer slide-in from right (400ms)."
+        "purpose": "The one easing curve: confident deceleration for every state change and entrance."
       },
       {
-        "name": "theme-fade",
-        "value": "300ms ease",
-        "purpose": "Light/dark colour transition."
+        "name": "dur-press",
+        "value": "120ms",
+        "purpose": "Button press feedback."
+      },
+      {
+        "name": "dur-state",
+        "value": "200ms",
+        "purpose": "Routine state changes, list rows."
+      },
+      {
+        "name": "dur-overlay",
+        "value": "250ms",
+        "purpose": "Dialogs and sheets entering (exit faster)."
+      },
+      {
+        "name": "dur-theme",
+        "value": "300ms",
+        "purpose": "Light/dark switch colour fade only."
+      },
+      {
+        "name": "count-up",
+        "value": "useCountUp, 300–400ms",
+        "purpose": "Money and totals roll to their new value."
+      },
+      {
+        "name": "draw",
+        "value": "animate-draw, 350ms",
+        "purpose": "One checkmark when something is finished or settled."
+      },
+      {
+        "name": "list presence",
+        "value": "animate-arrive / animate-highlight / animate-depart",
+        "purpose": "New, changed and removed rows in live lists."
       }
     ],
     "breakpoints": [
@@ -422,7 +477,8 @@
       "Warm roasted-brown primaries on cream and off-white paper, with lily green for positive and settled states.",
       "Every tappable control is at least 48px. The floor is a touch surface.",
       "Money and counts are set in monospace or tabular numerals.",
-      "Dark mode is espresso-warm, never cool grey."
+      "Dark mode is espresso-warm, never cool grey.",
+      "Motion is short, decelerating and informative: counts roll, finished things get one checkmark, nothing bounces."
     ],
     "rules": [
       {
@@ -433,6 +489,11 @@
       {
         "name": "The Espresso Dark Rule",
         "body": "Dark mode re-tones every token to warm brown-black (page `#1C1812`, surface `#2A2419`, raised `#3A3128`, text `#F5F0E8`). Never introduce neutral greys (`neutral-800` and similar) in dark mode.",
+        "section": "colors"
+      },
+      {
+        "name": "The Readable Signal Rule",
+        "body": "Status and Lily Leaf text always uses a token that passes 4.5:1 (`text-success`, `text-warning`, `text-error`, `text-info`, `text-lily-ink`). Never hard-code a hex to get a darker shade.",
         "section": "colors"
       },
       {
@@ -461,14 +522,19 @@
       "**Do** keep every interactive control at 48px or larger.",
       "**Do** set rupee amounts and counts in `font-mono` or `tabular-nums`.",
       "**Do** use Lily Leaf for paid, served and available states, and Roasted Coffee for the next action.",
-      "**Do** define dark-mode colours by re-toning tokens under `.dark`, keeping them warm."
+      "**Do** define dark-mode colours by re-toning tokens under `.dark`, keeping them warm.",
+      "**Do** use the shared motion utilities (`animate-*`, `useCountUp`, `useListPresence`) and `--ease-settle` rather than new keyframes or curves.",
+      "**Do** give every async surface a plain-language error with a retry (`describeApiError`), and never lose what someone typed."
     ],
     "donts": [
       "**Don't** set prices, buttons or form labels in Quesha.",
       "**Don't** introduce cool neutral greys (`neutral-800`, `bg-white` without a dark override) in either theme.",
       "**Don't** add new shadow levels, glass panels or gradients. Depth is already over-expressed.",
       "**Don't** extend the `<Button>` component's divergent variant set. Align it with `.btn-*` or use the utilities directly.",
-      "**Don't** add more `!important` dark-mode patches to `index.css`. Fix the token instead."
+      "**Don't** add more `!important` dark-mode patches to `index.css`. Fix the token instead.",
+      "**Don't** use bounce or elastic curves, infinite loops, hover lift, or staggered reveals across long lists.",
+      "**Don't** use browser `alert`/`confirm`. Use `ConfirmDialog` or an inline message.",
+      "**Don't** mark a card with a thick coloured left edge. Use a thin tinted border."
     ]
   }
 }

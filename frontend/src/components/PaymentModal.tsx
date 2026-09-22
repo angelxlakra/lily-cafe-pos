@@ -212,7 +212,7 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                 }`}>
                   {formatCounting(shownRemaining, remaining)}
                   {hasLanded && (
-                    <svg className="w-6 h-6 shrink-0 text-lily-green-deep dark:text-lily-green-light" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <svg className="w-6 h-6 shrink-0 text-lily-ink" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                       <path
                         d="M5 12.5l4.5 4.5L19 7.5"
                         pathLength={1}

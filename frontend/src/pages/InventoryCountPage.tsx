@@ -14,6 +14,7 @@ import CountRow from '../components/inventory/CountRow';
 import CountReviewSheet from '../components/inventory/CountReviewSheet';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { describeApiError } from '../utils/apiError';
+import { useDialogFocus } from '../hooks/useDialogFocus';
 import { clearCountDraft, loadCountDraft, saveCountDraft, type CountEntries } from '../utils/countDraft';
 import type { CountResult, CountSheetGroup } from '../types/inventory';
 
@@ -138,7 +139,7 @@ export default function InventoryCountPage() {
       <main className="min-h-dvh grid place-items-center bg-neutral-background px-6 py-10">
         <div className="w-full max-w-sm text-center animate-fade-in">
           <div className="mx-auto size-20 rounded-full bg-lily-green/20 grid place-items-center">
-            <svg className="size-10 text-lily-green-deep dark:text-lily-green-light" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <svg className="size-10 text-lily-ink" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path
                 d="M5 12.5l4.5 4.5L19 7.5"
                 pathLength={1}
@@ -156,7 +157,7 @@ export default function InventoryCountPage() {
           <p className="mt-1 tabular-nums text-neutral-text-dark font-medium">
             {count.items_checked} checked · {count.items_changed} changed · {count.items_skipped} not counted
           </p>
-          {count.emailed && <p className="mt-1 text-sm text-neutral-text-muted">The owner has been emailed a report.</p>}
+          {count.emailed && <p className="mt-1 text-sm text-neutral-text-muted">A report is on its way to the owner by email.</p>}
           <button type="button" onClick={() => navigate('/admin/inventory')} className="btn-primary w-full mt-8">
             Done
           </button>
@@ -173,7 +174,7 @@ export default function InventoryCountPage() {
       <h1 className="sr-only">Tonight's count</h1>
 
       {/* The one pinned layer: exit, where you are, progress */}
-      <header className="sticky top-0 z-20 bg-off-white/95 backdrop-blur-sm border-b border-neutral-border">
+      <header className="sticky top-0 z-20 bg-off-white border-b border-neutral-border">
         <div className="max-w-2xl mx-auto flex items-center gap-1 h-14 px-1">
           <button
             type="button"
@@ -195,8 +196,9 @@ export default function InventoryCountPage() {
             <CaretDown size={16} weight="bold" className="shrink-0" aria-hidden />
             <span className="sr-only">. Jump to a category</span>
           </button>
-          <span className="w-20 pr-3 text-right text-sm font-semibold tabular-nums text-neutral-text-body" aria-live="polite">
+          <span className="w-20 pr-3 text-right text-sm font-semibold tabular-nums text-neutral-text-body">
             {countedTotal}/{items.length}
+            <span className="sr-only"> counted</span>
           </span>
         </div>
         <div
@@ -207,7 +209,10 @@ export default function InventoryCountPage() {
           aria-valuemax={items.length}
           aria-valuenow={countedTotal}
         >
-          <div className="h-full bg-lily-green-deep transition-[width] duration-300 ease-(--ease-settle)" style={{ width: `${progress}%` }} />
+          <div
+            className="h-full origin-left bg-lily-green-deep transition-transform duration-300 ease-(--ease-settle)"
+            style={{ transform: `scaleX(${progress / 100})` }}
+          />
         </div>
       </header>
 
@@ -262,24 +267,34 @@ export default function InventoryCountPage() {
                 }}
                 className="scroll-mt-16 px-3 pt-5 pb-2"
               >
-                <button
-                  type="button"
-                  onClick={done ? toggle : undefined}
-                  aria-expanded={done ? !folded : undefined}
-                  className={`w-full flex items-center justify-between gap-3 text-left rounded-lg transition-colors duration-200 ${
-                    folded ? 'bg-lily-green/10 px-3 py-3' : ''
-                  } ${done ? 'cursor-pointer' : 'cursor-default'}`}
-                >
-                  <h2 id={`count-group-${key}`} className="flex items-center gap-2 font-heading text-xl! leading-tight! text-neutral-text-dark">
-                    {done && <Check size={18} weight="bold" className="text-lily-green-deep dark:text-lily-green-light shrink-0" aria-hidden />}
-                    {groupName(group)}
-                  </h2>
-                  <span className="shrink-0 text-sm tabular-nums text-neutral-text-muted">
-                    {done
-                      ? `${counted.length - changed} checked · ${changed} changed`
-                      : `${counted.length}/${group.items.length}`}
-                  </span>
-                </button>
+                <h2 id={`count-group-${key}`} className="font-heading text-xl! leading-tight! text-neutral-text-dark">
+                  {done ? (
+                    <button
+                      type="button"
+                      onClick={toggle}
+                      aria-expanded={!folded}
+                      className={`w-full min-h-12 flex items-center justify-between gap-3 text-left rounded-lg transition-colors duration-200 ${
+                        folded ? 'bg-lily-green/10 px-3 py-2' : ''
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Check size={18} weight="bold" className="text-lily-ink shrink-0" aria-hidden />
+                        {groupName(group)}
+                      </span>
+                      <span className="shrink-0 font-sans text-sm tracking-normal tabular-nums text-neutral-text-muted">
+                        {counted.length - changed} checked · {changed} changed
+                      </span>
+                    </button>
+                  ) : (
+                    <span className="flex items-center justify-between gap-3">
+                      {groupName(group)}
+                      <span className="shrink-0 font-sans text-sm tracking-normal tabular-nums text-neutral-text-muted">
+                        {counted.length}/{group.items.length}
+                        <span className="sr-only"> counted</span>
+                      </span>
+                    </span>
+                  )}
+                </h2>
               </div>
 
               {/* Finished categories fold away; the grid-rows transition animates the height. */}
@@ -300,7 +315,7 @@ export default function InventoryCountPage() {
 
       {/* Actions in thumb reach */}
       {items.length > 0 && (
-        <div className="fixed bottom-0 inset-x-0 z-20 bg-off-white/95 backdrop-blur-sm border-t border-neutral-border">
+        <div className="fixed bottom-0 inset-x-0 z-20 bg-off-white border-t border-neutral-border">
           <div className="max-w-2xl mx-auto flex gap-2 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             {!allCounted && (
               <button type="button" onClick={goToNextUncounted} className="btn-secondary flex-1 whitespace-nowrap">
@@ -355,17 +370,17 @@ function CategoryJumpSheet({
   onClose: () => void;
 }) {
   const listRef = useRef<HTMLUListElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, onClose);
   useEffect(() => {
     listRef.current?.querySelector('button')?.focus();
-    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && onClose();
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div className="absolute inset-0 bg-black/50 animate-fade-in" onClick={onClose} aria-hidden />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Jump to a category"
@@ -383,7 +398,7 @@ function CategoryJumpSheet({
                   className="w-full min-h-14 px-5 flex items-center justify-between gap-3 text-left hover:bg-cream/60"
                 >
                   <span className="font-medium text-neutral-text-dark truncate">{groupName(group)}</span>
-                  <span className={`shrink-0 text-sm tabular-nums inline-flex items-center gap-1 ${done ? 'text-lily-green-deep dark:text-lily-green-light font-medium' : 'text-neutral-text-muted'}`}>
+                  <span className={`shrink-0 text-sm tabular-nums inline-flex items-center gap-1 ${done ? 'text-lily-ink font-medium' : 'text-neutral-text-muted'}`}>
                     {done && <Check size={14} weight="bold" aria-hidden />}
                     {counted}/{group.items.length}
                   </span>

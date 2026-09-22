@@ -326,7 +326,7 @@ export default function AnalyticsDashboard() {
               <div className="p-6 rounded-lg shadow-md border border-neutral-border" style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-medium" style={{ color: theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : '#6b7280' }}>Avg Order Value</h3>
-                  <ChartLine size={24} weight="duotone" className="text-lily-green" />
+                  <ChartLine size={24} weight="duotone" className="text-lily-ink" />
                 </div>
                 <p className="text-3xl font-bold mb-1" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
                   {formatCurrency(orderStats?.average_order_value || 0)}

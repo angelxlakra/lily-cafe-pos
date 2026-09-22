@@ -97,18 +97,18 @@ function CountRow({ item, counted, onChange, onStep }: CountRowProps) {
         status === 'checked' ? 'bg-lily-green/10' : status === 'changed' ? 'bg-cream/50' : ''
       }`}
     >
-      <div className="flex items-center gap-2 px-3 py-2 min-h-16">
+      <div className="flex items-center gap-2 px-2.5 py-2 min-h-16">
         <div className="flex-1 min-w-0">
-          <div className="font-medium leading-snug text-neutral-text-dark line-clamp-2 break-words">
+          <div className="font-medium leading-snug text-neutral-text-dark line-clamp-3 break-words">
             {item.name}
           </div>
-          <div className="mt-0.5 text-xs tabular-nums text-neutral-text-muted flex items-center gap-1">
+          <div className="mt-0.5 text-[0.8125rem] leading-snug tabular-nums text-neutral-text-muted flex items-center gap-1">
             {status === 'untouched' && <>System {formatQty(system)} {item.unit}</>}
             {status === 'checked' && <>Matches · {formatQty(system)} {item.unit}</>}
             {status === 'changed' && (
               <>
-                {big && <Warning size={14} weight="fill" className="text-[#b45309] shrink-0" aria-hidden />}
-                <span className={big ? 'font-semibold text-[#b45309] dark:text-warning' : undefined}>
+                {big && <Warning size={14} weight="fill" className="text-warning shrink-0" aria-hidden />}
+                <span className={big ? 'font-semibold text-warning' : undefined}>
                   Was {formatQty(system)} · {diff > 0 ? '+' : '−'}{formatQty(Math.abs(diff))} {item.unit}
                   {big && <span className="sr-only"> (big difference)</span>}
                 </span>
@@ -116,7 +116,7 @@ function CountRow({ item, counted, onChange, onStep }: CountRowProps) {
             )}
           </div>
           {error && (
-            <div id={errorId} role="alert" className="mt-1 text-xs font-medium text-[#c0392b] dark:text-error">
+            <div id={errorId} role="alert" className="mt-1 text-xs font-medium text-error">
               {error}
             </div>
           )}
@@ -133,13 +133,13 @@ function CountRow({ item, counted, onChange, onStep }: CountRowProps) {
           className={`size-12 shrink-0 grid place-items-center rounded-lg border transition-colors duration-[var(--dur-press)] ${
             status === 'checked'
               ? 'bg-lily-green-deep border-lily-green-deep text-white'
-              : 'border-neutral-border text-neutral-text-muted hover:border-lily-green-deep hover:text-lily-green-deep'
+              : 'border-neutral-border text-neutral-text-muted hover:border-lily-ink hover:text-lily-ink'
           }`}
         >
           <Check size={22} weight="bold" aria-hidden />
         </button>
 
-        <div className="flex items-center shrink-0 rounded-lg border border-neutral-border bg-off-white">
+        <div className="ml-1 flex items-center shrink-0 rounded-lg border border-neutral-border bg-off-white">
           <button
             type="button"
             {...minus}
@@ -174,7 +174,7 @@ function CountRow({ item, counted, onChange, onStep }: CountRowProps) {
             aria-label={`Count for ${item.name}, in ${item.unit}`}
             aria-invalid={error !== null}
             aria-describedby={error ? errorId : undefined}
-            className="w-14 h-12 bg-transparent text-center text-lg font-semibold tabular-nums text-neutral-text-dark placeholder:text-neutral-text-muted placeholder:font-normal focus:outline-none focus:bg-white dark:focus:bg-neutral-background"
+            className="w-12 h-12 bg-transparent text-center text-lg font-semibold tabular-nums text-neutral-text-dark placeholder:text-neutral-text-muted placeholder:font-normal focus:outline-none focus:bg-white dark:focus:bg-neutral-background"
           />
           <button
             type="button"
@@ -186,6 +186,12 @@ function CountRow({ item, counted, onChange, onStep }: CountRowProps) {
           </button>
         </div>
       </div>
+      {/* Spoken feedback for ✓ and the steppers, which change the value silently otherwise. */}
+      <span className="sr-only" aria-live="polite">
+        {status === 'untouched' ? '' : status === 'checked'
+          ? `${item.name} matches, ${formatQty(system)}`
+          : `${item.name} ${formatQty(counted!)}, ${diff > 0 ? 'more' : 'less'} than system by ${formatQty(Math.abs(diff))}`}
+      </span>
     </li>
   );
 }
