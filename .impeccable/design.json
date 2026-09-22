@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-21T15:44:42.723337+00:00",
+  "generatedAt": "2026-09-22T20:43:41.691826+00:00",
   "title": "Design System: Lily Cafe POS",
   "extensions": {
     "colorMeta": {
@@ -288,6 +288,96 @@
           "#CFD5CD",
           "#F2F3F1"
         ]
+      },
+      "chart-1": {
+        "role": "categorical",
+        "displayName": "Chart series 1",
+        "canonical": "#8A4B23",
+        "tonalRamp": [
+          "#3D210F",
+          "#6A391B",
+          "#975226",
+          "#C36A32",
+          "#D58958",
+          "#E0A885",
+          "#ECCBB6",
+          "#FAF1EB"
+        ]
+      },
+      "chart-2": {
+        "role": "categorical",
+        "displayName": "Chart series 2",
+        "canonical": "#0E8F6F",
+        "tonalRamp": [
+          "#074636",
+          "#0C795E",
+          "#11AC85",
+          "#16DFAD",
+          "#41ECC2",
+          "#74F1D2",
+          "#ABF7E4",
+          "#E8FDF8"
+        ]
+      },
+      "chart-3": {
+        "role": "categorical",
+        "displayName": "Chart series 3",
+        "canonical": "#B5730A",
+        "tonalRamp": [
+          "#482E04",
+          "#7E5007",
+          "#B3720A",
+          "#E8930D",
+          "#F4AC39",
+          "#F7C26E",
+          "#FADAA8",
+          "#FEF5E7"
+        ]
+      },
+      "chart-4": {
+        "role": "categorical",
+        "displayName": "Chart series 4",
+        "canonical": "#2456B0",
+        "tonalRamp": [
+          "#0D1F40",
+          "#17366E",
+          "#204D9D",
+          "#2A63CB",
+          "#5183DB",
+          "#80A4E5",
+          "#B3C8EF",
+          "#EAF0FB"
+        ]
+      },
+      "chart-5": {
+        "role": "categorical",
+        "displayName": "Chart series 5",
+        "canonical": "#8C3A78",
+        "tonalRamp": [
+          "#36162E",
+          "#5E2750",
+          "#853772",
+          "#AD4894",
+          "#C26BAD",
+          "#D293C3",
+          "#E4BEDB",
+          "#F8EDF5"
+        ]
+      },
+      "chart-6": {
+        "role": "categorical",
+        "displayName": "Chart series 6",
+        "canonical": "#4F7A1F",
+        "tonalRamp": [
+          "#283D0F",
+          "#446A1B",
+          "#619626",
+          "#7EC332",
+          "#9AD558",
+          "#B5E085",
+          "#D3ECB6",
+          "#F3FAEB"
+        ]
       }
     },
     "typographyMeta": {
@@ -515,6 +605,11 @@
         "name": "The No New Shadows Rule",
         "body": "Don't add shadow levels, glass surfaces or gradients. Reuse Soft, Medium and Strong, or go flat.",
         "section": "elevation"
+      },
+      {
+        "name": "The Fixed Series Rule",
+        "body": "Chart series colours come from chart-1…6 in fixed order, assigned to the entity rather than its rank, and never cycled past six. The palette is validated for colour-vision separation and contrast; dark mode has its own steps.",
+        "section": "colors"
       }
     ],
     "dos": [
@@ -524,7 +619,8 @@
       "**Do** use Lily Leaf for paid, served and available states, and Roasted Coffee for the next action.",
       "**Do** define dark-mode colours by re-toning tokens under `.dark`, keeping them warm.",
       "**Do** use the shared motion utilities (`animate-*`, `useCountUp`, `useListPresence`) and `--ease-settle` rather than new keyframes or curves.",
-      "**Do** give every async surface a plain-language error with a retry (`describeApiError`), and never lose what someone typed."
+      "**Do** give every async surface a plain-language error with a retry (`describeApiError`), and never lose what someone typed.",
+      "**Do** take chart colours from `useChartTheme` and the `chart-1…6` tokens, in fixed order."
     ],
     "donts": [
       "**Don't** set prices, buttons or form labels in Quesha.",
@@ -534,7 +630,9 @@
       "**Don't** add more `!important` dark-mode patches to `index.css`. Fix the token instead.",
       "**Don't** use bounce or elastic curves, infinite loops, hover lift, or staggered reveals across long lists.",
       "**Don't** use browser `alert`/`confirm`. Use `ConfirmDialog` or an inline message.",
-      "**Don't** mark a card with a thick coloured left edge. Use a thin tinted border."
+      "**Don't** mark a card with a thick coloured left edge. Use a thin tinted border.",
+      "**Don't** hard-code a hex or branch on `theme === 'dark'` inside a chart; the tokens already re-tone.",
+      "**Don't** put two measures of different scale on one axis, or use a single-hue ramp to tell separate things apart."
     ]
   }
 }
