@@ -1,5 +1,5 @@
 # fly.toml — Fly.io app configuration for Lily Cafe POS backend
-app = "lily-cafe-pos"
+app = "lily-cafe-pos-dev"
 primary_region = "sin"  # Singapore — closest to India
 
 [build]
