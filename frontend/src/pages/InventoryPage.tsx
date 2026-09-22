@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Package, Tag, ClockCounterClockwise, ClipboardText } from '@phosphor-icons/react';
 import { useSidebar } from '../context/SidebarContext';
 import { useAuth } from '../hooks/useAuth';
-import BottomNav from '../components/BottomNav';
 import DailyCountTab from '../components/inventory/DailyCountTab';
 import InventoryItemsTab from '../components/inventory/InventoryItemsTab';
 import InventoryCategoriesTab from '../components/inventory/InventoryCategoriesTab';
@@ -10,92 +9,70 @@ import InventoryTransactionsTab from '../components/inventory/InventoryTransacti
 
 type Tab = 'daily-count' | 'items' | 'categories' | 'transactions';
 
+const TABS: { id: Tab; label: string; icon: JSX.Element; ownerOnly?: boolean }[] = [
+  { id: 'daily-count', label: 'Daily count', icon: <ClipboardText size={20} aria-hidden /> },
+  { id: 'items', label: 'Items', icon: <Package size={20} aria-hidden />, ownerOnly: true },
+  { id: 'categories', label: 'Categories', icon: <Tag size={20} aria-hidden />, ownerOnly: true },
+  { id: 'transactions', label: 'Stock log', icon: <ClockCounterClockwise size={20} aria-hidden /> },
+];
+
 export default function InventoryPage() {
   const [activeTab, setActiveTab] = useState<Tab>('daily-count');
   const { setMobileOpen } = useSidebar();
   // Items and categories are owner-only master data: admins don't see them.
   const { isOwner } = useAuth();
+  const tabs = TABS.filter(tab => isOwner || !tab.ownerOnly);
 
   return (
-    <div className="flex flex-col h-full bg-neutral-background">
-
-      {/* Header */}
-      <header className="bg-off-white border-b border-neutral-border p-4 md:p-6 sticky top-0 z-30 shadow-sm flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="font-heading heading-section text-neutral-text-dark">Inventory Management</h1>
-            <div className="text-muted text-sm mt-1 font-medium">Track stock, purchases, and usage</div>
-          </div>
-          <div className="lg:hidden">
-            <button 
-              onClick={() => setMobileOpen(true)}
-              className="p-2 text-coffee-brown hover:bg-neutral-border/50 rounded-lg transition-colors"
-            >
-              <span className="sr-only">Open Menu</span>
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-          </div>
+    <div className="flex flex-col min-h-full bg-neutral-background">
+      {/* Not sticky: on a phone a pinned title and tab row would eat a fifth of the screen. */}
+      <header className="bg-off-white border-b border-neutral-border px-4 pt-4 md:px-6 md:pt-6">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="font-heading heading-section text-neutral-text-dark">Inventory</h1>
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="lg:hidden size-12 -mr-2 grid place-items-center text-coffee-brown hover:bg-neutral-border/50 rounded-lg"
+          >
+            <span className="sr-only">Open menu</span>
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex space-x-1 mt-6 overflow-x-auto pb-1 scrollbar-hide border-b border-neutral-border/50">
-          <TabButton
-            active={activeTab === 'daily-count'}
-            onClick={() => setActiveTab('daily-count')}
-            icon={<ClipboardText size={20} />}
-            label="Daily Count"
-          />
-          {isOwner && <TabButton
-            active={activeTab === 'items'}
-            onClick={() => setActiveTab('items')}
-            icon={<Package size={20} />}
-            label="Items"
-          />}
-          {isOwner && <TabButton
-            active={activeTab === 'categories'}
-            onClick={() => setActiveTab('categories')}
-            icon={<Tag size={20} />}
-            label="Categories"
-          />}
-          <TabButton
-            active={activeTab === 'transactions'}
-            onClick={() => setActiveTab('transactions')}
-            icon={<ClockCounterClockwise size={20} />}
-            label="History"
-          />
+        <div role="tablist" aria-label="Inventory sections" className="flex gap-1 mt-4 -mx-1 overflow-x-auto scrollbar-hide">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              role="tab"
+              id={`inventory-tab-${tab.id}`}
+              aria-selected={activeTab === tab.id}
+              aria-controls="inventory-panel"
+              onClick={() => setActiveTab(tab.id)}
+              className={`shrink-0 min-h-12 flex items-center gap-2 px-3 border-b-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                activeTab === tab.id
+                  ? 'border-coffee-brown text-coffee-brown'
+                  : 'border-transparent text-neutral-text-light hover:text-coffee-brown'
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
         </div>
       </header>
 
-      <main className="p-4 lg:p-6 max-w-7xl w-full mx-auto">
+      <main
+        id="inventory-panel"
+        role="tabpanel"
+        aria-labelledby={`inventory-tab-${activeTab}`}
+        className="p-4 lg:p-6 max-w-5xl w-full mx-auto"
+      >
         {activeTab === 'daily-count' && <DailyCountTab />}
         {isOwner && activeTab === 'items' && <InventoryItemsTab />}
         {isOwner && activeTab === 'categories' && <InventoryCategoriesTab />}
         {activeTab === 'transactions' && <InventoryTransactionsTab />}
       </main>
-
-      <div className="lg:hidden">
-        <BottomNav />
-      </div>
     </div>
-  );
-}
-
-function TabButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`
-        flex items-center gap-2 px-4 py-2 rounded-t-lg text-sm font-medium whitespace-nowrap transition-all border-b-2
-        ${active 
-          ? 'border-coffee-brown text-coffee-brown bg-coffee-brown/5' 
-          : 'border-transparent text-neutral-text-light hover:text-coffee-brown hover:bg-neutral-border/30'
-        }
-      `}
-    >
-      {icon}
-      {label}
-    </button>
   );
 }
