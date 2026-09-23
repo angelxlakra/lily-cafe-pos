@@ -68,10 +68,6 @@ export default function InventoryCountPage() {
     });
   }, []);
 
-  const handleStep = useCallback((itemId: number, delta: number, system: number) => {
-    setCounts(previous => ({ ...previous, [itemId]: Math.max(0, (previous[itemId] ?? system) + delta) }));
-  }, []);
-
   // Which category the top bar names: the last header scrolled past it.
   const headerRefs = useRef(new Map<string, HTMLElement>());
   const [currentKey, setCurrentKey] = useState<string | null>(null);
@@ -107,7 +103,7 @@ export default function InventoryCountPage() {
     window.setTimeout(() => {
       const row = document.getElementById(`count-item-${itemId}`);
       row?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      row?.querySelector<HTMLButtonElement>('button[aria-pressed]')?.focus({ preventScroll: true });
+      row?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true });
     }, needsUnfold ? 320 : 0);
   }, [groups, reopened, counts]);
 
@@ -304,7 +300,7 @@ export default function InventoryCountPage() {
               >
                 <ul className="min-h-0 overflow-hidden bg-off-white border-y border-neutral-border/70">
                   {group.items.map(item => (
-                    <CountRow key={item.id} item={item} counted={counts[item.id]} onChange={handleChange} onStep={handleStep} />
+                    <CountRow key={item.id} item={item} counted={counts[item.id]} onChange={handleChange} />
                   ))}
                 </ul>
               </div>

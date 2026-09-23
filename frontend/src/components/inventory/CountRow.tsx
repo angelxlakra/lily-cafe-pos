@@ -1,11 +1,11 @@
 /**
- * One item in the nightly count: name on the left, controls on the right
- * where a right thumb reaches. ✓ confirms the shelf matches the system;
- * − / + / typing records a different number.
+ * One item in the nightly count: name on the left, one input on the right
+ * where a right thumb reaches. The counter types what they counted; the
+ * placeholder is the system quantity and the unit sits beside the box.
  */
 
 import { memo, useRef, useState } from 'react';
-import { Check, Minus, Plus, Warning } from '@phosphor-icons/react';
+import { Warning } from '@phosphor-icons/react';
 import type { InventoryItem } from '../../types/inventory';
 import { formatQty, isBigDifference, parseQty } from '../../utils/countQuantity';
 
@@ -14,56 +14,15 @@ interface CountRowProps {
   /** Counted quantity, or undefined if not counted yet. */
   counted: number | undefined;
   onChange: (itemId: number, counted: number | null) => void;
-  /** Adds delta to the latest count (or the system quantity), never below 0. */
-  onStep: (itemId: number, delta: number, system: number) => void;
 }
 
-/** Click steps once; holding repeats (keyboard users get the click path). */
-function useHoldToRepeat(step: () => void) {
-  const timers = useRef<{ delay?: number; repeat?: number }>({});
-  const repeated = useRef(false);
-
-  const stop = () => {
-    window.clearTimeout(timers.current.delay);
-    window.clearInterval(timers.current.repeat);
-  };
-
-  return {
-    onPointerDown: () => {
-      repeated.current = false;
-      stop();
-      timers.current.delay = window.setTimeout(() => {
-        repeated.current = true;
-        step();
-        timers.current.repeat = window.setInterval(step, 90);
-      }, 400);
-    },
-    onPointerUp: stop,
-    onPointerLeave: stop,
-    onPointerCancel: stop,
-    onClick: () => {
-      if (!repeated.current) step();
-      repeated.current = false;
-    },
-  };
-}
-
-function CountRow({ item, counted, onChange, onStep }: CountRowProps) {
+function CountRow({ item, counted, onChange }: CountRowProps) {
   const system = Number(item.current_quantity);
   const status = counted === undefined ? 'untouched' : counted === system ? 'checked' : 'changed';
   const [draftText, setDraftText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const errorId = `count-error-${item.id}`;
   const cancelTyping = useRef(false);
-
-  // Stepping goes through a functional state update in the parent, so fast
-  // taps and hold-to-repeat never read a stale value.
-  const stepBy = (delta: number) => {
-    setError(null);
-    onStep(item.id, delta, system);
-  };
-  const minus = useHoldToRepeat(() => stepBy(-1));
-  const plus = useHoldToRepeat(() => stepBy(1));
 
   const commitTyped = () => {
     if (draftText === null) return;
@@ -122,32 +81,7 @@ function CountRow({ item, counted, onChange, onStep }: CountRowProps) {
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            setError(null);
-            onChange(item.id, status === 'checked' ? null : system);
-          }}
-          aria-pressed={status === 'checked'}
-          aria-label={`${item.name} matches ${formatQty(system)} ${item.unit}`}
-          className={`size-12 shrink-0 grid place-items-center rounded-lg border transition-colors duration-[var(--dur-press)] ${
-            status === 'checked'
-              ? 'bg-lily-green-deep border-lily-green-deep text-white'
-              : 'border-neutral-border text-neutral-text-muted hover:border-lily-ink hover:text-lily-ink'
-          }`}
-        >
-          <Check size={22} weight="bold" aria-hidden />
-        </button>
-
-        <div className="ml-1 flex items-center shrink-0 rounded-lg border border-neutral-border bg-off-white">
-          <button
-            type="button"
-            {...minus}
-            aria-label={`One less ${item.name}`}
-            className="size-12 grid place-items-center text-coffee-brown active:bg-cream rounded-l-lg select-none touch-manipulation"
-          >
-            <Minus size={18} weight="bold" aria-hidden />
-          </button>
+        <div className="shrink-0 flex items-center gap-2">
           <input
             type="text"
             inputMode="decimal"
@@ -174,19 +108,12 @@ function CountRow({ item, counted, onChange, onStep }: CountRowProps) {
             aria-label={`Count for ${item.name}, in ${item.unit}`}
             aria-invalid={error !== null}
             aria-describedby={error ? errorId : undefined}
-            className="w-12 h-12 bg-transparent text-center text-lg font-semibold tabular-nums text-neutral-text-dark placeholder:text-neutral-text-muted placeholder:font-normal focus:outline-none focus:bg-white dark:focus:bg-neutral-background"
+            className="w-24 h-12 rounded-lg border border-neutral-border bg-off-white text-center text-lg font-semibold tabular-nums text-neutral-text-dark placeholder:text-neutral-text-muted placeholder:font-normal focus:outline-none focus:border-lily-ink focus:bg-white dark:focus:bg-neutral-background"
           />
-          <button
-            type="button"
-            {...plus}
-            aria-label={`One more ${item.name}`}
-            className="size-12 grid place-items-center text-coffee-brown active:bg-cream rounded-r-lg select-none touch-manipulation"
-          >
-            <Plus size={18} weight="bold" aria-hidden />
-          </button>
+          <span className="w-10 text-[0.8125rem] text-neutral-text-muted">{item.unit}</span>
         </div>
       </div>
-      {/* Spoken feedback for ✓ and the steppers, which change the value silently otherwise. */}
+      {/* Says whether the typed number matches the system, which the box alone doesn't. */}
       <span className="sr-only" aria-live="polite">
         {status === 'untouched' ? '' : status === 'checked'
           ? `${item.name} matches, ${formatQty(system)}`
