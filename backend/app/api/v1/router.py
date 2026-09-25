@@ -17,6 +17,7 @@ from app.api.v1.endpoints import (
     analytics,
     print_jobs,
     settings,
+    costing,
 )
 
 api_router = APIRouter()
@@ -33,4 +34,5 @@ api_router.include_router(cash_counter.router, prefix="/cash-counter", tags=["ca
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(print_jobs.router, prefix="/print-jobs", tags=["print-relay"])
 api_router.include_router(settings.router, prefix="/settings", tags=["settings"])
+api_router.include_router(costing.router, prefix="/costing", tags=["costing"])
 api_router.include_router(ask.router, prefix="/ask", tags=["ask"])

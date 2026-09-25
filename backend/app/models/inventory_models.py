@@ -36,7 +36,8 @@ class InventoryItem(Base):
     # Relationships
     category = relationship("InventoryCategory", back_populates="items")
     transactions = relationship("InventoryTransaction", back_populates="item")
-    
+    costing_ingredients = relationship("DishCostingIngredient", back_populates="inventory_item")
+
     @property
     def is_low_stock(self) -> bool:
         return self.current_quantity < self.min_threshold

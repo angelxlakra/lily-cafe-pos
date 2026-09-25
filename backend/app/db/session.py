@@ -105,6 +105,7 @@ def init_db():
     from app.models import models  # noqa
     from app.models.settings_model import AppSetting  # noqa - ensures app_settings table is created
     from app.models.digest_models import DailyDigest  # noqa - ensures daily_digests table is created
+    from app.models.costing_models import DishCosting, DishCostingIngredient  # noqa - ensures dish costing tables are created
 
     Base.metadata.create_all(bind=engine)
 

@@ -53,6 +53,17 @@ DEFAULTS: dict[str, str] = {
     "digest.aov_shift_pct": "20",
     "digest.cash_short_days": "3",
     "digest.dish_stalled_days": "5",
+    # Dish Costing
+    "costing.packaging.mode": "amount",
+    "costing.packaging.value": "0",
+    "costing.labour.mode": "percent",
+    "costing.labour.value": "15",
+    "costing.fixed.mode": "percent",
+    "costing.fixed.value": "10",
+    "costing.wastage.mode": "percent",
+    "costing.wastage.value": "5",
+    "costing.target_margin_percent": "65",
+    # /Dish Costing
 }
 
 KNOWN_KEYS: frozenset[str] = frozenset(DEFAULTS.keys())
