@@ -35,9 +35,9 @@ const COLUMNS: { field: Field; label: string; width: number; left?: number; nume
   { field: 'count_mode', label: 'Counted as', width: 130 },
   { field: 'current_quantity', label: 'Stock', width: 84, numeric: true },
   { field: 'unit', label: 'Unit', width: 96 },
-  { field: 'pack_size', label: 'Pack size', width: 88, numeric: true },
-  { field: 'pack_unit', label: 'Pack unit', width: 88 },
-  { field: 'min_threshold', label: 'Alert below', width: 92, numeric: true },
+  { field: 'pack_size', label: 'Pack size', width: 104, numeric: true },
+  { field: 'pack_unit', label: 'Pack unit', width: 104 },
+  { field: 'min_threshold', label: 'Alert below', width: 120, numeric: true },
   { field: 'cost_per_unit', label: 'Price ₹', width: 96, numeric: true },
 ];
 const NUMERIC = new Set(COLUMNS.filter(c => c.numeric).map(c => c.field));
@@ -426,11 +426,12 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
       <datalist id="grid-units">{UNITS.map(unit => <option key={unit} value={unit} />)}</datalist>
 
       <div className="card overflow-auto max-h-[calc(100dvh-18rem)]">
-        {/* Fixed layout: the frozen columns' left offsets only line up if widths are exact. */}
-        <table className="table-fixed border-separate border-spacing-0 text-sm" style={{ width: TICK_WIDTH + COLUMNS.reduce((sum, c) => sum + c.width, 0) + RETIRE_WIDTH }} onPaste={onPaste} onKeyDown={onKeyDown}>
+        {/* Fixed layout: the frozen columns' left offsets only line up if widths are exact.
+            On a wide screen the table fills it and Name, whose width is left open, takes the extra. */}
+        <table className="table-fixed w-full border-separate border-spacing-0 text-sm" style={{ minWidth: TICK_WIDTH + COLUMNS.reduce((sum, c) => sum + c.width, 0) + RETIRE_WIDTH }} onPaste={onPaste} onKeyDown={onKeyDown}>
           <thead>
             <tr>
-              <th style={{ width: TICK_WIDTH }} className="sticky top-0 left-0 z-30 bg-off-white border-b border-neutral-border">
+              <th style={{ width: TICK_WIDTH }} className="sticky top-0 left-0 z-30 bg-off-white border-b border-r border-neutral-border">
                 <input
                   type="checkbox"
                   aria-label="Tick all shown"
@@ -444,8 +445,8 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
                 return (
                   <th
                     key={column.field}
-                    style={{ width: column.width, left: column.left }}
-                    className={`sticky top-0 ${column.left !== undefined ? 'z-30' : 'z-20'} bg-off-white border-b border-neutral-border px-2 py-1 text-left font-medium text-neutral-text-body whitespace-nowrap`}
+                    style={{ width: column.field === 'name' ? undefined : column.width, left: column.left }}
+                    className={`sticky top-0 ${column.left !== undefined ? 'z-30' : 'z-20'} bg-off-white border-b border-r border-neutral-border px-2 py-1 text-left font-medium text-neutral-text-body whitespace-nowrap`}
                   >
                     <button
                       type="button"
@@ -515,7 +516,7 @@ const GridRow = memo(function GridRow({ id, index, original, row, selected, lock
 
   return (
     <tr className={retired ? 'text-neutral-text-light' : ''}>
-      <td className="sticky left-0 z-10 bg-off-white border-b border-neutral-border text-center">
+      <td className="sticky left-0 z-10 bg-off-white border-b border-r border-neutral-border text-center">
         <input type="checkbox" aria-label={`Tick ${cells.name}`} checked={selected} onChange={() => onSelect(id)} className="size-4" />
       </td>
       {COLUMNS.map(column => {
@@ -575,7 +576,7 @@ const GridRow = memo(function GridRow({ id, index, original, row, selected, lock
           <td
             key={field}
             style={{ left: column.left }}
-            className={`${sticky ? 'sticky z-10' : ''} ${tint} border-b border-neutral-border px-0.5 py-0.5 transition-colors`}
+            className={`${sticky ? 'sticky z-10' : ''} ${tint} border-b border-r border-neutral-border px-0.5 py-0.5 transition-colors`}
           >
             {content}
           </td>

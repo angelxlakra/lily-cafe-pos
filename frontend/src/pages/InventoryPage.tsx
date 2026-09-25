@@ -108,7 +108,7 @@ export default function InventoryPage() {
         id="inventory-panel"
         role="tabpanel"
         aria-labelledby={`inventory-tab-${activeTab}`}
-        className="p-4 lg:p-6 max-w-5xl w-full mx-auto"
+        className="p-4 lg:p-6 w-full"
       >
         {activeTab === 'daily-count' && <DailyCountTab />}
         {isOwner && activeTab === 'items' && <InventoryItemsTab />}
