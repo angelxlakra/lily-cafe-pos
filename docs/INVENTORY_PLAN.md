@@ -28,6 +28,7 @@ Kept here as well as in the spine, because decisions are worth having in git his
 | 2026-09-23 | Price comes from the purchase log; the typed price is a fallback. |
 | 2026-09-23 | Bulk editing is an in-app grid with paste, not a CSV round-trip. |
 | 2026-09-24 | No credit purchases — buying and paying are the same event. |
+| 2026-09-26 | One unit per item — the one on the bill. Count, price and alert in it; never price in g or ml. |
 
 ## Build queue
 
