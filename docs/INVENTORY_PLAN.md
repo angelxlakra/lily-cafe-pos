@@ -66,6 +66,168 @@ Four confirmed bugs to fix on the way in:
 - `price_missing` tests only for `None`, so a price of `0` counts as free. With 98 live items
   priced `0.00`, dishes would report confident ₹0 ingredient lines and still look complete.
 
+## Session prompts
+
+One per module, each self-contained so a fresh session needs no other context. Two things
+are in every prompt on purpose: read `origin/pre-release` rather than `main` (it is more
+than twenty commits ahead), and read the spec before touching code.
+
+**Running these:** prompts 1, 2 and 3 all touch inventory files. Run them one at a time,
+or give each its own git worktree — concurrent sessions in a single checkout will
+overwrite each other. Suggested order: 0 now, then 1, then 2 and 3 together, then
+4 → 5 → 6, with 7 whenever ordering help matters more than waste reporting.
+
+### 0 — Merge dish costing's backend
+
+```
+In /Users/angelxlakra/dev/lily-cafe-pos: merge origin/feature/dish-costing into
+pre-release and fix its bugs. Read docs/INVENTORY_PLAN.md first — its "State of
+feature/dish-costing" section lists what's wrong.
+
+The branch is backend-only and 49 commits behind. Do NOT merge its
+frontend/pnpm-lock.yaml or pnpm-workspace.yaml — this project uses npm.
+
+Fix on the way in: `details=` should be `detail=` at endpoints/costing.py:66,68,99
+and `sataus_code=` at :306; utils/costing.py calls convert() before checking the
+price, so one unconvertible unit kills a whole dish instead of one line; and
+price_missing only tests for None, so a price of 0 counts as free — 98 live items
+are priced 0.00.
+
+Don't build any costing UI. Done = merged, bugs fixed, endpoints reachable, tests pass.
+```
+
+### 1 — Setup grid
+
+```
+In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Build the inventory
+setup grid: one editable table where the owner sets every item's kind, unit, pack size,
+threshold and price, with ONE save.
+
+Read docs/INVENTORY_PLAN.md, then the "Setup grid" section of the linked Hybrid stock
+count doc. Check TemplateImportModal.tsx on pre-release before planning — it was rebuilt
+and differs from main.
+
+Key points from the spec: plain inputs in table cells (no grid library), paste from
+Google Sheets support, freeze Name/Category, per-column locks with Stock locked by
+default, dirty-cell highlighting and Revert, one bulk PATCH endpoint. ~196 rows means
+memoize per row.
+
+Done = the owner can edit every field for all items and save once.
+```
+
+### 2 — Hybrid count
+
+```
+In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Add yes/no items to
+the nightly stock count.
+
+Read docs/INVENTORY_PLAN.md and the Hybrid stock count doc it links.
+
+Items split two ways: counted with a number, or answered Out / Have it. Add count_mode
+to inventory_items, clamp presence quantities in a model validator — there are FIVE
+writers of current_quantity, not one. Replace the count row's control with two buttons
+for presence items.
+
+Do NOT reintroduce the ✓ / − / + cluster; it failed user testing. Keep the review sheet,
+the saved counts and the 1½ fraction idiom. Exclude presence items from the
+"big differences" list.
+
+Done = a yes/no item can be answered, saved, and reads correctly in the review sheet
+and stock log.
+```
+
+### 3 — Purchase sheet
+
+```
+In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Build the daily
+purchase sheet.
+
+Read docs/INVENTORY_PLAN.md, then the linked Purchases and reconciliation doc.
+
+POST /inventory/transactions/purchase already exists and raises stock — it just has no
+concept of money or vendors. Extend it: total_amount and vendor_id on the transaction.
+
+Capture the TOTAL paid, not a unit price — people know "4 kg for ₹480". Show a running
+day total. Entry must take ~90 seconds for 5–15 lines; this is an append log, not the
+setup grid. Allow adding an unknown item inline. No credit purchases — buying and paying
+are one event.
+
+Done = a day's purchases can be logged in under two minutes and stock goes up correctly.
+```
+
+### 4 — Pack size
+
+```
+In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Add pack size to
+inventory items.
+
+Read docs/INVENTORY_PLAN.md and the "Data model" section of the Hybrid stock count doc.
+
+Two optional columns meaning "1 bottle holds 700 ml" / "1 portion = 6 pcs". You count and
+price in the item's own unit; pack size bridges to the recipe's unit. Only needed when the
+recipe unit is in a different family from the count unit — backend/app/utils/units.py on
+the costing branch handles same-family conversion already.
+
+Prompt for it when an item joins a recipe and units don't bridge, not from everyone at setup.
+
+Done = a recipe in ml can cost against an item counted in bottles.
+```
+
+### 5 — Dish costing UI
+
+```
+In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Build the frontend for
+dish costing. The backend already exists (merged from feature/dish-costing) — read its
+endpoints and schemas before designing anything.
+
+Read docs/INVENTORY_PLAN.md for context. There is NO spec for this UI yet — propose one
+before building, and check it with me.
+
+A recipe builder per menu item (pick inventory items, quantity, unit) plus a cost readout
+with margin. Items that can't be costed — yes/no items, no price, unconvertible units —
+must show as incomplete with a named reason, never as ₹0. Show the price's as-of date.
+
+Done = a menu item's recipe can be built and its true cost read, with honest gaps.
+```
+
+### 6 — Reconciliation
+
+```
+In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Build weekly stock
+reconciliation.
+
+Read docs/INVENTORY_PLAN.md, then the "Reconciliation" section of the Purchases doc.
+
+opening + purchased − waste − counted = consumed; dishes sold × recipe = expected;
+the gap is unexplained. Add a WASTE transaction type with a reason code.
+
+WEEKLY, not daily — daily variance at this scale is noise. Only for items where every term
+exists; don't list yes/no items. Present as "these five don't add up, worst first, in
+rupees" — not a ledger dump. Say in the UI that early variance reflects recipe accuracy,
+not theft.
+
+Done = a weekly variance list the owner can act on.
+```
+
+### 7 — Vendors and order messages
+
+```
+In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Build vendors and the
+end-of-day order message.
+
+Read docs/INVENTORY_PLAN.md, then "Vendors and the order message" in the Purchases doc.
+
+A vendors table, an optional default vendor per item, and the low-stock list grouped by
+vendor rendered as paste-ready messages with a copy button each. Unmapped items go in an
+"Unassigned" group — vendor setup must never block the alert. Suggested quantities are
+editable suggestions, not calculations.
+
+Copy-paste only for now. If automatic delivery comes up: Telegram is a bot token and a
+chat id; WhatsApp needs the Business API with approved templates and per-message fees.
+
+Done = the owner finishes a count and can send each vendor an order in one tap each.
+```
+
 ## Not covered here
 
 `docs/master-project-document.md` predates this work — its header still reads October 2024.
