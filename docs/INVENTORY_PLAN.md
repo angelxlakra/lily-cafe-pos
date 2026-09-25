@@ -123,7 +123,11 @@ Google Sheets support, freeze Name/Category, per-column locks with Stock locked 
 default, dirty-cell highlighting and Revert, one bulk PATCH endpoint. ~196 rows means
 memoize per row.
 
-Done = the owner can edit every field for all items and save once.
+The grid also needs a way to retire an item — there are ~20 near-duplicates and 59 items
+sitting at zero to clear out. Retire means deactivate, not delete: DELETE /items/{id} is
+already a soft delete that flips is_active, because transactions reference those rows.
+
+Done = the owner can edit every field for all items, retire dead ones, and save once.
 ```
 
 ### 2 — Hybrid count
