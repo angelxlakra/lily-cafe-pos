@@ -13,11 +13,13 @@ from datetime import date, timedelta
 
 import pytest
 
+from app.core import business_day
 from app.models.cash_models import DailyCashCounter
 from app.models.inventory_models import InventoryCategory, InventoryItem
 
 
-TODAY = date.today()
+# The server's business day (IST), not the machine's — they differ after 18:30 UTC.
+TODAY = business_day.business_today()
 YESTERDAY = TODAY - timedelta(days=1)
 
 
