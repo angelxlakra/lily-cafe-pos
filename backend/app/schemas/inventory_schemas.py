@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Literal, Optional, List
 from datetime import date, datetime
 from decimal import Decimal
 from pydantic import BaseModel, Field
@@ -30,6 +30,9 @@ class InventoryItemBase(BaseModel):
     min_threshold: Decimal = Field(default=0, ge=0)
     cost_per_unit: Optional[Decimal] = Field(None, ge=0)
     category_id: Optional[int] = None
+    count_mode: Literal["number", "presence"] = "number"
+    pack_size: Optional[Decimal] = Field(None, gt=0)
+    pack_unit: Optional[str] = Field(None, min_length=1, max_length=20)
 
 class InventoryItemCreate(InventoryItemBase):
     current_quantity: Decimal = Field(default=0, ge=0)
@@ -41,6 +44,18 @@ class InventoryItemUpdate(BaseModel):
     cost_per_unit: Optional[Decimal] = Field(None, ge=0)
     category_id: Optional[int] = None
     is_active: Optional[bool] = None
+    count_mode: Optional[Literal["number", "presence"]] = None
+    pack_size: Optional[Decimal] = Field(None, gt=0)
+    pack_unit: Optional[str] = Field(None, min_length=1, max_length=20)
+
+class BulkItemUpdate(InventoryItemUpdate):
+    """One changed row from the setup grid. Only the fields sent are changed."""
+    id: int
+    # Stock is state, not configuration: a change here is recorded as an adjustment.
+    current_quantity: Optional[Decimal] = Field(None, ge=0)
+
+class BulkItemsUpdate(BaseModel):
+    items: List[BulkItemUpdate] = Field(..., min_length=1)
 
 class InventoryItem(InventoryItemBase):
     id: int

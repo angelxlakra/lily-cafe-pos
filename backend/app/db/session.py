@@ -53,7 +53,12 @@ _ORDER_ADDED_COLUMNS = {
 # Columns added to inventory tables after they shipped.
 _INVENTORY_ADDED_COLUMNS = {
     "inventory_categories": {"sort_order": "INTEGER DEFAULT 0 NOT NULL"},
-    "inventory_items": {"sort_order": "INTEGER DEFAULT 0 NOT NULL"},
+    "inventory_items": {
+        "sort_order": "INTEGER DEFAULT 0 NOT NULL",
+        "count_mode": "VARCHAR(10) DEFAULT 'number' NOT NULL",
+        "pack_size": "NUMERIC(10, 3)",
+        "pack_unit": "VARCHAR(20)",
+    },
 }
 
 

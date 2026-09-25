@@ -221,6 +221,65 @@ def reorder_items(
     """Set the order items appear in within their category. Owner only."""
     _apply_sort_order(db, InventoryItem, order.ids)
 
+# Columns that can't hold NULL; sending null for one is a client error, not a 500.
+_REQUIRED_ITEM_FIELDS = ("name", "unit", "min_threshold", "count_mode", "is_active")
+
+@router.patch("/items", response_model=dict)
+def bulk_update_items(
+    payload: inventory_schemas.BulkItemsUpdate,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _OWNER,
+):
+    """The setup grid's one Save: every changed row, applied in one commit.
+
+    Retiring is is_active=false, the same soft delete as DELETE /items/{id}.
+    A stock change is written as an adjustment so the stock log stays complete.
+    Owner only.
+    """
+    ids = [row.id for row in payload.items]
+    items = {item.id: item for item in db.query(InventoryItem).filter(InventoryItem.id.in_(ids))}
+    missing = sorted(set(ids) - items.keys())
+    if missing:
+        raise HTTPException(status_code=404, detail=f"Items not found: {missing}")
+
+    category_ids = {row.category_id for row in payload.items if row.category_id is not None}
+    known = {c.id for c in db.query(InventoryCategory.id).filter(InventoryCategory.id.in_(category_ids))}
+    if category_ids - known:
+        raise HTTPException(status_code=400, detail=f"Categories not found: {sorted(category_ids - known)}")
+
+    adjusted = 0
+    for row in payload.items:
+        item = items[row.id]
+        changes = row.model_dump(exclude_unset=True, exclude={"id", "current_quantity"})
+        blank = [key for key in _REQUIRED_ITEM_FIELDS if key in changes and changes[key] is None]
+        if blank:
+            raise HTTPException(status_code=422, detail=f"{item.name}: {', '.join(blank)} can't be empty")
+        for key, value in changes.items():
+            setattr(item, key, value)
+
+        target = row.current_quantity if row.current_quantity is not None else item.current_quantity
+        if item.count_mode == "presence":
+            # A yes/no item has no unit, price or pack, alerts when out, and holds 1 or 0.
+            item.unit, item.min_threshold, item.cost_per_unit = "yes/no", Decimal(1), None
+            item.pack_size = item.pack_unit = None
+            target = Decimal(1) if target > 0 else Decimal(0)
+
+        if target != item.current_quantity:
+            db.add(InventoryTransaction(
+                item_id=item.id,
+                transaction_type=TransactionType.ADJUSTMENT,
+                quantity=target - item.current_quantity,
+                notes="Setup grid",
+                recorded_by=current_user.username,
+                previous_quantity=item.current_quantity,
+                new_quantity=target,
+            ))
+            item.current_quantity = target
+            adjusted += 1
+
+    db.commit()
+    return {"updated": len(items), "adjusted": adjusted}
+
 @router.get("/items/{item_id}", response_model=inventory_schemas.InventoryItem)
 def get_item(item_id: int, db: Session = Depends(get_db), current_user: TokenData = _READ):
     """Get a single inventory item."""
