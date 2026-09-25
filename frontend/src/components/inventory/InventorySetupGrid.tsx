@@ -11,8 +11,9 @@
  */
 
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowCounterClockwise, Copy, Lock, LockOpen, MagnifyingGlass } from '@phosphor-icons/react';
+import { ArrowCounterClockwise, ArrowsIn, ArrowsOut, Copy, Lock, LockOpen, MagnifyingGlass } from '@phosphor-icons/react';
 import { inventoryApi } from '../../api/inventory';
 import { useInventoryCategories, useInventoryItems } from '../../hooks/useInventory';
 import ConfirmDialog from '../ConfirmDialog';
@@ -149,6 +150,7 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
   const [atZeroOnly, setAtZeroOnly] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const [fullScreen, setFullScreen] = useState(false);
 
   const load = useCallback((items: InventoryItem[]) => {
     setBase(items);
@@ -209,6 +211,15 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty]);
+
+  useEffect(() => {
+    if (!fullScreen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !(event.target as HTMLElement).dataset?.field) setFullScreen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [fullScreen]);
 
   const setCell = useCallback((id: number, field: Field, value: string) => {
     setRows(prev => {
@@ -349,30 +360,44 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
 
   const allShownSelected = visibleIds.length > 0 && visibleIds.every(id => selected.has(id));
 
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="font-heading text-2xl! text-neutral-text-dark">Edit all items</h2>
-          <p className="mt-1 text-sm text-neutral-text-muted max-w-prose">
-            Nothing is saved until you press Save. Paste from Google Sheets into any cell to fill from there.
-          </p>
+  const saveActions = (
+    <>
+      <button type="button" onClick={revertAll} disabled={!dirty || save.isPending} className="btn-secondary inline-flex items-center gap-2 whitespace-nowrap">
+        <ArrowCounterClockwise size={18} aria-hidden /> Revert all
+      </button>
+      <button
+        type="button"
+        onClick={() => save.mutate()}
+        disabled={!dirty || summary.errors > 0 || save.isPending}
+        className="btn-primary"
+      >
+        {save.isPending ? 'Saving…' : 'Save'}
+      </button>
+    </>
+  );
+
+  const grid = (
+    // Full screen covers the sidebar and page header and keeps only the table's own controls.
+    <div
+      role={fullScreen ? 'dialog' : undefined}
+      aria-modal={fullScreen || undefined}
+      aria-label={fullScreen ? 'Edit all items, full screen' : undefined}
+      className={fullScreen ? 'fixed inset-0 z-50 flex flex-col gap-3 p-3 md:p-4 bg-neutral-background' : 'space-y-3'}
+    >
+      {!fullScreen && (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-heading text-2xl! text-neutral-text-dark">Edit all items</h2>
+            <p className="mt-1 text-sm text-neutral-text-muted max-w-prose">
+              Nothing is saved until you press Save. Paste from Google Sheets into any cell to fill from there.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => (dirty ? setConfirmLeave(true) : onDone())} className="btn-ghost">Done</button>
+            {saveActions}
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button type="button" onClick={() => (dirty ? setConfirmLeave(true) : onDone())} className="btn-ghost">Done</button>
-          <button type="button" onClick={revertAll} disabled={!dirty || save.isPending} className="btn-secondary inline-flex items-center gap-2">
-            <ArrowCounterClockwise size={18} aria-hidden /> Revert all
-          </button>
-          <button
-            type="button"
-            onClick={() => save.mutate()}
-            disabled={!dirty || summary.errors > 0 || save.isPending}
-            className="btn-primary"
-          >
-            {save.isPending ? 'Saving…' : 'Save'}
-          </button>
-        </div>
-      </div>
+      )}
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-2">
         <label className="relative flex-1 min-w-0">
@@ -391,6 +416,16 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
         <button type="button" onClick={copyTable} className="btn-secondary inline-flex items-center gap-2 whitespace-nowrap">
           <Copy size={18} aria-hidden /> Copy as table
         </button>
+        <button
+          type="button"
+          onClick={() => setFullScreen(!fullScreen)}
+          aria-pressed={fullScreen}
+          className="btn-secondary inline-flex items-center gap-2 whitespace-nowrap"
+        >
+          {fullScreen ? <ArrowsIn size={18} aria-hidden /> : <ArrowsOut size={18} aria-hidden />}
+          {fullScreen ? 'Exit full screen' : 'Full screen'}
+        </button>
+        {fullScreen && saveActions}
       </div>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm min-h-10" aria-live="polite">
@@ -425,7 +460,7 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
 
       <datalist id="grid-units">{UNITS.map(unit => <option key={unit} value={unit} />)}</datalist>
 
-      <div className="card overflow-auto max-h-[calc(100dvh-18rem)]">
+      <div className={`card overflow-auto ${fullScreen ? 'flex-1 min-h-0' : 'max-h-[calc(100dvh-18rem)]'}`}>
         {/* Fixed layout: the frozen columns' left offsets only line up if widths are exact.
             On a wide screen the table fills it and Name, whose width is left open, takes the extra. */}
         <table className="table-fixed w-full border-separate border-spacing-0 text-sm" style={{ minWidth: TICK_WIDTH + COLUMNS.reduce((sum, c) => sum + c.width, 0) + RETIRE_WIDTH }} onPaste={onPaste} onKeyDown={onKeyDown}>
@@ -497,6 +532,9 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
       />
     </div>
   );
+
+  // A portal, because an ancestor of the page makes `fixed` relative to the content column.
+  return fullScreen ? createPortal(grid, document.body) : grid;
 }
 
 const GridRow = memo(function GridRow({ id, index, original, row, selected, locked, categories, onCell, onSelect, onRetire }: {
