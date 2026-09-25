@@ -39,7 +39,7 @@ const COLUMNS: { field: Field; label: string; width: number; left?: number; nume
   { field: 'pack_size', label: 'Pack size', width: 104, numeric: true },
   { field: 'pack_unit', label: 'Pack unit', width: 104 },
   { field: 'min_threshold', label: 'Alert below', width: 120, numeric: true },
-  { field: 'cost_per_unit', label: 'Price ₹', width: 96, numeric: true },
+  { field: 'cost_per_unit', label: 'Price ₹', width: 136, numeric: true },
 ];
 const NUMERIC = new Set(COLUMNS.filter(c => c.numeric).map(c => c.field));
 // A yes/no item has none of these; the server sets them.
@@ -85,6 +85,18 @@ function norm(field: Field, value: string): string {
 
 const isDirty = (field: Field, original: Cells, cells: Cells) => norm(field, original[field]) !== norm(field, cells[field]);
 const applies = (field: Field, cells: Cells) => cells.count_mode !== 'presence' || !NOT_FOR_PRESENCE.has(field);
+
+/**
+ * Advice, not an error: a price per gram or ml keeps only two decimals, so
+ * ₹45/kg stored per gram becomes ₹0.05, 11% too high. Price per kg or L.
+ */
+function priceWarning(cells: Cells): string | null {
+  if (!applies('cost_per_unit', cells) || !/^(g|ml)$/i.test(cells.unit.trim())) return null;
+  const price = parseQty(cells.cost_per_unit);
+  if (price === null || price <= 0) return null;
+  const bigger = cells.unit.trim().toLowerCase() === 'g' ? 'kg' : 'L';
+  return `Per-${cells.unit.trim()} prices round to 2 decimals. Count this in ${bigger} and enter the price per ${bigger}.`;
+}
 
 function cellError(field: Field, cells: Cells): string | null {
   if (!applies(field, cells)) return null;
@@ -187,7 +199,7 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
   }, [ordered, search, atZeroOnly]);
 
   const summary = useMemo(() => {
-    let cells = 0, items = 0, retired = 0, errors = 0;
+    let cells = 0, items = 0, retired = 0, errors = 0, smallUnitPrices = 0;
     const updates: BulkItemUpdate[] = [];
     rows.forEach((row, id) => {
       const original = originals.get(id);
@@ -197,10 +209,11 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
       if (changedCells) items++;
       if (row.retired) retired++;
       if (!row.retired) errors += COLUMNS.filter(({ field }) => cellError(field, row.cells)).length;
+      if (!row.retired && priceWarning(row.cells)) smallUnitPrices++;
       const update = toUpdate(id, original, row);
       if (update) updates.push(update);
     });
-    return { cells, items, retired, errors, updates };
+    return { cells, items, retired, errors, smallUnitPrices, updates };
   }, [rows, originals]);
   const dirty = summary.updates.length > 0;
 
@@ -437,6 +450,11 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
         {summary.errors > 0 && (
           <span className="font-medium text-error">{summary.errors} cell{summary.errors === 1 ? '' : 's'} need fixing before Save</span>
         )}
+        {summary.smallUnitPrices > 0 && (
+          <span className="font-medium text-warning">
+            {summary.smallUnitPrices} price{summary.smallUnitPrices === 1 ? ' is' : 's are'} per g or ml; switch those to kg or L
+          </span>
+        )}
         {save.isError && <span role="alert" className="font-medium text-error">Not saved. {describeApiError(save.error)}</span>}
         {notice && <span className="text-neutral-text-muted">{notice}</span>}
       </div>
@@ -561,6 +579,7 @@ const GridRow = memo(function GridRow({ id, index, original, row, selected, lock
         const { field } = column;
         const changed = isDirty(field, original, cells);
         const error = !retired && cellError(field, cells);
+        const warning = !retired && field === 'cost_per_unit' && priceWarning(cells);
         const sticky = column.left !== undefined;
         // Opaque tints: frozen cells must hide what scrolls beneath them.
         const tint = retired ? 'bg-[color-mix(in_oklab,var(--color-neutral-border)_45%,var(--color-off-white))]' : changed ? 'bg-cream' : sticky ? 'bg-off-white' : '';
@@ -570,8 +589,8 @@ const GridRow = memo(function GridRow({ id, index, original, row, selected, lock
           'data-field': field,
           'aria-label': label,
           'aria-invalid': error ? true : undefined,
-          title: error || undefined,
-          className: `w-full h-10 px-2 rounded bg-transparent outline-none focus:ring-2 focus:ring-coffee-brown ${error ? 'ring-2 ring-error' : ''} ${retired ? 'line-through' : ''} ${column.numeric ? 'text-right tabular-nums' : ''}`,
+          title: error || warning || undefined,
+          className: `w-full h-10 px-2 rounded bg-transparent outline-none focus:ring-2 focus:ring-coffee-brown ${error ? 'ring-2 ring-error' : warning ? 'ring-2 ring-warning' : ''} ${retired ? 'line-through' : ''} ${column.numeric ? 'text-right tabular-nums' : ''}`,
           onKeyDown: (event: React.KeyboardEvent) => event.key === 'Escape' && onCell(id, field, original[field]),
         };
 
@@ -581,6 +600,7 @@ const GridRow = memo(function GridRow({ id, index, original, row, selected, lock
         } else if (locked.has(field)) {
           const text = field === 'category_id' ? categoryName(cells[field])
             : field === 'count_mode' ? MODE_LABEL[cells[field]]
+            : field === 'cost_per_unit' && cells[field] !== '' ? `${cells[field]} /${cells.unit.trim() || 'unit'}`
             : column.numeric && cells[field] !== '' ? formatQty(cells[field]) : cells[field];
           content = <span className={`block px-2 truncate ${retired ? 'line-through' : ''} ${column.numeric ? 'text-right tabular-nums' : ''}`}>{text}</span>;
         } else if (field === 'category_id') {
@@ -608,6 +628,17 @@ const GridRow = memo(function GridRow({ id, index, original, row, selected, lock
               onChange={e => onCell(id, field, e.target.value)}
             />
           );
+          // The price is per the item's own unit; say which, beside every price.
+          if (field === 'cost_per_unit') {
+            content = (
+              <div className="flex items-center gap-1">
+                {content}
+                <span className={`w-12 shrink-0 truncate text-xs ${warning ? 'font-medium text-warning' : 'text-neutral-text-light'}`}>
+                  /{cells.unit.trim() || 'unit'}
+                </span>
+              </div>
+            );
+          }
         }
 
         return (
