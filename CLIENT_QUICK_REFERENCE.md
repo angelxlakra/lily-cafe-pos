@@ -1,11 +1,18 @@
 # 📱 Lily Cafe POS - Quick Reference Card
 **Keep this near your POS station**
 
+> **Which deployment does this apply to?**
+> This guide covers the **on-premises Windows install**, where the backend and
+> frontend both run on the cafe PC. If the cafe is on the **cloud deployment**
+> (backend on Fly.io, frontend on Vercel, and only the print agent on the cafe
+> PC), see [DEPLOYMENT.md](DEPLOYMENT.md) instead — there is nothing to
+> start or update on the PC beyond the agent.
+
 ---
 
 ## 🚀 Starting the System
 
-1. **Double-click:** `start-both.bat`
+1. **Double-click:** `scripts\windows\start.bat`
 2. **Wait:** 15 seconds
 3. **Browser opens automatically:** `http://localhost:5173`
 4. **Login** with your credentials
@@ -24,7 +31,10 @@
 
 ## 🔄 Updates (Automatic)
 
-**Your system updates automatically every night at 3 AM**
+**Your system updates automatically every night, at the time chosen during setup**
+
+(The default is 3 AM. It was set when `scripts\windows\setup.bat` was run;
+your developer can change it by running that again as Administrator.)
 
 ### What You'll See:
 - Nothing! Updates happen while you sleep
@@ -40,9 +50,9 @@ Just restart the system normally (same as every day)
 **Only if your developer asks you to update immediately:**
 
 1. **Stop the POS** (close both windows)
-2. **Double-click:** `update-now.bat`
+2. **Double-click:** `scripts\windows\update.bat`
 3. **Wait** for "Update Successful"
-4. **Restart:** Double-click `start-both.bat`
+4. **Restart:** Double-click `scripts\windows\start.bat`
 
 ---
 
@@ -51,7 +61,7 @@ Just restart the system normally (same as every day)
 ### System won't start?
 1. Close all POS windows
 2. Restart computer
-3. Try `start-both.bat` again
+3. Try `scripts\windows\start.bat` again
 4. If still broken → Call developer
 
 ### Printer not working?
@@ -115,7 +125,7 @@ Just restart the system normally (same as every day)
 1. Stop POS system (close windows)
 2. Leave computer **plugged in**
 3. Leave computer **turned on** or in sleep mode
-4. Computer will wake at 3 AM
+4. Computer will wake at the scheduled update time
 5. Check for updates
 6. Go back to sleep
 
@@ -128,7 +138,7 @@ Just start POS normally!
 
 **Opening:**
 - [ ] Turn on computer (if off)
-- [ ] Double-click `start-both.bat`
+- [ ] Double-click `scripts\windows\start.bat`
 - [ ] Wait for browser to open
 - [ ] Test printer
 - [ ] Ready for orders!

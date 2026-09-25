@@ -87,7 +87,7 @@ export default function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in"
       onClick={(e) => {
         // Close dialog when clicking backdrop
         if (e.target === e.currentTarget && !isLoading) {
@@ -101,7 +101,7 @@ export default function ConfirmDialog({
     >
       <div
         ref={dialogRef}
-        className="bg-white dark:bg-neutral-800 rounded-lg shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200"
+        className="bg-off-white rounded-xl shadow-strong max-w-md w-full p-6 animate-scale-in"
       >
         {/* Header */}
         <div className="flex items-start gap-4 mb-4">
@@ -111,7 +111,7 @@ export default function ConfirmDialog({
           <div className="flex-1">
             <h2
               id="dialog-title"
-              className="text-lg font-heading font-semibold text-neutral-text-dark dark:text-neutral-text-light"
+              className="text-lg font-heading font-semibold text-neutral-text-dark"
             >
               {title}
             </h2>
@@ -119,7 +119,7 @@ export default function ConfirmDialog({
           <button
             onClick={onClose}
             disabled={isLoading}
-            className="flex-shrink-0 text-neutral-text-light hover:text-neutral-text-dark dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex-shrink-0 text-neutral-text-light hover:text-neutral-text-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             aria-label="Close dialog"
           >
             <X size={20} aria-hidden="true" />
@@ -129,7 +129,7 @@ export default function ConfirmDialog({
         {/* Message */}
         <p
           id="dialog-description"
-          className="text-neutral-text-light dark:text-neutral-text mb-4 ml-11"
+          className="text-neutral-text-body mb-4 ml-11"
         >
           {message}
         </p>
@@ -141,7 +141,7 @@ export default function ConfirmDialog({
           <button
             onClick={onClose}
             disabled={isLoading}
-            className="px-4 py-2 border border-neutral-border dark:border-neutral-700 rounded-lg text-neutral-text-dark dark:text-neutral-text-light hover:bg-neutral-50 dark:hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="min-h-12 px-4 py-2 border border-neutral-border rounded-lg text-neutral-text-dark hover:bg-cream/60 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             type="button"
           >
             {cancelText}
@@ -150,7 +150,7 @@ export default function ConfirmDialog({
             ref={confirmButtonRef}
             onClick={onConfirm}
             disabled={isLoading}
-            className={`px-4 py-2 text-white rounded-lg ${styles.button} disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-w-[100px] flex items-center justify-center`}
+            className={`min-h-12 px-4 py-2 text-white dark:text-neutral-background rounded-lg ${styles.button} disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-w-[100px] flex items-center justify-center`}
             type="button"
           >
             {isLoading ? (

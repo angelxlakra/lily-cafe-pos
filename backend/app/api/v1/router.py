@@ -5,6 +5,7 @@ API v1 Router - Combines all endpoint routers.
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
+    ask,
     auth,
     categories,
     menu,
@@ -34,3 +35,4 @@ api_router.include_router(analytics.router, prefix="/analytics", tags=["analytic
 api_router.include_router(print_jobs.router, prefix="/print-jobs", tags=["print-relay"])
 api_router.include_router(settings.router, prefix="/settings", tags=["settings"])
 api_router.include_router(costing.router, prefix="/costing", tags=["costing"])
+api_router.include_router(ask.router, prefix="/ask", tags=["ask"])

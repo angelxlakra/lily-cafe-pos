@@ -1,245 +1,305 @@
-import { useState } from 'react';
-import { Plus, Minus, ArrowsLeftRight, ClockCounterClockwise } from '@phosphor-icons/react';
-import { useInventoryTransactions, useInventoryItems, useRecordPurchase, useRecordUsage, useRecordAdjustment } from '../../hooks/useInventory';
-import type { TransactionType } from '../../types/inventory';
+/**
+ * Stock log: record a delivery, usage, or a one-off correction, and read
+ * every stock movement (including nightly counts) newest first.
+ */
+
+import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Plus, Minus, ArrowsLeftRight, X } from '@phosphor-icons/react';
+import LoadingSpinner from '../LoadingSpinner';
+import { inventoryApi } from '../../api/inventory';
+import { useInventoryTransactions, useRecordPurchase, useRecordUsage, useRecordAdjustment } from '../../hooks/useInventory';
+import { describeApiError } from '../../utils/apiError';
+import { formatQty } from '../../utils/countQuantity';
+import type { InventoryTransaction, TransactionType } from '../../types/inventory';
+
+type Action = 'PURCHASE' | 'USAGE' | 'ADJUSTMENT';
+
+const ACTIONS: Record<Action, {
+  button: string;
+  title: string;
+  quantityLabel: string;
+  notesPlaceholder: string;
+  help?: string;
+  icon: JSX.Element;
+}> = {
+  PURCHASE: {
+    button: 'Delivery received',
+    title: 'Delivery received',
+    quantityLabel: 'Quantity received',
+    notesPlaceholder: 'Supplier, bill number…',
+    icon: <Plus size={18} weight="bold" aria-hidden />,
+  },
+  USAGE: {
+    button: 'Record usage',
+    title: 'Record usage',
+    quantityLabel: 'Quantity used',
+    notesPlaceholder: 'What it was used for…',
+    icon: <Minus size={18} weight="bold" aria-hidden />,
+  },
+  ADJUSTMENT: {
+    button: 'Fix one item',
+    title: "Fix one item's stock",
+    quantityLabel: 'On the shelf now',
+    notesPlaceholder: 'Why it was off…',
+    help: "Sets one item to what's on the shelf now. For the full nightly count, use Daily count.",
+    icon: <ArrowsLeftRight size={18} weight="bold" aria-hidden />,
+  },
+};
+
+/** Stored timestamps are UTC; SQLite returns them without an offset. */
+const parseTimestamp = (value: string) =>
+  new Date(/([zZ]|[+-]\d\d:?\d\d)$/.test(value) ? value : `${value}Z`);
+
+const timeFormat = new Intl.DateTimeFormat('en-IN', {
+  timeZone: 'Asia/Kolkata',
+  day: 'numeric',
+  month: 'short',
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
+const movementLabel = (tx: InventoryTransaction) => {
+  if (tx.transaction_type === 'PURCHASE') return 'Delivery';
+  if (tx.transaction_type === 'USAGE') return 'Used';
+  return tx.notes?.startsWith('Daily count') ? 'Nightly count' : 'Correction';
+};
 
 export default function InventoryTransactionsTab() {
-  const [activeAction, setActiveAction] = useState<'PURCHASE' | 'USAGE' | 'ADJUSTMENT' | null>(null);
-  
+  const [activeAction, setActiveAction] = useState<Action | null>(null);
+
   return (
     <div className="space-y-6">
-      {/* Action Buttons */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <ActionButton
-          icon={<Plus size={24} />}
-          title="Record Purchase"
-          description="Add stock from suppliers"
-          color="bg-success"
-          onClick={() => setActiveAction('PURCHASE')}
-        />
-        <ActionButton
-          icon={<Minus size={24} />}
-          title="Record Usage"
-          description="Log daily ingredient usage"
-          color="bg-warning"
-          onClick={() => setActiveAction('USAGE')}
-        />
-        <ActionButton
-          icon={<ArrowsLeftRight size={24} />}
-          title="Stock Adjustment"
-          description="Correct physical counts"
-          color="bg-info"
-          onClick={() => setActiveAction('ADJUSTMENT')}
-        />
+      <div className="grid gap-2 sm:grid-cols-3">
+        {(Object.keys(ACTIONS) as Action[]).map(action => (
+          <button
+            key={action}
+            onClick={() => setActiveAction(action)}
+            className="btn-secondary inline-flex items-center justify-center gap-2 whitespace-nowrap [&>svg]:shrink-0"
+          >
+            {ACTIONS[action].icon}
+            {ACTIONS[action].button}
+          </button>
+        ))}
       </div>
 
-      {/* Transaction Form Modal */}
-      {activeAction && (
-        <TransactionFormModal
-          type={activeAction}
-          onClose={() => setActiveAction(null)}
-        />
-      )}
+      {activeAction && <TransactionFormModal type={activeAction} onClose={() => setActiveAction(null)} />}
 
-      {/* Transactions History */}
-      <TransactionsHistory />
+      <StockLog />
     </div>
   );
 }
 
-function ActionButton({ icon, title, description, color, onClick }: { icon: React.ReactNode, title: string, description: string, color: string, onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="card p-6 text-left hover:shadow-strong transition-all group border-l-4 border-transparent hover:border-coffee-brown"
-    >
-      <div className={`w-12 h-12 rounded-full ${color}/10 text-${color.replace('bg-', '')} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-        {icon}
-      </div>
-      <h3 className="font-heading text-lg text-neutral-text-dark mb-1">{title}</h3>
-      <p className="text-sm text-neutral-text-muted">{description}</p>
-    </button>
-  );
-}
-
-function TransactionsHistory() {
+function StockLog() {
   const [filterType, setFilterType] = useState<TransactionType | ''>('');
-  const { data, isLoading } = useInventoryTransactions({
+  const [limit, setLimit] = useState(20);
+  const { data, isLoading, isError, refetch, isFetching } = useInventoryTransactions({
     transaction_type: filterType || undefined,
-    limit: 20
+    limit,
   });
+  const transactions = data?.transactions ?? [];
 
   return (
-    <div className="card overflow-hidden">
-      <div className="p-4 border-b border-neutral-border flex justify-between items-center">
-        <h3 className="font-heading text-lg text-neutral-text-dark flex items-center gap-2">
-          <ClockCounterClockwise size={20} />
-          Recent Activity
-        </h3>
-        <select
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value as TransactionType | '')}
-          className="input-field py-1 px-3 text-sm w-auto"
-        >
-          <option value="">All Types</option>
-          <option value="PURCHASE">Purchases</option>
-          <option value="USAGE">Usage</option>
-          <option value="ADJUSTMENT">Adjustments</option>
-        </select>
+    <section aria-labelledby="stock-log-title">
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <h2 id="stock-log-title" className="font-heading text-xl! leading-tight! text-neutral-text-dark">Stock log</h2>
+        <label>
+          <span className="sr-only">Show</span>
+          <select
+            value={filterType}
+            onChange={(e) => { setFilterType(e.target.value as TransactionType | ''); setLimit(20); }}
+            className="input-field w-auto min-h-12 py-2"
+          >
+            <option value="">Everything</option>
+            <option value="PURCHASE">Deliveries</option>
+            <option value="USAGE">Usage</option>
+            <option value="ADJUSTMENT">Counts and corrections</option>
+          </select>
+        </label>
       </div>
-      
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-neutral-background border-b border-neutral-border text-neutral-text-muted text-sm uppercase tracking-wider">
-              <th className="p-4 font-medium">Date</th>
-              <th className="p-4 font-medium">Item</th>
-              <th className="p-4 font-medium">Type</th>
-              <th className="p-4 font-medium text-right">Quantity</th>
-              <th className="p-4 font-medium">By</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-border">
-            {isLoading ? (
-              <tr><td colSpan={5} className="p-8 text-center text-neutral-text-muted">Loading history...</td></tr>
-            ) : !data?.transactions || data.transactions.length === 0 ? (
-              <tr><td colSpan={5} className="p-8 text-center text-neutral-text-muted">No transactions found.</td></tr>
-            ) : (
-              data.transactions.map((tx) => (
-                <tr key={tx.id} className="hover:bg-neutral-background/50">
-                  <td className="p-4 text-sm text-neutral-text-body">
-                    {new Date(tx.created_at).toLocaleDateString()} {new Date(tx.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                  </td>
-                  <td className="p-4 font-medium text-neutral-text-dark">{tx.item_name}</td>
-                  <td className="p-4">
-                    <span className={`badge ${
-                      tx.transaction_type === 'PURCHASE' ? 'bg-success/10 text-success' :
-                      tx.transaction_type === 'USAGE' ? 'bg-warning/10 text-warning-dark' :
-                      'bg-info/10 text-info'
-                    }`}>
-                      {tx.transaction_type}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right font-mono">
-                    {tx.quantity > 0 ? '+' : ''}{tx.quantity}
-                  </td>
-                  <td className="p-4 text-sm text-neutral-text-muted">{tx.recorded_by}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+
+      {isLoading ? (
+        <div className="py-10 flex justify-center gap-3 text-neutral-text-muted"><LoadingSpinner /> Loading…</div>
+      ) : isError ? (
+        <div role="alert" className="card p-4">
+          <p className="text-neutral-text-dark">Couldn't load the stock log.</p>
+          <button onClick={() => refetch()} className="btn-secondary mt-3">Try again</button>
+        </div>
+      ) : transactions.length === 0 ? (
+        <div className="card p-8 text-center text-neutral-text-muted">
+          Nothing here yet. Deliveries, usage and count changes will show up here.
+        </div>
+      ) : (
+        <>
+          <ul className="card divide-y divide-neutral-border overflow-hidden">
+            {transactions.map(tx => {
+              const quantity = Number(tx.quantity);
+              return (
+                <li key={tx.id} className="flex items-start gap-3 px-4 py-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium leading-snug text-neutral-text-dark break-words">{tx.item_name ?? 'Deleted item'}</div>
+                    <div className="text-xs text-neutral-text-muted">
+                      {movementLabel(tx)} · {timeFormat.format(parseTimestamp(tx.created_at))} · {tx.recorded_by}
+                    </div>
+                    {tx.notes && !tx.notes.startsWith('Daily count') && (
+                      <div className="mt-0.5 text-sm text-neutral-text-body break-words">{tx.notes}</div>
+                    )}
+                  </div>
+                  <div className="shrink-0 text-right tabular-nums">
+                    <div className="font-semibold text-neutral-text-dark">
+                      {quantity > 0 ? '+' : quantity < 0 ? '−' : ''}{formatQty(Math.abs(quantity))}
+                    </div>
+                    <div className="text-xs text-neutral-text-muted">
+                      {formatQty(tx.previous_quantity)} → {formatQty(tx.new_quantity)}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          {data && data.total > transactions.length && (
+            <button onClick={() => setLimit(value => value + 20)} disabled={isFetching} className="btn-ghost w-full mt-2">
+              {isFetching ? 'Loading…' : `Show more (${data.total - transactions.length} older)`}
+            </button>
+          )}
+        </>
+      )}
+    </section>
   );
 }
 
-function TransactionFormModal({ type, onClose }: { type: 'PURCHASE' | 'USAGE' | 'ADJUSTMENT', onClose: () => void }) {
+function TransactionFormModal({ type, onClose }: { type: Action; onClose: () => void }) {
+  const copy = ACTIONS[type];
   const [itemId, setItemId] = useState<number | ''>('');
-  const [quantity, setQuantity] = useState<number | ''>('');
+  // Kept as the raw input string so 0 ("ran out") is a real value, not "empty".
+  const [quantity, setQuantity] = useState('');
   const [notes, setNotes] = useState('');
-  
-  // For search
-  const { data: itemsData } = useInventoryItems({ is_active: true });
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Items grouped by category in count order, so a long list is scannable.
+  const { data: groups = [] } = useQuery({
+    queryKey: ['inventory', 'count-sheet'],
+    queryFn: inventoryApi.getCountSheet,
+  });
+  const selectedItem = groups.flatMap(group => group.items).find(item => item.id === itemId);
 
   const recordPurchase = useRecordPurchase();
   const recordUsage = useRecordUsage();
   const recordAdjustment = useRecordAdjustment();
+  const isSubmitting = recordPurchase.isPending || recordUsage.isPending || recordAdjustment.isPending;
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && !isSubmitting && onClose();
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose, isSubmitting]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!itemId || !quantity) return;
+    if (!itemId || quantity === '') return;
+    const amount = Number(quantity);
+    if (type !== 'ADJUSTMENT' && amount <= 0) {
+      setSubmitError('Enter a quantity above 0.');
+      return;
+    }
+    setSubmitError(null);
 
     try {
-      if (type === 'PURCHASE') {
-        await recordPurchase.mutateAsync({
-          items: [{ item_id: Number(itemId), quantity: Number(quantity), notes }]
-        });
-      } else if (type === 'USAGE') {
-        await recordUsage.mutateAsync({
-          items: [{ item_id: Number(itemId), quantity: Number(quantity), notes }],
-          recorded_by: 'Staff' // TODO: Get from auth context
-        });
-      } else {
-        await recordAdjustment.mutateAsync({
-          item_id: Number(itemId),
-          new_quantity: Number(quantity), // For adjustment, this is the NEW physical count
-          notes
-        });
-      }
+      const line = { item_id: itemId, quantity: amount, notes: notes || undefined };
+      if (type === 'PURCHASE') await recordPurchase.mutateAsync({ items: [line] });
+      else if (type === 'USAGE') await recordUsage.mutateAsync({ items: [line] });
+      else await recordAdjustment.mutateAsync({ item_id: itemId, new_quantity: amount, notes: notes || undefined });
       onClose();
     } catch (error) {
-      console.error("Failed to record transaction", error);
+      setSubmitError(describeApiError(error));
     }
   };
 
-  const selectedItem = itemsData?.items.find(i => i.id === Number(itemId));
+  const field = 'block text-sm font-medium text-neutral-text-body mb-1';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="card w-full max-w-md p-6 shadow-strong animate-scale-in" onClick={e => e.stopPropagation()}>
-        <h3 className="text-xl font-heading text-coffee-brown dark:text-cream mb-6">
-          {type === 'PURCHASE' ? 'Record Purchase' : type === 'USAGE' ? 'Record Usage' : 'Stock Adjustment'}
-        </h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in" onClick={isSubmitting ? undefined : onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="stock-form-title"
+        className="card w-full max-w-md max-h-[90dvh] overflow-y-auto p-6 shadow-strong animate-scale-in"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-start gap-3 mb-4">
+          <div>
+            <h2 id="stock-form-title" className="font-heading text-2xl! text-neutral-text-dark">{copy.title}</h2>
+            {copy.help && <p className="mt-1 text-sm text-neutral-text-muted">{copy.help}</p>}
+          </div>
+          <button onClick={onClose} aria-label="Close" className="size-12 -mr-3 -mt-2 shrink-0 grid place-items-center text-neutral-text-muted hover:text-neutral-text-dark">
+            <X size={22} aria-hidden />
+          </button>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Item Selection */}
           <div>
-            <label className="block text-sm font-medium text-neutral-text-muted mb-1">Select Item</label>
+            <label htmlFor="stock-item" className={field}>Item</label>
             <select
+              id="stock-item"
               value={itemId}
-              onChange={e => setItemId(Number(e.target.value))}
+              onChange={e => setItemId(e.target.value ? Number(e.target.value) : '')}
               className="input-field"
               required
             >
-              <option value="">Select an item...</option>
-              {itemsData?.items.map(item => (
-                <option key={item.id} value={item.id}>
-                  {item.name} ({item.current_quantity} {item.unit})
-                </option>
+              <option value="">Choose an item…</option>
+              {groups.map(group => (
+                <optgroup key={group.category?.id ?? 'none'} label={group.category?.name ?? 'Uncategorized'}>
+                  {group.items.map(item => (
+                    <option key={item.id} value={item.id}>{item.name}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
+            {selectedItem && (
+              <p className="mt-1 text-sm text-neutral-text-muted tabular-nums">
+                In stock now: {formatQty(selectedItem.current_quantity)} {selectedItem.unit}
+              </p>
+            )}
           </div>
 
-          {/* Quantity Input */}
           <div>
-            <label className="block text-sm font-medium text-neutral-text-muted mb-1">
-              {type === 'ADJUSTMENT' ? 'New Physical Count' : 'Quantity'}
-            </label>
+            <label htmlFor="stock-quantity" className={field}>{copy.quantityLabel}</label>
             <div className="flex items-center gap-2">
               <input
+                id="stock-quantity"
                 type="number"
+                inputMode="decimal"
                 step="0.01"
                 min="0"
                 value={quantity}
-                onChange={e => setQuantity(Number(e.target.value))}
+                onChange={e => setQuantity(e.target.value)}
                 className="input-field"
                 required
               />
               {selectedItem && <span className="text-neutral-text-muted font-medium">{selectedItem.unit}</span>}
             </div>
-            {type === 'ADJUSTMENT' && selectedItem && (
-              <p className="text-xs text-neutral-text-muted mt-1">
-                Current system stock: {selectedItem.current_quantity} {selectedItem.unit}
-              </p>
-            )}
           </div>
 
-          {/* Notes */}
           <div>
-            <label className="block text-sm font-medium text-neutral-text-muted mb-1">Notes (Optional)</label>
+            <label htmlFor="stock-notes" className={field}>Note <span className="font-normal text-neutral-text-muted">(optional)</span></label>
             <textarea
+              id="stock-notes"
               value={notes}
               onChange={e => setNotes(e.target.value)}
-              className="input-field min-h-[80px]"
-              placeholder="Supplier name, reason for adjustment, etc."
+              maxLength={500}
+              className="input-field min-h-20"
+              placeholder={copy.notesPlaceholder}
             />
           </div>
 
-          <div className="flex justify-end gap-3 mt-6">
-            <button type="button" onClick={onClose} className="btn-ghost">Cancel</button>
-            <button type="submit" className="btn-primary">
-              Save Record
+          {submitError && (
+            <div role="alert" className="text-sm font-medium text-error">Not saved. {submitError}</div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose} disabled={isSubmitting} className="btn-ghost">Cancel</button>
+            <button type="submit" className="btn-primary" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving…' : 'Save'}
             </button>
           </div>
         </form>

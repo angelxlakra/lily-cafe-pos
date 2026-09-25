@@ -50,7 +50,7 @@ export default function DenominationCounter({
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-2">
       {DENOMINATION_VALUES.map((denom) => {
           const count = denominations[denom];
           const subtotal = count * denom;
@@ -63,18 +63,18 @@ export default function DenominationCounter({
                 border border-neutral-border rounded-lg p-2
                 transition-all
                 ${isFocused ? 'ring-2 ring-lily-green border-lily-green' : ''}
-                ${count > 0 ? 'bg-lily-green/5 dark:bg-lily-green/10' : 'bg-white dark:bg-neutral-900'}
+                ${count > 0 ? 'bg-lily-green/5 dark:bg-lily-green/10' : 'bg-off-white'}
               `}
             >
               {/* Denomination Label & Subtotal */}
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-1">
-                  <CurrencyInr size={16} weight="bold" className="text-lily-green" />
+                  <CurrencyInr size={16} weight="bold" className="text-lily-ink" />
                   <span className="text-sm font-bold text-neutral-text-dark dark:text-cream">
                     {denom}
                   </span>
                 </div>
-                <div className={`text-xs font-mono font-bold ${count > 0 ? 'text-lily-green dark:text-lily-green-light' : 'text-neutral-text-muted'}`}>
+                <div className={`text-xs font-mono font-bold ${count > 0 ? 'text-lily-ink' : 'text-neutral-text-muted'}`}>
                   ₹{subtotal.toLocaleString('en-IN')}
                 </div>
               </div>

@@ -283,7 +283,7 @@ export default function MenuManagementPage() {
                           </p>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="inline-block px-2 py-1 bg-lily-green/10 text-lily-green text-sm rounded-md">
+                          <span className="inline-block px-2 py-1 bg-lily-green/10 text-lily-ink text-sm rounded-md">
                             {getCategoryName(item)}
                           </span>
                         </td>

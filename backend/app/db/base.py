@@ -21,6 +21,12 @@ from app.models.inventory_models import (  # noqa
 )
 from app.models.cash_models import DailyCashCounter  # noqa
 from app.models.settings_model import AppSetting  # noqa
+from app.models.oauth_models import (  # noqa
+    OAuthAuthorizationCode,
+    OAuthClient,
+    OAuthGrantToken,
+    OAuthPendingAuthorization,
+)
 
 from app.models.costing_models import ( DishCosting, DishCostingIngredient)
 
@@ -40,5 +46,9 @@ __all__ = [
     "DailyCashCounter",
     "AppSetting",
     "DishCosting", # Dish Costing
-    "DishCostingIngredient" # Dish Costing
+    "DishCostingIngredient", # Dish Costing
+    "OAuthClient",
+    "OAuthPendingAuthorization",
+    "OAuthAuthorizationCode",
+    "OAuthGrantToken",
 ]

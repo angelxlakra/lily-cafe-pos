@@ -146,7 +146,7 @@ export default function TemplateImportModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-coffee-dark rounded-lg shadow-xl max-w-4xl w-full my-8 flex flex-col max-h-[calc(100vh-4rem)]">
+      <div className="bg-off-white rounded-xl shadow-strong max-w-4xl w-full my-8 flex flex-col max-h-[calc(100vh-4rem)]">
         {/* Header */}
         <div className="flex items-center justify-between p-4 md:p-6 border-b border-neutral-border flex-shrink-0">
           <div>
@@ -205,7 +205,7 @@ Rice - YES
               </div>
 
               <div className="bg-lily-green/10 border border-lily-green/30 rounded-lg p-4">
-                <h3 className="font-medium text-lily-green dark:text-lily-green-light mb-2 text-sm">
+                <h3 className="font-medium text-lily-ink mb-2 text-sm">
                   Supported Formats:
                 </h3>
                 <ul className="text-xs text-neutral-text-muted space-y-1">
@@ -225,8 +225,8 @@ Rice - YES
             <div className="space-y-4">
               <div className="bg-neutral-background rounded-lg p-4">
                 <p className="text-sm text-neutral-text-muted">
-                  Found <span className="font-bold text-lily-green">{parsedItems.length} items</span> across{' '}
-                  <span className="font-bold text-lily-green">
+                  Found <span className="font-bold text-lily-ink">{parsedItems.length} items</span> across{' '}
+                  <span className="font-bold text-lily-ink">
                     {new Set(parsedItems.map(i => i.category)).size} categories
                   </span>
                 </p>
@@ -284,7 +284,7 @@ Rice - YES
           {/* Step 3: Importing */}
           {step === 'importing' && (
             <div className="flex flex-col items-center justify-center py-12">
-              <div className="animate-spin text-lily-green mb-4">
+              <div className="animate-spin text-lily-ink mb-4">
                 <Upload size={48} />
               </div>
               <p className="text-lg font-medium text-neutral-text-dark dark:text-cream">
@@ -300,7 +300,7 @@ Rice - YES
           {step === 'complete' && (
             <div className="space-y-6">
               <div className="flex flex-col items-center justify-center py-8">
-                <div className="text-lily-green mb-4">
+                <div className="text-lily-ink mb-4">
                   <CheckCircle size={64} weight="fill" />
                 </div>
                 <h3 className="text-xl font-heading text-neutral-text-dark dark:text-cream mb-2">
@@ -313,7 +313,7 @@ Rice - YES
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="card p-4 text-center">
-                  <div className="text-2xl font-bold text-lily-green dark:text-lily-green-light">
+                  <div className="text-2xl font-bold text-lily-ink">
                     {importResults.categoriesCreated}
                   </div>
                   <div className="text-sm text-neutral-text-muted mt-1">
@@ -322,7 +322,7 @@ Rice - YES
                 </div>
 
                 <div className="card p-4 text-center">
-                  <div className="text-2xl font-bold text-lily-green dark:text-lily-green-light">
+                  <div className="text-2xl font-bold text-lily-ink">
                     {importResults.itemsCreated}
                   </div>
                   <div className="text-sm text-neutral-text-muted mt-1">
@@ -346,7 +346,7 @@ Rice - YES
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between gap-3 p-4 md:p-6 border-t border-neutral-border flex-shrink-0 bg-white dark:bg-coffee-dark">
+        <div className="flex items-center justify-between gap-3 p-4 md:p-6 border-t border-neutral-border flex-shrink-0 bg-off-white">
           {step === 'input' && (
             <>
               <button onClick={handleClose} className="btn-ghost text-sm md:text-base">

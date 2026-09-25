@@ -1,0 +1,540 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-21T15:44:42.723337+00:00",
+  "title": "Design System: Lily Cafe POS",
+  "extensions": {
+    "colorMeta": {
+      "coffee-brown": {
+        "role": "primary",
+        "displayName": "Roasted Coffee",
+        "canonical": "#6F4E37",
+        "tonalRamp": [
+          "#332419",
+          "#593E2C",
+          "#7E593F",
+          "#A47351",
+          "#BA9073",
+          "#CCAE99",
+          "#E1CEC2",
+          "#F7F1EE"
+        ]
+      },
+      "coffee-dark": {
+        "role": "primary",
+        "displayName": "Espresso",
+        "canonical": "#4A3728",
+        "tonalRamp": [
+          "#32251B",
+          "#56402F",
+          "#7A5B42",
+          "#9F7656",
+          "#B69377",
+          "#C9B09C",
+          "#DFCFC3",
+          "#F6F2EE"
+        ]
+      },
+      "coffee-light": {
+        "role": "primary",
+        "displayName": "Milky Latte",
+        "canonical": "#A0826D",
+        "tonalRamp": [
+          "#2E251E",
+          "#504034",
+          "#725B4A",
+          "#947660",
+          "#AD9380",
+          "#C3B0A2",
+          "#DBCFC7",
+          "#F5F2F0"
+        ]
+      },
+      "lily-green": {
+        "role": "secondary",
+        "displayName": "Lily Leaf",
+        "canonical": "#8B9D83",
+        "tonalRamp": [
+          "#252B22",
+          "#3F4A3B",
+          "#5A6953",
+          "#75896C",
+          "#92A38A",
+          "#AFBBAA",
+          "#CFD6CC",
+          "#F2F4F1"
+        ]
+      },
+      "lily-green-light": {
+        "role": "secondary",
+        "displayName": "Pale Lily Leaf",
+        "canonical": "#A8B89F",
+        "tonalRamp": [
+          "#252C21",
+          "#404C38",
+          "#5A6C50",
+          "#758D68",
+          "#92A687",
+          "#AFBEA7",
+          "#CFD8CA",
+          "#F2F4F0"
+        ]
+      },
+      "cream": {
+        "role": "neutral",
+        "displayName": "Cream Paper",
+        "canonical": "#F5E6D3",
+        "tonalRamp": [
+          "#3E290E",
+          "#6C4719",
+          "#9A6523",
+          "#C7832D",
+          "#D89E55",
+          "#E3B882",
+          "#EED4B4",
+          "#FAF3EA"
+        ]
+      },
+      "off-white": {
+        "role": "neutral",
+        "displayName": "Notebook White",
+        "canonical": "#FAF8F5",
+        "tonalRamp": [
+          "#33291A",
+          "#58472C",
+          "#7E653F",
+          "#A38352",
+          "#B99D74",
+          "#CCB899",
+          "#E0D4C2",
+          "#F7F3EE"
+        ]
+      },
+      "neutral-background": {
+        "role": "neutral",
+        "displayName": "Warm Page",
+        "canonical": "#FFFCF7",
+        "tonalRamp": [
+          "#4C3000",
+          "#855300",
+          "#BD7600",
+          "#F59900",
+          "#FFB12E",
+          "#FFC666",
+          "#FFDDA3",
+          "#FFF5E5"
+        ]
+      },
+      "neutral-border": {
+        "role": "neutral",
+        "displayName": "Pencil Rule",
+        "canonical": "#D4C4B0",
+        "tonalRamp": [
+          "#32281B",
+          "#56442F",
+          "#7A6143",
+          "#9F7E56",
+          "#B59A78",
+          "#C9B59C",
+          "#DFD3C4",
+          "#F6F3EE"
+        ]
+      },
+      "neutral-text-dark": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#2C2420",
+        "tonalRamp": [
+          "#2C2420",
+          "#4D3F38",
+          "#6D594F",
+          "#8E7467",
+          "#A79186",
+          "#BFAEA6",
+          "#D8CFCA",
+          "#F4F2F0"
+        ]
+      },
+      "neutral-text-body": {
+        "role": "neutral",
+        "displayName": "Body Ink",
+        "canonical": "#43352D",
+        "tonalRamp": [
+          "#2E241F",
+          "#4F3F35",
+          "#71594C",
+          "#927462",
+          "#AB9182",
+          "#C2AEA3",
+          "#DACFC8",
+          "#F5F2F0"
+        ]
+      },
+      "neutral-text-light": {
+        "role": "neutral",
+        "displayName": "Faded Ink",
+        "canonical": "#6B5D54",
+        "tonalRamp": [
+          "#2B2522",
+          "#4A413A",
+          "#6A5C53",
+          "#89776C",
+          "#A3948A",
+          "#BCB0A9",
+          "#D7D0CC",
+          "#F4F2F1"
+        ]
+      },
+      "neutral-text-muted": {
+        "role": "neutral",
+        "displayName": "Margin Note",
+        "canonical": "#736459",
+        "tonalRamp": [
+          "#2B2621",
+          "#4B413A",
+          "#6A5C52",
+          "#8A786B",
+          "#A49489",
+          "#BCB1A9",
+          "#D7D0CB",
+          "#F4F2F1"
+        ]
+      },
+      "success": {
+        "role": "functional",
+        "displayName": "Success",
+        "canonical": "#276C2B",
+        "tonalRamp": [
+          "#143816",
+          "#236127",
+          "#328B37",
+          "#41B448",
+          "#65C86B",
+          "#8FD693",
+          "#BCE7BE",
+          "#ECF8ED"
+        ]
+      },
+      "error": {
+        "role": "functional",
+        "displayName": "Error",
+        "canonical": "#B3342A",
+        "tonalRamp": [
+          "#3E120F",
+          "#6B1F19",
+          "#992C24",
+          "#C63A2F",
+          "#D75F56",
+          "#E28A83",
+          "#EEB9B5",
+          "#FAEBEA"
+        ]
+      },
+      "warning": {
+        "role": "functional",
+        "displayName": "Warning",
+        "canonical": "#9E4A06",
+        "tonalRamp": [
+          "#4A2303",
+          "#803C05",
+          "#B65507",
+          "#EC6E09",
+          "#F78C36",
+          "#F9AB6C",
+          "#FCCDA7",
+          "#FEF1E6"
+        ]
+      },
+      "info": {
+        "role": "functional",
+        "displayName": "Info",
+        "canonical": "#1565C0",
+        "tonalRamp": [
+          "#082445",
+          "#0D3F78",
+          "#1359AA",
+          "#1874DD",
+          "#4391EA",
+          "#75AFF0",
+          "#ACCFF6",
+          "#E8F2FC"
+        ]
+      },
+      "lily-green-deep": {
+        "role": "secondary",
+        "displayName": "Deep Lily Leaf",
+        "canonical": "#5A6655",
+        "tonalRamp": [
+          "#252A23",
+          "#40483C",
+          "#5B6756",
+          "#76866F",
+          "#93A08D",
+          "#B0B9AC",
+          "#CFD5CD",
+          "#F2F3F1"
+        ]
+      },
+      "lily-ink": {
+        "role": "secondary",
+        "displayName": "Lily Ink",
+        "canonical": "#5A6655",
+        "tonalRamp": [
+          "#252A23",
+          "#40483C",
+          "#5B6756",
+          "#76866F",
+          "#93A08D",
+          "#B0B9AC",
+          "#CFD5CD",
+          "#F2F3F1"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Page heroes and waiter table numbers."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section titles."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Sub-sections and modal titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "All operational copy and form text."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Badges, nav labels, captions."
+      }
+    },
+    "shadows": [
+      {
+        "name": "soft",
+        "value": "0 2px 8px rgba(44,36,32,0.06), 0 4px 16px rgba(44,36,32,0.04)",
+        "purpose": "Default card at rest."
+      },
+      {
+        "name": "medium",
+        "value": "0 4px 12px rgba(44,36,32,0.08), 0 8px 24px rgba(44,36,32,0.06)",
+        "purpose": "Interactive card hover."
+      },
+      {
+        "name": "strong",
+        "value": "0 8px 20px rgba(44,36,32,0.12), 0 16px 40px rgba(44,36,32,0.08)",
+        "purpose": "Modals, prominent panels."
+      },
+      {
+        "name": "button-drop",
+        "value": "0 8px 16px -10px rgba(79,50,35,0.6)",
+        "purpose": "Primary button at rest."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-settle",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "The one easing curve: confident deceleration for every state change and entrance."
+      },
+      {
+        "name": "dur-press",
+        "value": "120ms",
+        "purpose": "Button press feedback."
+      },
+      {
+        "name": "dur-state",
+        "value": "200ms",
+        "purpose": "Routine state changes, list rows."
+      },
+      {
+        "name": "dur-overlay",
+        "value": "250ms",
+        "purpose": "Dialogs and sheets entering (exit faster)."
+      },
+      {
+        "name": "dur-theme",
+        "value": "300ms",
+        "purpose": "Light/dark switch colour fade only."
+      },
+      {
+        "name": "count-up",
+        "value": "useCountUp, 300–400ms",
+        "purpose": "Money and totals roll to their new value."
+      },
+      {
+        "name": "draw",
+        "value": "animate-draw, 350ms",
+        "purpose": "One checkmark when something is finished or settled."
+      },
+      {
+        "name": "list presence",
+        "value": "animate-arrive / animate-highlight / animate-depart",
+        "purpose": "New, changed and removed rows in live lists."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The next action on any screen: place order, generate bill.",
+      "html": "<button class=\"ds-btn-primary\">Generate Bill</button>",
+      "css": ".ds-btn-primary{min-height:48px;min-width:48px;padding:8px 16px;border-radius:6px;font:500 1rem Inter,system-ui,sans-serif;border:1px solid transparent;cursor:pointer;background:linear-gradient(135deg,var(--color-coffee-brown, #6F4E37),var(--color-coffee-dark, #4A3728));color:var(--color-cream, #F5E6D3);box-shadow:0 8px 16px -10px rgba(79,50,35,.6);transition:transform 150ms cubic-bezier(.4,0,.2,1),box-shadow 150ms,background 150ms}.ds-btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 18px -8px rgba(79,50,35,.45);background:linear-gradient(135deg,var(--color-coffee-dark, #4A3728),#35261c)}.ds-btn-primary:active{transform:translateY(0)}.ds-btn-primary:focus-visible{outline:2px solid var(--color-coffee-brown, #6F4E37);outline-offset:2px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Alternate or cancel actions beside a primary.",
+      "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn-secondary{min-height:48px;min-width:48px;padding:8px 16px;border-radius:6px;font:500 1rem Inter,system-ui,sans-serif;cursor:pointer;background:var(--color-cream, #F5E6D3);color:var(--color-coffee-brown, #6F4E37);border:1px solid var(--color-coffee-light, #A0826D);transition:transform 150ms,box-shadow 150ms,border-color 150ms}.ds-btn-secondary:hover{border-color:var(--color-coffee-brown, #6F4E37);transform:translateY(-1px);box-shadow:0 10px 18px -8px rgba(79,50,35,.45)}.ds-btn-secondary:focus-visible{outline:2px solid var(--color-coffee-brown, #6F4E37);outline-offset:2px}"
+    },
+    {
+      "name": "Success Button",
+      "kind": "button",
+      "refersTo": "button-success",
+      "description": "Confirming a settled outcome: confirm payment, save count.",
+      "html": "<button class=\"ds-btn-success\">Confirm Payment</button>",
+      "css": ".ds-btn-success{min-height:48px;min-width:48px;padding:8px 16px;border-radius:6px;font:500 1rem Inter,system-ui,sans-serif;border:1px solid transparent;cursor:pointer;background:linear-gradient(135deg,#8b9d83,#6f8365);color:#f6f1ea;box-shadow:0 8px 16px -10px rgba(80,110,90,.45);transition:transform 150ms,background 150ms}.ds-btn-success:hover{transform:translateY(-1px);background:linear-gradient(135deg,#6f8365,#54614f)}.ds-btn-success:focus-visible{outline:2px solid #6f8365;outline-offset:2px}"
+    },
+    {
+      "name": "Destructive Button",
+      "kind": "button",
+      "refersTo": "button-destructive",
+      "description": "Cancel order, remove item. Tinted, never solid red.",
+      "html": "<button class=\"ds-btn-destructive\">Cancel Order</button>",
+      "css": ".ds-btn-destructive{min-height:48px;min-width:48px;padding:8px 16px;border-radius:6px;font:500 1rem Inter,system-ui,sans-serif;cursor:pointer;background:rgba(244,67,54,.12);color:#c0392b;border:1px solid rgba(244,67,54,.5);transition:background 150ms,color 150ms}.ds-btn-destructive:hover{background:rgba(244,67,54,.2);color:#a93226}.ds-btn-destructive:focus-visible{outline:2px solid #c0392b;outline-offset:2px}"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "All text entry: search, kitchen notes, amounts.",
+      "html": "<input class=\"ds-input\" placeholder=\"Search menu…\" />",
+      "css": ".ds-input{width:100%;padding:12px 16px;border:1.5px solid var(--color-neutral-border, #D4C4B0);border-radius:10px;background:var(--color-off-white, #FAF8F5);color:var(--color-neutral-text-dark, #2C2420);font:400 1rem Inter,system-ui,sans-serif;transition:border-color 200ms,box-shadow 200ms,background 200ms}.ds-input::placeholder{color:var(--color-neutral-text-muted, #736459)}.ds-input:focus{outline:none;border-color:var(--color-coffee-brown, #6F4E37);background:#fff;box-shadow:0 0 0 3px rgba(111,78,55,.08),0 2px 8px rgba(44,36,32,.06)}"
+    },
+    {
+      "name": "Filter Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Menu category and date quick filters.",
+      "html": "<span class=\"ds-chip\">Beverages</span> <span class=\"ds-chip ds-chip-active\">Snacks</span>",
+      "css": ".ds-chip{display:inline-flex;align-items:center;padding:8px 16px;border-radius:9999px;font:500 .875rem Inter,system-ui,sans-serif;border:1.5px solid var(--color-neutral-border, #D4C4B0);background:var(--color-cream, #F5E6D3);color:var(--color-neutral-text-dark, #2C2420);cursor:pointer;transition:all 200ms}.ds-chip:hover{background:var(--color-off-white, #FAF8F5);border-color:var(--color-coffee-light, #A0826D);box-shadow:0 2px 8px rgba(44,36,32,.08)}.ds-chip-active,.ds-chip-active:hover{background:linear-gradient(135deg,var(--color-coffee-brown, #6F4E37),var(--color-coffee-dark, #4A3728));color:var(--color-cream, #F5E6D3);border-color:var(--color-coffee-brown, #6F4E37);box-shadow:0 4px 12px rgba(111,78,55,.3)}"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Default content container on the Warm Page.",
+      "html": "<div class=\"ds-card\"><strong>Today's Revenue</strong><div class=\"ds-card-num\">₹12,480</div></div>",
+      "css": ".ds-card{background:var(--color-off-white, #FAF8F5);border:1px solid rgba(212,196,176,.5);border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(44,36,32,.06),0 4px 16px rgba(44,36,32,.04);color:var(--color-neutral-text-dark, #2C2420);font:400 1rem Inter,system-ui,sans-serif}.ds-card-num{font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums;font-size:1.5rem;margin-top:4px}"
+    },
+    {
+      "name": "Table Tile",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Signature waiter entry point: Quesha table number over a status pill.",
+      "html": "<button class=\"ds-table\"><span class=\"ds-table-num\">7</span><span class=\"ds-table-pill\">Occupied</span></button>",
+      "css": ".ds-table{position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;width:140px;aspect-ratio:1;border-radius:12px;border:1px solid rgba(212,196,176,.5);background:var(--color-off-white, #FAF8F5);cursor:pointer;box-shadow:0 2px 8px rgba(44,36,32,.06);transition:transform 200ms,box-shadow 200ms}.ds-table::after{content:'';position:absolute;top:-16px;right:-16px;width:64px;height:64px;border-radius:50%;background:rgba(139,157,131,.25);filter:blur(24px)}.ds-table:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(44,36,32,.08),0 8px 24px rgba(44,36,32,.06)}.ds-table:focus-visible{outline:2px solid var(--color-coffee-brown, #6F4E37);outline-offset:2px}.ds-table-num{font:400 2rem Quesha,Georgia,serif;letter-spacing:.04em;color:var(--color-neutral-text-dark, #2C2420);margin-bottom:8px}.ds-table-pill{padding:4px 10px;border-radius:9999px;font:600 .75rem Inter,system-ui,sans-serif;background:rgba(139,157,131,.2);color:#54614f}"
+    },
+    {
+      "name": "Bottom Navigation",
+      "kind": "nav",
+      "refersTo": null,
+      "description": "Waiter phone navigation, 48px equal-width tabs.",
+      "html": "<nav class=\"ds-bnav\"><a class=\"ds-bnav-item ds-bnav-active\">Tables</a><a class=\"ds-bnav-item\">Orders</a><a class=\"ds-bnav-item\">Theme</a></nav>",
+      "css": ".ds-bnav{display:flex;width:360px;height:64px;background:var(--color-off-white, #FAF8F5);border-top:1px solid var(--color-neutral-border, #D4C4B0)}.ds-bnav-item{position:relative;flex:1;display:flex;align-items:center;justify-content:center;min-height:48px;font:600 .75rem Inter,system-ui,sans-serif;letter-spacing:.025em;color:var(--color-neutral-text-light, #6B5D54);cursor:pointer;transition:all 200ms}.ds-bnav-item:hover{color:var(--color-coffee-brown, #6F4E37);background:rgba(245,230,211,.6)}.ds-bnav-active,.ds-bnav-active:hover{background:linear-gradient(135deg,var(--color-coffee-brown, #6F4E37),var(--color-coffee-dark, #4A3728));color:var(--color-cream, #F5E6D3)}.ds-bnav-active::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--color-cream, #F5E6D3);border-radius:0 0 9999px 9999px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Mary's Kitchen Notebook",
+    "overview": "The Quesha display face gives the app a handwritten, homely warmth. Everything underneath it is plain and practical: table numbers, running orders, bills and cash counts, set in a sturdy sans on warm cream paper. The notebook is the kitchen's own. It is warm and a little personal, but it stays orderly, because the counter has to settle bills from it in a queue.\n\nDensity is moderate. Screens run from a phone-first waiter floor (table grid, bottom navigation, cart drawer) to a desktop counter and owner layout (collapsible roasted-brown sidebar with cards on cream). There is a full dark mode, toggled by a `.dark` class, which re-tones the palette to warm espresso rather than switching to neutral grey.\n\nThe system currently layers depth through soft shadows, gradient-filled primary buttons and hover lift. That is recorded below exactly as implemented and flagged as drift. It is more ornament than a billing tool needs.",
+    "keyCharacteristics": [
+      "Quesha, the handwritten display face, is used for headings and table numbers only. Everything operational is set in sans.",
+      "Warm roasted-brown primaries on cream and off-white paper, with lily green for positive and settled states.",
+      "Every tappable control is at least 48px. The floor is a touch surface.",
+      "Money and counts are set in monospace or tabular numerals.",
+      "Dark mode is espresso-warm, never cool grey.",
+      "Motion is short, decelerating and informative: counts roll, finished things get one checkmark, nothing bounces."
+    ],
+    "rules": [
+      {
+        "name": "The Brown Means Go Rule",
+        "body": "Roasted Coffee is the only colour for the primary action on a screen. Settled or paid outcomes get Lily Leaf, not brown.",
+        "section": "colors"
+      },
+      {
+        "name": "The Espresso Dark Rule",
+        "body": "Dark mode re-tones every token to warm brown-black (page `#1C1812`, surface `#2A2419`, raised `#3A3128`, text `#F5F0E8`). Never introduce neutral greys (`neutral-800` and similar) in dark mode.",
+        "section": "colors"
+      },
+      {
+        "name": "The Readable Signal Rule",
+        "body": "Status and Lily Leaf text always uses a token that passes 4.5:1 (`text-success`, `text-warning`, `text-error`, `text-info`, `text-lily-ink`). Never hard-code a hex to get a darker shade.",
+        "section": "colors"
+      },
+      {
+        "name": "The Quesha Is a Heading Rule",
+        "body": "Quesha is only for headings, brand wordmarks and table numbers. Never use it for prices, buttons, form labels or anything someone has to read under pressure.",
+        "section": "typography"
+      },
+      {
+        "name": "The Honest Numbers Rule",
+        "body": "Rupee amounts, quantities and order numbers use `font-mono` or `tabular-nums`, so that columns of money line up.",
+        "section": "typography"
+      },
+      {
+        "name": "The 48px Floor Rule",
+        "body": "Every interactive control has a hit area of at least 48 × 48px (`--min-height-touch`, `touch-target-large`). This is non-negotiable on the waiter and count screens.",
+        "section": "layout"
+      },
+      {
+        "name": "The No New Shadows Rule",
+        "body": "Don't add shadow levels, glass surfaces or gradients. Reuse Soft, Medium and Strong, or go flat.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** use the `.btn-*`, `card`, `chip`, `badge` and `input-field` utilities from `index.css` before writing new Tailwind stacks.",
+      "**Do** keep every interactive control at 48px or larger.",
+      "**Do** set rupee amounts and counts in `font-mono` or `tabular-nums`.",
+      "**Do** use Lily Leaf for paid, served and available states, and Roasted Coffee for the next action.",
+      "**Do** define dark-mode colours by re-toning tokens under `.dark`, keeping them warm.",
+      "**Do** use the shared motion utilities (`animate-*`, `useCountUp`, `useListPresence`) and `--ease-settle` rather than new keyframes or curves.",
+      "**Do** give every async surface a plain-language error with a retry (`describeApiError`), and never lose what someone typed."
+    ],
+    "donts": [
+      "**Don't** set prices, buttons or form labels in Quesha.",
+      "**Don't** introduce cool neutral greys (`neutral-800`, `bg-white` without a dark override) in either theme.",
+      "**Don't** add new shadow levels, glass panels or gradients. Depth is already over-expressed.",
+      "**Don't** extend the `<Button>` component's divergent variant set. Align it with `.btn-*` or use the utilities directly.",
+      "**Don't** add more `!important` dark-mode patches to `index.css`. Fix the token instead.",
+      "**Don't** use bounce or elastic curves, infinite loops, hover lift, or staggered reveals across long lists.",
+      "**Don't** use browser `alert`/`confirm`. Use `ConfirmDialog` or an inline message.",
+      "**Don't** mark a card with a thick coloured left edge. Use a thin tinted border."
+    ]
+  }
+}

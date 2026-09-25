@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.core.security import verify_password
 from app.api.deps import get_current_user, get_current_owner
 from app.core import access
+from app.core import business_day
 from app.schemas import TokenData
 
 router = APIRouter()
@@ -62,7 +63,7 @@ def open_cash_counter(
     if existing:
         raise HTTPException(status_code=400, detail="Counter already open for this date")
 
-    if data.date > date.today():
+    if data.date > access.business_today():
         raise HTTPException(status_code=400, detail="Date cannot be in the future")
 
     # v0.2 Patch - Calculate opening_balance from denomination counts
@@ -124,10 +125,9 @@ def close_cash_counter(
     )
 
     # Get total cash payments for the day
-    # SQLite specific date filtering
     cash_payments = db.query(func.sum(Payment.amount)).filter(
         Payment.payment_method == PaymentMethod.CASH,
-        func.date(Payment.created_at) == str(data.date)
+        business_day.on_business_day(Payment.created_at, data.date)
     ).scalar() or 0
 
     # Payment amount is in paise (integer), convert to decimal rupees
@@ -200,14 +200,14 @@ def get_today_counter(
     current_user: TokenData = Depends(get_current_user),
 ):
     """Get today's cash counter status. Requires a login."""
-    today = date.today()
+    today = access.business_today()
     counter = db.query(DailyCashCounter).filter(DailyCashCounter.date == today).first()
     
     if counter:
         # Calculate cash payments so far
         cash_payments = db.query(func.sum(Payment.amount)).filter(
             Payment.payment_method == PaymentMethod.CASH,
-            func.date(Payment.created_at) == str(today)
+            business_day.on_business_day(Payment.created_at, today)
         ).scalar() or 0
         cash_payments_rupees = Decimal(cash_payments) / 100
 
@@ -296,7 +296,7 @@ def get_counter_for_day(
         func.sum(Payment.amount), func.count(Payment.id)
     ).filter(
         Payment.payment_method == PaymentMethod.CASH,
-        func.date(Payment.created_at) == str(day)
+        business_day.on_business_day(Payment.created_at, day)
     ).one()
     cash_payments_rupees = Decimal(cash_sum or 0) / 100
 
@@ -368,7 +368,7 @@ def reopen_cash_counter(
     # Calculate cash payments for response
     cash_payments = db.query(func.sum(Payment.amount)).filter(
         Payment.payment_method == PaymentMethod.CASH,
-        func.date(Payment.created_at) == str(counter.date)
+        business_day.on_business_day(Payment.created_at, counter.date)
     ).scalar() or 0
     cash_payments_rupees = Decimal(cash_payments) / 100
 

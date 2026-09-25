@@ -350,9 +350,9 @@ fetch('/version').then(r => r.json()).then(console.log)
 ## 🔗 Related Documents
 
 - [CHANGELOG.md](../CHANGELOG.md) - Complete version history
-- [v0.1-technical-spec.md](v0.1-technical-spec.md) - v0.1 specifications
+- [v0.1-technical-spec.md](history/v0.1-technical-spec.md) - v0.1 specifications
 - [v0.2-technical-spec.md](v0.2-technical-spec.md) - v0.2 specifications
-- [v0.1-completion-report.md](v0.1-completion-report.md) - v0.1 status report
+- [v0.1-completion-report.md](history/v0.1-completion-report.md) - v0.1 status report
 
 ---
 

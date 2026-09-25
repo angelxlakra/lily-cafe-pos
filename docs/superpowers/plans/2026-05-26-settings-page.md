@@ -1,5 +1,7 @@
 # Settings Page Implementation Plan
 
+> **Status: implemented.** Shipped as `frontend/src/pages/SettingsPage.tsx`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Move non-secret env vars into a DB-backed key/value store and expose them through an owner-only Settings page in the admin UI.

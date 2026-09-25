@@ -5,7 +5,16 @@ from sqlalchemy import func, desc
 from decimal import Decimal
 
 from app.db.session import get_db
-from app.models.inventory_models import InventoryCategory, InventoryItem, InventoryTransaction, TransactionType
+from app.models.inventory_models import (
+    CountLineStatus,
+    InventoryCategory,
+    InventoryCount,
+    InventoryCountLine,
+    InventoryItem,
+    InventoryTransaction,
+    TransactionType,
+)
+from app.core.business_day import count_night
 from app.schemas import inventory_schemas
 from app.core import settings_store
 from app.api.deps import get_current_user, get_current_owner
@@ -30,8 +39,33 @@ _OWNER = Depends(get_current_owner)
 
 @router.get("/categories", response_model=List[inventory_schemas.InventoryCategory])
 def get_categories(db: Session = Depends(get_db), current_user: TokenData = _READ):
-    """Get all inventory categories."""
-    return db.query(InventoryCategory).all()
+    """Get all inventory categories, in count order."""
+    return db.query(InventoryCategory).order_by(InventoryCategory.sort_order, InventoryCategory.id).all()
+
+
+def _next_sort_order(db: Session, model) -> int:
+    """Place new rows after everything the owner has already arranged."""
+    return (db.query(func.max(model.sort_order)).scalar() or 0) + 1
+
+
+def _apply_sort_order(db: Session, model, ids: List[int]) -> None:
+    rows = {row.id: row for row in db.query(model).filter(model.id.in_(ids)).all()}
+    missing = set(ids) - rows.keys()
+    if missing:
+        raise HTTPException(status_code=404, detail=f"Unknown ids: {sorted(missing)}")
+    for position, row_id in enumerate(ids, start=1):
+        rows[row_id].sort_order = position
+    db.commit()
+
+
+@router.put("/categories/order", status_code=status.HTTP_204_NO_CONTENT)
+def reorder_categories(
+    order: inventory_schemas.SortOrderUpdate,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _OWNER,
+):
+    """Set the order categories appear in during the nightly count. Owner only."""
+    _apply_sort_order(db, InventoryCategory, order.ids)
 
 @router.post("/categories", response_model=inventory_schemas.InventoryCategory, status_code=status.HTTP_201_CREATED)
 def create_category(
@@ -49,6 +83,7 @@ def create_category(
     now = datetime.now()
     new_category = InventoryCategory(
         name=category.name,
+        sort_order=_next_sort_order(db, InventoryCategory),
         created_at=now,
         updated_at=now
     )
@@ -123,7 +158,7 @@ def get_items(
     if search:
         query = query.filter(InventoryItem.name.ilike(f"%{search}%"))
         
-    items = query.all()
+    items = query.order_by(InventoryItem.sort_order, InventoryItem.id).all()
     
     # Filter low stock in python since it's a property
     if low_stock:
@@ -177,6 +212,15 @@ def get_low_stock_items(db: Session = Depends(get_db), current_user: TokenData =
         "count": len(low_stock_items)
     }
 
+@router.put("/items/order", status_code=status.HTTP_204_NO_CONTENT)
+def reorder_items(
+    order: inventory_schemas.SortOrderUpdate,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _OWNER,
+):
+    """Set the order items appear in within their category. Owner only."""
+    _apply_sort_order(db, InventoryItem, order.ids)
+
 @router.get("/items/{item_id}", response_model=inventory_schemas.InventoryItem)
 def get_item(item_id: int, db: Session = Depends(get_db), current_user: TokenData = _READ):
     """Get a single inventory item."""
@@ -213,7 +257,8 @@ def create_item(
         current_quantity=item.current_quantity,
         min_threshold=item.min_threshold,
         cost_per_unit=item.cost_per_unit,
-        category_id=item.category_id
+        category_id=item.category_id,
+        sort_order=_next_sort_order(db, InventoryItem),
     )
     db.add(new_item)
     db.commit()
@@ -584,3 +629,150 @@ def get_transactions(
         "limit": limit,
         "offset": offset
     }
+
+
+# ============================================================================
+# Nightly count
+# ============================================================================
+
+def _count_summary(count: InventoryCount) -> dict:
+    return inventory_schemas.CountSummary.model_validate(count, from_attributes=True).model_dump()
+
+
+@router.post("/counts", response_model=inventory_schemas.CountResult, status_code=status.HTTP_201_CREATED)
+def save_count(
+    payload: inventory_schemas.CountCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _STAFF,
+):
+    """
+    Save a nightly stock count in one step.
+
+    Every active item gets a line: counted and equal to the system quantity is
+    "checked", counted and different is "changed" (stock is adjusted and an
+    ADJUSTMENT transaction recorded), and anything not counted is "skipped".
+    Lines for items that no longer exist or were deactivated are ignored, so a
+    count started before a master-data edit can still be saved.
+    """
+    counted = {line.item_id: line.counted_quantity for line in payload.lines}
+    items = (
+        db.query(InventoryItem)
+        .filter(InventoryItem.is_active == True)
+        .order_by(InventoryItem.sort_order, InventoryItem.id)
+        .all()
+    )
+
+    count = InventoryCount(
+        business_date=count_night(),
+        counted_by=current_user.username,
+        items_total=len(items),
+        items_checked=0,
+        items_changed=0,
+        items_skipped=0,
+    )
+    changes, skipped_names = [], []
+
+    for item in items:
+        previous = item.current_quantity
+        new = counted.get(item.id)
+        if new is None:
+            status_ = CountLineStatus.SKIPPED
+            count.items_skipped += 1
+            skipped_names.append(item.name)
+        elif new == previous:
+            status_ = CountLineStatus.CHECKED
+            count.items_checked += 1
+        else:
+            status_ = CountLineStatus.CHANGED
+            count.items_changed += 1
+            item.current_quantity = new
+            db.add(InventoryTransaction(
+                item_id=item.id,
+                transaction_type=TransactionType.ADJUSTMENT,
+                quantity=new - previous,
+                notes=f"Daily count: {previous} → {new}",
+                recorded_by=current_user.username,
+                previous_quantity=previous,
+                new_quantity=new,
+            ))
+            changes.append({
+                "item_id": item.id,
+                "item_name": item.name,
+                "previous_quantity": float(previous),
+                "new_quantity": float(new),
+                "difference": float(new - previous),
+            })
+        count.lines.append(InventoryCountLine(
+            item_id=item.id,
+            status=status_.value,
+            previous_quantity=previous,
+            counted_quantity=new,
+        ))
+
+    db.add(count)
+    db.commit()
+    db.refresh(count)
+
+    # Only claim an email when one will actually be attempted.
+    emailed = settings_store.get_bool("smtp.enabled", False) and bool(
+        settings_store.get("smtp.report_emails", "").strip()
+    )
+    if emailed:
+        low_stock_data = [
+            {
+                "name": item.name,
+                "category_name": item.category.name if item.category else "Uncategorized",
+                "current_quantity": float(item.current_quantity),
+                "min_threshold": float(item.min_threshold),
+                "unit": item.unit,
+                "percentage_remaining": (
+                    float(item.current_quantity) / float(item.min_threshold) * 100
+                    if float(item.min_threshold) > 0 else 0.0
+                ),
+            }
+            for item in items if item.is_low_stock
+        ]
+        low_stock_data.sort(key=lambda x: x["percentage_remaining"])
+        background_tasks.add_task(
+            send_inventory_report,
+            low_stock_items=low_stock_data,
+            changes=changes,
+            recorded_by=current_user.username,
+            summary={
+                "checked": count.items_checked,
+                "changed": count.items_changed,
+                "skipped": count.items_skipped,
+                "skipped_names": skipped_names,
+            },
+        )
+
+    return {
+        **_count_summary(count),
+        "changes": changes,
+        "skipped_item_names": skipped_names,
+        "emailed": emailed,
+    }
+
+
+@router.get("/counts/today", response_model=Optional[inventory_schemas.CountSummary])
+def get_todays_count(db: Session = Depends(get_db), current_user: TokenData = _READ):
+    """The latest count for tonight (before 04:00 counts as last night), or null."""
+    count = (
+        db.query(InventoryCount)
+        .filter(InventoryCount.business_date == count_night())
+        .order_by(desc(InventoryCount.id))
+        .first()
+    )
+    return _count_summary(count) if count else None
+
+
+@router.get("/counts", response_model=List[inventory_schemas.CountSummary])
+def list_counts(
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: TokenData = _READ,
+):
+    """Recent counts, newest first."""
+    counts = db.query(InventoryCount).order_by(desc(InventoryCount.id)).limit(limit).all()
+    return [_count_summary(count) for count in counts]

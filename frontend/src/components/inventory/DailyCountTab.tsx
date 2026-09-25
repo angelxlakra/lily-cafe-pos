@@ -1,193 +1,93 @@
 /**
- * DailyCountTab Component
+ * DailyCountTab
  *
- * Primary interface for end-of-day stock counting.
- * Mobile-first design optimized for quick counting workflow.
+ * Where tonight's count starts: its status (not started, in progress on this
+ * phone, or done) with one action, plus the last few saved counts. The count
+ * itself happens full-screen at /admin/inventory/count.
  */
 
-import { useState, useMemo } from 'react';
-import { FloppyDisk, CheckCircle, X, Upload } from '@phosphor-icons/react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { ClipboardText, Upload } from '@phosphor-icons/react';
 import { inventoryApi } from '../../api/inventory';
-import CategorySection from './CategorySection';
 import TemplateImportModal from './TemplateImportModal';
+import ConfirmDialog from '../ConfirmDialog';
+import LoadingSpinner from '../LoadingSpinner';
 import { useAuth } from '../../hooks/useAuth';
-import type { AdjustmentItem, InventoryItem } from '../../types/inventory';
+import { clearCountDraft, loadCountDraft } from '../../utils/countDraft';
+import type { CountSummary } from '../../types/inventory';
+
+const formatTime = (date: Date) => date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+/** business_date is a plain YYYY-MM-DD, not a timestamp. */
+const formatBusinessDate = (value: string) => {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+};
+
+/** Stored timestamps are UTC; SQLite returns them without an offset. */
+const savedAt = (count: CountSummary) =>
+  count.created_at
+    ? new Date(/([zZ]|[+-]\d\d:?\d\d)$/.test(count.created_at) ? count.created_at : `${count.created_at}Z`)
+        .toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' })
+    : null;
+
+const tally = (count: CountSummary) =>
+  `${count.items_checked} checked · ${count.items_changed} changed · ${count.items_skipped} not counted`;
 
 export default function DailyCountTab() {
-  const queryClient = useQueryClient();
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-
-  // Importing a template creates inventory categories and items — master
-  // data, so owner-only. The daily count itself stays open to admin.
   const { isOwner } = useAuth();
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [draft, setDraft] = useState(loadCountDraft);
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
 
-  // Fetch items grouped by category
-  const { data: categorizedItems, isLoading } = useQuery({
-    queryKey: ['inventory', 'categorized'],
-    queryFn: inventoryApi.getItemsByCategory,
+  const { data: groups, isLoading } = useQuery({
+    queryKey: ['inventory', 'count-sheet'],
+    queryFn: inventoryApi.getCountSheet,
   });
-
-  // Fetch categories for import modal
+  const { data: today } = useQuery({
+    queryKey: ['inventory', 'counts', 'today'],
+    queryFn: inventoryApi.getTodaysCount,
+  });
+  const { data: recent = [] } = useQuery({
+    queryKey: ['inventory', 'counts', 'recent'],
+    queryFn: () => inventoryApi.getCounts(7),
+  });
   const { data: categories = [] } = useQuery({
     queryKey: ['inventory', 'categories'],
     queryFn: inventoryApi.getCategories,
+    enabled: isOwner,
   });
-
-  // Local state for counts (null means not yet counted/touched, so use placeholder)
-  const [counts, setCounts] = useState<Record<number, number | null>>({});
-  const [changedItems, setChangedItems] = useState<Set<number>>(new Set());
-
-  // We no longer auto-initialize counts, we let them remain undefined/null to show placeholder
-
-
-  // Calculate totals
-  const { totalItems, countedItems } = useMemo(() => {
-    if (!categorizedItems) return { totalItems: 0, countedItems: 0 };
-
-    let total = 0;
-    Object.values(categorizedItems).forEach(({ items }) => {
-      total += items.length;
-    });
-
-    return {
-      totalItems: total,
-      countedItems: changedItems.size
-    };
-  }, [categorizedItems, changedItems]);
-
-  // Batch adjustment mutation
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      const adjustments: AdjustmentItem[] = [];
-
-      // Collect all changed items
-      changedItems.forEach(itemId => {
-        const newQuantity = counts[itemId];
-        // Only include if we have a valid number
-        if (newQuantity !== undefined && newQuantity !== null) {
-          adjustments.push({
-            item_id: itemId,
-            new_quantity: newQuantity,
-            notes: `Daily count`
-          });
-        }
-      });
-
-      if (adjustments.length === 0) {
-        throw new Error('No changes to save');
-      }
-
-      return inventoryApi.recordBatchAdjustment({
-        adjustments,
-        recorded_by: 'Staff' // TODO: Get from auth context
-      });
-    },
-    onSuccess: (data) => {
-      // Clear changed items
-      setChangedItems(new Set());
-
-      // Refetch items to get updated quantities
-      queryClient.invalidateQueries({ queryKey: ['inventory'] });
-
-      // Show success message
-      alert(`✅ Success! Updated ${data.items_changed} items\n\n${data.message}`);
-    },
-    onError: (error: any) => {
-      alert(`❌ Error saving changes: ${error.message || 'Unknown error'}`);
-    }
-  });
-
-  const handleCountChange = (itemId: number, newCount: number | null) => {
-    setCounts(prev => ({ ...prev, [itemId]: newCount }));
-
-    // Find original quantity
-    let originalQuantity = 0;
-    if (categorizedItems) {
-      Object.values(categorizedItems).forEach(({ items }) => {
-        const item = items.find((i: InventoryItem) => i.id === itemId);
-        if (item) {
-          originalQuantity = item.current_quantity;
-        }
-      });
-    }
-
-    // Track if changed
-    // It's changed if newCount is not null and differs from original
-    // If we clear the input (newCount === null), we treat it as "unchanged" relative to the save operation?
-    // Or if we clear it, we just remove it from changed items if we haven't typed anything else.
-    // The user requirement "do it from the previous value itself" implies we are EDITING.
-    // If I explicitly clear it, I probably meant "I didn't mean to count this".
-    
-    const isChanged = newCount !== null && newCount !== undefined && newCount !== originalQuantity;
-    
-    setChangedItems(prev => {
-      const next = new Set(prev);
-      if (isChanged) {
-        next.add(itemId);
-      } else {
-        next.delete(itemId);
-      }
-      return next;
-    });
-  };
-
-  const handleReset = () => {
-    if (confirm('Are you sure you want to reset all changes?')) {
-      // Clear all manual counts to revert to placeholders
-      setCounts({});
-      setChangedItems(new Set());
-    }
-  };
-
-  const handleSave = () => {
-    if (changedItems.size === 0) {
-      alert('No changes to save');
-      return;
-    }
-
-    if (confirm(`Save changes to ${changedItems.size} items?`)) {
-      saveMutation.mutate();
-    }
-  };
 
   if (isLoading) {
     return (
-      <div className="p-8 text-center">
-        <div className="text-neutral-text-muted">Loading inventory items...</div>
+      <div className="py-12 flex justify-center gap-3 text-neutral-text-muted">
+        <LoadingSpinner /> Loading…
       </div>
     );
   }
 
-  // Check if there are actually any items across all categories
-  const hasItems = categorizedItems && Object.values(categorizedItems).some(({ items }) => items.length > 0);
+  const itemTotal = groups?.reduce((sum, group) => sum + group.items.length, 0) ?? 0;
 
-  if (!hasItems) {
+  if (itemTotal === 0) {
     return (
       <>
         <div className="card p-8 text-center">
-          <div className="mb-4">
-            <Upload size={48} className="mx-auto text-neutral-text-muted mb-3" />
-            <h3 className="text-lg font-heading text-neutral-text-dark mb-2">
-              No Inventory Items
-            </h3>
-            <p className="text-neutral-text-muted mb-6">
-              {isOwner
-                ? 'Get started by importing your items from WhatsApp template or add them manually in the Items tab.'
-                : 'No items to count yet.'}
-            </p>
-          </div>
+          <Upload size={48} className="mx-auto text-neutral-text-muted mb-3" aria-hidden />
+          <h2 className="font-heading text-xl! text-neutral-text-dark mb-2">No inventory items</h2>
+          <p className="text-neutral-text-muted mb-6">
+            {isOwner
+              ? 'Import your items from the WhatsApp checklist, or add them in the Items tab.'
+              : 'No items to count yet. Ask the owner to add them.'}
+          </p>
           {isOwner && (
-            <button
-              onClick={() => setIsImportModalOpen(true)}
-              className="btn-primary inline-flex items-center gap-2"
-            >
-              <Upload size={20} weight="fill" />
-              Import from WhatsApp Template
+            <button onClick={() => setIsImportModalOpen(true)} className="btn-primary inline-flex items-center gap-2">
+              <Upload size={20} weight="fill" aria-hidden />
+              Import from WhatsApp checklist
             </button>
           )}
         </div>
-
         <TemplateImportModal
           isOpen={isImportModalOpen && isOwner}
           onClose={() => setIsImportModalOpen(false)}
@@ -197,121 +97,74 @@ export default function DailyCountTab() {
     );
   }
 
+  const draftEntries = draft ? Object.keys(draft.counts).length : 0;
+
   return (
-    <div className="space-y-4">
-      {/* Header with Progress */}
-      <div className="card p-4 sticky top-0 z-20 shadow-md">
-        <div className="flex items-center justify-between gap-4 mb-3">
-          <div>
-            <h2 className="text-lg font-heading text-neutral-text-dark">
-              Daily Inventory Count
-            </h2>
-            <p className="text-sm text-neutral-text-muted mt-1">
-              Count physical stock and update quantities
+    <div className="max-w-2xl mx-auto space-y-6">
+      <section className="card p-5" aria-labelledby="tonights-count">
+        <div className="flex items-start gap-3">
+          <ClipboardText size={28} className="text-coffee-brown shrink-0 mt-1" aria-hidden />
+          <div className="flex-1 min-w-0">
+            <h2 id="tonights-count" className="font-heading text-2xl! text-neutral-text-dark">Tonight's count</h2>
+            <p className="mt-1 text-neutral-text-body tabular-nums">
+              {draftEntries > 0
+                ? `In progress on this phone · ${Math.min(draftEntries, itemTotal)} of ${itemTotal} counted · started ${formatTime(new Date(draft!.startedAt))}`
+                : today
+                  ? `Counted tonight${savedAt(today) ? ` at ${savedAt(today)}` : ''} by ${today.counted_by} · ${tally(today)}`
+                  : `Not started · ${itemTotal} items to count`}
             </p>
           </div>
-
-          {/* Progress Badge */}
-          <div className="flex items-center gap-2">
-            <div className={`badge text-sm ${changedItems.size > 0 ? 'bg-lily-green/20 text-lily-green' : 'bg-neutral-background'}`}>
-              {countedItems}/{totalItems} counted
-            </div>
-          </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="w-full h-2 bg-neutral-background rounded-full overflow-hidden mb-3">
-          <div
-            className="h-full bg-lily-green transition-all duration-300"
-            style={{ width: `${totalItems > 0 ? (countedItems / totalItems) * 100 : 0}%` }}
-          />
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-2">
-          <button
-            onClick={handleSave}
-            disabled={changedItems.size === 0 || saveMutation.isPending}
-            className="btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <Link
+            to="/admin/inventory/count"
+            className={`${today && draftEntries === 0 ? 'btn-secondary' : 'btn-primary'} inline-flex items-center justify-center flex-1 sm:flex-none sm:min-w-56`}
           >
-            {saveMutation.isPending ? (
-              <>
-                <span className="animate-spin">⏳</span>
-                Saving...
-              </>
-            ) : (
-              <>
-                <FloppyDisk size={20} weight="fill" />
-                Save Changes ({changedItems.size})
-              </>
-            )}
-          </button>
-
-          {changedItems.size > 0 && (
-            <button
-              onClick={handleReset}
-              disabled={saveMutation.isPending}
-              className="btn-ghost flex items-center gap-2"
-            >
-              <X size={20} />
-              Reset
+            {draftEntries > 0 ? 'Resume count' : today ? 'Count again' : "Start tonight's count"}
+          </Link>
+          {draftEntries > 0 && (
+            <button type="button" onClick={() => setConfirmingDiscard(true)} className="btn-ghost">
+              Discard
             </button>
           )}
         </div>
-      </div>
+      </section>
 
-      {/* Success Message */}
-      {saveMutation.isSuccess && (
-        <div className="card p-4 bg-lily-green/10 border-lily-green animate-fade-in">
-          <div className="flex items-center gap-2 text-lily-green">
-            <CheckCircle size={20} weight="fill" />
-            <span className="font-medium">Changes saved successfully!</span>
-          </div>
-        </div>
+      {recent.length > 0 && (
+        <section aria-labelledby="recent-counts">
+          <h2 id="recent-counts" className="font-heading text-xl! text-neutral-text-dark mb-2">Recent counts</h2>
+          <ul className="card divide-y divide-neutral-border overflow-hidden">
+            {recent.map(count => (
+              <li key={count.id} className="px-4 py-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <span className="font-medium text-neutral-text-dark">
+                  {formatBusinessDate(count.business_date)}
+                  <span className="font-normal text-neutral-text-muted">
+                    {savedAt(count) && <> · {savedAt(count)}</>} · {count.counted_by}
+                  </span>
+                </span>
+                <span className={`text-sm tabular-nums ${count.items_skipped > 0 ? 'text-neutral-text-body' : 'text-neutral-text-muted'}`}>
+                  {tally(count)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
-      {/* Category Sections */}
-      <div className="space-y-4">
-        {Object.entries(categorizedItems)
-          .filter(([_, { items }]) => items.length > 0) // Only show categories with items
-          .sort(([aId, a], [bId, b]) => {
-            // Sort: named categories first (alphabetically), then uncategorized last
-            if (aId === '0') return 1;
-            if (bId === '0') return -1;
-            return (a.category?.name || '').localeCompare(b.category?.name || '');
-          })
-          .map(([catId, { category, items }]) => (
-            <CategorySection
-              key={catId}
-              categoryName={category?.name || 'Uncategorized'}
-              items={items}
-              counts={counts}
-              changedItems={changedItems}
-              onCountChange={handleCountChange}
-              defaultExpanded={true}
-            />
-          ))}
-      </div>
-
-      {/* Floating Save Button (Mobile) */}
-      {changedItems.size > 0 && (
-        <div className="fixed bottom-20 right-4 lg:bottom-6 z-30 animate-scale-in">
-          <button
-            onClick={handleSave}
-            disabled={saveMutation.isPending}
-            className="btn-primary shadow-strong rounded-full px-6 py-4 flex items-center gap-2 touch-target-large"
-          >
-            <FloppyDisk size={24} weight="fill" />
-            <span className="font-bold">Save ({changedItems.size})</span>
-          </button>
-        </div>
-      )}
-
-      {/* Template Import Modal */}
-      <TemplateImportModal
-        isOpen={isImportModalOpen && isOwner}
-        onClose={() => setIsImportModalOpen(false)}
-        existingCategories={categories}
+      <ConfirmDialog
+        isOpen={confirmingDiscard}
+        onClose={() => setConfirmingDiscard(false)}
+        onConfirm={() => {
+          clearCountDraft();
+          setDraft(null);
+          setConfirmingDiscard(false);
+        }}
+        title="Discard this count?"
+        message={`This removes the ${draftEntries} numbers entered on this phone. Saved stock doesn't change.`}
+        confirmText="Discard"
+        cancelText="Keep it"
+        variant="danger"
       />
     </div>
   );

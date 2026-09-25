@@ -50,6 +50,34 @@ _ORDER_ADDED_COLUMNS = {
 }
 
 
+# Columns added to inventory tables after they shipped.
+_INVENTORY_ADDED_COLUMNS = {
+    "inventory_categories": {"sort_order": "INTEGER DEFAULT 0 NOT NULL"},
+    "inventory_items": {"sort_order": "INTEGER DEFAULT 0 NOT NULL"},
+}
+
+
+def _ensure_columns(bind, table: str, columns: dict[str, str]) -> list[str]:
+    """Add any of ``columns`` missing from ``table``. Idempotent."""
+    inspector = inspect(bind)
+    if table not in inspector.get_table_names():
+        return []
+
+    existing = {col["name"] for col in inspector.get_columns(table)}
+    added = []
+
+    with bind.connect() as conn:
+        for name, ddl_type in columns.items():
+            if name in existing:
+                continue
+            conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl_type}"))
+            added.append(name)
+        if added:
+            conn.commit()
+
+    return added
+
+
 def ensure_order_columns(bind=None) -> list[str]:
     """
     Add any missing columns to the orders table.
@@ -57,24 +85,15 @@ def ensure_order_columns(bind=None) -> list[str]:
     Idempotent — safe to call on every startup. Returns the names of the
     columns that were actually added.
     """
+    return _ensure_columns(bind or engine, "orders", _ORDER_ADDED_COLUMNS)
+
+
+def ensure_inventory_columns(bind=None) -> list[str]:
+    """Add columns introduced after the inventory tables shipped. Idempotent."""
     bind = bind or engine
-    inspector = inspect(bind)
-
-    if "orders" not in inspector.get_table_names():
-        return []
-
-    existing = {col["name"] for col in inspector.get_columns("orders")}
     added = []
-
-    with bind.connect() as conn:
-        for name, ddl_type in _ORDER_ADDED_COLUMNS.items():
-            if name in existing:
-                continue
-            conn.execute(text(f"ALTER TABLE orders ADD COLUMN {name} {ddl_type}"))
-            added.append(name)
-        if added:
-            conn.commit()
-
+    for table, columns in _INVENTORY_ADDED_COLUMNS.items():
+        added += _ensure_columns(bind, table, columns)
     return added
 
 
@@ -91,3 +110,4 @@ def init_db():
     # create_all() does not alter existing tables, so bring older databases
     # up to date with the columns added to `orders` since it shipped.
     ensure_order_columns(engine)
+    ensure_inventory_columns(engine)

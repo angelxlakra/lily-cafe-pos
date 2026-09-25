@@ -30,7 +30,10 @@ def to_ist_timestamp(column):
     # For SQLite, use datetime function with timezone offset
     # For PostgreSQL, use AT TIME ZONE
     # Since we're using SQLite in development, we'll use SQLite syntax
-    return text(f"datetime({column.key}, '+330 minutes')")
+    # Qualify with the table name: a join whose other table also has this
+    # column (orders and menu_items both have created_at) is otherwise
+    # rejected as an ambiguous column reference.
+    return text(f"datetime({column.table.name}.{column.key}, '+330 minutes')")
 
 
 def get_time_filter(start_date: Optional[datetime], end_date: Optional[datetime]):
@@ -48,6 +51,13 @@ def get_time_filter(start_date: Optional[datetime], end_date: Optional[datetime]
 def paise_to_rupees(paise: int) -> float:
     """Pass through paise as is (for frontend formatting)."""
     return float(paise)
+
+
+def _hour_label(hour: int) -> str:
+    """0-23 → '12 am', '9 am', '12 pm', '9 pm'. Without the suffix 9 am and 9 pm collide."""
+    suffix = "am" if hour < 12 else "pm"
+    twelve = hour % 12 or 12
+    return f"{twelve} {suffix}"
 
 
 def calculate_quartiles(values):
@@ -77,7 +87,7 @@ def calculate_quartiles(values):
 
 
 # ============================================================================
-# Tool Calling for C1
+# Analytics tool functions — shared by the MCP server (app.mcp) and Ask (app.ask)
 # ============================================================================
 
 
@@ -601,7 +611,7 @@ def get_peak_hours_detailed_tool(db: Session, start_date: Optional[str] = None, 
 
         peak_hours.append({
             "hour": hour_int,
-            "hour_label": f"{hour_int}:00" if hour_int < 12 else (f"{hour_int}:00" if hour_int == 12 else f"{hour_int-12}:00"),
+            "hour_label": _hour_label(hour_int),
             "order_count": order_count,
             "revenue_rupees": paise_to_rupees(revenue),
             "avg_order_value_rupees": paise_to_rupees(avg_order_value),
@@ -1123,7 +1133,7 @@ def get_inventory_usage_trends_tool(db: Session, start_date: Optional[str] = Non
     # Total values
     purchases_value = db.query(
         func.sum(InventoryTransaction.quantity * InventoryItem.cost_per_unit)
-    ).join(InventoryItem).filter(
+    ).select_from(InventoryTransaction).join(InventoryItem).filter(
         and_(
             InventoryTransaction.transaction_type == 'PURCHASE',
             *time_filters
@@ -1132,7 +1142,7 @@ def get_inventory_usage_trends_tool(db: Session, start_date: Optional[str] = Non
 
     usage_value = db.query(
         func.sum(func.abs(InventoryTransaction.quantity) * InventoryItem.cost_per_unit)
-    ).join(InventoryItem).filter(
+    ).select_from(InventoryTransaction).join(InventoryItem).filter(
         and_(
             InventoryTransaction.transaction_type == 'USAGE',
             *time_filters
@@ -1141,7 +1151,7 @@ def get_inventory_usage_trends_tool(db: Session, start_date: Optional[str] = Non
 
     waste_value = db.query(
         func.sum(func.abs(InventoryTransaction.quantity) * InventoryItem.cost_per_unit)
-    ).join(InventoryItem).filter(
+    ).select_from(InventoryTransaction).join(InventoryItem).filter(
         and_(
             InventoryTransaction.transaction_type == 'ADJUSTMENT',
             InventoryTransaction.quantity < 0,
@@ -1258,7 +1268,7 @@ def get_financial_summary_tool(db: Session, start_date: Optional[str] = None, en
 
     inventory_purchases = db.query(
         func.sum(InventoryTransaction.quantity * InventoryItem.cost_per_unit)
-    ).join(InventoryItem).filter(
+    ).select_from(InventoryTransaction).join(InventoryItem).filter(
         and_(
             InventoryTransaction.transaction_type == 'PURCHASE',
             *inv_time_filters

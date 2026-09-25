@@ -34,7 +34,8 @@ export function useCreateCategory() {
   return useMutation({
     mutationFn: (data: InventoryCategoryCreate) => inventoryApi.createCategory(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.categories() });
+      // Stock and master data feed the count sheet, status card and lists alike.
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
     },
   });
 }
@@ -45,7 +46,8 @@ export function useUpdateCategory() {
     mutationFn: ({ id, data }: { id: number; data: InventoryCategoryUpdate }) => 
       inventoryApi.updateCategory(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.categories() });
+      // Stock and master data feed the count sheet, status card and lists alike.
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
     },
   });
 }
@@ -55,7 +57,8 @@ export function useDeleteCategory() {
   return useMutation({
     mutationFn: (id: number) => inventoryApi.deleteCategory(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.categories() });
+      // Stock and master data feed the count sheet, status card and lists alike.
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
     },
   });
 }
@@ -85,8 +88,8 @@ export function useCreateItem() {
   return useMutation({
     mutationFn: (data: InventoryItemCreate) => inventoryApi.createItem(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.items() });
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.lowStock() });
+      // Stock and master data feed the count sheet, status card and lists alike.
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
     },
   });
 }
@@ -136,13 +139,10 @@ export function useUpdateItem() {
         queryClient.setQueryData(inventoryKeys.item(newTodo.id), context.previousItem);
       }
     },
-    onSettled: (data) => {
-      // Always refetch after error or success
-      queryClient.invalidateQueries({ queryKey: ['inventory', 'items'] });
-      if (data) {
-        queryClient.invalidateQueries({ queryKey: inventoryKeys.item(data.id) });
-      }
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.lowStock() });
+    onSettled: () => {
+      // Always refetch after error or success; renames and category moves
+      // also show up in the count sheet.
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
     },
   });
 }
@@ -152,8 +152,8 @@ export function useDeleteItem() {
   return useMutation({
     mutationFn: (id: number) => inventoryApi.deleteItem(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.items() });
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.lowStock() });
+      // Stock and master data feed the count sheet, status card and lists alike.
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
     },
   });
 }
@@ -164,8 +164,8 @@ export function useRecordPurchase() {
   return useMutation({
     mutationFn: (data: PurchaseCreate) => inventoryApi.recordPurchase(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.items() });
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.transactions() });
+      // Stock and master data feed the count sheet, status card and lists alike.
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
     },
   });
 }
@@ -175,9 +175,8 @@ export function useRecordUsage() {
   return useMutation({
     mutationFn: (data: UsageCreate) => inventoryApi.recordUsage(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.items() });
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.lowStock() });
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.transactions() });
+      // Stock and master data feed the count sheet, status card and lists alike.
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
     },
   });
 }
@@ -187,9 +186,8 @@ export function useRecordAdjustment() {
   return useMutation({
     mutationFn: (data: AdjustmentCreate) => inventoryApi.recordAdjustment(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.items() });
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.lowStock() });
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.transactions() });
+      // Stock and master data feed the count sheet, status card and lists alike.
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
     },
   });
 }

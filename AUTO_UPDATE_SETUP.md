@@ -2,16 +2,27 @@
 
 Automatically keep your client's POS system up to date without Docker complexity.
 
+> **Which deployment does this apply to?**
+> This covers the **on-premises Windows install**, where the backend and
+> frontend both run on the cafe PC and are updated from git. On the **cloud
+> deployment** (backend on Fly.io, frontend on Vercel) updates ship by
+> `fly deploy` and a push to `main` — see [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ---
 
 ## 📦 What's Included
 
-- **`auto-update.bat`** - Main update script (runs automatically)
-- **`update-now.bat`** - Manual update (double-click anytime)
-- **`view-update-logs.bat`** - View update history and troubleshoot
+All of these live in `scripts\windows\`:
+
+- **`setup.bat`** - One-time setup; registers the scheduled update task
+- **`update.bat`** - The update script (run by the scheduler, or double-click anytime)
+- **`logs.bat`** - View update history and troubleshoot
+- **`start.bat`** / **`start-dev.bat`** - Launch the system
 - Automatic database backups before each update
 - Error handling with rollback capability
 - Update logging for remote monitoring
+
+See [scripts/README.md](scripts/README.md) for what each one does.
 
 ---
 
@@ -26,78 +37,33 @@ Automatically keep your client's POS system up to date without Docker complexity
    If not installed: Download from https://git-scm.com/download/win
 
 2. **Test the update script manually:**
-   - Double-click `update-now.bat`
+   - Double-click `scripts\windows\update.bat`
    - Should show "No updates available" (you're already current)
    - This verifies everything works
 
 ### Step 2: Schedule Automatic Updates
 
-#### Option A: Using Task Scheduler (Recommended)
+Run `scripts\windows\setup.bat` as Administrator (right-click → "Run as
+Administrator"). It asks what time updates should run, then registers a daily
+Windows scheduled task named **"Lily Cafe POS Auto Update"** that runs
+`scripts\windows\update.bat`, waking the computer if needed.
 
-1. **Open Task Scheduler:**
-   - Press `Win + R`
-   - Type: `taskschd.msc`
-   - Press Enter
+That is the whole setup — the manual Task Scheduler walkthrough that used to be
+here is no longer needed.
 
-2. **Create New Task:**
-   - Click "Create Task..." (not "Create Basic Task")
-   - Name: `Lily Cafe POS Auto Update`
-   - Description: `Automatically checks and installs POS updates`
-   - ✅ Check "Run whether user is logged on or not"
-   - ✅ Check "Run with highest privileges"
-   - Configure for: `Windows 10`
+To change the time later, run `setup.bat` again; it replaces the existing task.
 
-3. **Triggers Tab:**
-   - Click "New..."
-   - Begin the task: `On a schedule`
-   - Settings: `Daily`
-   - Start: `3:00:00 AM` (or after closing time)
-   - Recur every: `1 days`
-   - ✅ Check "Enabled"
-   - Click OK
-
-4. **Actions Tab:**
-   - Click "New..."
-   - Action: `Start a program`
-   - Program/script: `C:\lily-cafe-pos\auto-update.bat`
-     (Adjust path to where you installed)
-   - Start in: `C:\lily-cafe-pos`
-   - Click OK
-
-5. **Conditions Tab:**
-   - ✅ Check "Start only if the computer is on AC power"
-   - ❌ Uncheck "Stop if the computer switches to battery"
-   - ✅ Check "Wake the computer to run this task"
-
-6. **Settings Tab:**
-   - ✅ Check "Allow task to be run on demand"
-   - ✅ Check "Run task as soon as possible after scheduled start is missed"
-   - ✅ Check "If the task fails, restart every: `10 minutes`"
-   - Attempt to restart up to: `3 times`
-   - If running task does not end when requested: `Stop the existing instance`
-
-7. **Save:**
-   - Click OK
-   - Enter admin password if prompted
-
-#### Option B: Quick PowerShell Setup (Advanced)
-
-Run this in PowerShell as Administrator:
+To confirm the task exists:
 
 ```powershell
-$action = New-ScheduledTaskAction -Execute "C:\lily-cafe-pos\auto-update.bat" -WorkingDirectory "C:\lily-cafe-pos"
-$trigger = New-ScheduledTaskTrigger -Daily -At 3am
-$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -WakeToRun
-$principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
-
-Register-ScheduledTask -TaskName "Lily Cafe POS Auto Update" -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Description "Automatically updates Lily Cafe POS system"
+schtasks /query /tn "Lily Cafe POS Auto Update"
 ```
 
 ---
 
 ## 📋 How It Works
 
-### Automatic Updates (3 AM Daily)
+### Automatic Updates (daily, at the time set during setup)
 
 ```
 1. Task Scheduler wakes computer at 3 AM
@@ -144,19 +110,19 @@ git push origin main
 ssh user@client-laptop
 
 # Or use Remote Desktop and run:
-C:\lily-cafe-pos\update-now.bat
+C:\lily-cafe-pos\scripts\windows\update.bat
 ```
 
 ### For Client
 
 **Manual update (if they ask):**
 1. Close POS system (both windows)
-2. Double-click `update-now.bat`
+2. Double-click `scripts\windows\update.bat`
 3. Wait for "Update Successful" message
-4. Restart POS with `start-both.bat`
+4. Restart POS with `scripts\windows\start.bat`
 
 **View update history:**
-1. Double-click `view-update-logs.bat`
+1. Double-click `scripts\windows\logs.bat`
 2. Choose log number to view
 
 ---
@@ -177,12 +143,12 @@ dir C:\lily-cafe-pos\logs\update_*.log | Sort-Object LastWriteTime -Descending |
 
 # Trigger update manually
 cd C:\lily-cafe-pos
-.\auto-update.bat
+.\scripts\windows\update.bat
 ```
 
 ### Create a Remote Monitoring Script
 
-Save this as `check-client-updates.ps1` on YOUR machine:
+Save this as `check-client-updates.ps1` on YOUR machine (it is not part of the repository):
 
 ```powershell
 # Monitor client's update status via Tailscale
@@ -279,7 +245,7 @@ Expected: `LastRunTime` should be recent, `LastTaskResult` = `0` (success)
 ```powershell
 # View all recent logs
 cd C:\lily-cafe-pos
-.\view-update-logs.bat
+.\scripts\windows\logs.bat
 
 # Or manually
 notepad logs\update_20241107_030000.log
@@ -396,7 +362,7 @@ Add additional triggers in Task Scheduler:
 ### For Clients
 
 - **Update failed?** → Call your developer
-- **Need immediate update?** → Double-click `update-now.bat`
+- **Need immediate update?** → Double-click `scripts\windows\update.bat`
 - **Something broke?** → Restart POS system first, then call
 
 ### For You
@@ -407,7 +373,7 @@ Add additional triggers in Task Scheduler:
   ```bash
   cd C:\lily-cafe-pos
   git reset --hard <previous-commit>
-  .\start-both.bat
+  .\scripts\windows\start.bat
   ```
 
 ---

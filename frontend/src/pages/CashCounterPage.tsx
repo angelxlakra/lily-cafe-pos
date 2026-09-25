@@ -1,13 +1,16 @@
 import { useState, useMemo } from 'react';
 import { LockOpen, LockKey, CheckCircle, Info } from '@phosphor-icons/react';
 import { useSidebar } from '../context/SidebarContext';
-import BottomNav from '../components/BottomNav';
 import DenominationCounter, { Denominations } from '../components/DenominationCounter';
 import { useCashCounterToday, useOpenCashCounter, useCloseCashCounter, useVerifyCashCounter, useReopenCashCounter, useCashCounterHistory } from '../hooks/useCashCounter';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from '../utils/toast';
 import { formatCurrency } from '../utils/formatCurrency';
 import { formatDateTime } from '../utils/formatDateTime';
+import { useCountUp } from '../hooks/useCountUp';
+
+/** Whole rupees, as the drawer is counted in notes. */
+const rupees = (value: number) => `₹${Math.round(value).toLocaleString('en-IN')}`;
 
 export default function CashCounterPage() {
   const { data: todayCounter, isLoading } = useCashCounterToday();
@@ -66,9 +69,6 @@ export default function CashCounterPage() {
         )}
       </main>
 
-      <div className="lg:hidden">
-        <BottomNav />
-      </div>
     </div>
   );
 }
@@ -125,7 +125,7 @@ function CashCounterSidebar({ counter }: { counter: any }) {
     <div className="card p-4 space-y-4">
       {/* Header */}
       <h3 className="text-sm font-semibold text-neutral-text-dark mb-3 flex items-center gap-2">
-        <Info size={16} className="text-lily-green" />
+        <Info size={16} className="text-lily-ink" />
         Summary
       </h3>
 
@@ -155,7 +155,7 @@ function CashCounterSidebar({ counter }: { counter: any }) {
       {counter.status !== 'verified' && (
         <div className="pb-3 border-b border-neutral-border">
           <div className="text-xs text-neutral-text-muted mb-1">Cash Sales Today</div>
-          <div className="text-xl font-mono font-bold text-lily-green">
+          <div className="text-xl font-mono font-bold text-lily-ink">
             + ₹{cashPaymentsTotal.toLocaleString('en-IN')}
           </div>
         </div>
@@ -193,7 +193,7 @@ function CashCounterSidebar({ counter }: { counter: any }) {
 
           {/* Variance Display */}
           {variance !== null && (
-            <div className={`p-3 rounded-lg border-2 ${
+            <div className={`p-3 rounded-lg border-2 animate-fade-in ${
               variance === 0 ? 'bg-success/10 border-success/30' :
               variance > 0 ? 'bg-warning/10 border-warning/30' :
               'bg-error/10 border-error/30'
@@ -251,6 +251,8 @@ function OpenCounterForm() {
     }, 0);
   }, [denominations]);
 
+  const shownTotal = useCountUp(total, { duration: 300 });
+
   const handleDenominationChange = (denom: keyof Denominations, count: number) => {
     setDenominations(prev => ({ ...prev, [denom]: count }));
   };
@@ -289,8 +291,8 @@ function OpenCounterForm() {
           Open Counter
         </span>
         {total > 0 && (
-          <span className="text-lily-green font-mono text-lg">
-            ₹{total.toLocaleString('en-IN')}
+          <span className="text-lily-ink font-mono text-lg tabular-nums">
+            {rupees(shownTotal)}
           </span>
         )}
       </h3>
@@ -365,6 +367,11 @@ function CloseCounterForm({ counter }: { counter: any }) {
   // Get expected closing balance
   const expectedClosing = counter.expected_closing ? parseFloat(counter.expected_closing) : parseFloat(counter.opening_balance) + (counter.cash_payments_total || 0);
   const difference = total - expectedClosing;
+  // Counted amounts roll to their new value as notes are added, so the
+  // drawer visibly adds up; the check draws once when it matches exactly.
+  const shownTotal = useCountUp(total, { duration: 300 });
+  const shownDifference = useCountUp(Math.abs(difference), { duration: 300 });
+  const matches = total > 0 && total === expectedClosing;
 
   const handleDenominationChange = (denom: keyof Denominations, count: number) => {
     setDenominations(prev => ({ ...prev, [denom]: count }));
@@ -403,17 +410,17 @@ function CloseCounterForm({ counter }: { counter: any }) {
 
   return (
     <>
-      <div className="card p-4 animate-fade-in border-l-4 border-warning">
+      <div className="card p-4 animate-fade-in border border-warning/40">
         <h3 className="text-base font-heading text-neutral-text-dark mb-3 flex items-center justify-between">
           <span className="flex items-center gap-2">
             <LockKey size={20} />
             Close Counter
           </span>
           {total > 0 && (
-            <span className={`font-mono text-lg ${
-              total === expectedClosing ? 'text-success' : 'text-warning'
+            <span className={`font-mono text-lg tabular-nums transition-colors duration-300 ${
+              matches ? 'text-success' : 'text-warning'
             }`}>
-              ₹{total.toLocaleString('en-IN')}
+              {rupees(shownTotal)}
             </span>
           )}
         </h3>
@@ -443,20 +450,27 @@ function CloseCounterForm({ counter }: { counter: any }) {
           </div>
           <div className="flex justify-between mb-2">
             <span className="text-sm font-medium">What You Counted:</span>
-            <span className={`text-lg font-mono font-bold ${
-              total === expectedClosing ? 'text-success' : total === 0 ? 'text-neutral-text-muted' : 'text-warning'
+            <span className={`inline-flex items-center gap-1.5 text-lg font-mono font-bold tabular-nums transition-colors duration-300 ${
+              matches ? 'text-success' : total === 0 ? 'text-neutral-text-muted' : 'text-warning'
             }`}>
-              ₹{total.toLocaleString('en-IN')}
+              {matches && (
+                <svg className="size-5 text-lily-ink" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <path d="M5 12.5l4.5 4.5L19 7.5" pathLength={1} strokeDasharray={1} stroke="currentColor"
+                    strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="animate-draw" />
+                </svg>
+              )}
+              {rupees(shownTotal)}
+              {matches && <span className="sr-only">, matches what you should have</span>}
             </span>
           </div>
           {total > 0 && total !== expectedClosing && (
-            <div className={`mt-2 pt-2 border-t ${difference > 0 ? 'border-warning/30' : 'border-error/30'}`}>
+            <div className={`mt-2 pt-2 border-t animate-fade-in transition-colors duration-300 ${difference > 0 ? 'border-warning/30' : 'border-error/30'}`}>
               <div className="flex justify-between">
                 <span className="text-sm font-medium">
                   {difference > 0 ? 'Extra Cash Found:' : 'Cash Missing:'}
                 </span>
-                <span className={`text-lg font-mono font-bold ${difference > 0 ? 'text-warning' : 'text-error'}`}>
-                  ₹{Math.abs(difference).toLocaleString('en-IN')}
+                <span className={`text-lg font-mono font-bold tabular-nums transition-colors duration-300 ${difference > 0 ? 'text-warning' : 'text-error'}`}>
+                  {rupees(shownDifference)}
                 </span>
               </div>
               <p className="text-xs text-neutral-text-muted mt-1">
@@ -486,7 +500,7 @@ function CloseCounterForm({ counter }: { counter: any }) {
               placeholder="Reason for any discrepancies..."
             />
           </div>
-          <button type="submit" className="btn-secondary w-full bg-warning/10 text-warning-dark hover:bg-warning/20 border-warning/20" disabled={closeCounter.isPending || total === 0}>
+          <button type="submit" className="btn-secondary w-full bg-warning/10 text-warning hover:bg-warning/20 border-warning/20" disabled={closeCounter.isPending || total === 0}>
             {closeCounter.isPending ? (
               <span className="flex items-center justify-center gap-2">
                 <div className="animate-spin h-4 w-4 border-2 border-warning-dark border-t-transparent rounded-full" />
@@ -598,7 +612,7 @@ function VerifyCounterForm({ counter }: { counter: any }) {
 
   return (
     <>
-      <div className="card p-6 animate-fade-in border-l-4 border-info">
+      <div className="card p-6 animate-fade-in border border-info/40">
         <h3 className="text-lg font-heading text-neutral-text-dark mb-4 flex items-center gap-2">
           <CheckCircle size={24} />
           Owner Verification Required
@@ -828,11 +842,11 @@ function CashCounterHistory() {
 
   if (isLoading) {
     return (
-      <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-border p-6 shadow-sm animate-pulse">
-        <div className="h-6 w-32 bg-neutral-200 dark:bg-neutral-700 rounded mb-4"></div>
+      <div className="card p-6 animate-pulse">
+        <div className="h-6 w-32 bg-neutral-border rounded mb-4"></div>
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-10 bg-neutral-100 dark:bg-neutral-700/50 rounded"></div>
+            <div key={i} className="h-10 bg-cream rounded"></div>
           ))}
         </div>
       </div>
@@ -841,14 +855,14 @@ function CashCounterHistory() {
 
   if (!history || history.length === 0) {
     return (
-      <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-border p-6 shadow-sm text-center">
+      <div className="card p-6 text-center">
         <p className="text-neutral-text-muted">No history available</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-border p-6 shadow-sm">
+    <div className="card p-6">
       <h3 className="font-heading font-semibold text-lg mb-4 text-neutral-text-dark">History</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
@@ -863,13 +877,13 @@ function CashCounterHistory() {
            </thead>
            <tbody className="divide-y divide-neutral-border/50">
              {history.map((entry: any) => (
-                <tr key={entry.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-700/50 transition-colors">
+                <tr key={entry.id} className="hover:bg-cream/40 transition-colors">
                    <td className="py-3 px-2 text-neutral-text-dark">{formatDateTime(entry.created_at || entry.date)}</td>
                    <td className="py-3 px-2">
                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize
-                       ${entry.status === 'open' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                         entry.status === 'closed' || entry.status === 'verified' ? 'bg-neutral-100 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-300' :
-                         'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'}`}>
+                       ${entry.status === 'open' ? 'bg-success/10 text-success' :
+                         entry.status === 'closed' || entry.status === 'verified' ? 'bg-cream text-neutral-text-body' :
+                         'bg-warning/10 text-warning'}`}>
                        {entry.status.replace(/_/g, ' ')}
                      </span>
                    </td>

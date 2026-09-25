@@ -2,7 +2,6 @@
 Admin-only endpoints for Lily Cafe POS System.
 """
 
-from datetime import date
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -20,8 +19,6 @@ def get_stats(
     current_user: str = Depends(get_current_user),
 ):
     """Get dashboard statistics (admin only)."""
-    today = date.today()
-
     # Today's stats
     today_orders = crud.get_orders(db, today_only=True)
     today_revenue = sum(

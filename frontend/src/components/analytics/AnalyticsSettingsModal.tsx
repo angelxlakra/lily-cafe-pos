@@ -55,7 +55,7 @@ export default function AnalyticsSettingsModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div 
-        className="w-full max-w-md rounded-lg shadow-xl overflow-hidden animate-in fade-in zoom-in duration-200"
+        className="w-full max-w-md rounded-lg shadow-xl overflow-hidden animate-scale-in"
         style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}
       >
         {/* Header */}

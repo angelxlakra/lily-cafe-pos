@@ -3,12 +3,13 @@
 // Split payment support with receipt printing
 // ========================================
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { UpiIcon, CashIcon, CardIcon } from "./icons/PaymentIcons";
 import { useOrder, useAddPayments, usePrintReceipt } from "../hooks/useOrders";
 import { useAppConfig } from "../hooks/useConfig";
 import { formatCurrency } from "../utils/formatCurrency";
 import { toast } from "../utils/toast";
+import { useCountUp } from "../hooks/useCountUp";
 import type {
   PaymentMethod,
   PaymentCreateRequest,
@@ -31,7 +32,11 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
     card: <CardIcon size={32} weight="duotone" />,
   };
 
-  const [payments, setPayments] = useState<PaymentCreateRequest[]>([]);
+  // Each pending payment carries a local key so rows keep their identity
+  // when one is removed or restored by Undo (index keys would re-animate
+  // the wrong row).
+  const [payments, setPayments] = useState<(PaymentCreateRequest & { key: number })[]>([]);
+  const nextPaymentKey = useRef(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("upi");
   const [paymentAmount, setPaymentAmount] = useState("");
   const [error, setError] = useState("");
@@ -46,6 +51,29 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
   const pendingTotal = payments.reduce((sum, p) => sum + p.amount, 0);
   const totalPaid = alreadyPaid + pendingTotal;
   const remaining = Math.max(totalAmount - totalPaid, 0);
+  // Before the order loads every amount is 0, which must not read as "paid".
+  const isSettled = !!order && remaining === 0;
+
+  // The bill settling is this screen's one authored moment: Remaining
+  // counts down, the tile turns Lily Leaf and a check draws in. It only
+  // plays when a payment closes the bill here, not when a paid bill opens.
+  const shownRemaining = useCountUp(remaining, { animate: !!order });
+  const shownTotal = useCountUp(totalAmount, { animate: false });
+  const [settledHere, setSettledHere] = useState(false);
+  const previousRemaining = useRef<number | null>(null);
+  useEffect(() => {
+    if (!order) return;
+    if (previousRemaining.current !== null && previousRemaining.current > 0 && remaining === 0) {
+      setSettledHere(true);
+    }
+    previousRemaining.current = remaining;
+  }, [order, remaining]);
+  // The tile, label, check and Complete button change when the count lands,
+  // so the colour change reads as the result of reaching zero.
+  const hasLanded = isSettled && shownRemaining === 0;
+  // Whole rupees while counting so decimals don't flicker; exact at rest.
+  const formatCounting = (value: number, target: number) =>
+    formatCurrency(value === target ? target : Math.round(value / 100) * 100);
 
   const handleAddPayment = () => {
     setError("");
@@ -64,7 +92,7 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
       return;
     }
 
-    setPayments([...payments, { payment_method: paymentMethod, amount }]);
+    setPayments([...payments, { payment_method: paymentMethod, amount, key: nextPaymentKey.current++ }]);
     setPaymentAmount("");
   };
 
@@ -74,6 +102,7 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
     setPayments(newPayments);
 
     // Show undo toast
+    setSettledHere(false);
     toast.success(`${removedPayment.payment_method.toUpperCase()} payment removed`, {
       duration: 5000,
       description: formatCurrency(removedPayment.amount),
@@ -106,7 +135,7 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
       if (payments.length > 0) {
         await addPaymentsMutation.mutateAsync({
           orderId,
-          data: { payments },
+          data: { payments: payments.map(({ key: _key, ...payment }) => payment) },
         });
       }
 
@@ -161,24 +190,41 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
               {/* Total Amount Box */}
               <div className="bg-cream rounded-xl p-4 flex flex-col justify-center">
                 <span className="text-neutral-text-light text-sm font-medium mb-1">Total Amount</span>
-                <span className="text-2xl font-bold font-heading text-coffee-dark">
-                  {formatCurrency(totalAmount)}
+                <span className="text-2xl font-bold tabular-nums text-coffee-dark">
+                  {formatCurrency(shownTotal)}
                 </span>
               </div>
 
               {/* Amount Remaining Box */}
-              <div className={`rounded-xl p-4 flex flex-col justify-center border ${
-                remaining === 0 
-                  ? 'bg-green-50 border-green-200' 
-                  : 'bg-orange-50 border-orange-200'
-              }`}>
-                <span className={`text-sm font-medium mb-1 ${
-                  remaining === 0 ? 'text-green-700' : 'text-orange-700'
-                }`}>Remaining</span>
-                <span className={`text-2xl font-bold font-heading ${
-                  remaining === 0 ? 'text-green-800' : 'text-orange-800'
+              <div
+                className={`rounded-xl p-4 flex flex-col justify-center border transition-colors duration-300 ${
+                  hasLanded
+                    ? 'bg-lily-green/20 border-lily-green/60'
+                    : 'bg-orange-50 border-orange-200 dark:bg-warning/10 dark:border-warning/30'
+                }`}
+                aria-live="polite"
+              >
+                <span className={`text-sm font-medium mb-1 transition-colors duration-300 ${
+                  hasLanded ? 'text-neutral-text-body' : 'text-orange-700 dark:text-warning'
+                }`}>{hasLanded ? 'Fully paid' : 'Remaining'}</span>
+                <span className={`flex items-center gap-2 text-2xl font-bold tabular-nums transition-colors duration-300 ${
+                  hasLanded ? 'text-neutral-text-dark' : 'text-orange-800 dark:text-warning'
                 }`}>
-                  {formatCurrency(remaining)}
+                  {formatCounting(shownRemaining, remaining)}
+                  {hasLanded && (
+                    <svg className="w-6 h-6 shrink-0 text-lily-ink" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path
+                        d="M5 12.5l4.5 4.5L19 7.5"
+                        pathLength={1}
+                        stroke="currentColor"
+                        strokeWidth={2.5}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeDasharray={1}
+                        className={settledHere ? 'animate-draw' : undefined}
+                      />
+                    </svg>
+                  )}
                 </span>
               </div>
             </div>
@@ -279,7 +325,10 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                       </div>
                    ))}
                    {payments.map((payment, index) => (
-                      <div key={`new-${index}`} className="flex items-center justify-between bg-neutral-background border border-neutral-border rounded-lg px-3 py-2 shadow-sm relative group">
+                      // ponytail: rows animate in but vanish on remove; the Undo toast covers exits.
+                      <div key={payment.key} className="grid animate-row-in">
+                      <div className="min-h-0 overflow-hidden">
+                      <div className="flex items-center justify-between bg-neutral-background border border-neutral-border rounded-lg px-3 py-2 shadow-sm relative group">
                          <div className="flex items-center gap-2">
                             <span className="text-coffee-dark scale-75">{paymentIcons[payment.payment_method]}</span>
                             <span className="font-medium text-coffee-dark capitalize text-sm">{payment.payment_method}</span>
@@ -289,10 +338,13 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                             <button
                                onClick={() => handleRemovePayment(index)}
                                className="text-red-600 hover:bg-red-50 rounded-full p-1 transition-colors"
+                               aria-label={`Remove ${payment.payment_method.toUpperCase()} payment of ${formatCurrency(payment.amount)}`}
                             >
                                &times;
                             </button>
                          </div>
+                      </div>
+                      </div>
                       </div>
                    ))}
                 </div>
@@ -405,12 +457,17 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
           <div className="mt-auto pt-6 border-t border-neutral-border">
              <button
                 onClick={handlePrintReceipt}
-                disabled={remaining > 0 || isProcessing}
+                // Enabled by the real balance; only the look waits for the count.
+                disabled={!isSettled || isProcessing}
+                // Arms with one left-to-right fill as the bill settles: the
+                // background is half brown, half grey, and slides across.
                 className={`
-                   w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-lg
-                   ${remaining === 0
-                      ? 'bg-coffee-brown text-white hover:bg-coffee-dark transform hover:-translate-y-0.5'
-                      : 'bg-neutral-border text-neutral-text-muted cursor-not-allowed'
+                   w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 shadow-lg
+                   bg-[linear-gradient(90deg,var(--color-coffee-brown)_50%,var(--color-neutral-border)_50%)] bg-size-[200%_100%]
+                   transition-[background-position,color,filter,scale] duration-[400ms,300ms,120ms,120ms] ease-(--ease-settle)
+                   ${hasLanded
+                      ? 'bg-position-[0%_0] text-white enabled:hover:brightness-90 enabled:active:scale-[0.99]'
+                      : 'bg-position-[100%_0] text-neutral-text-muted cursor-not-allowed'
                    }
                 `}
              >
@@ -427,7 +484,7 @@ export default function PaymentModal({ orderId, onClose }: PaymentModalProps) {
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                       </svg>
-                      {remaining === 0 ? 'Complete Order & Print Receipt' : `Remaining: ${formatCurrency(remaining)}`}
+                      {hasLanded ? 'Complete Order & Print Receipt' : `Remaining: ${formatCurrency(remaining)}`}
                    </>
                 )}
              </button>

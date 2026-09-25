@@ -3,7 +3,7 @@ Pytest configuration and fixtures for Lily Cafe POS System tests.
 Provides test database, client, and authentication utilities.
 """
 
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 from sqlalchemy import create_engine
@@ -14,8 +14,36 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.db.base import Base  # Import Base with all models registered
 from app.api.deps import get_db  # Import get_db from deps (used by endpoints)
+from app.core import business_day
 from app.core.security import create_access_token
+from app.core.login_throttle import login_throttle
 from app.models import models
+
+
+@pytest.fixture(autouse=True)
+def _fresh_login_throttle():
+    """The sign-in limiter is process-wide state; start every test clean."""
+    login_throttle.reset()
+    yield
+    login_throttle.reset()
+
+
+# ============================================================================
+# Clock
+# ============================================================================
+
+# 22:07 UTC is 03:37 IST the next day: the UTC and IST calendar dates disagree,
+# which is the window in which a naive "func.date(created_at) == today"
+# comparison drops freshly created orders. Freezing here keeps the tests
+# deterministic and doubles as a regression check for that bug.
+FROZEN_UTC_NOW = datetime(2026, 9, 20, 22, 7, 0)  # naive UTC, the storage convention
+
+
+@pytest.fixture
+def frozen_clock(monkeypatch):
+    """Pin the application clock to FROZEN_UTC_NOW for the duration of a test."""
+    monkeypatch.setattr(business_day, "utcnow", lambda: FROZEN_UTC_NOW)
+    return FROZEN_UTC_NOW
 
 
 # ============================================================================
@@ -256,7 +284,7 @@ def sample_order(test_db, sample_menu_items):
     # Stamp today's business date so role-based "today only" rules see this
     # order as current (order numbers carry the business date: ORD-YYYYMMDD-####)
     order = models.Order(
-        order_number=f"ORD-{date.today().strftime('%Y%m%d')}-0001",
+        order_number=f"ORD-{business_day.business_today().strftime('%Y%m%d')}-0001",
         table_number=5,
         customer_name="Test Customer",
         subtotal=12000,  # ₹120
@@ -351,7 +379,7 @@ def paid_order(test_db, sample_menu_items):
         customer_name="Paid Customer",
         items=[{"menu_item_id": sample_menu_items[0].id, "quantity": 1}]
     )
-    order = crud.create_order(test_db, order_data)
+    order, _ = crud.create_order(test_db, order_data)
 
     payment_data = PaymentCreate(
         payment_method="cash",

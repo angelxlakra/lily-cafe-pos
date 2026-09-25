@@ -1,162 +1,199 @@
 import { useState } from 'react';
-import { Plus, PencilSimple, Trash, X, Check } from '@phosphor-icons/react';
+import { useQuery } from '@tanstack/react-query';
+import { Plus, PencilSimple, Trash, ListNumbers } from '@phosphor-icons/react';
+import CountOrderEditor from './CountOrderEditor';
+import ConfirmDialog from '../ConfirmDialog';
+import LoadingSpinner from '../LoadingSpinner';
+import { inventoryApi } from '../../api/inventory';
 import { useInventoryCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../../hooks/useInventory';
-import { useAuth } from '../../hooks/useAuth';
+import { describeApiError } from '../../utils/apiError';
+import type { InventoryCategory } from '../../types/inventory';
 
+// Owner-only tab (hidden from admins by InventoryPage; enforced by the API).
 export default function InventoryCategoriesTab() {
-  const { data: categories, isLoading } = useInventoryCategories();
+  const { data: categories = [], isLoading } = useInventoryCategories();
+  // Item counts per category come from the count sheet (active items only).
+  const { data: groups = [] } = useQuery({
+    queryKey: ['inventory', 'count-sheet'],
+    queryFn: inventoryApi.getCountSheet,
+  });
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
 
   const [isCreating, setIsCreating] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
-  // Inventory categories are master data, so only the owner may change them.
-  const { isOwner } = useAuth();
+  const [newName, setNewName] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
+  const [deleting, setDeleting] = useState<InventoryCategory | null>(null);
+  const [notice, setNotice] = useState<{ id: number | 'new'; text: string } | null>(null);
+  const [arranging, setArranging] = useState(false);
+
+  const itemCount = (id: number) => groups.find(group => group.category?.id === id)?.items.length ?? 0;
+
+  if (arranging) return <CountOrderEditor onDone={() => setArranging(false)} />;
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCategoryName.trim()) return;
-    
+    if (!newName.trim()) return;
     try {
-      await createCategory.mutateAsync({ name: newCategoryName });
-      setNewCategoryName('');
+      await createCategory.mutateAsync({ name: newName.trim() });
+      setNewName('');
       setIsCreating(false);
+      setNotice(null);
     } catch (error) {
-      console.error("Failed to create category", error);
+      setNotice({ id: 'new', text: `Not added. ${describeApiError(error)}` });
     }
   };
 
-  const startEditing = (category: { id: number; name: string }) => {
-    setEditingId(category.id);
-    setEditName(category.name);
-  };
-
-  const handleUpdate = async () => {
-    if (!editName.trim() || !editingId) return;
-    
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editName.trim() || editingId === null) return;
     try {
-      await updateCategory.mutateAsync({ id: editingId, data: { name: editName } });
+      await updateCategory.mutateAsync({ id: editingId, data: { name: editName.trim() } });
       setEditingId(null);
+      setNotice(null);
     } catch (error) {
-      console.error("Failed to update category", error);
+      setNotice({ id: editingId, text: `Not renamed. ${describeApiError(error)}` });
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this category?')) {
-      try {
-        await deleteCategory.mutateAsync(id);
-      } catch (error) {
-        alert("Cannot delete category that has items.");
-      }
+  const askDelete = (category: InventoryCategory) => {
+    const count = itemCount(category.id);
+    if (count > 0) {
+      setNotice({ id: category.id, text: `Move or delete its ${count} item${count === 1 ? '' : 's'} first (Items tab).` });
+      return;
+    }
+    setNotice(null);
+    setDeleting(category);
+  };
+
+  const confirmDelete = async () => {
+    const category = deleting;
+    setDeleting(null);
+    if (!category) return;
+    try {
+      await deleteCategory.mutateAsync(category.id);
+    } catch (error) {
+      setNotice({ id: category.id, text: `Not deleted. ${describeApiError(error)}` });
     }
   };
 
   if (isLoading) {
-    return <div className="p-8 text-center text-neutral-text-muted">Loading categories...</div>;
+    return <div className="py-12 flex justify-center gap-3 text-neutral-text-muted"><LoadingSpinner /> Loading categories…</div>;
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header & Actions */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-heading text-coffee-brown dark:text-cream">Categories</h2>
-        {isOwner && (
-          <button
-            onClick={() => setIsCreating(true)}
-            className="btn-primary flex items-center gap-2"
-            disabled={isCreating}
-          >
-            <Plus weight="bold" />
-            <span>Add Category</span>
+    <div className="max-w-2xl space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-neutral-text-muted tabular-nums">
+          {categories.length} categor{categories.length === 1 ? 'y' : 'ies'}
+        </p>
+        <div className="flex gap-2">
+          <button onClick={() => setArranging(true)} className="btn-secondary flex items-center gap-2 whitespace-nowrap">
+            <ListNumbers weight="bold" aria-hidden />
+            Count order
           </button>
-        )}
+          <button
+            onClick={() => { setIsCreating(true); setNotice(null); }}
+            disabled={isCreating}
+            className="btn-primary flex items-center gap-2 whitespace-nowrap"
+          >
+            <Plus weight="bold" aria-hidden />
+            Add category
+          </button>
+        </div>
       </div>
 
-      {/* Create Form */}
-      {isCreating && isOwner && (
-        <form onSubmit={handleCreate} className="card p-4 flex items-center gap-4 animate-fade-in">
-          <input
-            type="text"
-            value={newCategoryName}
-            onChange={(e) => setNewCategoryName(e.target.value)}
-            placeholder="Category Name (e.g., Dairy, Grains)"
-            className="input-field flex-1"
-            autoFocus
-          />
-          <div className="flex gap-2">
-            <button type="submit" className="btn-success p-2 rounded-lg" disabled={createCategory.isPending}>
-              <Check size={20} weight="bold" />
+      {isCreating && (
+        <form onSubmit={handleCreate} className="card p-3 space-y-2 animate-fade-in">
+          <label htmlFor="new-category" className="block text-sm font-medium text-neutral-text-body">New category</label>
+          <div className="flex flex-wrap gap-2">
+            <input
+              id="new-category"
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="e.g. Dairy, Dry grocery"
+              className="input-field flex-1 min-w-48 min-h-12"
+              autoFocus
+            />
+            <button type="submit" className="btn-primary" disabled={createCategory.isPending || !newName.trim()}>
+              {createCategory.isPending ? 'Adding…' : 'Add'}
             </button>
-            <button 
-              type="button" 
-              onClick={() => setIsCreating(false)}
-              className="btn-ghost p-2 rounded-lg text-error hover:bg-error/10"
-            >
-              <X size={20} weight="bold" />
+            <button type="button" onClick={() => { setIsCreating(false); setNewName(''); setNotice(null); }} className="btn-ghost">
+              Cancel
             </button>
           </div>
+          {notice?.id === 'new' && <div role="alert" className="text-sm font-medium text-error">{notice.text}</div>}
         </form>
       )}
 
-      {/* Categories List */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {categories?.map((category) => (
-          <div key={category.id} className="card p-4 flex justify-between items-center group hover:shadow-md transition-shadow">
-            {editingId === category.id && isOwner ? (
-              <div className="flex items-center gap-2 w-full">
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="input-field py-1 px-2 text-sm"
-                  autoFocus
-                />
-                <button onClick={handleUpdate} className="text-success hover:bg-success/10 p-1 rounded">
-                  <Check size={18} weight="bold" />
-                </button>
-                <button onClick={() => setEditingId(null)} className="text-neutral-text-muted hover:bg-neutral-text-muted/10 p-1 rounded">
-                  <X size={18} weight="bold" />
-                </button>
-              </div>
-            ) : (
-              <>
-                <span className="font-medium text-lg text-neutral-text-dark">{category.name}</span>
-                {isOwner && (
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      {categories.length === 0 && !isCreating ? (
+        <div className="card p-8 text-center text-neutral-text-muted">
+          No categories yet. Add one, or import the WhatsApp checklist from Daily count.
+        </div>
+      ) : (
+        <ul className="card divide-y divide-neutral-border overflow-hidden">
+          {categories.map(category => {
+            const count = itemCount(category.id);
+            return (
+              <li key={category.id} className="pl-4 pr-2 py-2 min-h-16 flex flex-col justify-center">
+                {editingId === category.id ? (
+                  <form onSubmit={handleUpdate} className="flex flex-wrap gap-2 py-1">
+                    <label htmlFor={`rename-${category.id}`} className="sr-only">Name for {category.name}</label>
+                    <input
+                      id={`rename-${category.id}`}
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="input-field flex-1 min-w-40 min-h-12"
+                      autoFocus
+                    />
+                    <button type="submit" className="btn-primary" disabled={updateCategory.isPending || !editName.trim()}>Save</button>
+                    <button type="button" onClick={() => { setEditingId(null); setNotice(null); }} className="btn-ghost">Cancel</button>
+                  </form>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium leading-snug text-neutral-text-dark line-clamp-2 break-words">{category.name}</div>
+                      <div className="text-xs text-neutral-text-muted tabular-nums">{count} item{count === 1 ? '' : 's'}</div>
+                    </div>
                     <button
-                      onClick={() => startEditing(category)}
-                      className="p-2 text-neutral-text-muted hover:text-coffee-brown hover:bg-coffee-brown/10 rounded-lg transition-colors"
-                      title="Edit"
+                      onClick={() => { setEditingId(category.id); setEditName(category.name.trim()); setNotice(null); }}
+                      aria-label={`Rename ${category.name}`}
+                      className="size-12 grid place-items-center rounded-lg text-neutral-text-light hover:text-coffee-brown hover:bg-cream/60"
                     >
-                      <PencilSimple size={18} />
+                      <PencilSimple size={18} aria-hidden />
                     </button>
                     <button
-                      onClick={() => handleDelete(category.id)}
-                      className="p-2 text-neutral-text-muted hover:text-error hover:bg-error/10 rounded-lg transition-colors"
-                      title="Delete"
+                      onClick={() => askDelete(category)}
+                      aria-label={`Delete ${category.name}`}
+                      className="size-12 grid place-items-center rounded-lg text-neutral-text-light hover:text-error hover:bg-error/10"
                     >
-                      <Trash size={18} />
+                      <Trash size={18} aria-hidden />
                     </button>
                   </div>
                 )}
-              </>
-            )}
-          </div>
-        ))}
+                {notice?.id === category.id && (
+                  <div role="alert" className="pb-1 text-sm font-medium text-error">{notice.text}</div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
-        {(!categories || categories.length === 0) && !isCreating && (
-          <div className="col-span-full text-center py-12 text-neutral-text-muted bg-neutral-background rounded-xl border-2 border-dashed border-neutral-border">
-            <Tag size={48} className="mx-auto mb-3 opacity-50" />
-            <p>No categories found. Create one to get started.</p>
-          </div>
-        )}
-      </div>
+      <ConfirmDialog
+        isOpen={deleting !== null}
+        onClose={() => setDeleting(null)}
+        onConfirm={confirmDelete}
+        title={`Delete ${deleting?.name.trim() ?? 'category'}?`}
+        message="It has no items, so nothing else changes."
+        confirmText="Delete category"
+        cancelText="Keep it"
+        variant="danger"
+      />
     </div>
   );
 }
-
-import { Tag } from '@phosphor-icons/react';

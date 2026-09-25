@@ -76,6 +76,7 @@ uv.lock
 *.sqlite
 *.sqlite3
 restaurant.db
+demo.db
 
 # Logs
 *.log
@@ -137,3 +138,5 @@ ui-inspection-screenshots/
 # Superpowers brainstorm sessions
 .superpowers/
 .worktrees/
+
+fly.toml

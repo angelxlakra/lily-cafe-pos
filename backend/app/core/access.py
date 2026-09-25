@@ -19,6 +19,7 @@ from typing import Optional
 from fastapi import HTTPException, status
 
 from app import schemas
+from app.core import business_day
 from app.models import models
 
 
@@ -29,12 +30,13 @@ def is_owner(user: Optional[schemas.TokenData]) -> bool:
 
 def business_today() -> date:
     """
-    The current business day.
+    The current business day: the local date in the configured timezone.
 
-    Matches the convention used elsewhere in the app (order numbers and
-    ``today_only`` filtering both use the server's local date).
+    Order numbers and ``today_only`` filtering use the same convention (see
+    ``app.core.business_day``), so an order placed just after local midnight
+    is "today" everywhere even though its UTC timestamp is still yesterday.
     """
-    return date.today()
+    return business_day.business_today()
 
 
 def require_owner(user: schemas.TokenData, action: str) -> None:
@@ -99,12 +101,13 @@ def order_business_date(order: models.Order) -> Optional[date]:
 
     Read from the order number (``ORD-YYYYMMDD-####``), which is stamped with
     the local business date at creation time. Falls back to ``created_at``
-    (stored in UTC) when the order number is not in the expected format.
+    (stored in UTC, converted to the local date) when the order number is not
+    in the expected format.
     """
     try:
         return datetime.strptime(order.order_number.split("-")[1], "%Y%m%d").date()
     except (AttributeError, IndexError, ValueError):
-        return order.created_at.date() if order.created_at else None
+        return business_day.to_business_date(order.created_at) if order.created_at else None
 
 
 def require_order_visible(user: schemas.TokenData, order: models.Order) -> None:

@@ -1,5 +1,9 @@
 # Aesthetic Overhaul Implementation Plan
 
+> **Status: not implemented.** As of 2026-09-21 this plan has not been built.
+> The components and tokens it describes do not exist in `frontend/src/`.
+> Treat it as a proposal, not a description of the current UI.
+
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace the Lily Cafe POS coffee-brown/Quesha visual identity with the Bright Artisan Terracotta & Sand palette and Fraunces + Plus Jakarta Sans type system across both waiter POS and admin dashboard views.

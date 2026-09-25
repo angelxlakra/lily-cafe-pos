@@ -46,9 +46,6 @@ class Settings:
     # API Configuration
     API_V1_PREFIX: str = "/api/v1"
 
-    # Thesys C1 Configuration
-    THESYS_API_KEY: str = os.getenv("THESYS_API_KEY", "")
-
     # Print Agent API Key (shared secret between backend and agent.py)
     PRINT_AGENT_API_KEY: str = os.getenv("PRINT_AGENT_API_KEY", "change-me-in-production")
 
@@ -66,6 +63,24 @@ class Settings:
 
     # Restaurant logo path (local filesystem — not applicable in cloud deployment)
     RESTAURANT_LOGO_PATH: str = os.getenv("RESTAURANT_LOGO_PATH", "")
+
+    # Sign-in brute-force protection: a source address is locked out once it
+    # has this many failed logins inside the window (see core/login_throttle).
+    LOGIN_MAX_FAILURES: int = int(os.getenv("LOGIN_MAX_FAILURES", "10"))
+    LOGIN_FAILURE_WINDOW_MINUTES: int = int(os.getenv("LOGIN_FAILURE_WINDOW_MINUTES", "15"))
+
+    # Ask — natural-language questions routed to fixed reports (app.ask).
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    ASK_MODEL: str = os.getenv("ASK_MODEL", "gpt-5.6-luna")
+
+    # MCP server — lets the owner connect an AI assistant (ChatGPT, Gemini) to
+    # read cafe analytics. Off unless a deployment opts in, because enabling it
+    # publishes an OAuth authorization server and a read-only data endpoint.
+    MCP_ENABLED: bool = os.getenv("MCP_ENABLED", "false").lower() == "true"
+    # Public HTTPS origin this backend is reachable at, with no trailing path
+    # (e.g. https://lily-cafe-pos.fly.dev). It is the OAuth issuer identifier,
+    # so it must match what clients actually connect to.
+    MCP_PUBLIC_URL: str = os.getenv("MCP_PUBLIC_URL", "").rstrip("/")
 
 
 # Create a singleton instance

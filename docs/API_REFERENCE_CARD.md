@@ -45,8 +45,8 @@
   "table_number": 5,
   "customer_name": "John Doe",
   "subtotal": 20000,        // ₹200 in paise
-  "gst_amount": 3600,       // 18% = ₹36
-  "total_amount": 23600,    // ₹236
+  "gst_amount": 1000,       // 5% = ₹10
+  "total_amount": 21000,    // ₹210
   "status": "active",
   "created_at": "2025-01-30T10:00:00",
   "updated_at": "2025-01-30T10:00:00",
@@ -68,7 +68,7 @@
 - **If table empty**: Creates new order
 - **If table has active order**: Updates that order (replaces items)
 - **Items**: Completely replaced, not merged
-- **GST**: Automatically calculated at 18%
+- **GST**: Automatically calculated at the configured rate (default 5%)
 
 ---
 
@@ -417,7 +417,7 @@ Content-Disposition: inline; filename=receipt-ORD-20250131-0001.pdf
   - Restaurant name, address, phone, email, GSTIN
   - Order number, table, date/time
   - All items with quantities and prices
-  - Subtotal, GST (18%), total
+  - Subtotal, GST at the configured rate, total
   - Payment methods used (UPI/Cash/Card)
   - Thank you message
 
@@ -428,21 +428,26 @@ Print receipt after payment completion for customer records and GST compliance.
 
 ## 💰 GST Calculation
 
-**Rate**: 18% (configured in `settings.GST_RATE`)
+**Rate**: 5% by default. The rate is stored under the `app.gst_rate` key in the
+settings store (`backend/app/core/settings_store.py`) and is editable by the owner
+from the Settings page — it is not an environment variable.
 
 **Formula**:
 ```
 subtotal = sum(item.quantity × item.unit_price)
-gst_amount = int(subtotal × 0.18)
+gst_amount = int(subtotal × gst_rate / 100)
 total_amount = subtotal + gst_amount
 ```
 
-**Example**:
+**Example** (at the default 5%):
 - 2× Masala Dosa (₹80 each) = ₹160
 - 1× Coffee (₹40) = ₹40
 - **Subtotal**: ₹200
-- **GST (18%)**: ₹36
-- **Total**: ₹236
+- **GST (5%)**: ₹10
+- **Total**: ₹210
+
+On the printed receipt the rate is split into equal CGST and SGST lines
+(2.5% + 2.5% at the default rate).
 
 **Important**: All amounts in **paise** (₹1 = 100 paise) to avoid float precision issues.
 
