@@ -49,6 +49,7 @@ class IngredientLine:
     share_percent: Decimal | None
     price_missing: bool
     is_active: bool
+    unit_error: bool = False
 
 
 @dataclass
@@ -96,9 +97,20 @@ def compute(
     raw = Decimal("0")
 
     for ing in ingredients:
-        price_missing = ing.cost_per_unit is None
+        # A price of 0 is not a real price: many items were created with 0.00
+        # as a placeholder, so treat it the same as no price at all.
+        price_missing = ing.cost_per_unit is None or Decimal(ing.cost_per_unit) <= 0
         price = Decimal("0") if price_missing else Decimal(ing.cost_per_unit)
-        qty_in_stock_unit = convert(ing.quantity, ing.unit, ing.stock_unit)
+
+        # One bad unit costs its own line at 0 instead of failing the whole dish.
+        unit_error = False
+        try:
+            qty_in_stock_unit = convert(ing.quantity, ing.unit, ing.stock_unit)
+        except IncompatibleUnitError as e:
+            unit_error = True
+            qty_in_stock_unit = Decimal("0")
+            warnings.append(f"{ing.name}: {e} - counted as 0")
+
         line_cost = money(qty_in_stock_unit * price)
         raw += line_cost
 
@@ -119,6 +131,7 @@ def compute(
                 share_percent=None,
                 price_missing=price_missing,
                 is_active=ing.is_active,
+                unit_error=unit_error,
             )
         )
 
@@ -192,7 +205,9 @@ def compute(
         target_margin_percent=target,
         suggested_price=suggested_price,
         # is_complete=not any(line.price_missing for line in lines),
-        is_complete=not any(line.price_missing or not line.is_active for line in lines),
+        is_complete=not any(
+            line.price_missing or line.unit_error or not line.is_active for line in lines
+        ),
         warnings=warnings,
     )
 

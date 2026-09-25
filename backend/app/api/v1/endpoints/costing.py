@@ -63,15 +63,15 @@ def _compute_breakdown(costing: DishCosting, menu_item, price_overrides: dict[in
     try:
         return costing_utils.compute(ingredients=ingredients, overheads=overheads, yield_units=costing.yield_units, selling_price=selling_price, target_margin_percent=target_margin)
     except IncompatibleUnitError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, details=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, details=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 def _breakdown_to_schema(breakdown: costing_utils.CostBreakdown) -> costing_schemas.CostBreakdownOut:
     return costing_schemas.CostBreakdownOut(
         ingredients=[
             costing_schemas.IngredientLineOut(
-                inventory_item_id=line.item_id, name=line.name, quantity=line.quantity, unit=line.unit, stock_unit=line.stock_unit, unit_price=line.unit_price, line_cost=line.line_cost, share_percent=line.share_percent, price_missing=line.price_missing, is_active=line.is_active
+                inventory_item_id=line.item_id, name=line.name, quantity=line.quantity, unit=line.unit, stock_unit=line.stock_unit, unit_price=line.unit_price, line_cost=line.line_cost, share_percent=line.share_percent, price_missing=line.price_missing, is_active=line.is_active, unit_error=line.unit_error
                 ) for line in breakdown.ingredients],
         overheads=[costing_schemas.OverheadLineOut(
             kind=line.kind, mode=line.mode, value=line.value, amount=line.amount, percent=line.percent, inherited=line.inherited
@@ -96,7 +96,7 @@ def _costing_to_schema(costing: DishCosting) -> costing_schemas.DishCostingOut:
     # Build the complete costing response.
 
     if costing.menu_item is None:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, details="Costing has no associated menu item.")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Costing has no associated menu item.")
     
     breakdown = _compute_breakdown(costing, costing.menu_item)
 
@@ -303,7 +303,7 @@ def update_costing(costing_id: int, data: costing_schemas.DishCostingIn, db: Ses
         existing = costing_crud.get_costing_by_menu_item(db, data.menu_item_id)
 
         if existing and existing.id != costing_id:
-            raise HTTPException(sataus_code=status.HTTP_409_CONFLICT, detail="A costing already exists for this menu item.")
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A costing already exists for this menu item.")
         
     menu_item = costing_crud.get_menu_item(db, data.menu_item_id)
 

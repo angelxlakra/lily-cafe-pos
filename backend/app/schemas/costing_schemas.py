@@ -43,6 +43,7 @@ class IngredientLineOut(BaseModel):
     share_percent: Optional[Decimal]
     price_missing: bool
     is_active: bool
+    unit_error: bool = False
 
 
 class OverheadLineOut(BaseModel):
