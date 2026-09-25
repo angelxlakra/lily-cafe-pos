@@ -30,6 +30,11 @@ class InventoryItem(Base):
     category_id = Column(Integer, ForeignKey("inventory_categories.id"), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     sort_order = Column(Integer, nullable=False, default=0, server_default="0")
+    # "number" (counted with a quantity) or "presence" (answered yes/no).
+    count_mode = Column(String(10), nullable=False, default="number", server_default="number")
+    # Optional bridge from the count unit to a recipe unit: 1 bottle holds 700 ml.
+    pack_size = Column(Numeric(10, 3), nullable=True)
+    pack_unit = Column(String(20), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
