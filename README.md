@@ -24,6 +24,9 @@ analytics you can ask questions about in plain language.
 - Purchase recording, usage recording, and a transaction ledger
 - One-time bulk import from the cafe's old WhatsApp checklist format
 
+A rework of inventory, dish costing and purchases is in design:
+[docs/INVENTORY_PLAN.md](docs/INVENTORY_PLAN.md).
+
 ### Cash counter
 - Open, close and verify a day's cash drawer
 - Denomination-level counting
