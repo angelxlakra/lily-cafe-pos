@@ -77,23 +77,34 @@ or give each its own git worktree — concurrent sessions in a single checkout w
 overwrite each other. Suggested order: 0 now, then 1, then 2 and 3 together, then
 4 → 5 → 6, with 7 whenever ordering help matters more than waste reporting.
 
-### 0 — Merge dish costing's backend
+### 0 — Fix and merge dish costing's backend
+
+Fix on the branch first, then merge. A merge commit that also carries fixes is hard to
+review and hard to back out of, and if the merge goes badly you keep the fixes.
 
 ```
-In /Users/angelxlakra/dev/lily-cafe-pos: merge origin/feature/dish-costing into
-pre-release and fix its bugs. Read docs/INVENTORY_PLAN.md first — its "State of
-feature/dish-costing" section lists what's wrong.
+In /Users/angelxlakra/dev/lily-cafe-pos: get origin/feature/dish-costing ready and merge
+it into pre-release. Read docs/INVENTORY_PLAN.md first — its "State of
+feature/dish-costing" section lists what's wrong. Work ON that branch, don't merge first.
 
-The branch is backend-only and 49 commits behind. Do NOT merge its
+Step 1, fix these four bugs as their own commit on feature/dish-costing:
+- `details=` should be `detail=` at endpoints/costing.py:66,68,99, and `sataus_code=`
+  should be `status_code=` at :306. All four are TypeErrors that surface as 500s.
+- utils/costing.py calls convert() before checking the price, so one ingredient with an
+  unconvertible unit raises and kills the whole dish instead of costing one line at 0.
+- price_missing only tests for None, so a price of 0 counts as free. 98 live items are
+  priced 0.00, so dishes would report confident ₹0 lines and still look complete.
+
+Step 2, add three tests — there are currently none for ~1,250 lines of money handling:
+a normal cost calculation, one with a missing price, one with an unconvertible unit.
+
+Step 3, merge main into the branch, then the branch into pre-release. Do NOT bring its
 frontend/pnpm-lock.yaml or pnpm-workspace.yaml — this project uses npm.
 
-Fix on the way in: `details=` should be `detail=` at endpoints/costing.py:66,68,99
-and `sataus_code=` at :306; utils/costing.py calls convert() before checking the
-price, so one unconvertible unit kills a whole dish instead of one line; and
-price_missing only tests for None, so a price of 0 counts as free — 98 live items
-are priced 0.00.
+Don't build any costing UI; the frontend doesn't exist yet and comes much later. Leave
+the API unused until real prices exist.
 
-Don't build any costing UI. Done = merged, bugs fixed, endpoints reachable, tests pass.
+Done = bugs fixed with tests proving it, merged into pre-release, full test suite passes.
 ```
 
 ### 1 — Setup grid
