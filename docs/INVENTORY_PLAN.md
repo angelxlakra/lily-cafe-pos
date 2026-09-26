@@ -263,11 +263,22 @@ it needs someone to run `flyctl deploy` by hand. The two drift, silently.
 
 2. **A deploy can report success while shipping stale code.** On 2026-09-26 the backend
    was found to have no `/inventory/counts` routes at all, five days after they landed on
-   `main` and four days after a "successful" release. A misplaced `.dockerignore` had
-   excluded source from the build context, so the image built, the health check passed and
-   `fly releases` looked clean — while the endpoint the staff needed simply was not there.
-   The cafe counted 82 items that night and lost all of it to a 404. Fixed in
-   [#56](https://github.com/angelxlakra/lily-cafe-pos/pull/56).
+   `main` and four days after a "successful" release. The image built, the health check
+   passed and `fly releases` looked clean — while the endpoint the staff needed simply was
+   not there. The cafe counted 82 items that night and lost all of it to a 404.
+
+   The cause was never confirmed. The most likely explanation is that `flyctl deploy` was
+   run from a checkout that predated the merge — it builds from the working directory, not
+   from git, so a stale local tree ships stale code with no warning. (An earlier note here
+   blamed [#56](https://github.com/angelxlakra/lily-cafe-pos/pull/56); that PR fixed a
+   different problem, see below.)
+
+3. **Until #56, every image carried local files.** `fly.toml` builds from the repo root, so
+   `backend/.dockerignore` was never read and `COPY backend/ .` baked the developer's
+   `.venv`, `restaurant.db` and `.env` into the image — a 941 MB context, now about 2 MB.
+   Production itself was unaffected: Fly secrets are real environment variables and
+   `load_dotenv()` does not override those, so the baked `.env` was inert. But images v26
+   and earlier still hold a copy of whatever was in that local `.env`.
 
 **The underlying gap was that nothing reported what is actually deployed.** `GET /`
 returned `version: 0.2.0`, hardcoded and equally true of the stale image. It now also
