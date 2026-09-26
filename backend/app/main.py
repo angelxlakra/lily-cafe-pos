@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.db.session import init_db
-from app.version import __version__, get_version_info
+from app.version import __version__, get_build_info, get_version_info
 
 
 @asynccontextmanager
@@ -78,6 +78,7 @@ def root():
         "message": "Lily Cafe POS API",
         "version": __version__,
         "status": "running",
+        **get_build_info(),
     }
 
 

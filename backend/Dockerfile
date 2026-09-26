@@ -24,6 +24,11 @@ RUN mkdir -p /data /app/chits
 ENV DATABASE_URL=sqlite:////data/restaurant.db
 ENV PORT=8000
 
+# Stamped last so it never busts the dependency layers. Deploy with:
+#   flyctl deploy -a lily-cafe-pos --build-arg GIT_SHA=$(git rev-parse HEAD)
+ARG GIT_SHA=unknown
+ENV GIT_SHA=$GIT_SHA
+
 EXPOSE 8000
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
