@@ -29,6 +29,7 @@ export default function CountReviewSheet({
   const dialogRef = useRef<HTMLDivElement>(null);
   const saveRef = useRef<HTMLButtonElement>(null);
   const keepCountingRef = useRef<HTMLButtonElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
   const [showAllUncounted, setShowAllUncounted] = useState(false);
   useDialogFocus(dialogRef, onClose, isSaving);
 
@@ -48,6 +49,11 @@ export default function CountReviewSheet({
       document.body.style.overflow = previousOverflow;
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The error sits at the end of a long scroll area; bring it into view so it can't be missed.
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [error]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
@@ -140,7 +146,7 @@ export default function CountReviewSheet({
           )}
 
           {error && (
-            <div role="alert" className="mt-5 rounded-lg border border-error/40 bg-error/5 p-3 text-sm text-neutral-text-body">
+            <div ref={errorRef} role="alert" className="mt-5 rounded-lg border border-error/40 bg-error/5 p-3 text-sm text-neutral-text-body">
               <strong className="block text-neutral-text-dark">Count not saved</strong>
               {error} Your numbers are still on this phone.
             </div>
