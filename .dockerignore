@@ -1,0 +1,10 @@
+# Build context is the repo root (fly.toml); the Dockerfile only copies backend/.
+*
+!backend
+backend/.venv
+backend/**/__pycache__
+backend/**/*.py[co]
+backend/*.db
+backend/.env
+backend/chits
+backend/tests
