@@ -23,6 +23,9 @@ import type {
   TransactionType
 } from '../types/inventory';
 
+/** A count writes a line per item plus adjustments in one commit; it outlasts the global 10s timeout. */
+const COUNT_SAVE_TIMEOUT_MS = 60_000;
+
 export const inventoryApi = {
   // Categories
   getCategories: async (): Promise<InventoryCategory[]> => {
@@ -157,7 +160,7 @@ export const inventoryApi = {
   },
 
   saveCount: async (lines: CountLine[]): Promise<CountResult> => {
-    const response = await apiClient.post<CountResult>('/inventory/counts', { lines });
+    const response = await apiClient.post<CountResult>('/inventory/counts', { lines }, { timeout: COUNT_SAVE_TIMEOUT_MS });
     return response.data;
   },
 
