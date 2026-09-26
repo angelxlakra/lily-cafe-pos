@@ -15,6 +15,7 @@ import CountReviewSheet from '../components/inventory/CountReviewSheet';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { describeApiError } from '../utils/apiError';
 import { useDialogFocus } from '../hooks/useDialogFocus';
+import { bigDifferenceItems } from '../utils/countQuantity';
 import { clearCountDraft, loadCountDraft, saveCountDraft, type CountEntries } from '../utils/countDraft';
 import type { CountResult, CountSheetGroup } from '../types/inventory';
 
@@ -46,6 +47,9 @@ export default function InventoryCountPage() {
   const items = useMemo(() => groups?.flatMap(group => group.items) ?? [], [groups]);
   const countedTotal = items.filter(item => item.id in counts).length;
   const allCounted = items.length > 0 && countedTotal === items.length;
+  // Ranked across the whole count, so the row icons and the review sheet flag the same few items.
+  const bigDifferences = useMemo(() => bigDifferenceItems(items, counts), [items, counts]);
+  const bigIds = useMemo(() => new Set(bigDifferences.map(item => item.id)), [bigDifferences]);
 
   // Only nag on leave when the draft couldn't be kept on this device.
   useEffect(() => {
@@ -300,7 +304,7 @@ export default function InventoryCountPage() {
               >
                 <ul className="min-h-0 overflow-hidden bg-off-white border-y border-neutral-border/70">
                   {group.items.map(item => (
-                    <CountRow key={item.id} item={item} counted={counts[item.id]} onChange={handleChange} />
+                    <CountRow key={item.id} item={item} counted={counts[item.id]} big={bigIds.has(item.id)} onChange={handleChange} />
                   ))}
                 </ul>
               </div>
@@ -346,6 +350,7 @@ export default function InventoryCountPage() {
         <CountReviewSheet
           items={items}
           counts={counts}
+          bigDifferences={bigDifferences}
           isSaving={saveMutation.isPending}
           error={saveMutation.isError ? describeApiError(saveMutation.error) : null}
           onSave={() => saveMutation.mutate()}

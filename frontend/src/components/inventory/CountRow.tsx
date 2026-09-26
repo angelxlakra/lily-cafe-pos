@@ -7,16 +7,18 @@
 import { memo, useRef, useState } from 'react';
 import { Warning } from '@phosphor-icons/react';
 import type { InventoryItem } from '../../types/inventory';
-import { formatQty, isBigDifference, parseQty } from '../../utils/countQuantity';
+import { formatQty, parseQty } from '../../utils/countQuantity';
 
 interface CountRowProps {
   item: InventoryItem;
   /** Counted quantity, or undefined if not counted yet. */
   counted: number | undefined;
+  /** One of the few changes flagged for a second look across the whole count. */
+  big: boolean;
   onChange: (itemId: number, counted: number | null) => void;
 }
 
-function CountRow({ item, counted, onChange }: CountRowProps) {
+function CountRow({ item, counted, big: flagged, onChange }: CountRowProps) {
   const system = Number(item.current_quantity);
   const status = counted === undefined ? 'untouched' : counted === system ? 'checked' : 'changed';
   const [draftText, setDraftText] = useState<string | null>(null);
@@ -47,7 +49,7 @@ function CountRow({ item, counted, onChange }: CountRowProps) {
   };
 
   const diff = counted === undefined ? 0 : counted - system;
-  const big = status === 'changed' && isBigDifference(system, counted!);
+  const big = status === 'changed' && flagged;
 
   return (
     <li
