@@ -37,8 +37,43 @@ export function parseQty(input: string): number | null {
   return Number(text);
 }
 
-/** Worth a second look before saving: 5+ units, or more than half the stock. */
-export function isBigDifference(previous: number, counted: number): boolean {
-  const diff = Math.abs(counted - previous);
-  return diff >= 5 || (previous > 0 && diff / previous > 0.5);
+/** Flag a change only if the count at least doubled or halved... */
+export const BIG_DIFFERENCE_RATIO = 2;
+/** ...and only the few most extreme, so the list stays short enough to read. */
+export const BIG_DIFFERENCE_LIMIT = 5;
+
+/**
+ * How far off a count is, independent of unit: |log(counted / previous)|,
+ * so 1000→2000 g and 5→10 pcs score the same, and doubling scores the same as
+ * halving. Running out (x→0) and restocking (0→x) are normal and score 0.
+ */
+export function differenceScore(previous: number, counted: number): number {
+  if (previous <= 0 || counted <= 0) return 0;
+  return Math.abs(Math.log(counted / previous));
+}
+
+/**
+ * The changes worth a second look before saving: at most
+ * BIG_DIFFERENCE_LIMIT, each at least doubled or halved, most extreme first.
+ * On a quiet night that is one or two, or none.
+ */
+export function pickBigDifferences<T extends { previous: number; counted: number }>(changes: T[]): T[] {
+  const bar = Math.log(BIG_DIFFERENCE_RATIO) - 1e-9;
+  return changes
+    .map(change => ({ change, score: differenceScore(change.previous, change.counted) }))
+    .filter(({ score }) => score >= bar)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, BIG_DIFFERENCE_LIMIT)
+    .map(({ change }) => change);
+}
+
+/** pickBigDifferences over a count in progress: the counted items that changed, most extreme first. */
+export function bigDifferenceItems<T extends { id: number; current_quantity: number | string }>(
+  items: T[],
+  counts: Record<number, number>,
+): T[] {
+  const changes = items
+    .filter(item => item.id in counts && counts[item.id] !== Number(item.current_quantity))
+    .map(item => ({ item, previous: Number(item.current_quantity), counted: counts[item.id] }));
+  return pickBigDifferences(changes).map(change => change.item);
 }

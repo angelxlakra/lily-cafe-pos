@@ -9,11 +9,13 @@ import LoadingSpinner from '../LoadingSpinner';
 import { useDialogFocus } from '../../hooks/useDialogFocus';
 import type { InventoryItem } from '../../types/inventory';
 import type { CountEntries } from '../../utils/countDraft';
-import { formatQty, isBigDifference } from '../../utils/countQuantity';
+import { formatQty } from '../../utils/countQuantity';
 
 interface CountReviewSheetProps {
   items: InventoryItem[];
   counts: CountEntries;
+  /** The few changes worth a second look, most extreme first (see pickBigDifferences). */
+  bigDifferences: InventoryItem[];
   isSaving: boolean;
   error: string | null;
   onSave: () => void;
@@ -24,7 +26,7 @@ interface CountReviewSheetProps {
 const UNCOUNTED_PREVIEW = 5;
 
 export default function CountReviewSheet({
-  items, counts, isSaving, error, onSave, onClose, onGoToItem,
+  items, counts, bigDifferences: big, isSaving, error, onSave, onClose, onGoToItem,
 }: CountReviewSheetProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const saveRef = useRef<HTMLButtonElement>(null);
@@ -36,7 +38,6 @@ export default function CountReviewSheet({
   const checked = items.filter(item => counts[item.id] === Number(item.current_quantity));
   const changed = items.filter(item => item.id in counts && counts[item.id] !== Number(item.current_quantity));
   const uncounted = items.filter(item => !(item.id in counts));
-  const big = changed.filter(item => isBigDifference(Number(item.current_quantity), counts[item.id]));
   const shownUncounted = showAllUncounted ? uncounted : uncounted.slice(0, UNCOUNTED_PREVIEW);
   const nothingCounted = uncounted.length === items.length;
   const mostlyUncounted = !nothingCounted && uncounted.length > items.length / 2;
