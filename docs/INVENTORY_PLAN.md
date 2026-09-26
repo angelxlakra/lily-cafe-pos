@@ -327,6 +327,56 @@ app (the local `fly.toml` says `lily-cafe-pos-dev`) and passing the build stamp.
 Worth doing before the next feature that spans both halves of the stack — which is the
 setup grid, since it needs `PATCH /items` on the backend and the grid on the frontend.
 
+## Landing `pre-release`
+
+**Decision (2026-09-26): land it once the setup grid is usable.** Not before, not much
+after. At 61 commits the merge is still cheap; it gets dearer every week, and
+`TemplateImportModal.tsx` is edited on both sides.
+
+Checked on 2026-09-26 against `origin/main`:
+
+- Merge is clean, no conflicts.
+- Backend suite on the merged result: **557 passed**.
+- Frontend typechecks and builds.
+- Schema changes are **purely additive** — `dish_costings`, `dish_costing_ingredients` and
+  `daily_digests` via `create_all`, plus `count_mode` (NOT NULL with a default), `pack_size`
+  and `pack_unit` (nullable) on `inventory_items`, through the same idempotent
+  `ALTER TABLE ADD COLUMN` path that already added `sort_order`.
+- **The cafe's core paths are untouched**: `orders`, `payments`, `print_jobs`,
+  `cash_counter`, `menu`, `admin` and `auth` have zero changes.
+
+Landing means a **backend deploy as well as a Vercel push** — the grid needs `PATCH /items`.
+Use `scripts/deploy-backend.sh`, and do it outside service hours.
+
+### Turn the morning digest off first
+
+`pre-release` adds an in-process scheduler (`app/ask/scheduler.py`) that runs a daily digest
+and is **enabled by default**. Deploying without acting starts a daily email the owner never
+asked for, and its catch-up can fire within seconds of boot if the send time has passed.
+
+The implementation itself is sound — `run_for` is idempotent per date so restarts cannot
+re-send, `_tick` never raises, and it runs in a threadpool. This is a behaviour decision,
+not a stability risk.
+
+Set it **before deploying the merge**, so the loop is never created. Safe to run today: the
+currently deployed code does not know the key, and settings live in the database rather than
+the image, so the row survives every deploy.
+
+```bash
+flyctl ssh console -a lily-cafe-pos -C "python -c \"import sqlite3,datetime; d=sqlite3.connect('/data/restaurant.db'); d.execute('INSERT OR REPLACE INTO app_settings (key,value,updated_at) VALUES (?,?,?)',('digest.enabled','false',datetime.datetime.utcnow().isoformat())); d.commit(); print(list(d.execute('select key,value from app_settings')))\""
+```
+
+`settings_store.load()` overlays database rows on top of `DEFAULTS` and nothing re-seeds
+them, so the row wins permanently.
+
+**To re-enable:** same command with `'true'`, then `flyctl apps restart lily-cafe-pos` — the
+boot check is what creates the task, so a live switch to true does nothing until a restart.
+Disabling works live in either case, since `_tick` re-reads the setting on every run.
+
+**There is no UI for this.** If the owner ever wants the digest, it is a database edit or a
+new Settings toggle. Worth building the toggle when the grid lands, rather than leaving it
+to be rediscovered.
+
 ## Not covered here
 
 `docs/master-project-document.md` predates this work — its header still reads October 2024.
