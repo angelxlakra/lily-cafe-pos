@@ -44,8 +44,12 @@ fly deploy
 ### Subsequent deploys
 
 ```bash
-fly deploy
+# Refuses unless HEAD is a clean origin/main, then verifies the live commit.
+./scripts/deploy-backend.sh
 ```
+
+Don't run a bare `fly deploy` here: it builds from the working directory, so a
+stale checkout ships a stale image. See the README's *Deploying the backend*.
 
 ### Useful commands
 
