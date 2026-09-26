@@ -55,7 +55,8 @@ const LOCKS_KEY = 'inventory-setup-grid-locks';
 function loadLocks(): Set<Field> {
   try {
     const saved = localStorage.getItem(LOCKS_KEY);
-    if (saved) return new Set(JSON.parse(saved) as Field[]);
+    // Stock starts locked every time: unlocking it once must not stick.
+    if (saved) return new Set([...(JSON.parse(saved) as Field[]), 'current_quantity']);
   } catch { /* private window or bad value: fall back to defaults */ }
   return new Set(DEFAULT_LOCKS);
 }
@@ -81,6 +82,13 @@ function norm(field: Field, value: string): string {
   const text = value.trim();
   if (NUMERIC.has(field) && text !== '') return String(parseQty(text) ?? text);
   return text;
+}
+
+// g <-> kg and ml <-> L: the server converts stock, alert level and price on Save.
+const KIND: Record<string, string> = { g: 'mass', kg: 'mass', ml: 'volume', l: 'volume' };
+function convertsUnit(original: Cells, cells: Cells): boolean {
+  const from = original.unit.trim().toLowerCase(), to = cells.unit.trim().toLowerCase();
+  return from !== to && KIND[from] !== undefined && KIND[from] === KIND[to];
 }
 
 const isDirty = (field: Field, original: Cells, cells: Cells) => norm(field, original[field]) !== norm(field, cells[field]);
@@ -199,7 +207,7 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
   }, [ordered, search, atZeroOnly]);
 
   const summary = useMemo(() => {
-    let cells = 0, items = 0, retired = 0, errors = 0, smallUnitPrices = 0;
+    let cells = 0, items = 0, retired = 0, errors = 0, smallUnitPrices = 0, conversions = 0;
     const updates: BulkItemUpdate[] = [];
     rows.forEach((row, id) => {
       const original = originals.get(id);
@@ -210,10 +218,11 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
       if (row.retired) retired++;
       if (!row.retired) errors += COLUMNS.filter(({ field }) => cellError(field, row.cells)).length;
       if (!row.retired && priceWarning(row.cells)) smallUnitPrices++;
+      if (!row.retired && applies('unit', row.cells) && convertsUnit(original, row.cells)) conversions++;
       const update = toUpdate(id, original, row);
       if (update) updates.push(update);
     });
-    return { cells, items, retired, errors, smallUnitPrices, updates };
+    return { cells, items, retired, errors, smallUnitPrices, conversions, updates };
   }, [rows, originals]);
   const dirty = summary.updates.length > 0;
 
@@ -331,7 +340,10 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
     if (event.key !== 'Enter' || !target.dataset.field) return;
     event.preventDefault();
     const nextRow = Number(target.dataset.row) + (event.shiftKey ? -1 : 1);
-    document.querySelector<HTMLElement>(`[data-row="${nextRow}"][data-field="${target.dataset.field}"]`)?.focus();
+    const next = document.querySelector<HTMLElement>(`[data-row="${nextRow}"][data-field="${target.dataset.field}"]`);
+    next?.focus();
+    // Typing then replaces the value, as in a spreadsheet, instead of turning 1 into 14.
+    if (next instanceof HTMLInputElement) next.select();
   };
 
   const copyTable = async () => {
@@ -453,6 +465,11 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
         {summary.smallUnitPrices > 0 && (
           <span className="font-medium text-warning">
             {summary.smallUnitPrices} price{summary.smallUnitPrices === 1 ? ' is' : 's are'} per g or ml; switch those to kg or L
+          </span>
+        )}
+        {summary.conversions > 0 && (
+          <span className="text-neutral-text-body">
+            {summary.conversions === 1 ? '1 unit change converts' : `${summary.conversions} unit changes convert`} stock, alert level and price on Save (2000 g becomes 2 kg)
           </span>
         )}
         {save.isError && <span role="alert" className="font-medium text-error">Not saved. {describeApiError(save.error)}</span>}
@@ -602,7 +619,8 @@ const GridRow = memo(function GridRow({ id, index, original, row, selected, lock
             : field === 'count_mode' ? MODE_LABEL[cells[field]]
             : field === 'cost_per_unit' && cells[field] !== '' ? `${cells[field]} /${cells.unit.trim() || 'unit'}`
             : column.numeric && cells[field] !== '' ? formatQty(cells[field]) : cells[field];
-          content = <span className={`block px-2 truncate ${retired ? 'line-through' : ''} ${column.numeric ? 'text-right tabular-nums' : ''}`}>{text}</span>;
+          // Focusable so a paste can start here; locked columns are skipped, not written.
+          content = <span data-row={index} data-field={field} tabIndex={-1} className={`block h-10 leading-10 px-2 truncate rounded outline-none focus:ring-2 focus:ring-coffee-brown ${retired ? 'line-through' : ''} ${column.numeric ? 'text-right tabular-nums' : ''}`}>{text}</span>;
         } else if (field === 'category_id') {
           content = (
             <select {...common} value={cells[field]} onChange={e => onCell(id, field, e.target.value)}>

@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from app.db.session import get_db
 from app.models.inventory_models import (
@@ -20,6 +20,7 @@ from app.core import settings_store
 from app.api.deps import get_current_user, get_current_owner
 from app.schemas import TokenData
 from app.utils.email_sender import send_inventory_report
+from app.utils.units import compatible, convert
 
 router = APIRouter()
 
@@ -223,6 +224,30 @@ def reorder_items(
 
 # Columns that can't hold NULL; sending null for one is a client error, not a 500.
 _REQUIRED_ITEM_FIELDS = ("name", "unit", "min_threshold", "count_mode", "is_active")
+_CENT = Decimal("0.01")
+
+def _to_cents(value: Decimal) -> Decimal:
+    """Round to what the column holds, but never a positive amount down to 0:
+    a 1 g alert that became 0 kg would stop alerting when the item runs out."""
+    rounded = value.quantize(_CENT, rounding=ROUND_HALF_UP)
+    return max(rounded, _CENT) if value > 0 else rounded
+
+def _convert_to_unit(item: InventoryItem, new_unit: str, sent: dict, stock_sent: bool) -> None:
+    """g -> kg keeps the same stock: 2000 g becomes 2 kg, not 2000 kg.
+
+    Only values not sent in the same row are converted; sent ones are already
+    in the new unit. Units of different kinds (g -> pcs) convert nothing.
+    """
+    old_unit = item.unit
+    if not compatible(old_unit, new_unit) or convert(1, old_unit, new_unit) == 1:
+        return
+    if not stock_sent:
+        item.current_quantity = _to_cents(convert(item.current_quantity, old_unit, new_unit))
+    if "min_threshold" not in sent:
+        item.min_threshold = _to_cents(convert(item.min_threshold, old_unit, new_unit))
+    if "cost_per_unit" not in sent and item.cost_per_unit is not None:
+        # A price is per unit, so it scales the other way.
+        item.cost_per_unit = _to_cents(convert(item.cost_per_unit, new_unit, old_unit))
 
 @router.patch("/items", response_model=dict)
 def bulk_update_items(
@@ -254,6 +279,8 @@ def bulk_update_items(
         blank = [key for key in _REQUIRED_ITEM_FIELDS if key in changes and changes[key] is None]
         if blank:
             raise HTTPException(status_code=422, detail=f"{item.name}: {', '.join(blank)} can't be empty")
+        if "unit" in changes:
+            _convert_to_unit(item, changes["unit"], changes, row.current_quantity is not None)
         for key, value in changes.items():
             setattr(item, key, value)
 

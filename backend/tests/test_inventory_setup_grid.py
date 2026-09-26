@@ -81,3 +81,48 @@ def test_one_bad_row_saves_nothing(client, owner_headers, items, test_db, bad_ro
 def test_staff_cannot_bulk_edit(client, auth_headers, items):
     response = client.patch(URL, headers=auth_headers, json={"items": [{"id": items["oil"].id, "unit": "kg"}]})
     assert response.status_code == 403
+
+
+def test_unit_change_converts_stock_alert_and_price(client, owner_headers, test_db):
+    # The grid tells owners to move per-g items to kg; 2000 g must become 2 kg, not 2000 kg.
+    onion = InventoryItem(name="Pyaj", unit="g", current_quantity=Decimal("2000"),
+                          min_threshold=Decimal("250"), cost_per_unit=Decimal("0.04"))
+    chilli = InventoryItem(name="Thai chilli", unit="g", current_quantity=Decimal("60"),
+                           min_threshold=Decimal("1"))
+    test_db.add_all([onion, chilli])
+    test_db.commit()
+
+    response = client.patch(URL, headers=owner_headers, json={"items": [
+        {"id": onion.id, "unit": "kg"},
+        # Values sent alongside the new unit are already in it.
+        {"id": chilli.id, "unit": "kg", "min_threshold": 0.5},
+    ]})
+
+    assert response.status_code == 200, response.json()
+    assert response.json()["adjusted"] == 0  # same stock, new unit: not an adjustment
+    test_db.expire_all()
+    onion, chilli = test_db.get(InventoryItem, onion.id), test_db.get(InventoryItem, chilli.id)
+    assert (onion.current_quantity, onion.min_threshold, onion.cost_per_unit) == (
+        Decimal("2"), Decimal("0.25"), Decimal("40"))
+    # 60 g is 0.06 kg; a positive amount never rounds away to nothing.
+    assert (chilli.current_quantity, chilli.min_threshold) == (Decimal("0.06"), Decimal("0.5"))
+    assert test_db.query(InventoryTransaction).count() == 0
+
+
+def test_unit_change_rounds_small_amounts_up_not_to_zero(client, owner_headers, test_db):
+    herb = InventoryItem(name="Dhaniya", unit="g", current_quantity=Decimal("1"), min_threshold=Decimal("1"))
+    test_db.add(herb)
+    test_db.commit()
+
+    client.patch(URL, headers=owner_headers, json={"items": [{"id": herb.id, "unit": "kg"}]})
+
+    test_db.expire_all()
+    herb = test_db.get(InventoryItem, herb.id)
+    # A 1 g alert that rounded to 0 kg would stop alerting when the item runs out.
+    assert (herb.current_quantity, herb.min_threshold) == (Decimal("0.01"), Decimal("0.01"))
+
+
+def test_unit_change_across_families_converts_nothing(client, owner_headers, items, test_db):
+    client.patch(URL, headers=owner_headers, json={"items": [{"id": items["syrup"].id, "unit": "kg"}]})
+    test_db.expire_all()
+    assert test_db.get(InventoryItem, items["syrup"].id).current_quantity == Decimal("2")
