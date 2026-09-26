@@ -322,6 +322,31 @@ Kitchen chits and receipts print through the agent on the cafe PC, not the
 backend. See [docs/AUTO_PRINT_SETUP_GUIDE.md](docs/AUTO_PRINT_SETUP_GUIDE.md)
 and [docs/ORDER_CHIT_GUIDE.md](docs/ORDER_CHIT_GUIDE.md).
 
+## Deploying the backend
+
+Always deploy with the script, never with a bare `flyctl deploy`:
+
+```bash
+git checkout main && git pull
+./scripts/deploy-backend.sh
+```
+
+`flyctl deploy` builds whatever is on disk, not what is in git, so a checkout one
+commit behind ships a stale image while the release, health check, and traffic all
+report success. The script:
+
+1. **Refuses** unless the working tree is clean and `HEAD` equals `origin/main`
+   (it fetches first).
+2. **Supplies** what is easy to forget: `-a lily-cafe-pos` (a local `fly.toml` may
+   name the dev app) and `--build-arg GIT_SHA=$(git rev-parse HEAD)`.
+3. **Verifies** by polling `GET /` until its `commit` field equals the deployed SHA,
+   and exits non-zero with `DEPLOY NOT VERIFIED` if it never does. A deploy that
+   reports success without shipping is exactly the failure this exists to catch.
+
+To check by hand what production is running:
+`curl -s https://lily-cafe-pos.fly.dev/ | grep -o '"commit":"[^"]*"'`.
+First-time setup (app, volume, secrets) is in [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ## Documentation
 
 | Topic | Document |
