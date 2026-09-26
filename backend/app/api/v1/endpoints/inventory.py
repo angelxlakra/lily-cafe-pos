@@ -13,6 +13,7 @@ from app.models.inventory_models import (
     InventoryItem,
     InventoryTransaction,
     TransactionType,
+    presence_quantity,
 )
 from app.core.business_day import count_night
 from app.schemas import inventory_schemas
@@ -232,6 +233,27 @@ def _to_cents(value: Decimal) -> Decimal:
     rounded = value.quantize(_CENT, rounding=ROUND_HALF_UP)
     return max(rounded, _CENT) if value > 0 else rounded
 
+def _apply_presence_rules(item: InventoryItem) -> None:
+    """A yes/no item has no unit, price or pack, and alerts when out (0 < 1)."""
+    if item.is_presence:
+        item.unit, item.min_threshold, item.cost_per_unit = "yes/no", Decimal(1), None
+        item.pack_size = item.pack_unit = None
+
+def _log_setup_adjustment(db: Session, item: InventoryItem, before: Decimal, notes: str, username: str) -> bool:
+    """Record a stock change made by editing an item (e.g. a flip to yes/no clamping 3 to 1)."""
+    if item.current_quantity == before:
+        return False
+    db.add(InventoryTransaction(
+        item_id=item.id,
+        transaction_type=TransactionType.ADJUSTMENT,
+        quantity=item.current_quantity - before,
+        notes=notes,
+        recorded_by=username,
+        previous_quantity=before,
+        new_quantity=item.current_quantity,
+    ))
+    return True
+
 def _convert_to_unit(item: InventoryItem, new_unit: str, sent: dict, stock_sent: bool) -> None:
     """g -> kg keeps the same stock: 2000 g becomes 2 kg, not 2000 kg.
 
@@ -281,27 +303,15 @@ def bulk_update_items(
             raise HTTPException(status_code=422, detail=f"{item.name}: {', '.join(blank)} can't be empty")
         if "unit" in changes:
             _convert_to_unit(item, changes["unit"], changes, row.current_quantity is not None)
+        # Taken before count_mode is set: flipping to yes/no clamps the stock
+        # (3 bottles -> 1), and that change belongs in the stock log.
+        before = item.current_quantity
         for key, value in changes.items():
             setattr(item, key, value)
-
-        target = row.current_quantity if row.current_quantity is not None else item.current_quantity
-        if item.count_mode == "presence":
-            # A yes/no item has no unit, price or pack, alerts when out, and holds 1 or 0.
-            item.unit, item.min_threshold, item.cost_per_unit = "yes/no", Decimal(1), None
-            item.pack_size = item.pack_unit = None
-            target = Decimal(1) if target > 0 else Decimal(0)
-
-        if target != item.current_quantity:
-            db.add(InventoryTransaction(
-                item_id=item.id,
-                transaction_type=TransactionType.ADJUSTMENT,
-                quantity=target - item.current_quantity,
-                notes="Setup grid",
-                recorded_by=current_user.username,
-                previous_quantity=item.current_quantity,
-                new_quantity=target,
-            ))
-            item.current_quantity = target
+        _apply_presence_rules(item)
+        if row.current_quantity is not None:
+            item.current_quantity = row.current_quantity  # clamped by the model for yes/no
+        if _log_setup_adjustment(db, item, before, "Setup grid", current_user.username):
             adjusted += 1
 
     db.commit()
@@ -344,8 +354,12 @@ def create_item(
         min_threshold=item.min_threshold,
         cost_per_unit=item.cost_per_unit,
         category_id=item.category_id,
+        count_mode=item.count_mode,
+        pack_size=item.pack_size,
+        pack_unit=item.pack_unit,
         sort_order=_next_sort_order(db, InventoryItem),
     )
+    _apply_presence_rules(new_item)
     db.add(new_item)
     db.commit()
     db.refresh(new_item)
@@ -371,10 +385,16 @@ def update_item(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
         
-    update_data = item_update.dict(exclude_unset=True)
+    update_data = item_update.model_dump(exclude_unset=True)
+    blank = [key for key in _REQUIRED_ITEM_FIELDS if key in update_data and update_data[key] is None]
+    if blank:
+        raise HTTPException(status_code=422, detail=f"{', '.join(blank)} can't be empty")
+    before = item.current_quantity
     for key, value in update_data.items():
         setattr(item, key, value)
-        
+    _apply_presence_rules(item)
+    _log_setup_adjustment(db, item, before, "Item edited", current_user.username)
+
     db.commit()
     db.refresh(item)
     
@@ -424,12 +444,12 @@ def record_purchase(
             
         previous_qty = item.current_quantity
         item.current_quantity += item_data.quantity
-        new_qty = item.current_quantity
-        
+        new_qty = item.current_quantity  # read back: a yes/no item stays at 1
+
         transaction = InventoryTransaction(
             item_id=item.id,
             transaction_type=TransactionType.PURCHASE,
-            quantity=item_data.quantity,
+            quantity=new_qty - previous_qty,
             notes=item_data.notes,
             recorded_by=current_user.username,
             previous_quantity=previous_qty,
@@ -480,12 +500,12 @@ def record_usage(
             
         previous_qty = item.current_quantity
         item.current_quantity -= item_data.quantity
-        new_qty = item.current_quantity
-        
+        new_qty = item.current_quantity  # read back: a yes/no item stops at 0, not -3
+
         transaction = InventoryTransaction(
             item_id=item.id,
             transaction_type=TransactionType.USAGE,
-            quantity=-item_data.quantity, # Negative for usage
+            quantity=new_qty - previous_qty,  # negative for usage
             notes=item_data.notes,
             recorded_by=current_user.username,
             previous_quantity=previous_qty,
@@ -498,7 +518,8 @@ def record_usage(
             warnings.append({
                 "item_id": item.id,
                 "item_name": item.name,
-                "message": f"Now below threshold ({new_qty}/{item.min_threshold})"
+                "message": "Now out" if item.is_presence
+                else f"Now below threshold ({new_qty}/{item.min_threshold})"
             })
             
     db.commit()
@@ -536,11 +557,10 @@ def record_adjustment(
         raise HTTPException(status_code=404, detail="Item not found")
         
     previous_qty = item.current_quantity
-    new_qty = adjustment.new_quantity
+    item.current_quantity = adjustment.new_quantity
+    new_qty = item.current_quantity  # read back: clamped to 1 or 0 for a yes/no item
     diff = new_qty - previous_qty
-    
-    item.current_quantity = new_qty
-    
+
     transaction = InventoryTransaction(
         item_id=item.id,
         transaction_type=TransactionType.ADJUSTMENT,
@@ -604,7 +624,7 @@ def record_batch_adjustment(
             raise HTTPException(status_code=404, detail=f"Item {adjustment.item_id} not found")
 
         previous_qty = item.current_quantity
-        new_qty = adjustment.new_quantity
+        new_qty = _counted_value(item, adjustment.new_quantity)
         diff = new_qty - previous_qty
 
         # Skip if quantity hasn't changed
@@ -616,7 +636,7 @@ def record_batch_adjustment(
         updated_items.append(item)
 
         # Create transaction record
-        notes = adjustment.notes or f"Daily count: {previous_qty} → {new_qty}"
+        notes = adjustment.notes or _count_note(item, previous_qty, new_qty)
         transaction = InventoryTransaction(
             item_id=item.id,
             transaction_type=TransactionType.ADJUSTMENT,
@@ -707,6 +727,7 @@ def get_transactions(
         t_dict = t_model.model_dump()
         if t.item:
             t_dict['item_name'] = t.item.name
+            t_dict['count_mode'] = t.item.count_mode
         result_transactions.append(t_dict)
         
     return {
@@ -720,6 +741,17 @@ def get_transactions(
 # ============================================================================
 # Nightly count
 # ============================================================================
+
+def _counted_value(item: InventoryItem, value: Decimal) -> Decimal:
+    """What a count line means for this item: a yes/no answer is 1 or 0."""
+    return presence_quantity(value) if item.is_presence else value
+
+
+def _count_note(item: InventoryItem, previous: Decimal, new: Decimal) -> str:
+    if item.is_presence:
+        return "Daily count: ran out" if new == 0 else "Daily count: have it again"
+    return f"Daily count: {previous} → {new}"
+
 
 def _count_summary(count: InventoryCount) -> dict:
     return inventory_schemas.CountSummary.model_validate(count, from_attributes=True).model_dump()
@@ -762,6 +794,8 @@ def save_count(
     for item in items:
         previous = item.current_quantity
         new = counted.get(item.id)
+        if new is not None:
+            new = _counted_value(item, new)
         if new is None:
             status_ = CountLineStatus.SKIPPED
             count.items_skipped += 1
@@ -777,7 +811,7 @@ def save_count(
                 item_id=item.id,
                 transaction_type=TransactionType.ADJUSTMENT,
                 quantity=new - previous,
-                notes=f"Daily count: {previous} → {new}",
+                notes=_count_note(item, previous, new),
                 recorded_by=current_user.username,
                 previous_quantity=previous,
                 new_quantity=new,

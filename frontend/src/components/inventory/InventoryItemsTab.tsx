@@ -8,7 +8,7 @@ import LoadingSpinner from '../LoadingSpinner';
 import { useInventoryItems, useInventoryCategories, useCreateItem, useUpdateItem, useDeleteItem } from '../../hooks/useInventory';
 import { useAuth } from '../../hooks/useAuth';
 import { describeApiError } from '../../utils/apiError';
-import { formatQty } from '../../utils/countQuantity';
+import { formatQty, haveIt, isPresence } from '../../utils/countQuantity';
 import type { InventoryCategory, InventoryItem, InventoryItemCreate } from '../../types/inventory';
 
 export default function InventoryItemsTab() {
@@ -193,13 +193,15 @@ function ItemRow({ item, canEdit, onEdit, onDelete }: {
       <div className="flex-1 min-w-0">
         <div className="font-medium leading-snug text-neutral-text-dark line-clamp-2 break-words">{item.name}</div>
         <div className="text-xs text-neutral-text-muted tabular-nums">
-          Alert below {formatQty(item.min_threshold)}
+          {isPresence(item) ? 'Yes / no · alert when out' : <>Alert below {formatQty(item.min_threshold)}</>}
           {cost > 0 && <> · ₹{cost.toLocaleString('en-IN')}/{item.unit}</>}
         </div>
       </div>
       <div className="shrink-0 text-right tabular-nums">
         <div className="font-semibold text-neutral-text-dark">
-          {formatQty(item.current_quantity)} <span className="text-xs font-normal text-neutral-text-muted">{item.unit}</span>
+          {isPresence(item)
+            ? <>{haveIt(item.current_quantity) === 'out' ? 'Out' : 'Have it'}</>
+            : <>{formatQty(item.current_quantity)} <span className="text-xs font-normal text-neutral-text-muted">{item.unit}</span></>}
         </div>
         {item.is_low_stock && (
           <div className="inline-flex items-center gap-1 text-xs font-medium text-warning">

@@ -15,12 +15,14 @@ import CountReviewSheet from '../components/inventory/CountReviewSheet';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { describeApiError } from '../utils/apiError';
 import { useDialogFocus } from '../hooks/useDialogFocus';
-import { bigDifferenceItems } from '../utils/countQuantity';
+import { bigDifferenceItems, isPresence } from '../utils/countQuantity';
 import { clearCountDraft, loadCountDraft, saveCountDraft, type CountEntries } from '../utils/countDraft';
 import type { CountResult, CountSheetGroup } from '../types/inventory';
 
 const groupKey = (group: CountSheetGroup) => String(group.category?.id ?? 'none');
 const groupName = (group: CountSheetGroup) => group.category?.name ?? 'Uncategorized';
+/** Longer than a double tap, and than a finished category's 300ms fold, so the scroll lands true. */
+const ADVANCE_DELAY_MS = 350;
 const formatTime = (date: Date) => date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
 export default function InventoryCountPage() {
@@ -45,6 +47,16 @@ export default function InventoryCountPage() {
   }, [counts, result]);
 
   const items = useMemo(() => groups?.flatMap(group => group.items) ?? [], [groups]);
+  // A draft kept from before the owner made an item yes/no may hold ½ for it: read as have it / out.
+  useEffect(() => {
+    setCounts(previous => {
+      const stale = items.filter(item => isPresence(item) && item.id in previous && ![0, 1].includes(previous[item.id]));
+      if (stale.length === 0) return previous;
+      const next = { ...previous };
+      for (const item of stale) next[item.id] = next[item.id] > 0 ? 1 : 0;
+      return next;
+    });
+  }, [items]);
   const countedTotal = items.filter(item => item.id in counts).length;
   const allCounted = items.length > 0 && countedTotal === items.length;
   // Ranked across the whole count, so the row icons and the review sheet flag the same few items.
@@ -96,20 +108,49 @@ export default function InventoryCountPage() {
     };
   }, [groups]);
 
+  // Read through refs so goToItem, and the rows' onAnswer, stay stable across
+  // taps; otherwise every answer would re-render every memoized row.
+  const countsRef = useRef(counts);
+  countsRef.current = counts;
+  const reopenedRef = useRef(reopened);
+  reopenedRef.current = reopened;
+
+  const isFolded = useCallback((group: CountSheetGroup, entries: CountEntries) =>
+    !reopenedRef.current.has(groupKey(group)) && group.items.every(item => item.id in entries), []);
+
   const goToItem = useCallback((itemId: number) => {
     setReviewing(false);
     // A finished category may be folded: open it, and wait for the unfold
     // (300ms) before scrolling so the row is where the scroll expects it.
     const group = groups?.find(g => g.items.some(item => item.id === itemId));
-    const key = group ? groupKey(group) : null;
-    const needsUnfold = !!key && !reopened.has(key) && group!.items.every(item => item.id in counts);
-    if (needsUnfold) setReopened(previous => new Set(previous).add(key!));
+    const needsUnfold = !!group && isFolded(group, countsRef.current);
+    if (needsUnfold) setReopened(previous => new Set(previous).add(groupKey(group!)));
     window.setTimeout(() => {
       const row = document.getElementById(`count-item-${itemId}`);
       row?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      row?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true });
+      // The row's box, or a yes/no row's Have it button.
+      row?.querySelector<HTMLElement>('[data-count-control]')?.focus({ preventScroll: true });
     }, needsUnfold ? 320 : 0);
-  }, [groups, reopened, counts]);
+  }, [groups, isFolded]);
+
+  // A yes/no answer is one tap, so it moves on to the next uncounted row, but
+  // not instantly: scrolling under a double tap would put the next row's
+  // button under the second tap and answer it. Waiting lets that second tap
+  // land on the same button, un-answer the row, and cancel the move.
+  const pendingAdvance = useRef<number>();
+  useEffect(() => () => window.clearTimeout(pendingAdvance.current), []);
+  const handleAnswer = useCallback((itemId: number, value: number | null) => {
+    window.clearTimeout(pendingAdvance.current);
+    handleChange(itemId, value);
+    if (value === null) return;
+    pendingAdvance.current = window.setTimeout(() => {
+      const answered = countsRef.current;
+      if (!(itemId in answered)) return;
+      const index = items.findIndex(item => item.id === itemId);
+      const next = [...items.slice(index + 1), ...items.slice(0, index)].find(item => !(item.id in answered));
+      if (next) goToItem(next.id);
+    }, ADVANCE_DELAY_MS);
+  }, [items, handleChange, goToItem]);
 
   const goToNextUncounted = () => {
     const next = items.find(item => !(item.id in counts));
@@ -304,7 +345,14 @@ export default function InventoryCountPage() {
               >
                 <ul className="min-h-0 overflow-hidden bg-off-white border-y border-neutral-border/70">
                   {group.items.map(item => (
-                    <CountRow key={item.id} item={item} counted={counts[item.id]} big={bigIds.has(item.id)} onChange={handleChange} />
+                    <CountRow
+                      key={item.id}
+                      item={item}
+                      counted={counts[item.id]}
+                      big={bigIds.has(item.id)}
+                      onChange={handleChange}
+                      onAnswer={handleAnswer}
+                    />
                   ))}
                 </ul>
               </div>

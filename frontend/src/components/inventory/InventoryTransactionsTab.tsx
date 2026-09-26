@@ -10,7 +10,7 @@ import LoadingSpinner from '../LoadingSpinner';
 import { inventoryApi } from '../../api/inventory';
 import { useInventoryTransactions, useRecordPurchase, useRecordUsage, useRecordAdjustment } from '../../hooks/useInventory';
 import { describeApiError } from '../../utils/apiError';
-import { formatQty } from '../../utils/countQuantity';
+import { describeChange, formatQty, isPresence } from '../../utils/countQuantity';
 import type { InventoryTransaction, TransactionType } from '../../types/inventory';
 
 type Action = 'PURCHASE' | 'USAGE' | 'ADJUSTMENT';
@@ -134,6 +134,9 @@ function StockLog() {
           <ul className="card divide-y divide-neutral-border overflow-hidden">
             {transactions.map(tx => {
               const quantity = Number(tx.quantity);
+              // Only while the numbers are yes/no-shaped: older movements of an item
+              // switched to yes/no later (5 → 3 pcs) keep reading as numbers.
+              const yesNo = isPresence(tx) && [tx.previous_quantity, tx.new_quantity].every(q => Number(q) === 0 || Number(q) === 1);
               return (
                 <li key={tx.id} className="flex items-start gap-3 px-4 py-3">
                   <div className="flex-1 min-w-0">
@@ -147,10 +150,13 @@ function StockLog() {
                   </div>
                   <div className="shrink-0 text-right tabular-nums">
                     <div className="font-semibold text-neutral-text-dark">
-                      {quantity > 0 ? '+' : quantity < 0 ? '−' : ''}{formatQty(Math.abs(quantity))}
+                      {yesNo
+                        ? (quantity === 0 ? 'No change' : quantity < 0 ? 'Ran out' : 'Have it')
+                        : <>{quantity > 0 ? '+' : quantity < 0 ? '−' : ''}{formatQty(Math.abs(quantity))}</>}
                     </div>
                     <div className="text-xs text-neutral-text-muted">
-                      {formatQty(tx.previous_quantity)} → {formatQty(tx.new_quantity)}
+                      {yesNo ? describeChange(tx, tx.previous_quantity, tx.new_quantity)
+                        : `${formatQty(tx.previous_quantity)} → ${formatQty(tx.new_quantity)}`}
                     </div>
                   </div>
                 </li>
@@ -181,7 +187,12 @@ function TransactionFormModal({ type, onClose }: { type: Action; onClose: () => 
     queryKey: ['inventory', 'count-sheet'],
     queryFn: inventoryApi.getCountSheet,
   });
-  const selectedItem = groups.flatMap(group => group.items).find(item => item.id === itemId);
+  // Yes/no items are answered in the nightly count, not moved by quantity:
+  // "used 3 chilli oil" has no meaning, so they aren't offered here.
+  const pickable = groups
+    .map(group => ({ ...group, items: group.items.filter(item => !isPresence(item)) }))
+    .filter(group => group.items.length > 0);
+  const selectedItem = pickable.flatMap(group => group.items).find(item => item.id === itemId);
 
   const recordPurchase = useRecordPurchase();
   const recordUsage = useRecordUsage();
@@ -247,7 +258,7 @@ function TransactionFormModal({ type, onClose }: { type: Action; onClose: () => 
               required
             >
               <option value="">Choose an item…</option>
-              {groups.map(group => (
+              {pickable.map(group => (
                 <optgroup key={group.category?.id ?? 'none'} label={group.category?.name ?? 'Uncategorized'}>
                   {group.items.map(item => (
                     <option key={item.id} value={item.id}>{item.name}</option>
