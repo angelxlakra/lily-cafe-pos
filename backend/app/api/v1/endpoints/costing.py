@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import List
 from fastapi import APIRouter , Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from app.api.deps import get_current_owner, get_current_user, get_optional_user
 from app.db.session import get_db
@@ -14,6 +14,7 @@ from app.schemas import TokenData
 from app.crud import costing_crud
 
 from app.utils import costing as costing_utils
+from app.utils import pricing
 from app.utils.units import IncompatibleUnitError
 
 router = APIRouter()
@@ -31,16 +32,22 @@ def _menu_price_rupees(menu_item) -> Decimal | None:
 
 def _build_ingredient_inputs(ingredients: list[DishCostingIngredient], price_overrides: dict[int, Decimal] | None = None) -> list[costing_utils.IngredientInput]:
     # Convert DB ingredient rows into the pure calculation input format.
+    # Prices come from the purchase log, falling back to the typed price
+    # (app/utils/pricing.py); an override replaces either.
     overrides = price_overrides or {}
     inputs = []
 
-    for row in ingredients: 
-        item = row.inventory_item
-
-        if item is None:
+    for row in ingredients:
+        if row.inventory_item is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Inventory item {row.inventory_item_id} not found.")
-        
-        price = overrides.get(item.id, item.cost_per_unit)
+    items = [row.inventory_item for row in ingredients]
+    db = object_session(items[0]) if items else None
+    resolved = pricing.resolve_many(db, items) if db is not None else {}
+
+    for row in ingredients:
+        item = row.inventory_item
+        current = resolved.get(item.id)
+        price = overrides.get(item.id, current.price if current else item.cost_per_unit)
         inputs.append(costing_utils.IngredientInput(
             item_id=item.id, name=item.name, quantity=Decimal(row.quantity), unit=row.unit, stock_unit=item.unit, 
             cost_per_unit=(
