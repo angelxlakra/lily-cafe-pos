@@ -186,6 +186,7 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
     try { localStorage.setItem(LOCKS_KEY, JSON.stringify([...locked])); } catch { /* not critical */ }
   }, [locked]);
 
+  const newIds = useMemo(() => new Set((base ?? []).filter(item => item.needs_setup).map(item => item.id)), [base]);
   const originals = useMemo(() => new Map((base ?? []).map(item => [item.id, toCells(item)])), [base]);
 
   // Count order: categories in their order, then uncategorized.
@@ -548,6 +549,7 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
                 onCell={setCell}
                 onSelect={toggleSelect}
                 onRetire={toggleRetire}
+                isNew={newIds.has(id)}
               />
             ))}
           </tbody>
@@ -572,7 +574,7 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
   return fullScreen ? createPortal(grid, document.body) : grid;
 }
 
-const GridRow = memo(function GridRow({ id, index, original, row, selected, locked, categories, onCell, onSelect, onRetire }: {
+const GridRow = memo(function GridRow({ id, index, original, row, selected, locked, categories, onCell, onSelect, onRetire, isNew }: {
   id: number;
   index: number;
   original: Cells;
@@ -583,6 +585,8 @@ const GridRow = memo(function GridRow({ id, index, original, row, selected, lock
   onCell: (id: number, field: Field, value: string) => void;
   onSelect: (id: number) => void;
   onRetire: (id: number) => void;
+  /** Added from the purchase sheet with just a name and unit. */
+  isNew: boolean;
 }) {
   const { cells, retired } = row;
   const categoryName = (value: string) => categories.find(c => String(c.id) === value)?.name ?? '—';
@@ -665,7 +669,12 @@ const GridRow = memo(function GridRow({ id, index, original, row, selected, lock
             style={{ left: column.left }}
             className={`${sticky ? 'sticky z-10' : ''} ${tint} border-b border-r border-neutral-border px-0.5 py-0.5 transition-colors`}
           >
-            {content}
+            {field === 'name' && isNew ? (
+              <div className="flex items-center gap-1">
+                {content}
+                <span title="Added from the purchase sheet — set it up" className="shrink-0 mr-1 px-1.5 rounded text-[0.6875rem] font-semibold bg-warning/15 text-warning">New</span>
+              </div>
+            ) : content}
           </td>
         );
       })}

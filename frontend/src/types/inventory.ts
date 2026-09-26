@@ -29,6 +29,11 @@ export interface InventoryItem {
   count_mode: CountMode;
   pack_size?: number | null;
   pack_unit?: string | null;
+  /** Added inline from the purchase sheet; the owner still has to configure it. */
+  needs_setup?: boolean;
+  /** Latest paid purchase's unit price, else the typed price; per the item's unit. */
+  current_price?: number | null;
+  price_source?: 'purchase' | 'typed' | null;
   created_at: string;
   updated_at?: string;
 }
@@ -88,11 +93,58 @@ export interface InventoryTransaction {
 export interface PurchaseItem {
   item_id: number;
   quantity: number;
+  /** The TOTAL paid for the line, never a unit price. 0 is a gift and needs notes. */
+  total_amount?: number | null;
+  vendor_id?: number | null;
   notes?: string;
+  pack_count?: number;
 }
 
 export interface PurchaseCreate {
   items: PurchaseItem[];
+}
+
+/** One saved line on a day's purchase sheet. Money comes back as strings (Decimal). */
+export interface Purchase {
+  id: number;
+  item_id: number;
+  item_name: string;
+  unit: string;
+  quantity: number | string;
+  total_amount: number | string | null;
+  unit_price: number | string | null;
+  vendor_id: number | null;
+  vendor_name: string | null;
+  notes: string | null;
+  /** How many were bought; quantity ÷ pack_count is the unit quantity. Null on old rows. */
+  pack_count: number | string | null;
+  recorded_by: string;
+  created_at: string;
+}
+
+/** The owners' columns for one item on a day's sheet, in the item's unit. Null = not worked out. */
+export interface DayItemColumns {
+  opening: number | string;
+  bought: number | string;
+  used: number | string | null;
+  remaining: number | string | null;
+  day_end: number | string | null;
+  wastage: number | string | null;
+}
+
+export interface PurchaseDay {
+  business_date: string;
+  purchases: Purchase[];
+  total_amount: number | string;
+  unpriced: number;
+  items: Record<string, DayItemColumns>;
+  /** Today's sheet; past days are read-only (and owner-only). */
+  editable: boolean;
+}
+
+export interface Vendor {
+  id: number;
+  name: string;
 }
 
 export interface UsageItem {

@@ -66,6 +66,7 @@ class InventoryItem(InventoryItemBase):
     updated_at: Optional[datetime] = None
     category_name: Optional[str] = None # Computed in API
     is_low_stock: bool # Computed property
+    needs_setup: bool = False
     # Resolved price (app/utils/pricing.py): latest paid purchase, else the
     # typed cost_per_unit (> 0), else None. Per the item's own unit.
     current_price: Optional[Decimal] = None
@@ -90,6 +91,8 @@ class PurchaseLine(BaseModel):
     total_amount: Optional[Decimal] = Field(None, ge=0, max_digits=10, decimal_places=2)
     vendor_id: Optional[int] = None
     notes: Optional[str] = Field(None, max_length=500)
+    # The sheet's "Purchased" column: 2 packs of 1 kg. quantity is still the total.
+    pack_count: Optional[Decimal] = Field(None, gt=0)
 
     @model_validator(mode="after")
     def _gift_needs_note(self):
@@ -101,6 +104,22 @@ class PurchaseCreate(BaseModel):
     items: List[PurchaseLine] = Field(..., min_length=1)
     # Default vendor for lines that don't name one — one bill, one vendor.
     vendor_id: Optional[int] = None
+
+class PurchaseEdit(BaseModel):
+    """A same-day correction to one purchase line. Only the fields sent change."""
+    quantity: Optional[Decimal] = Field(None, gt=0)
+    total_amount: Optional[Decimal] = Field(None, ge=0, max_digits=10, decimal_places=2)
+    vendor_id: Optional[int] = None
+    notes: Optional[str] = Field(None, max_length=500)
+    pack_count: Optional[Decimal] = Field(None, gt=0)
+
+class DayEndCount(BaseModel):
+    counted_quantity: Decimal = Field(..., ge=0)
+
+class QuickItemCreate(BaseModel):
+    """An item bought but not in the list: just enough to log the purchase."""
+    name: str = Field(..., min_length=1, max_length=200)
+    unit: str = Field(..., min_length=1, max_length=20)
 
 class PurchaseCheckLine(BaseModel):
     item_id: int

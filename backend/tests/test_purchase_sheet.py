@@ -188,18 +188,192 @@ def test_check_flags_a_jump_before_saving(client, auth_headers, test_db, chicken
     assert test_db.query(InventoryTransaction).count() == 1  # a dry run writes nothing
 
 
-def test_day_sheet_lists_the_days_purchases_with_a_total(client, auth_headers, test_db, chicken):
-    # 2026-09-20 in IST (UTC+5:30) runs from 18:30 UTC on the 19th.
-    _purchase(test_db, chicken, "4", "1280", datetime(2026, 9, 19, 20))
-    _purchase(test_db, chicken, "1", None, datetime(2026, 9, 20, 5))
-    _purchase(test_db, chicken, "1", "999", datetime(2026, 9, 19, 5))  # the day before
+def test_day_sheet_lists_the_days_purchases_with_a_total(client, owner_headers, test_db, chicken):
+    # The sheet's day is the count night: 04:00 IST on the 20th (22:30 UTC on
+    # the 19th) to 04:00 IST on the 21st, so 01:30 IST on the 21st still counts.
+    _purchase(test_db, chicken, "4", "1280", datetime(2026, 9, 20, 5))
+    _purchase(test_db, chicken, "1", None, datetime(2026, 9, 20, 20))
+    _purchase(test_db, chicken, "1", "999", datetime(2026, 9, 19, 20))  # 01:30 IST on the 20th: the night before
 
-    body = client.get("/api/v1/inventory/purchases", headers=auth_headers,
+    body = client.get("/api/v1/inventory/purchases", headers=owner_headers,
                       params={"business_date": "2026-09-20"}).json()
 
     assert len(body["purchases"]) == 2
     assert Decimal(str(body["total_amount"])) == Decimal("1280")
     assert body["unpriced"] == 1
+
+
+# --- correcting today's sheet ------------------------------------------------------
+
+def _log(client, auth_headers, item, quantity, total):
+    body = client.post(PURCHASE, headers=auth_headers, json={
+        "items": [{"item_id": item.id, "quantity": quantity, "total_amount": total}],
+    }).json()
+    return body["transactions"][0]["id"]
+
+
+def test_a_line_can_be_corrected_the_same_day(client, auth_headers, test_db, chicken):
+    purchase_id = _log(client, auth_headers, chicken, 4, 1280)  # stock 2 -> 6
+
+    fixed = client.patch(f"/api/v1/inventory/purchases/{purchase_id}", headers=auth_headers,
+                         json={"quantity": 3, "total_amount": 960})
+
+    assert fixed.status_code == 200, fixed.json()
+    test_db.expire_all()
+    assert test_db.get(InventoryItem, chicken.id).current_quantity == Decimal("5")
+    t = test_db.get(InventoryTransaction, purchase_id)
+    assert (t.quantity, t.new_quantity, t.total_amount) == (Decimal("3"), Decimal("5"), Decimal("960"))
+
+    gone = client.delete(f"/api/v1/inventory/purchases/{purchase_id}", headers=auth_headers)
+    assert gone.status_code == 204
+    test_db.expire_all()
+    assert test_db.get(InventoryItem, chicken.id).current_quantity == Decimal("2")
+    assert test_db.query(InventoryTransaction).count() == 0
+
+
+def test_once_counted_a_line_is_an_adjustment_not_an_edit(client, auth_headers, test_db, chicken):
+    purchase_id = _log(client, auth_headers, chicken, 4, 1280)
+    counted = client.post("/api/v1/inventory/counts", headers=auth_headers,
+                          json={"lines": [{"item_id": chicken.id, "counted_quantity": 6}]})
+    assert counted.status_code == 201, counted.json()
+
+    response = client.patch(f"/api/v1/inventory/purchases/{purchase_id}", headers=auth_headers,
+                            json={"quantity": 3})
+
+    assert response.status_code == 409
+
+
+def test_an_old_line_cannot_be_edited(client, auth_headers, test_db, chicken):
+    old = _purchase(test_db, chicken, "4", "1280", datetime(2026, 8, 12, 5))
+
+    assert client.delete(f"/api/v1/inventory/purchases/{old.id}", headers=auth_headers).status_code == 409
+
+
+# --- the picker ----------------------------------------------------------------------
+
+def test_staff_can_add_an_item_inline_flagged_for_setup(client, auth_headers, owner_headers, test_db):
+    made = client.post(f"{ITEMS}/quick", headers=auth_headers, json={"name": "Kaffir lime leaves", "unit": "pack"})
+    again = client.post(f"{ITEMS}/quick", headers=auth_headers, json={"name": "kaffir LIME leaves ", "unit": "g"})
+
+    assert made.status_code == 201, made.json()
+    assert made.json()["needs_setup"] is True
+    assert again.json()["id"] == made.json()["id"]  # no duplicate
+
+    client.patch(ITEMS, headers=owner_headers, json={"items": [{"id": made.json()["id"], "min_threshold": 1}]})
+    assert client.get(f"{ITEMS}/{made.json()['id']}", headers=auth_headers).json()["needs_setup"] is False
+
+
+def test_frequent_items_rank_purchases_above_count_corrections(client, auth_headers, test_db, chicken):
+    onion = InventoryItem(name="Onion", unit="kg", current_quantity=Decimal("0"))
+    test_db.add(onion)
+    test_db.commit()
+    for _ in range(2):  # two upward count corrections
+        test_db.add(InventoryTransaction(item_id=onion.id, transaction_type="ADJUSTMENT", quantity=Decimal(1),
+                                         recorded_by="t", previous_quantity=Decimal(0), new_quantity=Decimal(1)))
+    test_db.commit()
+    _log(client, auth_headers, chicken, 1, 320)  # one purchase outweighs them
+
+    ranked = client.get("/api/v1/inventory/purchases/frequent", headers=auth_headers).json()
+
+    assert ranked == [chicken.id, onion.id]
+
+
+# --- the owners' table: used, remaining, day-end, wastage ------------------------
+
+@pytest.fixture
+def sugar_sold_today(test_db):
+    """Sugar in kg; a coffee uses 50 g; 10 coffees sold today, 5 more on a canceled order."""
+    from app.models import models
+    from app.models.costing_models import DishCosting, DishCostingIngredient
+    from app.core import business_day
+
+    sugar = InventoryItem(name="Sugar", unit="kg", current_quantity=Decimal("0"))
+    category = models.Category(name="Beverages")
+    test_db.add_all([sugar, category])
+    test_db.commit()
+    coffee = models.MenuItem(name="Coffee", price=4000, category_id=category.id, is_available=True)
+    test_db.add(coffee)
+    test_db.commit()
+    costing = DishCosting(menu_item_id=coffee.id, yield_units=1)
+    costing.ingredients.append(DishCostingIngredient(inventory_item_id=sugar.id, quantity=Decimal("50"), unit="g"))
+    test_db.add(costing)
+    for n, (status, cups) in enumerate([(models.OrderStatus.PAID, 10), (models.OrderStatus.CANCELED, 5)]):
+        order = models.Order(order_number=f"ORD-T-{n}", table_number=1, subtotal=0, gst_amount=0,
+                             total_amount=0, status=status, created_at=business_day.utcnow())
+        test_db.add(order)
+        test_db.commit()
+        test_db.add(models.OrderItem(order_id=order.id, menu_item_id=coffee.id, menu_item_name="Coffee",
+                                     quantity=cups, unit_price=4000, subtotal=4000 * cups))
+    test_db.commit()
+    return sugar
+
+
+def test_the_sketch_bought_used_counted_wastage(client, auth_headers, test_db, sugar_sold_today):
+    sugar = sugar_sold_today
+    # Staff: 2 × 1 kg at ₹65.
+    saved = client.post(PURCHASE, headers=auth_headers, json={
+        "items": [{"item_id": sugar.id, "quantity": 2, "total_amount": 130, "pack_count": 2}],
+    })
+    assert saved.status_code == 201, saved.json()
+    # Staff, at close: 1.4 kg actually left. This is tonight's count.
+    counted = client.put(f"/api/v1/inventory/counts/tonight/items/{sugar.id}", headers=auth_headers,
+                         json={"counted_quantity": 1.4})
+    assert counted.status_code == 204, counted.json()
+
+    sheet = client.get("/api/v1/inventory/purchases", headers=auth_headers).json()
+
+    line = sheet["purchases"][0]
+    assert Decimal(str(line["pack_count"])) == 2
+    row = sheet["items"][str(sugar.id)]
+    as_dec = {k: None if v is None else Decimal(str(v)) for k, v in row.items()}
+    assert as_dec["opening"] == 0
+    assert as_dec["bought"] == 2
+    assert as_dec["used"] == Decimal("0.5")        # 10 coffees × 50 g; the canceled order doesn't count
+    assert as_dec["remaining"] == Decimal("1.5")
+    assert as_dec["day_end"] == Decimal("1.4")
+    assert as_dec["wastage"] == Decimal("0.1")
+    assert sheet["editable"] is True
+
+    test_db.expire_all()
+    assert test_db.get(InventoryItem, sugar.id).current_quantity == Decimal("1.4")
+    count = client.get("/api/v1/inventory/counts/today", headers=auth_headers).json()
+    assert (count["items_total"], count["items_changed"]) == (1, 1)
+
+
+def test_day_end_retyped_updates_the_same_count_line(client, auth_headers, test_db, chicken):
+    for value in (5, 4):
+        client.put(f"/api/v1/inventory/counts/tonight/items/{chicken.id}", headers=auth_headers,
+                   json={"counted_quantity": value})
+    count = client.get("/api/v1/inventory/counts/today", headers=auth_headers).json()
+    assert count["items_total"] == 1
+    test_db.expire_all()
+    assert test_db.get(InventoryItem, chicken.id).current_quantity == Decimal("4")
+
+
+def test_an_item_no_recipe_uses_is_unknown_not_zero(client, auth_headers, chicken):
+    client.post(PURCHASE, headers=auth_headers, json={
+        "items": [{"item_id": chicken.id, "quantity": 1, "total_amount": 320}],
+    })
+    row = client.get("/api/v1/inventory/purchases", headers=auth_headers).json()["items"][str(chicken.id)]
+    assert row["used"] is None and row["remaining"] is None and row["wastage"] is None
+    assert Decimal(str(row["opening"])) == 2
+
+
+def test_only_the_owner_opens_other_days(client, auth_headers, owner_headers):
+    params = {"business_date": "2026-01-05"}
+    assert client.get("/api/v1/inventory/purchases", headers=auth_headers, params=params).status_code == 403
+    past = client.get("/api/v1/inventory/purchases", headers=owner_headers, params=params)
+    assert past.status_code == 200
+    assert past.json()["editable"] is False
+
+
+def test_recipe_in_ml_bridges_to_bottles_by_pack_size():
+    from app.models.costing_models import DishCostingIngredient
+    from app.utils.usage import per_portion_in_item_unit
+
+    oil = InventoryItem(name="Chilli oil", unit="bottle", pack_size=Decimal("700"), pack_unit="ml")
+    assert per_portion_in_item_unit(DishCostingIngredient(quantity=Decimal("35"), unit="ml"), oil, 1) == Decimal("0.05")
+    assert per_portion_in_item_unit(DishCostingIngredient(quantity=Decimal("35"), unit="g"), oil, 1) is None
 
 
 # --- migration -------------------------------------------------------------------

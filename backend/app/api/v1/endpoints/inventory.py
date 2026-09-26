@@ -1,8 +1,8 @@
-from datetime import date
+from datetime import date, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy import case, func, desc
 from decimal import ROUND_HALF_UP, Decimal
 
 from app.db.session import get_db
@@ -17,14 +17,16 @@ from app.models.inventory_models import (
     Vendor,
     presence_quantity,
 )
-from app.core.business_day import business_today, count_night, on_business_day
+from app.core.business_day import (
+    count_night, night_utc_bounds, utcnow,
+)
 from app.schemas import inventory_schemas
 from app.core import settings_store
 from app.api.deps import get_current_user, get_current_owner
-from app.schemas import TokenData
+from app.schemas import TokenData, UserRole
 from app.utils.email_sender import send_inventory_report
 from app.utils.units import compatible, convert
-from app.utils import pricing
+from app.utils import pricing, usage
 
 router = APIRouter()
 
@@ -314,6 +316,7 @@ def bulk_update_items(
         for key, value in changes.items():
             setattr(item, key, value)
         _apply_presence_rules(item)
+        item.needs_setup = False  # the owner has now looked at it
         if row.current_quantity is not None:
             item.current_quantity = row.current_quantity  # clamped by the model for yes/no
         if _log_setup_adjustment(db, item, before, "Setup grid", current_user.username):
@@ -454,6 +457,7 @@ def _purchase_dict(t: InventoryTransaction) -> dict:
         "vendor_id": t.vendor_id,
         "vendor_name": t.vendor.name if t.vendor else None,
         "notes": t.notes,
+        "pack_count": t.pack_count,
         "previous_quantity": t.previous_quantity,
         "new_quantity": t.new_quantity,
         "recorded_by": t.recorded_by,
@@ -520,6 +524,7 @@ def record_purchase(
             total_amount=line.total_amount,
             vendor_id=line.vendor_id or purchase.vendor_id,
             notes=line.notes,
+            pack_count=line.pack_count,
             recorded_by=current_user.username,
             previous_quantity=previous_qty,
             new_quantity=new_qty
@@ -550,14 +555,23 @@ def get_purchases(
     """One business day's purchase sheet (default today), with the day's total.
 
     The total is the number to check against the cash spent; lines logged
-    without an amount are counted in `unpriced` so a gap is visible.
+    without an amount are counted in `unpriced` so a gap is visible. Each day's
+    sheet is kept; staff see today's, the owner can open any day's. `items`
+    holds the owner's columns per item bought: used (from sales × recipes),
+    expected remaining, the day-end count and the wastage between them.
     """
-    day = business_date or business_today()
+    # The sheet's day is the count night (runs to 04:00), since it holds the
+    # night's count: a count at 00:30 must land on the sheet staff can see.
+    today = count_night()
+    day = business_date or today
+    if day != today and current_user.role != UserRole.OWNER:
+        raise HTTPException(status_code=403, detail="Only the owner can open other days' sheets")
     rows = (
         db.query(InventoryTransaction)
         .filter(
             InventoryTransaction.transaction_type == TransactionType.PURCHASE,
-            on_business_day(InventoryTransaction.created_at, day),
+            InventoryTransaction.created_at >= night_utc_bounds(day)[0],
+            InventoryTransaction.created_at < night_utc_bounds(day)[1],
         )
         .order_by(InventoryTransaction.id)
         .all()
@@ -567,7 +581,206 @@ def get_purchases(
         "purchases": [_purchase_dict(t) for t in rows],
         "total_amount": sum((t.total_amount for t in rows if t.total_amount is not None), Decimal(0)),
         "unpriced": sum(1 for t in rows if t.total_amount is None),
+        "items": _day_columns(db, day, rows),
+        "editable": day == today,
     }
+
+def _day_columns(db: Session, day: date, rows: List[InventoryTransaction]) -> dict:
+    """Per item bought that day: opening, bought, used, remaining, day-end, wastage.
+
+    remaining = opening + bought - used, where opening is the stock as the day
+    began. Used, remaining and wastage stay None until a recipe uses the item:
+    "not worked out" must not read as "none used". Wastage is remaining minus
+    the day-end count, so a negative figure means more was on the shelf than
+    the recipes account for.
+    """
+    items = {t.item_id: t.item for t in rows}
+    used = usage.used_on(db, day, items.values())
+    start, _ = night_utc_bounds(day)
+    count = (
+        db.query(InventoryCount).filter(InventoryCount.business_date == day)
+        .order_by(InventoryCount.created_at.desc(), InventoryCount.id.desc()).first()
+    )
+    counted = {
+        line.item_id: line.counted_quantity
+        for line in (count.lines if count else [])
+        if line.status != CountLineStatus.SKIPPED.value
+    }
+    columns = {}
+    for item_id in items:
+        lines = [t for t in rows if t.item_id == item_id]
+        before = (
+            db.query(InventoryTransaction.new_quantity)
+            .filter(InventoryTransaction.item_id == item_id, InventoryTransaction.created_at < start)
+            .order_by(InventoryTransaction.created_at.desc(), InventoryTransaction.id.desc())
+            .first()
+        )
+        opening = before[0] if before else lines[0].previous_quantity
+        bought = sum((t.quantity for t in lines), Decimal(0))
+        remaining = None if used[item_id] is None else opening + bought - used[item_id]
+        day_end = counted.get(item_id)
+        columns[item_id] = {
+            "opening": opening,
+            "bought": bought,
+            "used": used[item_id],
+            "remaining": remaining,
+            "day_end": day_end,
+            "wastage": None if remaining is None or day_end is None else remaining - day_end,
+        }
+    return columns
+
+@router.put("/counts/tonight/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+def count_one_item(
+    item_id: int,
+    body: inventory_schemas.DayEndCount,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _STAFF,
+):
+    """Day-end stock for one item, typed on the purchase sheet.
+
+    It is tonight's count, not a second number: the line goes into tonight's
+    count (started if there is none yet) with the same adjustment the count
+    screen makes, and the count screen's own save reads the same way. No
+    report email — that belongs to a full count.
+    """
+    item = db.get(InventoryItem, item_id)
+    if not item or not item.is_active:
+        raise HTTPException(status_code=404, detail="Item not found")
+    night = count_night()
+    count = (
+        db.query(InventoryCount).filter(InventoryCount.business_date == night)
+        .order_by(InventoryCount.created_at.desc(), InventoryCount.id.desc()).first()
+    )
+    if count is None:
+        count = InventoryCount(business_date=night, counted_by=current_user.username, items_total=0,
+                               items_checked=0, items_changed=0, items_skipped=0)
+        db.add(count)
+    line = next((l for l in count.lines if l.item_id == item_id), None)
+    if line is None:
+        line = InventoryCountLine(item_id=item_id, previous_quantity=item.current_quantity, status="")
+        count.lines.append(line)
+
+    before = item.current_quantity
+    new = _counted_value(item, body.counted_quantity)
+    if new != before:
+        item.current_quantity = new
+        db.add(InventoryTransaction(
+            item_id=item.id, transaction_type=TransactionType.ADJUSTMENT, quantity=new - before,
+            notes=_count_note(item, before, new), recorded_by=current_user.username,
+            previous_quantity=before, new_quantity=new,
+        ))
+    line.counted_quantity = new
+    line.status = (CountLineStatus.CHECKED if new == line.previous_quantity else CountLineStatus.CHANGED).value
+    statuses = [l.status for l in count.lines]
+    count.items_total = len(statuses)
+    count.items_checked = statuses.count(CountLineStatus.CHECKED.value)
+    count.items_changed = statuses.count(CountLineStatus.CHANGED.value)
+    count.items_skipped = statuses.count(CountLineStatus.SKIPPED.value)
+    db.commit()
+
+@router.get("/purchases/frequent", response_model=List[int])
+def get_frequent_purchases(db: Session = Depends(get_db), current_user: TokenData = _READ):
+    """Active item ids the cafe restocks most over the last 60 days, most often first.
+
+    Counts each time stock went up. A logged purchase weighs 3; an upward count
+    correction weighs 1 — before purchases were logged it is the only trace of
+    buying, so the picker has something to offer on day one.
+    """
+    since = utcnow() - timedelta(days=60)
+    T = InventoryTransaction
+    score = func.sum(case((T.transaction_type == TransactionType.PURCHASE, 3), else_=1))
+    rows = (
+        db.query(T.item_id)
+        .join(InventoryItem, InventoryItem.id == T.item_id)
+        .filter(InventoryItem.is_active, T.new_quantity > T.previous_quantity, T.created_at >= since)
+        .group_by(T.item_id)
+        .order_by(score.desc(), func.max(T.created_at).desc())
+        .limit(30)
+    )
+    return [item_id for (item_id,) in rows]
+
+def _editable_purchase(db: Session, purchase_id: int) -> InventoryTransaction:
+    """A purchase line that may still be corrected in place, or a 404/409.
+
+    Same sheet day (the count night) only, and only until a count is saved after it: once the
+    count has taken it in, a correction is an adjustment so history stays honest.
+    """
+    t = db.get(InventoryTransaction, purchase_id)
+    if not t or t.transaction_type != TransactionType.PURCHASE:
+        raise HTTPException(status_code=404, detail="Purchase not found")
+    if not night_utc_bounds(count_night())[0] <= t.created_at < night_utc_bounds(count_night())[1]:
+        raise HTTPException(status_code=409, detail="Only today's purchases can be corrected; use a stock adjustment")
+    # Column to column: SQLite keeps CURRENT_TIMESTAMP as text without
+    # microseconds, so a Python datetime would miss a count in the same second.
+    purchased_at = db.query(InventoryTransaction.created_at).filter(InventoryTransaction.id == t.id).scalar_subquery()
+    if db.query(InventoryCount.id).filter(InventoryCount.created_at >= purchased_at).first():
+        raise HTTPException(status_code=409, detail="Tonight's count already includes this purchase; use a stock adjustment")
+    return t
+
+def _move_purchase_stock(t: InventoryTransaction, quantity: Decimal) -> None:
+    """Re-apply a purchase line as `quantity` (0 undoes it), keeping stock and the row in step."""
+    item = t.item
+    before = item.current_quantity
+    item.current_quantity = before - t.quantity + quantity  # clamped by the model for yes/no
+    t.quantity += item.current_quantity - before
+    t.new_quantity = t.previous_quantity + t.quantity
+
+@router.patch("/purchases/{purchase_id}", response_model=dict)
+def edit_purchase(
+    purchase_id: int,
+    edit: inventory_schemas.PurchaseEdit,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _STAFF,
+):
+    """Correct a line on today's sheet: quantity moves stock by the difference."""
+    t = _editable_purchase(db, purchase_id)
+    changes = edit.model_dump(exclude_unset=True)
+    if changes.get("vendor_id") is not None and not db.get(Vendor, changes["vendor_id"]):
+        raise HTTPException(status_code=400, detail="Vendor not found")
+    if changes.get("quantity") is not None:
+        _move_purchase_stock(t, changes.pop("quantity"))
+    for key, value in changes.items():
+        setattr(t, key, value)
+    if t.total_amount is not None and t.total_amount == 0 and not (t.notes or "").strip():
+        raise HTTPException(status_code=422, detail="A purchase of ₹0 needs a note saying why (e.g. free from the vendor)")
+    db.commit()
+    db.refresh(t)
+    return _purchase_dict(t)
+
+@router.delete("/purchases/{purchase_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_purchase(purchase_id: int, db: Session = Depends(get_db), current_user: TokenData = _STAFF):
+    """Remove a line logged by mistake today, taking its stock back out."""
+    t = _editable_purchase(db, purchase_id)
+    _move_purchase_stock(t, Decimal(0))
+    db.delete(t)
+    db.commit()
+
+@router.post("/items/quick", response_model=inventory_schemas.InventoryItem, status_code=status.HTTP_201_CREATED)
+def quick_create_item(
+    payload: inventory_schemas.QuickItemCreate,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _STAFF,
+):
+    """Add an item from the purchase sheet with just a name and unit. Staff can.
+
+    Flagged needs_setup for the owner to configure in the setup grid, so nobody
+    has to abandon the sheet. An active item with the same name is returned
+    instead of duplicated.
+    """
+    name = payload.name.strip()
+    existing = db.query(InventoryItem).filter(
+        func.lower(InventoryItem.name) == name.lower(), InventoryItem.is_active
+    ).first()
+    if existing:
+        return _item_dict(existing, pricing.resolve_one(db, existing))
+    item = InventoryItem(
+        name=name, unit=payload.unit.strip(), current_quantity=0, min_threshold=0,
+        needs_setup=True, sort_order=_next_sort_order(db, InventoryItem),
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return _item_dict(item, pricing.resolve_one(db, item))
 
 @router.get("/vendors", response_model=List[inventory_schemas.Vendor])
 def get_vendors(db: Session = Depends(get_db), current_user: TokenData = _READ):
