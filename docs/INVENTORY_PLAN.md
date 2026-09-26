@@ -347,7 +347,7 @@ Checked on 2026-09-26 against `origin/main`:
   `cash_counter`, `menu`, `admin` and `auth` have zero changes.
 
 Landing means a **backend deploy as well as a Vercel push** — the grid needs `PATCH /items`.
-Use `scripts/deploy-backend.sh`, and do it outside service hours.
+Use `scripts/deploy-backend.sh prod`, and do it outside service hours.
 
 ### Turn the morning digest off first
 
