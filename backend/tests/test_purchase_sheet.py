@@ -367,6 +367,34 @@ def test_only_the_owner_opens_other_days(client, auth_headers, owner_headers):
     assert past.json()["editable"] is False
 
 
+def test_used_counts_the_count_night_not_the_calendar_day(test_db, sugar_sold_today):
+    """A coffee sold at 01:30 after close belongs to the night before, like the count does."""
+    from datetime import date
+
+    from app.models import models
+    from app.utils.usage import used_on
+
+    coffee = test_db.query(models.MenuItem).filter_by(name="Coffee").one()
+    test_db.query(models.OrderItem).delete()
+    test_db.query(models.Order).delete()
+    # Night of 20 Sep (IST) runs 04:00 on the 20th to 04:00 on the 21st: 22:30 to 22:30 UTC.
+    for n, (utc, cups) in enumerate([
+        (datetime(2026, 9, 19, 22, 0), 1),   # 03:30 IST on the 20th: the night before
+        (datetime(2026, 9, 20, 6, 0), 4),    # 11:30 IST on the 20th
+        (datetime(2026, 9, 20, 20, 0), 6),   # 01:30 IST on the 21st, after close
+        (datetime(2026, 9, 20, 23, 0), 2),   # 04:30 IST on the 21st: the next night
+    ]):
+        order = models.Order(order_number=f"ORD-N-{n}", table_number=1, subtotal=0, gst_amount=0,
+                             total_amount=0, status=models.OrderStatus.PAID, created_at=utc)
+        test_db.add(order)
+        test_db.commit()
+        test_db.add(models.OrderItem(order_id=order.id, menu_item_id=coffee.id, menu_item_name="Coffee",
+                                     quantity=cups, unit_price=4000, subtotal=4000 * cups))
+    test_db.commit()
+
+    assert used_on(test_db, date(2026, 9, 20), [sugar_sold_today])[sugar_sold_today.id] == Decimal("0.5")
+
+
 def test_recipe_in_ml_bridges_to_bottles_by_pack_size():
     from app.models.costing_models import DishCostingIngredient
     from app.utils.usage import per_portion_in_item_unit

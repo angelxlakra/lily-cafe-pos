@@ -1,7 +1,10 @@
 """What the day's sales used of each inventory item, from recipes.
 
-Used = Σ over the day's non-canceled order lines of
+Used = Σ over the night's non-canceled order lines of
        dishes sold × ingredient quantity ÷ recipe yield, in the item's own unit.
+The night is the purchase sheet's day (04:00 local to 04:00 the next), the
+same window as its purchases and its count; a sale at 00:30 after close
+belongs to the night it was sold in, not to the next calendar day.
 An ingredient in a unit the converter can't reach the item's unit from
 (ml of a sauce counted in bottles) is bridged by the item's pack size
 (1 bottle = 700 ml). An item no recipe mentions has no answer (None), which
@@ -15,7 +18,7 @@ from typing import Iterable, Optional
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.core.business_day import on_business_day
+from app.core.business_day import night_utc_bounds
 from app.models.costing_models import DishCosting, DishCostingIngredient
 from app.models.inventory_models import InventoryItem
 from app.models.models import Order, OrderItem, OrderStatus
@@ -35,16 +38,17 @@ def per_portion_in_item_unit(ingredient: DishCostingIngredient, item: InventoryI
 
 
 def used_on(db: Session, day: date, items: Iterable[InventoryItem]) -> dict[int, Optional[Decimal]]:
-    """Each item's use on one business day; None where no recipe says."""
+    """Each item's use over one count night; None where no recipe says."""
     items = {item.id: item for item in items}
     used: dict[int, Optional[Decimal]] = {item_id: None for item_id in items}
     if not items:
         return used
 
+    start, end = night_utc_bounds(day)
     sold = dict(
         db.query(OrderItem.menu_item_id, func.sum(OrderItem.quantity))
         .join(Order, Order.id == OrderItem.order_id)
-        .filter(Order.status != OrderStatus.CANCELED, on_business_day(Order.created_at, day))
+        .filter(Order.status != OrderStatus.CANCELED, Order.created_at >= start, Order.created_at < end)
         .group_by(OrderItem.menu_item_id)
         .all()
     )
