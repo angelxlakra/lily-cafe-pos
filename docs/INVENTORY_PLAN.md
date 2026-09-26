@@ -124,9 +124,11 @@ Google Sheets support, freeze Name/Category, per-column locks with Stock locked 
 default, dirty-cell highlighting and Revert, one bulk PATCH endpoint. ~196 rows means
 memoize per row.
 
-The grid also needs a way to retire an item — there are ~20 near-duplicates and 59 items
-sitting at zero to clear out. Retire means deactivate, not delete: DELETE /items/{id} is
-already a soft delete that flips is_active, because transactions reference those rows.
+The grid also needs a way to retire an item. Run backend/scripts/inventory_review.py first
+for the candidate list — note that "sitting at zero" does NOT mean dead: 36 active items
+have never had a transaction and they include SALT, MAIDA and the garbage bags. Retire
+means deactivate, not delete: DELETE /items/{id} is already a soft delete that flips
+is_active, because transactions reference those rows.
 
 Done = the owner can edit every field for all items, retire dead ones, and save once.
 ```
