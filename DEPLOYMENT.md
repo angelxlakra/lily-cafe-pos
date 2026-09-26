@@ -43,20 +43,55 @@ fly deploy
 
 ### Subsequent deploys
 
-```bash
-# Refuses unless HEAD is a clean origin/main, then verifies the live commit.
-./scripts/deploy-backend.sh
-```
+There are two backends. Each deploys from exactly one branch:
+
+| Target | Branch | Fly app | URL |
+|--------|--------|---------|-----|
+| `dev` (staging) | `pre-release` | `lily-cafe-pos-dev` | https://lily-cafe-pos-dev.fly.dev |
+| `prod` | `main` | `lily-cafe-pos` | https://lily-cafe-pos.fly.dev |
+
+`lily-cafe-pos-dev` has its own volume and data, and Vercel preview deployments
+point at it, so `pre-release` is a full staging stack. Release in this order:
+
+1. Merge work into `pre-release`.
+2. Deploy it to staging and test through a Vercel preview:
+   ```bash
+   git checkout pre-release && git pull --ff-only
+   ./scripts/deploy-backend.sh dev
+   ```
+3. Merge `pre-release` into `main` (Vercel deploys the production frontend).
+4. Deploy the production backend, outside service hours:
+   ```bash
+   git checkout main && git pull --ff-only
+   ./scripts/deploy-backend.sh prod
+   ```
+
+The target is required; running the script with no argument prints usage and
+does nothing, so production is never deployed by leaving a word off. Add
+`--dry-run` to run every guard and print the app, SHA and URL without calling
+`flyctl`.
+
+The script refuses unless `HEAD` equals `origin/main` (prod) or
+`origin/pre-release` (dev) and no tracked file is modified. It warns, without
+refusing, about untracked files under `backend/`, which can end up in the image.
+It passes `-a` and `--build-arg GIT_SHA=…` itself, then polls the target's `GET /`
+until it reports the deployed commit, and fails with `DEPLOY NOT VERIFIED` if it
+never does.
 
 Don't run a bare `fly deploy` here: it builds from the working directory, so a
-stale checkout ships a stale image. See the README's *Deploying the backend*.
+stale checkout ships a stale image, and the committed `fly.toml` names the dev
+app, so without `-a` it deploys to staging. See the README's *Deploying the backend*.
 
 ### Useful commands
 
+Always name the app — without `-a`, `fly` falls back to `fly.toml`, which is the
+dev app.
+
 ```bash
-fly logs                        # Stream live logs
-fly ssh console                 # SSH into the machine
-fly status                      # App health
+fly logs -a lily-cafe-pos              # Stream live logs (use lily-cafe-pos-dev for staging)
+fly ssh console -a lily-cafe-pos       # SSH into the machine
+fly status -a lily-cafe-pos            # App health
+curl -s https://lily-cafe-pos.fly.dev/ | grep -o '"commit": *"[^"]*"'   # What is deployed
 ```
 
 ---
