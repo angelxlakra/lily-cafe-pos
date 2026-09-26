@@ -49,6 +49,14 @@ In dependency order.
 Shipped already: the typed-input count row (`6b8cbf6`), the setup grid (1), and yes/no items in
 the nightly count (2): the Out / Have it row, the model-level clamp, review sheet and stock log.
 
+Purchase sheet (3), backend only: `total_amount` and `vendor_id` on purchase rows, a minimal
+`vendors` table, `POST /transactions/purchase/check` (the >30% jump warning, dry run) and
+`GET /purchases?business_date=` (the day's lines and total). Price resolution lives in
+`backend/app/utils/pricing.py`; items return `current_price`, `price_source`, `price_as_of`,
+and dish costing now prices from it. Known gap: purchase quantities are in the unit the item
+had at the time, so changing an item's unit (g → kg) after purchases with amounts skews its
+derived price until the next purchase. The entry screen is still to build.
+
 ## State of `feature/dish-costing`
 
 Backend is done — models, CRUD, endpoints, schemas and strict unit conversion, ~1,250 lines.

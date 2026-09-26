@@ -79,6 +79,17 @@ class InventoryItem(Base):
     def is_low_stock(self) -> bool:
         return self.current_quantity < self.min_threshold
 
+class Vendor(Base):
+    """Who a purchase was bought from. Deliberately minimal: a purchase never
+    waits on vendor setup, so vendor_id on a transaction stays optional."""
+    __tablename__ = "vendors"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    phone = Column(String(30), nullable=True)
+    notes = Column(String(500), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
 class TransactionType(str, enum.Enum):
     PURCHASE = "PURCHASE"
     USAGE = "USAGE"
@@ -96,9 +107,14 @@ class InventoryTransaction(Base):
     previous_quantity = Column(Numeric(10, 2), nullable=False)
     new_quantity = Column(Numeric(10, 2), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
-    
+    # What was paid for this line, in rupees. PURCHASE rows only; NULL when not
+    # entered. 0 is a gift. Unit price is total_amount / quantity, never stored.
+    total_amount = Column(Numeric(10, 2), nullable=True)
+    vendor_id = Column(Integer, ForeignKey("vendors.id"), nullable=True, index=True)
+
     # Relationships
     item = relationship("InventoryItem", back_populates="transactions")
+    vendor = relationship("Vendor")
 
 
 class CountLineStatus(str, enum.Enum):
