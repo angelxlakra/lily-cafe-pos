@@ -246,6 +246,41 @@ chat id; WhatsApp needs the Business API with approved templates and per-message
 Done = the owner finishes a count and can send each vendor an order in one tap each.
 ```
 
+## Deploying, and knowing what's deployed
+
+The frontend auto-deploys from `main` on every push (Vercel). The backend does **not** —
+it needs someone to run `flyctl deploy` by hand. The two drift, silently.
+
+**Two gotchas, both of which have already caused an outage:**
+
+1. **The local `fly.toml` says `app = "lily-cafe-pos-dev"`.** It is gitignored, so it
+   differs per machine. A plain `flyctl deploy` from the repo root deploys to the *dev*
+   app. Production needs the app named explicitly:
+
+   ```
+   flyctl deploy -a lily-cafe-pos
+   ```
+
+2. **A deploy can report success while shipping stale code.** On 2026-09-26 the backend
+   was found to have no `/inventory/counts` routes at all, five days after they landed on
+   `main` and four days after a "successful" release. A misplaced `.dockerignore` had
+   excluded source from the build context, so the image built, the health check passed and
+   `fly releases` looked clean — while the endpoint the staff needed simply was not there.
+   The cafe counted 82 items that night and lost all of it to a 404. Fixed in
+   [#56](https://github.com/angelxlakra/lily-cafe-pos/pull/56).
+
+**The underlying gap is that nothing reports what is actually deployed.** `GET /` returns
+`version: 0.2.0`, which is hardcoded and was equally true of the stale image. If it
+reported the git SHA, checking would be one line instead of grepping inside a running
+container. Worth doing before the next feature that spans both halves:
+
+```
+curl -s https://lily-cafe-pos.fly.dev/ | jq -r .commit    # vs: git rev-parse origin/main
+```
+
+Until then, after any backend change, verify the thing you shipped rather than the release
+status — hit the new endpoint and check it answers.
+
 ## Not covered here
 
 `docs/master-project-document.md` predates this work — its header still reads October 2024.
