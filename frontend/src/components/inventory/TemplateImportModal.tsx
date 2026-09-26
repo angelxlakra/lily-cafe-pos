@@ -1,14 +1,18 @@
 /**
- * TemplateImportModal Component
+ * TemplateImportModal
  *
- * One-time setup tool to import inventory items from WhatsApp template.
- * Parses mixed formats (fractions, YES/NO, weights) and bulk creates items.
+ * One-time setup: paste the WhatsApp stock checklist, check what was read
+ * from it, then create the categories and items. Anything that fails is
+ * named afterwards and can be retried.
  */
 
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { X, Upload, CheckCircle, Warning } from '@phosphor-icons/react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { inventoryApi } from '../../api/inventory';
+import { useDialogFocus } from '../../hooks/useDialogFocus';
+import { describeApiError } from '../../utils/apiError';
+import { formatQty } from '../../utils/countQuantity';
 import { parseWhatsAppTemplate, type ParsedItem } from '../../utils/unitParser';
 import type { InventoryCategory } from '../../types/inventory';
 
@@ -19,368 +23,338 @@ interface TemplateImportModalProps {
 }
 
 type ImportStep = 'input' | 'preview' | 'importing' | 'complete';
+type Failure = { item: ParsedItem; reason: string };
 
 export default function TemplateImportModal({
   isOpen,
   onClose,
-  existingCategories
+  existingCategories,
 }: TemplateImportModalProps) {
   const queryClient = useQueryClient();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
 
   const [step, setStep] = useState<ImportStep>('input');
   const [templateText, setTemplateText] = useState('');
   const [parsedItems, setParsedItems] = useState<ParsedItem[]>([]);
-  const [errors, setErrors] = useState<string[]>([]);
-  const [importResults, setImportResults] = useState<{
+  const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [result, setResult] = useState<{
     categoriesCreated: number;
     itemsCreated: number;
-    itemsFailed: number;
-  }>({ categoriesCreated: 0, itemsCreated: 0, itemsFailed: 0 });
+    failures: Failure[];
+    categoriesFailed: string[];
+  } | null>(null);
+
+  const handleClose = () => {
+    setStep('input');
+    setTemplateText('');
+    setParsedItems([]);
+    setError(null);
+    setResult(null);
+    setProgress(0);
+    onClose();
+  };
+
+  // Escape, focus trap and focus restore. Not while items are being created.
+  useDialogFocus(dialogRef, handleClose, step === 'importing');
+  // Move focus into the dialog without opening the phone keyboard: the
+  // heading, not the textarea.
+  useEffect(() => {
+    if (isOpen) headingRef.current?.focus();
+  }, [isOpen]);
 
   const handleParse = () => {
-    setErrors([]);
-
+    setError(null);
     if (!templateText.trim()) {
-      setErrors(['Please paste your WhatsApp template text']);
+      setError('Paste the checklist text first.');
       return;
     }
-
     try {
       const items = parseWhatsAppTemplate(templateText);
-
       if (items.length === 0) {
-        setErrors(['No items found in the template. Please check the format.']);
+        setError("Couldn't find any items in that text. Check that each line has a name and a number.");
         return;
       }
-
       setParsedItems(items);
       setStep('preview');
-    } catch (error: any) {
-      setErrors([`Parsing error: ${error.message}`]);
+    } catch (parseError) {
+      setError(`Couldn't read that text. ${(parseError as Error).message}`);
     }
   };
 
   const importMutation = useMutation({
-    mutationFn: async () => {
-      const categoryMap = new Map<string, number>();
+    mutationFn: async (items: ParsedItem[]) => {
+      const categoryIds = new Map<string, number>(
+        existingCategories.map(category => [category.name.toLowerCase(), category.id]),
+      );
+      const categoriesFailed: string[] = [];
       let categoriesCreated = 0;
-      let itemsCreated = 0;
-      let itemsFailed = 0;
 
-      // First, create missing categories
-      const uniqueCategories = [...new Set(parsedItems.map(item => item.category))];
-
-      // Map existing categories
-      existingCategories.forEach(cat => {
-        categoryMap.set(cat.name.toLowerCase(), cat.id);
-      });
-
-      // Create new categories
-      for (const categoryName of uniqueCategories) {
-        const lowerName = categoryName.toLowerCase();
-
-        if (!categoryMap.has(lowerName)) {
-          try {
-            const newCategory = await inventoryApi.createCategory({ name: categoryName });
-            categoryMap.set(lowerName, newCategory.id);
-            categoriesCreated++;
-          } catch (error) {
-            console.error(`Failed to create category ${categoryName}:`, error);
-          }
+      for (const name of [...new Set(items.map(item => item.category))]) {
+        if (categoryIds.has(name.toLowerCase())) continue;
+        try {
+          const created = await inventoryApi.createCategory({ name });
+          categoryIds.set(name.toLowerCase(), created.id);
+          categoriesCreated++;
+        } catch {
+          // The items still get created, just without a category.
+          categoriesFailed.push(name);
         }
       }
 
-      // Create items
-      for (const item of parsedItems) {
+      const failures: Failure[] = [];
+      let itemsCreated = 0;
+      for (const [index, item] of items.entries()) {
+        setProgress(index + 1);
         try {
-          const categoryId = categoryMap.get(item.category.toLowerCase());
-
           await inventoryApi.createItem({
             name: item.name,
             unit: item.unit,
             current_quantity: item.quantity,
             min_threshold: item.minThreshold,
-            category_id: categoryId,
-            cost_per_unit: undefined
+            category_id: categoryIds.get(item.category.toLowerCase()),
+            cost_per_unit: undefined,
           });
-
           itemsCreated++;
-        } catch (error) {
-          console.error(`Failed to create item ${item.name}:`, error);
-          itemsFailed++;
+        } catch (itemError) {
+          failures.push({ item, reason: describeApiError(itemError) });
         }
       }
 
-      return { categoriesCreated, itemsCreated, itemsFailed };
+      return { categoriesCreated, itemsCreated, failures, categoriesFailed };
     },
-    onSuccess: (results) => {
-      setImportResults(results);
+    onSuccess: summary => {
+      setResult(previous => ({
+        categoriesCreated: (previous?.categoriesCreated ?? 0) + summary.categoriesCreated,
+        itemsCreated: (previous?.itemsCreated ?? 0) + summary.itemsCreated,
+        failures: summary.failures,
+        categoriesFailed: summary.categoriesFailed,
+      }));
       setStep('complete');
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
     },
-    onError: (error: any) => {
-      setErrors([`Import failed: ${error.message || 'Unknown error'}`]);
+    onError: importError => {
+      setError(`The import stopped. ${describeApiError(importError)}`);
       setStep('preview');
-    }
+    },
   });
 
-  const handleImport = () => {
+  const startImport = (items: ParsedItem[]) => {
+    setProgress(0);
     setStep('importing');
-    importMutation.mutate();
+    importMutation.mutate(items);
   };
 
-  const handleReset = () => {
-    setStep('input');
-    setTemplateText('');
-    setParsedItems([]);
-    setErrors([]);
-    setImportResults({ categoriesCreated: 0, itemsCreated: 0, itemsFailed: 0 });
-  };
-
-  const handleClose = () => {
-    handleReset();
-    onClose();
-  };
+  // Preview grouped by category: the same shape the count will have.
+  const groups = useMemo(() => {
+    const byCategory = new Map<string, ParsedItem[]>();
+    parsedItems.forEach(item => {
+      byCategory.set(item.category, [...(byCategory.get(item.category) ?? []), item]);
+    });
+    return [...byCategory.entries()];
+  }, [parsedItems]);
 
   if (!isOpen) return null;
 
+  const importingCount = importMutation.variables?.length ?? parsedItems.length;
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-off-white rounded-xl shadow-strong max-w-4xl w-full my-8 flex flex-col max-h-[calc(100vh-4rem)]">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 md:p-6 border-b border-neutral-border flex-shrink-0">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fade-in">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="import-title"
+        className="bg-off-white rounded-xl shadow-strong max-w-2xl w-full flex flex-col max-h-[90dvh] animate-scale-in"
+      >
+        <div className="flex items-start justify-between gap-3 p-4 md:p-6 border-b border-neutral-border shrink-0">
           <div>
-            <h2 className="text-lg md:text-xl font-heading text-neutral-text-dark dark:text-cream">
-              Import from WhatsApp Template
+            <h2 id="import-title" ref={headingRef} tabIndex={-1} className="font-heading text-2xl! text-neutral-text-dark focus:outline-none">
+              Import your checklist
             </h2>
-            <p className="text-xs md:text-sm text-neutral-text-muted mt-1">
-              Paste your WhatsApp inventory template to bulk import items
+            <p className="text-sm text-neutral-text-muted mt-1">
+              Paste the WhatsApp stock list to create all its items at once.
             </p>
           </div>
           <button
             onClick={handleClose}
-            className="p-2 hover:bg-neutral-background rounded-lg transition-colors flex-shrink-0"
+            disabled={step === 'importing'}
+            aria-label="Close"
+            className="size-12 -mr-2 -mt-2 shrink-0 grid place-items-center rounded-lg text-neutral-text-muted hover:text-neutral-text-dark hover:bg-cream/60 disabled:opacity-40"
           >
-            <X size={24} className="text-neutral-text-muted" />
+            <X size={22} aria-hidden />
           </button>
         </div>
 
-        {/* Content */}
         <div className="p-4 md:p-6 overflow-y-auto flex-1">
-          {/* Errors */}
-          {errors.length > 0 && (
-            <div className="mb-4 p-4 bg-error/10 border border-error rounded-lg">
-              <div className="flex items-start gap-2">
-                <Warning size={20} className="text-error flex-shrink-0 mt-0.5" weight="fill" />
-                <div className="flex-1">
-                  {errors.map((error, i) => (
-                    <p key={i} className="text-sm text-error">{error}</p>
-                  ))}
-                </div>
-              </div>
+          {error && (
+            <div role="alert" className="mb-4 p-3 rounded-lg border border-error/40 bg-error/5 flex items-start gap-2">
+              <Warning size={18} className="text-error shrink-0 mt-0.5" weight="fill" aria-hidden />
+              <p className="text-sm text-neutral-text-body">{error}</p>
             </div>
           )}
 
-          {/* Step 1: Input */}
           {step === 'input' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-neutral-text-dark dark:text-cream mb-2">
-                  WhatsApp Template Text
+                <label htmlFor="template-text" className="block text-sm font-medium text-neutral-text-body mb-2">
+                  Checklist text
                 </label>
                 <textarea
+                  id="template-text"
                   value={templateText}
-                  onChange={(e) => setTemplateText(e.target.value)}
-                  placeholder="Paste your WhatsApp inventory template here...
-
-Example:
-*DRY GROCERY*
-Salt - 1
-Sugar - 5kg
-Rice - YES
-..."
-                  className="input-field w-full h-64 md:h-96 font-mono text-sm"
-                  autoFocus
+                  onChange={event => setTemplateText(event.target.value)}
+                  placeholder={'_#DRY GROCERY#_\nRAMEN NOODLES : 46\nSALT : 0\nBREAD CRUMB : ½'}
+                  className="input-field w-full h-56 md:h-72 font-mono text-sm"
                 />
               </div>
 
-              <div className="bg-lily-green/10 border border-lily-green/30 rounded-lg p-4">
-                <h3 className="font-medium text-lily-ink mb-2 text-sm">
-                  Supported Formats:
-                </h3>
-                <ul className="text-xs text-neutral-text-muted space-y-1">
-                  <li>• Items: ITEM NAME QUANTITY or ITEM NAME : QUANTITY</li>
-                  <li>• Categories: *CATEGORY* or _#CATEGORY#_</li>
-                  <li>• Numbers: 5, 10.5</li>
-                  <li>• Fractions: ½, ¼, ¾</li>
-                  <li>• Weights: 50g, 4kg, 500ml, 1L</li>
-                  <li>• YES/NO: Converts to 1/0</li>
+              <div className="rounded-lg border border-neutral-border bg-cream/40 p-4">
+                <h3 className="subheading text-neutral-text-dark mb-2">What the app can read</h3>
+                <ul className="text-sm text-neutral-text-body space-y-1">
+                  <li>Category lines: <code>*DRY GROCERY*</code> or <code>_#DRY GROCERY#_</code></li>
+                  <li>Item lines: <code>SALT : 2</code> or <code>SALT 2</code></li>
+                  <li>Halves and quarters: ½, ¼, ¾</li>
+                  <li>Weights and volumes: 50g, 4kg, 500ml, 1L</li>
+                  <li>YES becomes 1, NO becomes 0</li>
                 </ul>
               </div>
             </div>
           )}
 
-          {/* Step 2: Preview */}
           {step === 'preview' && (
             <div className="space-y-4">
-              <div className="bg-neutral-background rounded-lg p-4">
-                <p className="text-sm text-neutral-text-muted">
-                  Found <span className="font-bold text-lily-ink">{parsedItems.length} items</span> across{' '}
-                  <span className="font-bold text-lily-ink">
-                    {new Set(parsedItems.map(i => i.category)).size} categories
-                  </span>
-                </p>
-              </div>
+              <p className="text-neutral-text-body tabular-nums">
+                Read <strong className="text-neutral-text-dark">{parsedItems.length} item{parsedItems.length === 1 ? '' : 's'}</strong> in{' '}
+                <strong className="text-neutral-text-dark">{groups.length} categor{groups.length === 1 ? 'y' : 'ies'}</strong>. Check a few, then add them.
+              </p>
 
-              <div className="border border-neutral-border rounded-lg overflow-hidden">
-                <div className="overflow-x-auto max-h-96 overflow-y-auto">
-                  <table className="w-full">
-                    <thead className="bg-neutral-background sticky top-0">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-text-muted uppercase">
-                          Category
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-text-muted uppercase">
-                          Item Name
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-text-muted uppercase">
-                          Quantity
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-text-muted uppercase">
-                          Unit
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-text-muted uppercase">
-                          Min Threshold
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-border">
-                      {parsedItems.map((item, index) => (
-                        <tr key={index} className="hover:bg-neutral-background/50">
-                          <td className="px-4 py-3 text-sm text-neutral-text-dark dark:text-cream">
-                            {item.category}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-medium text-neutral-text-dark dark:text-cream">
-                            {item.name}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-mono text-neutral-text-dark dark:text-cream">
-                            {item.quantity}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-neutral-text-muted">
-                            {item.unit}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-mono text-neutral-text-muted">
-                            {item.minThreshold}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              {groups.map(([category, items]) => (
+                <section key={category} aria-labelledby={`preview-${category}`}>
+                  <h3 id={`preview-${category}`} className="subheading text-neutral-text-dark mb-1 flex items-baseline justify-between gap-2">
+                    <span className="truncate">{category}</span>
+                    <span className="shrink-0 font-normal text-neutral-text-muted tabular-nums">{items.length}</span>
+                  </h3>
+                  <ul className="card divide-y divide-neutral-border overflow-hidden">
+                    {items.map((item, index) => (
+                      <li key={`${item.name}-${index}`} className="flex items-center justify-between gap-3 px-3 py-2">
+                        <span className="min-w-0 break-words text-neutral-text-dark">{item.name}</span>
+                        <span className="shrink-0 tabular-nums text-neutral-text-body">
+                          {formatQty(item.quantity)} <span className="text-neutral-text-muted">{item.unit}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
             </div>
           )}
 
-          {/* Step 3: Importing */}
           {step === 'importing' && (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="animate-spin text-lily-ink mb-4">
-                <Upload size={48} />
+            <div className="py-10 text-center">
+              <p className="text-lg font-medium text-neutral-text-dark tabular-nums" aria-live="polite">
+                Adding item {progress} of {importingCount}
+              </p>
+              <div
+                className="mx-auto mt-4 h-1.5 w-full max-w-sm rounded-full bg-neutral-border/60 overflow-hidden"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={importingCount}
+                aria-valuenow={progress}
+                aria-label="Items added"
+              >
+                <div
+                  className="h-full origin-left bg-lily-green-deep transition-transform duration-300 ease-(--ease-settle)"
+                  style={{ transform: `scaleX(${importingCount ? progress / importingCount : 0})` }}
+                />
               </div>
-              <p className="text-lg font-medium text-neutral-text-dark dark:text-cream">
-                Importing items...
-              </p>
-              <p className="text-sm text-neutral-text-muted mt-2">
-                This may take a moment. Please don't close this window.
-              </p>
+              <p className="text-sm text-neutral-text-muted mt-3">Keep this window open until it finishes.</p>
             </div>
           )}
 
-          {/* Step 4: Complete */}
-          {step === 'complete' && (
-            <div className="space-y-6">
-              <div className="flex flex-col items-center justify-center py-8">
-                <div className="text-lily-ink mb-4">
-                  <CheckCircle size={64} weight="fill" />
-                </div>
-                <h3 className="text-xl font-heading text-neutral-text-dark dark:text-cream mb-2">
-                  Import Complete!
-                </h3>
-                <p className="text-sm text-neutral-text-muted">
-                  Your inventory items have been imported successfully.
+          {step === 'complete' && result && (
+            <div className="space-y-5">
+              <div className="text-center py-4">
+                {result.failures.length === 0 ? (
+                  <>
+                    <CheckCircle size={56} weight="fill" className="mx-auto text-lily-ink" aria-hidden />
+                    <h3 className="font-heading text-2xl! text-neutral-text-dark mt-3">All imported</h3>
+                  </>
+                ) : (
+                  <>
+                    <Warning size={56} weight="fill" className="mx-auto text-warning" aria-hidden />
+                    <h3 className="font-heading text-2xl! text-neutral-text-dark mt-3">Imported, with some left out</h3>
+                  </>
+                )}
+                <p className="text-neutral-text-body mt-2 tabular-nums">
+                  {result.itemsCreated} item{result.itemsCreated === 1 ? '' : 's'} and{' '}
+                  {result.categoriesCreated} categor{result.categoriesCreated === 1 ? 'y' : 'ies'} added
+                  {result.failures.length > 0 && <> · {result.failures.length} not added</>}
                 </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="card p-4 text-center">
-                  <div className="text-2xl font-bold text-lily-ink">
-                    {importResults.categoriesCreated}
-                  </div>
-                  <div className="text-sm text-neutral-text-muted mt-1">
-                    Categories Created
-                  </div>
-                </div>
+              {result.categoriesFailed.length > 0 && (
+                <p className="text-sm text-neutral-text-body">
+                  These categories couldn't be created, so their items went in without one:{' '}
+                  <strong className="text-neutral-text-dark">{result.categoriesFailed.join(', ')}</strong>. You can add them
+                  in the Categories tab and move the items across.
+                </p>
+              )}
 
-                <div className="card p-4 text-center">
-                  <div className="text-2xl font-bold text-lily-ink">
-                    {importResults.itemsCreated}
-                  </div>
-                  <div className="text-sm text-neutral-text-muted mt-1">
-                    Items Created
-                  </div>
-                </div>
-
-                {importResults.itemsFailed > 0 && (
-                  <div className="card p-4 text-center">
-                    <div className="text-2xl font-bold text-error">
-                      {importResults.itemsFailed}
-                    </div>
-                    <div className="text-sm text-neutral-text-muted mt-1">
-                      Items Failed
-                    </div>
-                  </div>
-                )}
-              </div>
+              {result.failures.length > 0 && (
+                <section aria-labelledby="import-failures">
+                  <h3 id="import-failures" className="subheading text-neutral-text-dark mb-1">Not added</h3>
+                  <ul className="card divide-y divide-neutral-border overflow-hidden">
+                    {result.failures.map(({ item, reason }, index) => (
+                      <li key={`${item.name}-${index}`} className="px-3 py-2">
+                        <div className="font-medium text-neutral-text-dark break-words">{item.name}</div>
+                        <div className="text-sm text-neutral-text-body">{reason}</div>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
             </div>
           )}
         </div>
 
-        {/* Footer Actions */}
-        <div className="flex items-center justify-between gap-3 p-4 md:p-6 border-t border-neutral-border flex-shrink-0 bg-off-white">
+        <div className="flex items-center justify-between gap-3 p-4 md:p-6 border-t border-neutral-border shrink-0">
           {step === 'input' && (
             <>
-              <button onClick={handleClose} className="btn-ghost text-sm md:text-base">
-                Cancel
-              </button>
-              <button onClick={handleParse} className="btn-primary text-sm md:text-base">
-                Parse Template
-              </button>
+              <button onClick={handleClose} className="btn-ghost">Cancel</button>
+              <button onClick={handleParse} className="btn-primary">Check the list</button>
             </>
           )}
 
           {step === 'preview' && (
             <>
-              <button onClick={() => setStep('input')} className="btn-ghost text-sm md:text-base">
-                Back to Edit
-              </button>
+              <button onClick={() => setStep('input')} className="btn-ghost">Back to the text</button>
               <button
-                onClick={handleImport}
-                className="btn-primary flex items-center gap-2 text-sm md:text-base"
+                onClick={() => startImport(parsedItems)}
+                className="btn-primary inline-flex items-center gap-2"
               >
-                <Upload size={20} weight="fill" />
-                Import {parsedItems.length} Items
+                <Upload size={20} weight="fill" aria-hidden />
+                Add {parsedItems.length} item{parsedItems.length === 1 ? '' : 's'}
               </button>
             </>
           )}
 
-          {step === 'complete' && (
+          {step === 'complete' && result && (
             <>
-              <button onClick={handleReset} className="btn-ghost text-sm md:text-base">
-                Import Another Template
-              </button>
-              <button onClick={handleClose} className="btn-primary text-sm md:text-base">
-                Done
-              </button>
+              {result.failures.length > 0 ? (
+                <button
+                  onClick={() => startImport(result.failures.map(failure => failure.item))}
+                  className="btn-secondary"
+                >
+                  {result.failures.length === 1 ? 'Try that one again' : `Try those ${result.failures.length} again`}
+                </button>
+              ) : (
+                <button onClick={() => { setStep('input'); setTemplateText(''); setParsedItems([]); }} className="btn-ghost">
+                  Import another list
+                </button>
+              )}
+              <button onClick={handleClose} className="btn-primary">Done</button>
             </>
           )}
         </div>

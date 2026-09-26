@@ -53,7 +53,12 @@ _ORDER_ADDED_COLUMNS = {
 # Columns added to inventory tables after they shipped.
 _INVENTORY_ADDED_COLUMNS = {
     "inventory_categories": {"sort_order": "INTEGER DEFAULT 0 NOT NULL"},
-    "inventory_items": {"sort_order": "INTEGER DEFAULT 0 NOT NULL"},
+    "inventory_items": {
+        "sort_order": "INTEGER DEFAULT 0 NOT NULL",
+        "count_mode": "VARCHAR(10) DEFAULT 'number' NOT NULL",
+        "pack_size": "NUMERIC(10, 3)",
+        "pack_unit": "VARCHAR(20)",
+    },
 }
 
 
@@ -104,6 +109,8 @@ def init_db():
     """
     from app.models import models  # noqa
     from app.models.settings_model import AppSetting  # noqa - ensures app_settings table is created
+    from app.models.digest_models import DailyDigest  # noqa - ensures daily_digests table is created
+    from app.models.costing_models import DishCosting, DishCostingIngredient  # noqa - ensures dish costing tables are created
 
     Base.metadata.create_all(bind=engine)
 

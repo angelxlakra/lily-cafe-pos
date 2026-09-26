@@ -28,6 +28,8 @@ from app.models.oauth_models import (  # noqa
     OAuthPendingAuthorization,
 )
 
+from app.models.costing_models import ( DishCosting, DishCostingIngredient)
+
 __all__ = [
     "Base",
     "Category",
@@ -43,6 +45,8 @@ __all__ = [
     "TransactionType",
     "DailyCashCounter",
     "AppSetting",
+    "DishCosting", # Dish Costing
+    "DishCostingIngredient", # Dish Costing
     "OAuthClient",
     "OAuthPendingAuthorization",
     "OAuthAuthorizationCode",

@@ -1,6 +1,6 @@
 
 import { X, Check } from '@phosphor-icons/react';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useChartTheme } from '../../hooks/useChartTheme';
 
 export type ChartVisibility = {
   [key: string]: boolean;
@@ -48,7 +48,7 @@ export default function AnalyticsSettingsModal({
   visibleCharts,
   onToggleChart,
 }: AnalyticsSettingsModalProps) {
-  const { theme } = useTheme();
+  const chartTheme = useChartTheme();
 
   if (!isOpen) return null;
 
@@ -56,17 +56,17 @@ export default function AnalyticsSettingsModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div 
         className="w-full max-w-md rounded-lg shadow-xl overflow-hidden animate-scale-in"
-        style={{ backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff' }}
+        style={{ backgroundColor: chartTheme.surface }}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-neutral-border">
-          <h2 className="text-lg font-heading font-semibold" style={{ color: theme === 'dark' ? '#ffffff' : '#5C3D2E' }}>
+          <h2 className="text-lg font-heading font-semibold" style={{ color: chartTheme.ink }}>
             Dashboard Settings
           </h2>
           <button
             onClick={onClose}
             className="p-1 rounded hover:bg-black/5 transition-colors pb-1"
-            style={{ color: theme === 'dark' ? '#9ca3af' : '#6b7280' }}
+            style={{ color: chartTheme.muted }}
           >
             <X size={20} />
           </button>
@@ -74,7 +74,7 @@ export default function AnalyticsSettingsModal({
 
         {/* Content */}
         <div className="p-4 max-h-[70vh] overflow-y-auto">
-          <p className="text-sm mb-4" style={{ color: theme === 'dark' ? '#d1d5db' : '#4b5563' }}>
+          <p className="text-sm mb-4" style={{ color: chartTheme.muted }}>
             Select which charts to display on your analytics dashboard using the toggles below.
           </p>
 
@@ -84,8 +84,8 @@ export default function AnalyticsSettingsModal({
                 key={chart.id}
                 className="flex items-start gap-3 p-3 rounded-lg border border-neutral-border cursor-pointer transition-colors"
                 style={{ 
-                    backgroundColor: theme === 'dark' ? 'rgba(55, 65, 81, 0.5)' : '#f9fafb',
-                    borderColor: visibleCharts[chart.id] ? (theme === 'dark' ? '#A88B6A' : '#5C3D2E') : undefined
+                    backgroundColor: chartTheme.surface,
+                    borderColor: visibleCharts[chart.id] ? (chartTheme.series[0]) : undefined
                 }}
                 onClick={() => onToggleChart(chart.id)}
               >
@@ -99,10 +99,10 @@ export default function AnalyticsSettingsModal({
                   {visibleCharts[chart.id] && <Check size={12} weight="bold" />}
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium" style={{ color: theme === 'dark' ? '#ffffff' : '#1f2937' }}>
+                  <h3 className="text-sm font-medium" style={{ color: chartTheme.ink }}>
                     {chart.label}
                   </h3>
-                  <p className="text-xs" style={{ color: theme === 'dark' ? '#9ca3af' : '#6b7280' }}>
+                  <p className="text-xs" style={{ color: chartTheme.muted }}>
                     {chart.description}
                   </p>
                 </div>

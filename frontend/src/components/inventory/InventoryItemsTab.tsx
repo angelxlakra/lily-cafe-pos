@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Plus, MagnifyingGlass, Warning, PencilSimple, Trash, X, ListNumbers } from '@phosphor-icons/react';
+import { Plus, MagnifyingGlass, Warning, PencilSimple, Archive, X, ListNumbers, Upload, Table } from '@phosphor-icons/react';
 import CountOrderEditor from './CountOrderEditor';
+import InventorySetupGrid from './InventorySetupGrid';
+import TemplateImportModal from './TemplateImportModal';
 import ConfirmDialog from '../ConfirmDialog';
 import LoadingSpinner from '../LoadingSpinner';
 import { useInventoryItems, useInventoryCategories, useCreateItem, useUpdateItem, useDeleteItem } from '../../hooks/useInventory';
@@ -17,6 +19,8 @@ export default function InventoryItemsTab() {
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [deletingItem, setDeletingItem] = useState<InventoryItem | null>(null);
   const [arranging, setArranging] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [editingAll, setEditingAll] = useState(false);
 
   // Items are master data (cost prices, reorder levels), so only the owner
   // may add, change or remove them. Enforced on the API too.
@@ -32,6 +36,7 @@ export default function InventoryItemsTab() {
   const deleteItem = useDeleteItem();
 
   if (arranging) return <CountOrderEditor onDone={() => setArranging(false)} />;
+  if (editingAll && isOwner) return <InventorySetupGrid onDone={() => setEditingAll(false)} />;
 
   // Group by category in count order; the API returns items in count order
   // within each category.
@@ -50,7 +55,15 @@ export default function InventoryItemsTab() {
           {itemsData ? `${itemsData.total} item${itemsData.total === 1 ? '' : 's'}${itemsData.low_stock_count ? ` · ${itemsData.low_stock_count} low on stock` : ''}` : ' '}
         </p>
         {isOwner && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => setImporting(true)} className="btn-secondary flex items-center gap-2 whitespace-nowrap">
+              <Upload weight="bold" aria-hidden />
+              Import list
+            </button>
+            <button onClick={() => setEditingAll(true)} className="btn-secondary flex items-center gap-2 whitespace-nowrap">
+              <Table weight="bold" aria-hidden />
+              Edit all
+            </button>
             <button onClick={() => setArranging(true)} className="btn-secondary flex items-center gap-2 whitespace-nowrap">
               <ListNumbers weight="bold" aria-hidden />
               Count order
@@ -103,7 +116,7 @@ export default function InventoryItemsTab() {
 
       {deleteItem.isError && (
         <div role="alert" className="card p-3 border border-error/40 bg-error/5 text-sm">
-          Couldn't delete the item. {describeApiError(deleteItem.error)}
+          Couldn't retire the item. {describeApiError(deleteItem.error)}
         </div>
       )}
 
@@ -134,6 +147,12 @@ export default function InventoryItemsTab() {
         ))
       )}
 
+      <TemplateImportModal
+        isOpen={importing && isOwner}
+        onClose={() => setImporting(false)}
+        existingCategories={categories}
+      />
+
       {(isCreating || editingItem) && isOwner && (
         <ItemFormModal
           categories={categories}
@@ -152,9 +171,9 @@ export default function InventoryItemsTab() {
           if (deletingItem) deleteItem.mutate(deletingItem.id);
           setDeletingItem(null);
         }}
-        title={`Delete ${deletingItem?.name ?? 'item'}?`}
-        message="It will no longer appear in the nightly count. Its stock log stays."
-        confirmText="Delete item"
+        title={`Retire ${deletingItem?.name ?? 'item'}?`}
+        message="It will no longer appear in the nightly count or the item list. Its stock log stays."
+        confirmText="Retire item"
         cancelText="Keep it"
         variant="danger"
       />
@@ -199,10 +218,10 @@ function ItemRow({ item, canEdit, onEdit, onDelete }: {
           </button>
           <button
             onClick={onDelete}
-            aria-label={`Delete ${item.name}`}
+            aria-label={`Retire ${item.name}`}
             className="size-12 grid place-items-center rounded-lg text-neutral-text-light hover:text-error hover:bg-error/10"
           >
-            <Trash size={18} aria-hidden />
+            <Archive size={18} aria-hidden />
           </button>
         </div>
       )}
@@ -222,8 +241,10 @@ function ItemFormModal({ categories, item, onClose }: { categories: InventoryCat
     unit: item?.unit || 'pcs',
     current_quantity: Number(item?.current_quantity ?? 0),
     min_threshold: Number(item?.min_threshold ?? 5),
-    cost_per_unit: Number(item?.cost_per_unit ?? 0),
   });
+  // Blank means no price. Sending 0 is what left 98 items looking free.
+  const [cost, setCost] = useState(item?.cost_per_unit != null && Number(item.cost_per_unit) > 0 ? String(Number(item.cost_per_unit)) : '');
+  const costPerUnit = cost.trim() === '' ? null : Number(cost);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => event.key === 'Escape' && !saving && onClose();
@@ -243,11 +264,11 @@ function ItemFormModal({ categories, item, onClose }: { categories: InventoryCat
             category_id: formData.category_id,
             unit: formData.unit,
             min_threshold: formData.min_threshold,
-            cost_per_unit: formData.cost_per_unit
+            cost_per_unit: costPerUnit
           }
         });
       } else {
-        await createItem.mutateAsync(formData);
+        await createItem.mutateAsync({ ...formData, cost_per_unit: costPerUnit });
       }
       onClose();
     } catch (err) {
@@ -356,8 +377,9 @@ function ItemFormModal({ categories, item, onClose }: { categories: InventoryCat
                 type="number"
                 min="0"
                 step="0.01"
-                value={formData.cost_per_unit}
-                onChange={e => setFormData({...formData, cost_per_unit: Number(e.target.value)})}
+                value={cost}
+                placeholder="Not set"
+                onChange={e => setCost(e.target.value)}
                 className="input-field"
               />
             </div>

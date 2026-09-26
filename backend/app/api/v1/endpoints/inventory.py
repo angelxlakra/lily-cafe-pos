@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from app.db.session import get_db
 from app.models.inventory_models import (
@@ -20,6 +20,7 @@ from app.core import settings_store
 from app.api.deps import get_current_user, get_current_owner
 from app.schemas import TokenData
 from app.utils.email_sender import send_inventory_report
+from app.utils.units import compatible, convert
 
 router = APIRouter()
 
@@ -220,6 +221,91 @@ def reorder_items(
 ):
     """Set the order items appear in within their category. Owner only."""
     _apply_sort_order(db, InventoryItem, order.ids)
+
+# Columns that can't hold NULL; sending null for one is a client error, not a 500.
+_REQUIRED_ITEM_FIELDS = ("name", "unit", "min_threshold", "count_mode", "is_active")
+_CENT = Decimal("0.01")
+
+def _to_cents(value: Decimal) -> Decimal:
+    """Round to what the column holds, but never a positive amount down to 0:
+    a 1 g alert that became 0 kg would stop alerting when the item runs out."""
+    rounded = value.quantize(_CENT, rounding=ROUND_HALF_UP)
+    return max(rounded, _CENT) if value > 0 else rounded
+
+def _convert_to_unit(item: InventoryItem, new_unit: str, sent: dict, stock_sent: bool) -> None:
+    """g -> kg keeps the same stock: 2000 g becomes 2 kg, not 2000 kg.
+
+    Only values not sent in the same row are converted; sent ones are already
+    in the new unit. Units of different kinds (g -> pcs) convert nothing.
+    """
+    old_unit = item.unit
+    if not compatible(old_unit, new_unit) or convert(1, old_unit, new_unit) == 1:
+        return
+    if not stock_sent:
+        item.current_quantity = _to_cents(convert(item.current_quantity, old_unit, new_unit))
+    if "min_threshold" not in sent:
+        item.min_threshold = _to_cents(convert(item.min_threshold, old_unit, new_unit))
+    if "cost_per_unit" not in sent and item.cost_per_unit is not None:
+        # A price is per unit, so it scales the other way.
+        item.cost_per_unit = _to_cents(convert(item.cost_per_unit, new_unit, old_unit))
+
+@router.patch("/items", response_model=dict)
+def bulk_update_items(
+    payload: inventory_schemas.BulkItemsUpdate,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _OWNER,
+):
+    """The setup grid's one Save: every changed row, applied in one commit.
+
+    Retiring is is_active=false, the same soft delete as DELETE /items/{id}.
+    A stock change is written as an adjustment so the stock log stays complete.
+    Owner only.
+    """
+    ids = [row.id for row in payload.items]
+    items = {item.id: item for item in db.query(InventoryItem).filter(InventoryItem.id.in_(ids))}
+    missing = sorted(set(ids) - items.keys())
+    if missing:
+        raise HTTPException(status_code=404, detail=f"Items not found: {missing}")
+
+    category_ids = {row.category_id for row in payload.items if row.category_id is not None}
+    known = {c.id for c in db.query(InventoryCategory.id).filter(InventoryCategory.id.in_(category_ids))}
+    if category_ids - known:
+        raise HTTPException(status_code=400, detail=f"Categories not found: {sorted(category_ids - known)}")
+
+    adjusted = 0
+    for row in payload.items:
+        item = items[row.id]
+        changes = row.model_dump(exclude_unset=True, exclude={"id", "current_quantity"})
+        blank = [key for key in _REQUIRED_ITEM_FIELDS if key in changes and changes[key] is None]
+        if blank:
+            raise HTTPException(status_code=422, detail=f"{item.name}: {', '.join(blank)} can't be empty")
+        if "unit" in changes:
+            _convert_to_unit(item, changes["unit"], changes, row.current_quantity is not None)
+        for key, value in changes.items():
+            setattr(item, key, value)
+
+        target = row.current_quantity if row.current_quantity is not None else item.current_quantity
+        if item.count_mode == "presence":
+            # A yes/no item has no unit, price or pack, alerts when out, and holds 1 or 0.
+            item.unit, item.min_threshold, item.cost_per_unit = "yes/no", Decimal(1), None
+            item.pack_size = item.pack_unit = None
+            target = Decimal(1) if target > 0 else Decimal(0)
+
+        if target != item.current_quantity:
+            db.add(InventoryTransaction(
+                item_id=item.id,
+                transaction_type=TransactionType.ADJUSTMENT,
+                quantity=target - item.current_quantity,
+                notes="Setup grid",
+                recorded_by=current_user.username,
+                previous_quantity=item.current_quantity,
+                new_quantity=target,
+            ))
+            item.current_quantity = target
+            adjusted += 1
+
+    db.commit()
+    return {"updated": len(items), "adjusted": adjusted}
 
 @router.get("/items/{item_id}", response_model=inventory_schemas.InventoryItem)
 def get_item(item_id: int, db: Session = Depends(get_db), current_user: TokenData = _READ):

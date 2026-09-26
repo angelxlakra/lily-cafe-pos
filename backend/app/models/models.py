@@ -59,7 +59,7 @@ class MenuItem(Base):
     # Relationships
     category = relationship("Category", back_populates="menu_items")
     order_items = relationship("OrderItem", back_populates="menu_item")
-
+    costing = relationship("DishCosting", back_populates="menu_item", uselist=False, cascade="all, delete-orphan")
 
 class Order(Base):
     """Customer orders placed at tables."""

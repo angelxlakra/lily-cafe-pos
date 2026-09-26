@@ -64,7 +64,7 @@ class TestOrderHistoryDateWindow:
         assert response.status_code == 200
 
     def test_admin_can_request_today(self, client, auth_headers):
-        today = date.today().isoformat()
+        today = business_day.business_today().isoformat()
         response = client.get(
             f"/api/v1/orders/history?start_date={today}&end_date={today}",
             headers=auth_headers,
@@ -72,7 +72,7 @@ class TestOrderHistoryDateWindow:
         assert response.status_code == 200
 
     def test_admin_cannot_request_previous_day(self, client, auth_headers):
-        yesterday = (date.today() - timedelta(days=1)).isoformat()
+        yesterday = (business_day.business_today() - timedelta(days=1)).isoformat()
         response = client.get(
             f"/api/v1/orders/history?start_date={yesterday}&end_date={yesterday}",
             headers=auth_headers,
@@ -81,8 +81,8 @@ class TestOrderHistoryDateWindow:
         assert "Owner login required" in response.json()["detail"]
 
     def test_admin_cannot_request_range_spanning_previous_days(self, client, auth_headers):
-        start = (date.today() - timedelta(days=7)).isoformat()
-        end = date.today().isoformat()
+        start = (business_day.business_today() - timedelta(days=7)).isoformat()
+        end = business_day.business_today().isoformat()
         response = client.get(
             f"/api/v1/orders/history?start_date={start}&end_date={end}",
             headers=auth_headers,
@@ -90,7 +90,7 @@ class TestOrderHistoryDateWindow:
         assert response.status_code == 403
 
     def test_admin_cannot_use_legacy_date_param_for_past(self, client, auth_headers):
-        yesterday = (date.today() - timedelta(days=1)).isoformat()
+        yesterday = (business_day.business_today() - timedelta(days=1)).isoformat()
         response = client.get(
             f"/api/v1/orders/history?date={yesterday}", headers=auth_headers
         )
@@ -108,7 +108,7 @@ class TestOrderHistoryDateWindow:
     def test_owner_can_read_previous_days(
         self, client, owner_headers, yesterdays_order
     ):
-        yesterday = (date.today() - timedelta(days=1)).isoformat()
+        yesterday = (business_day.business_today() - timedelta(days=1)).isoformat()
         response = client.get(
             f"/api/v1/orders/history?start_date={yesterday}&end_date={yesterday}",
             headers=owner_headers,
@@ -116,6 +116,26 @@ class TestOrderHistoryDateWindow:
         assert response.status_code == 200
         order_numbers = [item["order_number"] for item in response.json()["items"]]
         assert yesterdays_order.order_number in order_numbers
+
+
+class TestAdminDateWindowAfterUtcEvening:
+    """At 20:00 UTC it is already tomorrow in IST; "today" must mean the IST date."""
+
+    @pytest.fixture(autouse=True)
+    def utc_evening(self, monkeypatch):
+        monkeypatch.setattr(business_day, "utcnow", lambda: datetime(2026, 3, 9, 20, 0))
+
+    def test_admin_today_is_the_ist_date(self, client, auth_headers):
+        ist_today, utc_today = date(2026, 3, 10), date(2026, 3, 9)
+        assert business_day.business_today() == ist_today
+
+        for day, expected in ((ist_today, 200), (utc_today, 403)):
+            history = client.get(
+                f"/api/v1/orders/history?start_date={day}&end_date={day}",
+                headers=auth_headers,
+            )
+            cash_day = client.get(f"/api/v1/cash-counter/day/{day}", headers=auth_headers)
+            assert (history.status_code, cash_day.status_code) == (expected, expected), day
 
 
 class TestSingleOrderVisibility:
@@ -391,8 +411,8 @@ class TestCancellationAuditTrail:
 
 class TestDishFrequencyDateWindow:
     def test_admin_cannot_request_past_range(self, client, auth_headers):
-        start = (date.today() - timedelta(days=30)).isoformat()
-        end = date.today().isoformat()
+        start = (business_day.business_today() - timedelta(days=30)).isoformat()
+        end = business_day.business_today().isoformat()
         response = client.get(
             f"/api/v1/analytics/dish-frequency?start_date={start}&end_date={end}",
             headers=auth_headers,
@@ -406,8 +426,8 @@ class TestDishFrequencyDateWindow:
         assert response.status_code == 200
 
     def test_owner_can_request_past_range(self, client, owner_headers):
-        start = (date.today() - timedelta(days=30)).isoformat()
-        end = date.today().isoformat()
+        start = (business_day.business_today() - timedelta(days=30)).isoformat()
+        end = business_day.business_today().isoformat()
         response = client.get(
             f"/api/v1/analytics/dish-frequency?start_date={start}&end_date={end}",
             headers=owner_headers,

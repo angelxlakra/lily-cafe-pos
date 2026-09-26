@@ -6,6 +6,7 @@ import type {
   InventoryItem,
   InventoryItemCreate,
   InventoryItemUpdate,
+  BulkItemUpdate,
   InventoryItemsResponse,
   LowStockResponse,
   PurchaseCreate,
@@ -75,6 +76,12 @@ export const inventoryApi = {
 
   updateItem: async (id: number, data: InventoryItemUpdate): Promise<InventoryItem> => {
     const response = await apiClient.patch<InventoryItem>(`/inventory/items/${id}`, data);
+    return response.data;
+  },
+
+  /** The setup grid's one Save: all changed rows in one commit. */
+  bulkUpdateItems: async (items: BulkItemUpdate[]): Promise<{ updated: number; adjusted: number }> => {
+    const response = await apiClient.patch<{ updated: number; adjusted: number }>('/inventory/items', { items });
     return response.data;
   },
 

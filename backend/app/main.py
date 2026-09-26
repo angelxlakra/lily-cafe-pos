@@ -20,8 +20,8 @@ async def lifespan(app: FastAPI):
     init_db()
     # Load settings from DB into the in-memory cache.
     # init_db() runs first so the app_settings table is guaranteed to exist.
-    from app.db.session import SessionLocal
     from app.core import settings_store
+    from app.db.session import SessionLocal
     db = SessionLocal()
     try:
         settings_store.load(db)
@@ -35,7 +35,17 @@ async def lifespan(app: FastAPI):
             # started from here or every /mcp request fails.
             from app.mcp.server import mcp
             await stack.enter_async_context(mcp.session_manager.run())
-        yield
+
+        # The morning digest runs in-process: this app never sleeps
+        # (fly.toml pins min_machines_running = 1), so a daily job needs a
+        # sleeping task, not a scheduler library or a second machine.
+        from app.ask import scheduler
+        digest_task = scheduler.start(app)
+        try:
+            yield
+        finally:
+            if digest_task is not None:
+                digest_task.cancel()
 
 
 # Create FastAPI application

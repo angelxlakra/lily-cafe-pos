@@ -35,6 +35,16 @@
   --color-warning: #9E4A06;
   --color-info: #1565C0;
 
+  /* Chart series, in fixed order. Validated for colour-vision separation
+     and contrast against the chart surface; dark mode has its own steps,
+     not a flip. Never cycle past the last one: fold the rest into "Other". */
+  --color-chart-1: #8A4B23;
+  --color-chart-2: #0E8F6F;
+  --color-chart-3: #B5730A;
+  --color-chart-4: #2456B0;
+  --color-chart-5: #8C3A78;
+  --color-chart-6: #4F7A1F;
+
   /* Neutral colors - Light Mode */
   --color-neutral-text-dark: #2C2420;
   --color-neutral-text-body: #43352D;
@@ -44,7 +54,10 @@
   --color-neutral-background: #FFFCF7;
 
   /* Custom fonts */
-  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  /* The system sans: no webfont to download, so the app stays fast on a
+     phone and works on a local network with no internet. Quesha is the
+     only face we ship. */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
   --font-heading: "Quesha", "Georgia", "Times New Roman", serif;
 
   /* Custom spacing (8px grid) */
@@ -132,6 +145,14 @@
   --color-error: #F47B78;
   --color-warning: #FFA726;
   --color-info: #42A5F5;
+
+  /* Chart series - dark mode steps */
+  --color-chart-1: #C07F45;
+  --color-chart-2: #31A085;
+  --color-chart-3: #BE7F22;
+  --color-chart-4: #5C92DC;
+  --color-chart-5: #B3679F;
+  --color-chart-6: #71A044;
 
   /* Neutral colors - Dark Mode */
   --color-neutral-text-dark: #F5F0E8;

@@ -17,6 +17,12 @@ colors:
   neutral-text-body: "#43352D"
   neutral-text-light: "#6B5D54"
   neutral-text-muted: "#736459"
+  chart-1: "#8A4B23"
+  chart-2: "#0E8F6F"
+  chart-3: "#B5730A"
+  chart-4: "#2456B0"
+  chart-5: "#8C3A78"
+  chart-6: "#4F7A1F"
   success: "#276C2B"
   error: "#B3342A"
   warning: "#9E4A06"
@@ -41,12 +47,12 @@ typography:
     lineHeight: 1.25
     letterSpacing: "0.04em"
   body:
-    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
     fontSize: "1rem"
     fontWeight: 400
     lineHeight: 1.6
   label:
-    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
     fontSize: "0.75rem"
     fontWeight: 600
     lineHeight: 1.2
@@ -174,7 +180,7 @@ A roasted-coffee palette on cream paper, with one botanical green borrowed from 
 ## Typography
 
 **Display Font:** Quesha, self-hosted at `/fonts/Quesha.ttf` (fallback: Georgia, serif)
-**Body Font:** Inter (fallback: ui-sans-serif, system-ui). Inter is declared but not loaded, so in practice this renders in the system sans.
+**Body Font:** the system sans (`ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto…`). No webfont is downloaded for body text, so screens paint immediately on a phone and the app works on a local network with no internet. Quesha is the only face the app ships.
 **Label/Mono Font:** the system monospace via `font-mono`, for prices, totals, order numbers and counts.
 
 **Character:** a handwritten notebook heading over a plain working hand. The contrast is the brand. Quesha supplies the personality so that nothing else has to.
@@ -263,6 +269,15 @@ One line per stock item in Tonight's Count. The name and a status line sit on th
 ### Settling Bill (signature)
 The payment modal's Remaining tile counts down as payments are added. When it lands on ₹0, the tile turns Lily Leaf, reads "Fully paid", a checkmark draws in, and Complete fills with brown from left to right. The button is enabled by the real balance, not by the animation.
 
+### Charts (analytics)
+- **Series colours** come from `chart-1` … `chart-6` in that fixed order, assigned to the entity rather than its rank, so a filter never repaints the survivors. There is no seventh colour: anything past six folds into "Other" or becomes small multiples.
+- **The palette is validated**, not chosen by eye: every step clears the lightness band, the chroma floor, colour-vision separation and 3:1 against the chart surface. Dark mode has its own steps (`#C07F45`, `#31A085`, `#BE7F22`, `#5C92DC`, `#B3679F`, `#71A044`), not a flip of the light ones.
+- **Magnitude uses one hue**, mixed toward the chart surface (the Busy Times heatmap). Never a rainbow.
+- **Status stays status:** paid, active and cancelled use the success, warning and error tokens with labels, and those colours are never reused as "series 4".
+- **Text wears text tokens.** Titles, values, axis labels and legends use Ink and Margin Note; colour belongs to the marks.
+- **One measure per axis.** Rupees and units don't share a scale; use a second chart instead.
+- **Colours are read from tokens at runtime** through `useChartTheme`, never branched on the theme inside a component.
+
 ### Badges
 Pill-shaped, 12px weight 600, with semantic tints for order and payment status.
 
@@ -277,6 +292,7 @@ Phosphor Icons. `duotone` is the default weight, with `bold` for emphasis and `f
 - **Do** set rupee amounts and counts in `font-mono` or `tabular-nums`.
 - **Do** use Lily Leaf for paid, served and available states, and Roasted Coffee for the next action.
 - **Do** define dark-mode colours by re-toning tokens under `.dark`, keeping them warm.
+- **Do** take chart colours from `useChartTheme` and the `chart-1…6` tokens, in fixed order.
 - **Do** use the shared motion utilities (`animate-*`, `useCountUp`, `useListPresence`) and `--ease-settle` rather than new keyframes or curves.
 - **Do** give every async surface a plain-language error with a retry (`describeApiError`), and never lose what someone typed.
 
@@ -286,6 +302,8 @@ Phosphor Icons. `duotone` is the default weight, with `bold` for emphasis and `f
 - **Don't** add new shadow levels, glass panels or gradients. Depth is already over-expressed.
 - **Don't** extend the `<Button>` component's divergent variant set. Align it with `.btn-*` or use the utilities directly.
 - **Don't** add more `!important` dark-mode patches to `index.css`. Fix the token instead.
+- **Don't** hard-code a hex or branch on `theme === 'dark'` inside a chart; the tokens already re-tone.
+- **Don't** put two measures of different scale on one axis, or use a single-hue ramp to tell separate things apart.
 - **Don't** use bounce or elastic curves, infinite loops, hover lift, or staggered reveals across long lists.
 - **Don't** use browser `alert`/`confirm`. Use `ConfirmDialog` or an inline message.
 - **Don't** mark a card with a thick coloured left edge. Use a thin tinted border.
