@@ -258,7 +258,7 @@ it needs someone to run `flyctl deploy` by hand. The two drift, silently.
    app. Production needs the app named explicitly:
 
    ```
-   flyctl deploy -a lily-cafe-pos
+   flyctl deploy -a lily-cafe-pos --build-arg GIT_SHA=$(git rev-parse HEAD)
    ```
 
 2. **A deploy can report success while shipping stale code.** On 2026-09-26 the backend
@@ -269,17 +269,19 @@ it needs someone to run `flyctl deploy` by hand. The two drift, silently.
    The cafe counted 82 items that night and lost all of it to a 404. Fixed in
    [#56](https://github.com/angelxlakra/lily-cafe-pos/pull/56).
 
-**The underlying gap is that nothing reports what is actually deployed.** `GET /` returns
-`version: 0.2.0`, which is hardcoded and was equally true of the stale image. If it
-reported the git SHA, checking would be one line instead of grepping inside a running
-container. Worth doing before the next feature that spans both halves:
+**The underlying gap was that nothing reported what is actually deployed.** `GET /`
+returned `version: 0.2.0`, hardcoded and equally true of the stale image. It now also
+returns the commit the image was built from, so checking is one line rather than grepping
+inside a running container:
 
 ```
 curl -s https://lily-cafe-pos.fly.dev/ | jq -r .commit    # vs: git rev-parse origin/main
 ```
 
-Until then, after any backend change, verify the thing you shipped rather than the release
-status — hit the new endpoint and check it answers.
+An unstamped build reports `"unknown"` rather than claiming a version it cannot vouch for,
+so a forgotten `--build-arg` is visible instead of silent. Either way, after any backend
+change, verify the thing you shipped rather than the release status — hit the new endpoint
+and check it answers.
 
 ## Not covered here
 
