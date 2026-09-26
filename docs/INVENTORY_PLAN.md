@@ -294,6 +294,39 @@ so a forgotten `--build-arg` is visible instead of silent. Either way, after any
 change, verify the thing you shipped rather than the release status — hit the new endpoint
 and check it answers.
 
+## Follow-up: make a stale deploy impossible, not just visible
+
+On 2026-09-26, an hour after the section above was written, the same failure happened
+again. Local `main` was one commit behind `origin/main`; `flyctl deploy` built from the
+working directory, and v28 shipped without the change. Every signal said success — the
+release completed, the health check passed, the app served traffic — and it surfaced only
+by grepping inside the running container.
+
+That is the shape of the problem: **`flyctl deploy` takes its input from the filesystem,
+while everything else in this workflow reasons about git.** The two disagree silently, and
+only the filesystem gets shipped. A clean working tree is not a current one.
+
+The commit stamp added in [#57](https://github.com/angelxlakra/lily-cafe-pos/pull/57)
+reports the problem afterwards, and it cannot report on an image built before it existed —
+a stale image cannot tell you it is stale. So it needs a partner that refuses the deploy in
+the first place. Roughly five lines, as `scripts/deploy-backend.sh`:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+git fetch -q origin main
+[ -z "$(git status --porcelain)" ] || { echo "working tree is dirty — refusing"; exit 1; }
+[ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || {
+  echo "HEAD is not origin/main — refusing"; exit 1; }
+flyctl deploy -a lily-cafe-pos --build-arg GIT_SHA="$(git rev-parse HEAD)"
+```
+
+It also removes the two things a human has to remember every time: naming the production
+app (the local `fly.toml` says `lily-cafe-pos-dev`) and passing the build stamp.
+
+Worth doing before the next feature that spans both halves of the stack — which is the
+setup grid, since it needs `PATCH /items` on the backend and the grid on the frontend.
+
 ## Not covered here
 
 `docs/master-project-document.md` predates this work — its header still reads October 2024.
