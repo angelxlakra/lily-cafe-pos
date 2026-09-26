@@ -67,13 +67,33 @@ export function pickBigDifferences<T extends { previous: number; counted: number
     .map(({ change }) => change);
 }
 
-/** pickBigDifferences over a count in progress: the counted items that changed, most extreme first. */
-export function bigDifferenceItems<T extends { id: number; current_quantity: number | string }>(
+/**
+ * pickBigDifferences over a count in progress: the counted items that changed, most extreme first.
+ * Yes/no items never qualify: an answer can't be mistyped, and a run-out (1→0) would otherwise
+ * crowd the one real variance off the list.
+ */
+export function bigDifferenceItems<T extends { id: number; current_quantity: number | string; count_mode?: string }>(
   items: T[],
   counts: Record<number, number>,
 ): T[] {
   const changes = items
+    .filter(item => !isPresence(item))
     .filter(item => item.id in counts && counts[item.id] !== Number(item.current_quantity))
     .map(item => ({ item, previous: Number(item.current_quantity), counted: counts[item.id] }));
   return pickBigDifferences(changes).map(change => change.item);
+}
+
+// Yes/no items: stored as 1 (have it) or 0 (out), never shown as a number.
+
+export const isPresence = (item: { count_mode?: string }) => item.count_mode === 'presence';
+
+/** What the system held, in the past tense the count reads in: "had it" / "out". */
+export const hadIt = (value: number | string) => (Number(value) > 0 ? 'had it' : 'out');
+
+/** What was answered tonight: "have it" / "out". */
+export const haveIt = (value: number | string) => (Number(value) > 0 ? 'have it' : 'out');
+
+/** A change as a person would say it: "had it → out" for yes/no, "3 → 2½" otherwise. */
+export function describeChange(item: { count_mode?: string }, previous: number | string, next: number | string): string {
+  return isPresence(item) ? `${hadIt(previous)} → ${haveIt(next)}` : `${formatQty(previous)} → ${formatQty(next)}`;
 }

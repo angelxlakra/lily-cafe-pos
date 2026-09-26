@@ -81,6 +81,8 @@ export interface InventoryTransaction {
   previous_quantity: number;
   new_quantity: number;
   created_at: string;
+  /** The item's current mode; a yes/no item's movements read "had it → out". */
+  count_mode?: CountMode;
 }
 
 export interface PurchaseItem {

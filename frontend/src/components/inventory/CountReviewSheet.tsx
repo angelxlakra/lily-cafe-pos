@@ -1,6 +1,7 @@
 /**
  * Bottom sheet shown before saving a count: what was checked, what changed
- * (big differences first, for a second look) and what wasn't counted.
+ * (big differences first, for a second look), yes/no items that flipped,
+ * and what wasn't counted.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -9,7 +10,7 @@ import LoadingSpinner from '../LoadingSpinner';
 import { useDialogFocus } from '../../hooks/useDialogFocus';
 import type { InventoryItem } from '../../types/inventory';
 import type { CountEntries } from '../../utils/countDraft';
-import { formatQty } from '../../utils/countQuantity';
+import { describeChange, formatQty, isPresence } from '../../utils/countQuantity';
 
 interface CountReviewSheetProps {
   items: InventoryItem[];
@@ -38,6 +39,8 @@ export default function CountReviewSheet({
   const checked = items.filter(item => counts[item.id] === Number(item.current_quantity));
   const changed = items.filter(item => item.id in counts && counts[item.id] !== Number(item.current_quantity));
   const uncounted = items.filter(item => !(item.id in counts));
+  // Never in the big differences (an answer can't be mistyped), but worth seeing: this is what ran out.
+  const flipped = changed.filter(isPresence);
   const shownUncounted = showAllUncounted ? uncounted : uncounted.slice(0, UNCOUNTED_PREVIEW);
   const nothingCounted = uncounted.length === items.length;
   const mostlyUncounted = !nothingCounted && uncounted.length > items.length / 2;
@@ -93,6 +96,30 @@ export default function CountReviewSheet({
                       <span className="font-medium text-neutral-text-dark min-w-0 truncate">{item.name}</span>
                       <span className="shrink-0 tabular-nums text-sm text-neutral-text-body">
                         {formatQty(item.current_quantity)} → <strong>{formatQty(counts[item.id])}</strong> {item.unit}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {flipped.length > 0 && (
+            <section className="mt-5" aria-labelledby="count-review-flipped">
+              <h3 id="count-review-flipped" className="subheading text-neutral-text-dark">
+                Yes / no changes
+              </h3>
+              <ul className="mt-2 divide-y divide-neutral-border rounded-lg border border-neutral-border bg-off-white">
+                {flipped.map(item => (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => onGoToItem(item.id)}
+                      className="w-full min-h-12 px-3 py-2 flex items-center justify-between gap-3 text-left hover:bg-cream/60"
+                    >
+                      <span className="text-neutral-text-dark min-w-0 truncate">{item.name}</span>
+                      <span className="shrink-0 text-sm text-neutral-text-body">
+                        {describeChange(item, item.current_quantity, counts[item.id])}
                       </span>
                     </button>
                   </li>

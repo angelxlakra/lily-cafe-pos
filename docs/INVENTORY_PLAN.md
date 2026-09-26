@@ -46,7 +46,8 @@ In dependency order.
 6. **Reconciliation** (~1½ days) — weekly variance per item. Needs everything above.
 7. **Vendors and order messages** (~1 day) — independent once low stock is trustworthy.
 
-Shipped already: the typed-input count row (`6b8cbf6`).
+Shipped already: the typed-input count row (`6b8cbf6`), the setup grid (1), and yes/no items in
+the nightly count (2): the Out / Have it row, the model-level clamp, review sheet and stock log.
 
 ## State of `feature/dish-costing`
 

@@ -1,8 +1,18 @@
 from sqlalchemy import Column, Integer, String, Numeric, Boolean, ForeignKey, DateTime, Date, Enum
-from sqlalchemy.orm import relationship
+from decimal import Decimal
+
+from sqlalchemy.orm import relationship, validates
 from sqlalchemy.sql import func
 import enum
 from app.db.session import Base
+
+
+PRESENCE = "presence"
+
+
+def presence_quantity(value) -> Decimal:
+    """A yes/no item holds exactly 1 (have it) or 0 (out)."""
+    return Decimal(1) if value > 0 else Decimal(0)
 
 class InventoryCategory(Base):
     __tablename__ = "inventory_categories"
@@ -42,6 +52,28 @@ class InventoryItem(Base):
     category = relationship("InventoryCategory", back_populates="items")
     transactions = relationship("InventoryTransaction", back_populates="item")
     costing_ingredients = relationship("DishCostingIngredient", back_populates="inventory_item")
+
+    @validates("current_quantity", "count_mode")
+    def _clamp_presence(self, key, value):
+        """Keep a yes/no item at 1 or 0 whoever writes it.
+
+        Lives on the model because five paths write current_quantity (count,
+        purchase, usage, adjustment, the setup grid); "record usage: 3" on
+        chilli oil must land on 0, not -3.
+        """
+        if key == "count_mode":
+            # Also covers InventoryItem(current_quantity=5, count_mode="presence"),
+            # where the quantity may be set before the mode.
+            if value == PRESENCE and self.current_quantity is not None:
+                self.current_quantity = presence_quantity(self.current_quantity)
+            return value
+        if self.count_mode == PRESENCE and value is not None:
+            return presence_quantity(value)
+        return value
+
+    @property
+    def is_presence(self) -> bool:
+        return self.count_mode == PRESENCE
 
     @property
     def is_low_stock(self) -> bool:
