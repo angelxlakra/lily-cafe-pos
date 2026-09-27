@@ -92,12 +92,13 @@ def print_chit(payload: dict, printer_cfg: dict, paper_size: str = "80mm") -> bo
             printer.text(f"Name:  {payload['customer_name']}\n")
         printer.text("\n")
 
-        # Items — large text, no prices
+        # Items — large text, no prices. Centered so the quantity sits away from
+        # the paper edge, which can curl and get scraped off on the rail.
         for item in payload["items"]:
             if item.get("is_beverage"):
-                printer.set(align="left", bold=True, underline=True, width=2, height=2)
+                printer.set(align="center", bold=True, underline=True, width=2, height=2)
             else:
-                printer.set(align="left", bold=True, underline=False, width=2, height=2)
+                printer.set(align="center", bold=True, underline=False, width=2, height=2)
             printer.text(f"{item['quantity']}x {item['name']}\n\n")
 
         printer.set(bold=False, underline=False, width=1, height=1)
@@ -109,7 +110,7 @@ def print_chit(payload: dict, printer_cfg: dict, paper_size: str = "80mm") -> bo
 
         note = (payload.get("notes") or "").strip()
         if note:
-            printer.set(align="left", bold=True, width=2, height=2)
+            printer.set(align="center", bold=True, width=2, height=2)
             for line in _wrap(note, width // 2):
                 printer.text(f"{line}\n")
             printer.set(bold=False, width=1, height=1)
