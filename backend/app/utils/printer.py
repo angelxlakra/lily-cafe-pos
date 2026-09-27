@@ -776,10 +776,12 @@ def _print_order_chit_escpos(order: models.Order, items_to_print: list[models.Or
 
         for item in items_to_print:
             # Format beverages differently (underlined) to distinguish from food
+            # Centered so the quantity sits away from the paper edge, which can
+            # curl and get scraped off on the rail.
             if item.is_beverage:
-                printer.set(align='left', bold=True, underline=True, width=2, height=2)
+                printer.set(align='center', bold=True, underline=True, width=2, height=2)
             else:
-                printer.set(align='left', bold=True, underline=False, width=2, height=2)
+                printer.set(align='center', bold=True, underline=False, width=2, height=2)
 
             # Item with large quantity (NO PRICE - kitchen doesn't need it)
             printer.text(f"{item.quantity}x {item.menu_item_name}\n")
