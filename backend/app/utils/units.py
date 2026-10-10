@@ -70,3 +70,18 @@ def convert(quantity, from_unit: str, to_unit: str) -> Decimal:
             f"Cannot convert {from_unit} to {to_unit} ({src_family} vs {dst_family})"
         )
     return Decimal(quantity) * src_factor / dst_factor
+
+
+def to_item_unit(quantity, unit: str, item_unit: str, pack_size=None, pack_unit: str | None = None) -> Decimal:
+    """A recipe quantity in the item's own unit.
+
+    Same-family units convert directly (g -> kg). Otherwise the item's pack
+    size bridges: 30 ml of a sauce counted in bottles, with 1 bottle = 700 ml,
+    is 30/700 of a bottle. Raises IncompatibleUnitError when neither works.
+    """
+    try:
+        return convert(quantity, unit, item_unit)
+    except IncompatibleUnitError:
+        if not (pack_size and pack_unit and compatible(unit, pack_unit)):
+            raise
+    return convert(quantity, unit, pack_unit) / Decimal(pack_size)
