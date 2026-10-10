@@ -18,6 +18,7 @@ from app.models.inventory_models import (  # noqa
     InventoryItem,
     InventoryTransaction,
     TransactionType,
+    Vendor,
 )
 from app.models.cash_models import DailyCashCounter  # noqa
 from app.models.settings_model import AppSetting  # noqa
@@ -43,6 +44,7 @@ __all__ = [
     "InventoryItem",
     "InventoryTransaction",
     "TransactionType",
+    "Vendor",
     "DailyCashCounter",
     "AppSetting",
     "DishCosting", # Dish Costing

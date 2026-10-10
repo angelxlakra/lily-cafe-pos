@@ -10,6 +10,10 @@ import type {
   InventoryItemsResponse,
   LowStockResponse,
   PurchaseCreate,
+  PurchaseItem,
+  Purchase,
+  PurchaseDay,
+  Vendor,
   UsageCreate,
   AdjustmentCreate,
   BatchAdjustmentCreate,
@@ -93,6 +97,50 @@ export const inventoryApi = {
   // Transactions
   recordPurchase: async (data: PurchaseCreate): Promise<any> => {
     const response = await apiClient.post('/inventory/transactions/purchase', data);
+    return response.data;
+  },
+
+  /** A day's sheet (default today) with its total and per-item columns. Other days: owner only. */
+  getPurchases: async (businessDate?: string): Promise<PurchaseDay> => {
+    const response = await apiClient.get<PurchaseDay>('/inventory/purchases', {
+      params: businessDate ? { business_date: businessDate } : undefined,
+    });
+    return response.data;
+  },
+
+  /** Day-end stock for one item: it goes into tonight's count. */
+  setDayEnd: async (itemId: number, countedQuantity: number): Promise<void> => {
+    await apiClient.put(`/inventory/counts/tonight/items/${itemId}`, { counted_quantity: countedQuantity });
+  },
+
+  /** Item ids restocked most often lately, most often first. */
+  getFrequentPurchases: async (): Promise<number[]> => {
+    const response = await apiClient.get<number[]>('/inventory/purchases/frequent');
+    return response.data;
+  },
+
+  editPurchase: async (id: number, data: Partial<Pick<PurchaseItem, 'quantity' | 'total_amount' | 'notes' | 'pack_count'>>): Promise<Purchase> => {
+    const response = await apiClient.patch<Purchase>(`/inventory/purchases/${id}`, data);
+    return response.data;
+  },
+
+  deletePurchase: async (id: number): Promise<void> => {
+    await apiClient.delete(`/inventory/purchases/${id}`);
+  },
+
+  /** Bought something not in the list: name + unit, flagged for the owner. */
+  quickAddItem: async (name: string, unit: string): Promise<InventoryItem> => {
+    const response = await apiClient.post<InventoryItem>('/inventory/items/quick', { name, unit });
+    return response.data;
+  },
+
+  getVendors: async (): Promise<Vendor[]> => {
+    const response = await apiClient.get<Vendor[]>('/inventory/vendors');
+    return response.data;
+  },
+
+  createVendor: async (name: string): Promise<Vendor> => {
+    const response = await apiClient.post<Vendor>('/inventory/vendors', { name });
     return response.data;
   },
 

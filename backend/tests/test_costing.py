@@ -4,7 +4,7 @@ Tests for dish costing math (app/utils/costing.py) and the costing endpoints.
 
 from decimal import Decimal
 
-from app.models.inventory_models import InventoryItem
+from app.models.inventory_models import InventoryItem, InventoryTransaction
 from app.utils.costing import IngredientInput, OverheadInput, compute
 
 
@@ -159,3 +159,29 @@ class TestCostingEndpoints:
         assert data["is_complete"] is False
         assert [line["unit_error"] for line in data["ingredients"]] == [False, True]
         assert Decimal(data["raw_material_cost"]) == Decimal("100.00")
+
+    def test_preview_prices_from_the_latest_purchase(
+        self, client, test_db, owner_headers, sample_menu_items
+    ):
+        """A paid purchase outranks the typed price: 4 kg for ₹1,600 is ₹400/kg, not 300."""
+        paneer = InventoryItem(name="Paneer", unit="kg", cost_per_unit=Decimal("300"))
+        test_db.add(paneer)
+        test_db.flush()
+        test_db.add(InventoryTransaction(
+            item_id=paneer.id, transaction_type="PURCHASE", quantity=Decimal("4"),
+            total_amount=Decimal("1600"), recorded_by="test",
+            previous_quantity=Decimal("0"), new_quantity=Decimal("4"),
+        ))
+        test_db.commit()
+
+        r = client.post(
+            "/api/v1/costing/preview",
+            json={
+                "menu_item_id": sample_menu_items[0].id,
+                "yield_units": "1",
+                "ingredients": [{"inventory_item_id": paneer.id, "quantity": "250", "unit": "g"}],
+            },
+            headers=owner_headers,
+        )
+        assert r.status_code == 200, r.text
+        assert Decimal(r.json()["raw_material_cost"]) == Decimal("100.00")

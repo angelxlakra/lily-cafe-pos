@@ -45,6 +45,9 @@ class InventoryItem(Base):
     # Optional bridge from the count unit to a recipe unit: 1 bottle holds 700 ml.
     pack_size = Column(Numeric(10, 3), nullable=True)
     pack_unit = Column(String(20), nullable=True)
+    # Added inline from the purchase sheet with just a name and unit; the owner
+    # still has to configure it. Cleared when the setup grid saves the row.
+    needs_setup = Column(Boolean, nullable=False, default=False, server_default="0")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
@@ -79,6 +82,17 @@ class InventoryItem(Base):
     def is_low_stock(self) -> bool:
         return self.current_quantity < self.min_threshold
 
+class Vendor(Base):
+    """Who a purchase was bought from. Deliberately minimal: a purchase never
+    waits on vendor setup, so vendor_id on a transaction stays optional."""
+    __tablename__ = "vendors"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    phone = Column(String(30), nullable=True)
+    notes = Column(String(500), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
 class TransactionType(str, enum.Enum):
     PURCHASE = "PURCHASE"
     USAGE = "USAGE"
@@ -96,9 +110,17 @@ class InventoryTransaction(Base):
     previous_quantity = Column(Numeric(10, 2), nullable=False)
     new_quantity = Column(Numeric(10, 2), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
-    
+    # What was paid for this line, in rupees. PURCHASE rows only; NULL when not
+    # entered. 0 is a gift. Unit price is total_amount / quantity, never stored.
+    total_amount = Column(Numeric(10, 2), nullable=True)
+    vendor_id = Column(Integer, ForeignKey("vendors.id"), nullable=True, index=True)
+    # How many were bought ("2" × 1 kg at ₹65). quantity ÷ pack_count is the
+    # unit quantity and total_amount ÷ pack_count the rate; neither is stored.
+    pack_count = Column(Numeric(10, 3), nullable=True)
+
     # Relationships
     item = relationship("InventoryItem", back_populates="transactions")
+    vendor = relationship("Vendor")
 
 
 class CountLineStatus(str, enum.Enum):

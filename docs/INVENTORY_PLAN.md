@@ -29,6 +29,10 @@ Kept here as well as in the spine, because decisions are worth having in git his
 | 2026-09-23 | Bulk editing is an in-app grid with paste, not a CSV round-trip. |
 | 2026-09-24 | No credit purchases — buying and paying are the same event. |
 | 2026-09-26 | One unit per item — the one on the bill. Count, price and alert in it; never price in g or ml. |
+| 2026-09-26 | The purchase sheet is the owners' table: Item · Unit qty · Rate · Purchased · In · Used · Remaining · Day-end · Wastage. Staff type rate × count (the owners' call, overriding "total only"); In is computed. |
+| 2026-09-26 | The sheet's rows are only what was bought that day. |
+| 2026-09-26 | Day-end on the sheet *is* tonight's count for that item — one number, one source. |
+| 2026-09-26 | Each day's sheet is kept; staff see today's, only the owner opens other days. The sheet's day is the count night (to 04:00). |
 
 ## Build queue
 
@@ -48,6 +52,25 @@ In dependency order.
 
 Shipped already: the typed-input count row (`6b8cbf6`), the setup grid (1), and yes/no items in
 the nightly count (2): the Out / Have it row, the model-level clamp, review sheet and stock log.
+
+Purchase sheet (3), backend only: `total_amount` and `vendor_id` on purchase rows, a minimal
+`vendors` table, `POST /transactions/purchase/check` (the >30% jump warning, dry run) and
+`GET /purchases?business_date=` (the day's lines and total). Price resolution lives in
+`backend/app/utils/pricing.py`; items return `current_price`, `price_source`, `price_as_of`,
+and dish costing now prices from it. Known gap: purchase quantities are in the unit the item
+had at the time, so changing an item's unit (g → kg) after purchases with amounts skews its
+derived price until the next purchase.
+
+Purchase sheet screen (3), shipped as the **Purchases** tab in Inventory, built to the owners'
+paper sketch: an editable table per day plus a keyboard-first new line (item ⏎ rate ⏎ count ⏎;
+unit qty defaults to 1). Rows carry `pack_count`, so unit qty = quantity ÷ count and rate =
+total ÷ count — only totals are stored. Items still in g/ml are entered in kg/L. The picker ranks
+by what gets restocked (`GET /purchases/frequent`); an unknown item is added inline via
+`POST /items/quick` and flagged `needs_setup` ("New" in the setup grid until the owner saves it).
+Same-day corrections: `PATCH`/`DELETE /purchases/{id}`, refused once a count has taken the line in.
+Day-end writes one line into tonight's count (`PUT /counts/tonight/items/{id}`). Used / Remaining /
+Wastage come from sales × recipes (`app/utils/usage.py`) and read "needs recipe" until recipes
+exist — prod has none yet, so those columns fill in only after the dish costing UI (5).
 
 ## State of `feature/dish-costing`
 

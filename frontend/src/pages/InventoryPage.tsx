@@ -1,16 +1,18 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { Package, Tag, ClockCounterClockwise, ClipboardText } from '@phosphor-icons/react';
+import { Package, Tag, ClockCounterClockwise, ClipboardText, ShoppingCart } from '@phosphor-icons/react';
 import { useSidebar } from '../context/SidebarContext';
 import { useAuth } from '../hooks/useAuth';
 import DailyCountTab from '../components/inventory/DailyCountTab';
+import PurchaseSheetTab from '../components/inventory/PurchaseSheetTab';
 import InventoryItemsTab from '../components/inventory/InventoryItemsTab';
 import InventoryCategoriesTab from '../components/inventory/InventoryCategoriesTab';
 import InventoryTransactionsTab from '../components/inventory/InventoryTransactionsTab';
 
-type Tab = 'daily-count' | 'items' | 'categories' | 'transactions';
+type Tab = 'daily-count' | 'purchases' | 'items' | 'categories' | 'transactions';
 
 const TABS: { id: Tab; label: string; icon: JSX.Element; ownerOnly?: boolean }[] = [
   { id: 'daily-count', label: 'Daily count', icon: <ClipboardText size={20} aria-hidden /> },
+  { id: 'purchases', label: 'Purchases', icon: <ShoppingCart size={20} aria-hidden /> },
   { id: 'items', label: 'Items', icon: <Package size={20} aria-hidden />, ownerOnly: true },
   { id: 'categories', label: 'Categories', icon: <Tag size={20} aria-hidden />, ownerOnly: true },
   { id: 'transactions', label: 'Stock log', icon: <ClockCounterClockwise size={20} aria-hidden /> },
@@ -111,6 +113,7 @@ export default function InventoryPage() {
         className="p-4 lg:p-6 w-full"
       >
         {activeTab === 'daily-count' && <DailyCountTab />}
+        {activeTab === 'purchases' && <PurchaseSheetTab />}
         {isOwner && activeTab === 'items' && <InventoryItemsTab />}
         {isOwner && activeTab === 'categories' && <InventoryCategoriesTab />}
         {activeTab === 'transactions' && <InventoryTransactionsTab />}
