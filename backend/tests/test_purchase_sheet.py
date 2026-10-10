@@ -172,6 +172,18 @@ def test_unknown_vendor_is_rejected(client, auth_headers, chicken):
     assert response.status_code == 400
 
 
+def test_the_same_vendor_typed_twice_is_one_vendor(client, auth_headers, test_db):
+    first = client.post("/api/v1/inventory/vendors", headers=auth_headers, json={"name": "Raju Chicken"})
+    again = client.post("/api/v1/inventory/vendors", headers=auth_headers, json={"name": " raju chicken "})
+    blank = client.post("/api/v1/inventory/vendors", headers=auth_headers, json={"name": "   "})
+
+    assert first.status_code == again.status_code == 201
+    assert again.json()["id"] == first.json()["id"]
+    assert first.json()["name"] == "Raju Chicken"
+    assert blank.status_code == 422
+    assert test_db.query(Vendor).count() == 1
+
+
 def test_check_flags_a_jump_before_saving(client, auth_headers, test_db, chicken):
     _purchase(test_db, chicken, "4", "1280", datetime(2026, 8, 12, 5))
 

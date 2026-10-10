@@ -793,8 +793,18 @@ def create_vendor(
     db: Session = Depends(get_db),
     current_user: TokenData = _STAFF,
 ):
-    """Add a vendor. Staff can, so a new shop never holds up the purchase sheet."""
-    new_vendor = Vendor(**vendor.model_dump())
+    """Add a vendor. Staff can, so a new shop never holds up the purchase sheet.
+
+    A vendor with the same name is returned instead of duplicated, so two
+    devices typing the same new shop don't split its purchase history.
+    """
+    name = vendor.name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="Vendor name is blank")
+    existing = db.query(Vendor).filter(func.lower(Vendor.name) == name.lower()).first()
+    if existing:
+        return existing
+    new_vendor = Vendor(**{**vendor.model_dump(), "name": name})
     db.add(new_vendor)
     db.commit()
     db.refresh(new_vendor)
