@@ -47,7 +47,10 @@ def _build_ingredient_inputs(ingredients: list[DishCostingIngredient], price_ove
     for row in ingredients:
         item = row.inventory_item
         current = resolved.get(item.id)
+        overridden = item.id in overrides
         price = overrides.get(item.id, current.price if current else item.cost_per_unit)
+        source = None if overridden or current is None else current.source
+        as_of = None if overridden or current is None else current.as_of
         inputs.append(costing_utils.IngredientInput(
             item_id=item.id, name=item.name, quantity=Decimal(row.quantity), unit=row.unit, stock_unit=item.unit, 
             cost_per_unit=(
@@ -57,6 +60,7 @@ def _build_ingredient_inputs(ingredients: list[DishCostingIngredient], price_ove
                 ),
                 is_active=item.is_active,
                 pack_size=item.pack_size, pack_unit=item.pack_unit, is_presence=item.is_presence,
+                price_source=source, price_as_of=as_of,
         ))
     return inputs
 
@@ -79,7 +83,9 @@ def _breakdown_to_schema(breakdown: costing_utils.CostBreakdown) -> costing_sche
     return costing_schemas.CostBreakdownOut(
         ingredients=[
             costing_schemas.IngredientLineOut(
-                inventory_item_id=line.item_id, name=line.name, quantity=line.quantity, unit=line.unit, stock_unit=line.stock_unit, unit_price=line.unit_price, line_cost=line.line_cost, share_percent=line.share_percent, price_missing=line.price_missing, is_active=line.is_active, unit_error=line.unit_error, needs_pack_size=line.needs_pack_size
+                inventory_item_id=line.item_id, name=line.name, quantity=line.quantity, unit=line.unit, stock_unit=line.stock_unit, unit_price=line.unit_price, line_cost=line.line_cost, share_percent=line.share_percent, price_missing=line.price_missing, is_active=line.is_active, unit_error=line.unit_error, needs_pack_size=line.needs_pack_size,
+                price_source=line.price_source, price_as_of=line.price_as_of, reason=line.reason,
+                is_presence=line.is_presence,
                 ) for line in breakdown.ingredients],
         overheads=[costing_schemas.OverheadLineOut(
             kind=line.kind, mode=line.mode, value=line.value, amount=line.amount, percent=line.percent, inherited=line.inherited
@@ -185,6 +191,15 @@ def get_costings(db: Session = Depends(get_db), current_user: TokenData = _READ)
         ))
     
     return result
+
+@router.get("/defaults", response_model=costing_schemas.DefaultsOut)
+def get_costing_defaults(current_user: TokenData = _READ):
+    """The cafe-wide overheads and target margin a dish uses unless it overrides them."""
+    overheads = costing_utils.resolve_overheads()
+    return costing_schemas.DefaultsOut(
+        **{kind: costing_schemas.OverheadOverride(mode=o.mode, value=o.value) for kind, o in overheads.items()},
+        target_margin_percent=costing_utils.resolve_target_margin(),
+    )
 
 @router.get("/{costing_id}", response_model=costing_schemas.DishCostingOut)
 def get_costing(costing_id: int, db: Session = Depends(get_db), current_user: TokenData = _READ):
@@ -387,6 +402,11 @@ def apply_suggested_price(costing_id: int, db: Session = Depends(get_db), curren
 
     breakdown = _compute_breakdown(costing, menu_item)
 
+    if not breakdown.is_complete:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Some ingredients aren't costed yet, so there is no suggested price.",
+        )
     if breakdown.suggested_price is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No suggested price is available.")
     

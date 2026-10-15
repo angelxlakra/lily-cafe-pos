@@ -1,7 +1,8 @@
 """Pure dish-costing math. No I/O, no DB."""
 
 from dataclasses import dataclass, field
-from decimal import Decimal, ROUND_HALF_UP
+from datetime import datetime
+from decimal import Decimal, ROUND_CEILING, ROUND_HALF_UP
 
 from app.core import settings_store
 from app.models.costing_models import OVERHEAD_KINDS
@@ -9,6 +10,14 @@ from app.utils.units import IncompatibleUnitError, normalize, to_item_unit
 
 MONEY = Decimal("0.01")
 PERCENT = Decimal("0.01")
+# Menu prices end in 0 (₹230, ₹280), so a suggested price rounds up to the next ₹10.
+PRICE_STEP = Decimal("10")
+
+# Why a line has no cost, in the order the screen should name them.
+REASON_RETIRED = "retired"
+REASON_PACK_SIZE = "needs_pack_size"
+REASON_UNIT = "unknown_unit"
+REASON_NO_PRICE = "no_price"
 
 
 def money(value) -> Decimal:
@@ -17,6 +26,11 @@ def money(value) -> Decimal:
 
 def pct(value) -> Decimal:
     return Decimal(value).quantize(PERCENT, rounding=ROUND_HALF_UP)
+
+
+def menu_price(value) -> Decimal:
+    """Round a price up to the next ₹10, the way the menu is priced."""
+    return (Decimal(value) / PRICE_STEP).quantize(Decimal("1"), rounding=ROUND_CEILING) * PRICE_STEP
 
 
 @dataclass
@@ -33,6 +47,9 @@ class IngredientInput:
     pack_size: Decimal | None = None
     pack_unit: str | None = None
     is_presence: bool = False
+    # Where the price came from ("purchase" or "typed") and, for a purchase, when.
+    price_source: str | None = None
+    price_as_of: datetime | None = None
 
 
 @dataclass
@@ -58,6 +75,12 @@ class IngredientLine:
     # The recipe unit is fine but doesn't reach the stock unit: asking for the
     # item's pack size ("1 bottle = ? ml") would let this line be costed.
     needs_pack_size: bool = False
+    price_source: str | None = None
+    price_as_of: datetime | None = None
+    # None when the line is costed; otherwise the one reason to show for it.
+    reason: str | None = None
+    # A yes/no item: shown on the recipe, covered by overheads, never a gap.
+    is_presence: bool = False
 
 
 @dataclass
@@ -113,6 +136,19 @@ def compute(
     raw = Decimal("0")
 
     for ing in ingredients:
+        if ing.is_presence:
+            # Coriander, salt, garnish: answered yes/no, never priced. They are
+            # covered by the overheads, so they are neither a cost nor a gap.
+            lines.append(IngredientLine(
+                item_id=ing.item_id, name=ing.name, quantity=Decimal(ing.quantity), unit=ing.unit,
+                stock_unit=ing.stock_unit, unit_price=Decimal("0.00"), line_cost=Decimal("0.00"),
+                share_percent=None, price_missing=False, is_active=ing.is_active,
+                reason=None if ing.is_active else REASON_RETIRED, is_presence=True,
+            ))
+            if not ing.is_active:
+                warnings.append(f"{ing.name} is no longer an active inventory item")
+            continue
+
         # A price of 0 is not a real price: many items were created with 0.00
         # as a placeholder, so treat it the same as no price at all.
         price_missing = ing.cost_per_unit is None or Decimal(ing.cost_per_unit) <= 0
@@ -141,6 +177,17 @@ def compute(
         if not ing.is_active:
             warnings.append(f"{ing.name} is no longer an active inventory item")
 
+        if not ing.is_active:
+            reason = REASON_RETIRED
+        elif needs_pack_size:
+            reason = REASON_PACK_SIZE
+        elif unit_error:
+            reason = REASON_UNIT
+        elif price_missing:
+            reason = REASON_NO_PRICE
+        else:
+            reason = None
+
         lines.append(
             IngredientLine(
                 item_id=ing.item_id,
@@ -155,6 +202,9 @@ def compute(
                 is_active=ing.is_active,
                 unit_error=unit_error,
                 needs_pack_size=needs_pack_size,
+                price_source=None if price_missing else ing.price_source,
+                price_as_of=None if price_missing else ing.price_as_of,
+                reason=reason,
             )
         )
 
@@ -204,13 +254,18 @@ def compute(
         if margin_amount < 0:
             warnings.append("Selling price is below cost")
 
+    is_complete = not any(line.reason for line in lines)
+
     suggested_price = None
     target = None
     if target_margin_percent is not None:
         target = Decimal(target_margin_percent)
         if target >= 100:
             raise ValueError("Target margin must be below 100%")
-        suggested_price = money(cost_per_unit / (1 - target / 100))
+        # A price from a cost with gaps would be too low, so offer none until
+        # every line is costed.
+        if is_complete:
+            suggested_price = menu_price(cost_per_unit / (1 - target / 100))
 
     return CostBreakdown(
         ingredients=lines,
@@ -227,10 +282,7 @@ def compute(
         food_cost_percent=food_cost_percent,
         target_margin_percent=target,
         suggested_price=suggested_price,
-        # is_complete=not any(line.price_missing for line in lines),
-        is_complete=not any(
-            line.price_missing or line.unit_error or not line.is_active for line in lines
-        ),
+        is_complete=is_complete,
         warnings=warnings,
     )
 

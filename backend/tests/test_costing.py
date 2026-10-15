@@ -2,6 +2,7 @@
 Tests for dish costing math (app/utils/costing.py) and the costing endpoints.
 """
 
+from datetime import datetime
 from decimal import Decimal
 
 from app.models.inventory_models import InventoryItem, InventoryTransaction
@@ -147,10 +148,70 @@ class TestCompute:
 
         breakdown = compute(ingredients=[no_pack, wrong_family, presence], overheads=_no_overheads(), yield_units=Decimal("1"))
 
+        oil, sauce, coriander = breakdown.ingredients
         assert [line.needs_pack_size for line in breakdown.ingredients] == [True, True, False]
-        assert all(line.unit_error and line.line_cost == 0 for line in breakdown.ingredients)
+        assert oil.unit_error and sauce.unit_error and oil.line_cost == sauce.line_cost == 0
+        assert (oil.reason, sauce.reason) == ("needs_pack_size", "needs_pack_size")
         assert breakdown.is_complete is False
         assert any("1 bottle = how many ml" in w for w in breakdown.warnings)
+
+
+    def test_yes_no_item_is_shown_but_never_a_gap(self):
+        """Coriander on a recipe is covered by overheads: no cost, no reason, dish still complete."""
+        coriander = IngredientInput(
+            item_id=2, name="Coriander", quantity=Decimal("5"), unit="g", stock_unit="yes/no",
+            cost_per_unit=None, is_presence=True,
+        )
+        breakdown = compute(
+            ingredients=[_ingredient(1, "Paneer", "250", "g", "kg", "400"), coriander],
+            overheads=_no_overheads(), yield_units=Decimal("1"),
+        )
+
+        line = breakdown.ingredients[1]
+        assert (line.is_presence, line.reason, line.line_cost) == (True, None, Decimal("0.00"))
+        assert breakdown.is_complete is True
+        assert not any("Coriander" in w for w in breakdown.warnings)
+
+    def test_every_gap_has_one_named_reason(self):
+        retired = _ingredient(4, "Old ghee", "10", "g", "kg", "600")
+        retired.is_active = False
+        breakdown = compute(
+            ingredients=[
+                _ingredient(1, "Paneer", "250", "g", "kg", "400"),
+                _ingredient(2, "Maida", "30", "g", "kg", "0.00"),
+                _ingredient(3, "Ghee", "1", "tbsp", "kg", "600"),
+                retired,
+            ],
+            overheads=_no_overheads(), yield_units=Decimal("1"),
+        )
+
+        assert [line.reason for line in breakdown.ingredients] == [None, "no_price", "unknown_unit", "retired"]
+
+    def test_suggested_price_rounds_up_to_ten_and_waits_for_a_complete_dish(self):
+        """₹100 of paneer at a 65% target is ₹285.71, offered as ₹290; with a gap, nothing is offered."""
+        complete = compute(
+            ingredients=[_ingredient(1, "Paneer", "250", "g", "kg", "400")],
+            overheads=_no_overheads(), yield_units=Decimal("1"), target_margin_percent=Decimal("65"),
+        )
+        with_gap = compute(
+            ingredients=[_ingredient(1, "Paneer", "250", "g", "kg", "400"), _ingredient(2, "Maida", "30", "g", "kg", None)],
+            overheads=_no_overheads(), yield_units=Decimal("1"), target_margin_percent=Decimal("65"),
+        )
+
+        assert complete.suggested_price == Decimal("290")
+        assert with_gap.suggested_price is None
+
+    def test_price_source_and_date_ride_along_only_with_a_real_price(self):
+        bought = datetime(2026, 10, 12, 5)
+        paneer = _ingredient(1, "Paneer", "250", "g", "kg", "400")
+        paneer.price_source, paneer.price_as_of = "purchase", bought
+        maida = _ingredient(2, "Maida", "30", "g", "kg", "0.00")
+        maida.price_source = "typed"
+
+        lines = compute(ingredients=[paneer, maida], overheads=_no_overheads(), yield_units=Decimal("1")).ingredients
+
+        assert (lines[0].price_source, lines[0].price_as_of) == ("purchase", bought)
+        assert (lines[1].price_source, lines[1].price_as_of) == (None, None)
 
 
 class TestCostingEndpoints:
@@ -256,3 +317,71 @@ class TestCostingEndpoints:
         )
         assert r.status_code == 200, r.text
         assert Decimal(r.json()["raw_material_cost"]) == Decimal("100.00")
+
+    def test_preview_line_says_where_its_price_came_from(
+        self, client, test_db, owner_headers, sample_menu_items
+    ):
+        paneer = InventoryItem(name="Paneer", unit="kg", cost_per_unit=Decimal("300"))
+        salt = InventoryItem(name="Salt", unit="kg", cost_per_unit=Decimal("20"))
+        test_db.add_all([paneer, salt])
+        test_db.flush()
+        test_db.add(InventoryTransaction(
+            item_id=paneer.id, transaction_type="PURCHASE", quantity=Decimal("4"),
+            total_amount=Decimal("1600"), recorded_by="test",
+            previous_quantity=Decimal("0"), new_quantity=Decimal("4"), created_at=datetime(2026, 10, 12, 5),
+        ))
+        test_db.commit()
+
+        r = client.post("/api/v1/costing/preview", headers=owner_headers, json={
+            "menu_item_id": sample_menu_items[0].id, "yield_units": "1",
+            "ingredients": [
+                {"inventory_item_id": paneer.id, "quantity": "250", "unit": "g"},
+                {"inventory_item_id": salt.id, "quantity": "5", "unit": "g"},
+            ],
+        })
+
+        assert r.status_code == 200, r.text
+        bought, typed = r.json()["ingredients"]
+        assert bought["price_source"] == "purchase" and bought["price_as_of"].startswith("2026-10-12")
+        assert (typed["price_source"], typed["price_as_of"]) == ("typed", None)
+
+    def _costing(self, client, owner_headers, menu_item_id, item_ids):
+        r = client.post("/api/v1/costing", headers=owner_headers, json={
+            "menu_item_id": menu_item_id, "yield_units": "1",
+            "ingredients": [{"inventory_item_id": i, "quantity": "250", "unit": "g"} for i in item_ids],
+        })
+        assert r.status_code == 201, r.text
+        return r.json()["id"]
+
+    def test_apply_price_writes_whole_rupees(self, client, test_db, owner_headers, sample_menu_items):
+        """₹100 of paneer plus the default 30% overheads is ₹130; at 65% that's ₹371.43, so ₹380."""
+        paneer = InventoryItem(name="Paneer", unit="kg", cost_per_unit=Decimal("400"))
+        test_db.add(paneer)
+        test_db.commit()
+        costing_id = self._costing(client, owner_headers, sample_menu_items[0].id, [paneer.id])
+
+        r = client.post(f"/api/v1/costing/{costing_id}/apply-price", headers=owner_headers)
+
+        assert r.status_code == 200, r.text
+        test_db.refresh(sample_menu_items[0])
+        assert sample_menu_items[0].price == 38000
+
+    def test_apply_price_refuses_a_dish_with_gaps(self, client, test_db, owner_headers, sample_menu_items):
+        maida = InventoryItem(name="Maida", unit="kg", cost_per_unit=None)
+        test_db.add(maida)
+        test_db.commit()
+        costing_id = self._costing(client, owner_headers, sample_menu_items[0].id, [maida.id])
+
+        r = client.post(f"/api/v1/costing/{costing_id}/apply-price", headers=owner_headers)
+
+        assert r.status_code == 409
+        test_db.refresh(sample_menu_items[0])
+        assert sample_menu_items[0].price == 8000
+
+    def test_defaults_are_the_cafe_wide_overheads(self, client, owner_headers):
+        r = client.get("/api/v1/costing/defaults", headers=owner_headers)
+
+        assert r.status_code == 200, r.text
+        data = r.json()
+        assert data["labour"] == {"mode": "percent", "value": "15"}
+        assert Decimal(data["target_margin_percent"]) == Decimal("65")
