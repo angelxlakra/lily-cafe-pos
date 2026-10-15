@@ -22,19 +22,16 @@ from app.core.business_day import night_utc_bounds
 from app.models.costing_models import DishCosting, DishCostingIngredient
 from app.models.inventory_models import InventoryItem
 from app.models.models import Order, OrderItem, OrderStatus
-from app.utils.units import IncompatibleUnitError, compatible, convert
+from app.utils.units import IncompatibleUnitError, to_item_unit
 
 
 def per_portion_in_item_unit(ingredient: DishCostingIngredient, item: InventoryItem, yield_units) -> Optional[Decimal]:
     """One portion's use of an item, in the item's unit, or None if no bridge exists."""
     quantity = Decimal(ingredient.quantity) / Decimal(yield_units or 1)
     try:
-        return convert(quantity, ingredient.unit, item.unit)
+        return to_item_unit(quantity, ingredient.unit, item.unit, item.pack_size, item.pack_unit)
     except IncompatibleUnitError:
-        pass
-    if item.pack_size and item.pack_unit and compatible(ingredient.unit, item.pack_unit):
-        return convert(quantity, ingredient.unit, item.pack_unit) / Decimal(item.pack_size)
-    return None
+        return None
 
 
 def used_on(db: Session, day: date, items: Iterable[InventoryItem]) -> dict[int, Optional[Decimal]]:

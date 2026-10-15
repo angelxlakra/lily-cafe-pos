@@ -103,6 +103,54 @@ class TestCompute:
         assert breakdown.is_complete is False
         assert any("Eggs" in w for w in breakdown.warnings)
         assert any("Ghee" in w for w in breakdown.warnings)
+        # Grams of eggs counted in pieces would cost with a pack size
+        # (1 pcs = 50 g); tbsp is a unit no pack size can fix.
+        assert eggs.needs_pack_size is True
+        assert ghee.needs_pack_size is False
+
+    def test_pack_size_bridges_a_recipe_unit_to_the_stock_unit(self):
+        """30 ml of chilli oil, counted in ₹350 bottles of 700 ml, is 30/700 of a bottle: ₹15."""
+        oil = IngredientInput(
+            item_id=1, name="Chilli oil", quantity=Decimal("30"), unit="ml", stock_unit="bottle",
+            cost_per_unit=Decimal("350"), pack_size=Decimal("700"), pack_unit="ml",
+        )
+        # 1 portion = 6 pcs of wings; the recipe uses 12 pcs.
+        wings = IngredientInput(
+            item_id=2, name="Wings", quantity=Decimal("12"), unit="pcs", stock_unit="portion",
+            cost_per_unit=Decimal("90"), pack_size=Decimal("6"), pack_unit="pcs",
+        )
+        # A litre pack bridges millilitres too: same family as the pack unit.
+        syrup = IngredientInput(
+            item_id=3, name="Syrup", quantity=Decimal("50"), unit="ml", stock_unit="bottle",
+            cost_per_unit=Decimal("200"), pack_size=Decimal("1"), pack_unit="l",
+        )
+
+        breakdown = compute(ingredients=[oil, wings, syrup], overheads=_no_overheads(), yield_units=Decimal("1"))
+
+        assert [line.line_cost for line in breakdown.ingredients] == [
+            Decimal("15.00"), Decimal("180.00"), Decimal("10.00"),
+        ]
+        assert not any(line.unit_error or line.needs_pack_size for line in breakdown.ingredients)
+        assert breakdown.is_complete is True
+
+    def test_missing_or_wrong_pack_size_asks_for_one(self):
+        """No pack size, or one in the wrong family, flags the line instead of guessing."""
+        no_pack = _ingredient(1, "Chilli oil", "30", "ml", "bottle", "350")
+        wrong_family = IngredientInput(
+            item_id=2, name="Sauce", quantity=Decimal("30"), unit="ml", stock_unit="bottle",
+            cost_per_unit=Decimal("350"), pack_size=Decimal("500"), pack_unit="g",
+        )
+        presence = IngredientInput(
+            item_id=3, name="Coriander", quantity=Decimal("5"), unit="g", stock_unit="yes/no",
+            cost_per_unit=None, is_presence=True,
+        )
+
+        breakdown = compute(ingredients=[no_pack, wrong_family, presence], overheads=_no_overheads(), yield_units=Decimal("1"))
+
+        assert [line.needs_pack_size for line in breakdown.ingredients] == [True, True, False]
+        assert all(line.unit_error and line.line_cost == 0 for line in breakdown.ingredients)
+        assert breakdown.is_complete is False
+        assert any("1 bottle = how many ml" in w for w in breakdown.warnings)
 
 
 class TestCostingEndpoints:
@@ -159,6 +207,29 @@ class TestCostingEndpoints:
         assert data["is_complete"] is False
         assert [line["unit_error"] for line in data["ingredients"]] == [False, True]
         assert Decimal(data["raw_material_cost"]) == Decimal("100.00")
+
+    def test_preview_costs_ml_against_an_item_counted_in_bottles(
+        self, client, test_db, owner_headers, sample_menu_items
+    ):
+        """The item's pack size reaches the API: 30 ml of a ₹350, 700 ml bottle is ₹15."""
+        oil = InventoryItem(name="Chilli oil", unit="bottle", cost_per_unit=Decimal("350"),
+                            pack_size=Decimal("700"), pack_unit="ml")
+        test_db.add(oil)
+        test_db.commit()
+
+        r = client.post(
+            "/api/v1/costing/preview",
+            json={
+                "menu_item_id": sample_menu_items[0].id,
+                "yield_units": "1",
+                "ingredients": [{"inventory_item_id": oil.id, "quantity": "30", "unit": "ml"}],
+            },
+            headers=owner_headers,
+        )
+        assert r.status_code == 200, r.text
+        line = r.json()["ingredients"][0]
+        assert (line["unit_error"], line["needs_pack_size"]) == (False, False)
+        assert Decimal(line["line_cost"]) == Decimal("15.00")
 
     def test_preview_prices_from_the_latest_purchase(
         self, client, test_db, owner_headers, sample_menu_items

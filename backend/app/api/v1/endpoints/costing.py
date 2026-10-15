@@ -55,7 +55,8 @@ def _build_ingredient_inputs(ingredients: list[DishCostingIngredient], price_ove
                 if price is not None
                 else None
                 ),
-                is_active=item.is_active
+                is_active=item.is_active,
+                pack_size=item.pack_size, pack_unit=item.pack_unit, is_presence=item.is_presence,
         ))
     return inputs
 
@@ -78,7 +79,7 @@ def _breakdown_to_schema(breakdown: costing_utils.CostBreakdown) -> costing_sche
     return costing_schemas.CostBreakdownOut(
         ingredients=[
             costing_schemas.IngredientLineOut(
-                inventory_item_id=line.item_id, name=line.name, quantity=line.quantity, unit=line.unit, stock_unit=line.stock_unit, unit_price=line.unit_price, line_cost=line.line_cost, share_percent=line.share_percent, price_missing=line.price_missing, is_active=line.is_active, unit_error=line.unit_error
+                inventory_item_id=line.item_id, name=line.name, quantity=line.quantity, unit=line.unit, stock_unit=line.stock_unit, unit_price=line.unit_price, line_cost=line.line_cost, share_percent=line.share_percent, price_missing=line.price_missing, is_active=line.is_active, unit_error=line.unit_error, needs_pack_size=line.needs_pack_size
                 ) for line in breakdown.ingredients],
         overheads=[costing_schemas.OverheadLineOut(
             kind=line.kind, mode=line.mode, value=line.value, amount=line.amount, percent=line.percent, inherited=line.inherited

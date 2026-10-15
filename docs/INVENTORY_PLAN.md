@@ -72,6 +72,14 @@ Day-end writes one line into tonight's count (`PUT /counts/tonight/items/{id}`).
 Wastage come from sales × recipes (`app/utils/usage.py`) and read "needs recipe" until recipes
 exist — prod has none yet, so those columns fill in only after the dish costing UI (5).
 
+Pack size (4), backend: dish costing now bridges a recipe unit to the item's unit through its
+pack size (`to_item_unit` in `backend/app/utils/units.py`, shared with the sheet's Used column),
+so 30 ml of chilli oil counted in 700 ml bottles costs 30/700 of a bottle. A line that only a
+pack size would fix comes back with `needs_pack_size: true` and a warning naming the question
+("1 bottle = how many ml?"); yes/no items and unknown units (tbsp) never ask. The prompt itself
+is the dish costing UI's job (5): ask when that flag is set, save it through the setup grid's
+pack columns, and re-cost.
+
 ## State of `feature/dish-costing`
 
 Backend is done — models, CRUD, endpoints, schemas and strict unit conversion, ~1,250 lines.
@@ -228,6 +236,8 @@ before building, and check it with me.
 A recipe builder per menu item (pick inventory items, quantity, unit) plus a cost readout
 with margin. Items that can't be costed — yes/no items, no price, unconvertible units —
 must show as incomplete with a named reason, never as ₹0. Show the price's as-of date.
+When a line comes back with needs_pack_size, ask "1 <item unit> = how many <recipe unit>?"
+right there, save it to the item's pack_size/pack_unit, and re-cost.
 
 Done = a menu item's recipe can be built and its true cost read, with honest gaps.
 ```

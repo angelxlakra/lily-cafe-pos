@@ -5,7 +5,7 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from app.core import settings_store
 from app.models.costing_models import OVERHEAD_KINDS
-from app.utils.units import convert, IncompatibleUnitError
+from app.utils.units import IncompatibleUnitError, normalize, to_item_unit
 
 MONEY = Decimal("0.01")
 PERCENT = Decimal("0.01")
@@ -28,6 +28,11 @@ class IngredientInput:
     stock_unit: str
     cost_per_unit: Decimal | None
     is_active: bool = True
+    # "1 bottle holds 700 ml": bridges a recipe unit to a stock unit in
+    # another family. Yes/no items can't take one.
+    pack_size: Decimal | None = None
+    pack_unit: str | None = None
+    is_presence: bool = False
 
 
 @dataclass
@@ -50,6 +55,9 @@ class IngredientLine:
     price_missing: bool
     is_active: bool
     unit_error: bool = False
+    # The recipe unit is fine but doesn't reach the stock unit: asking for the
+    # item's pack size ("1 bottle = ? ml") would let this line be costed.
+    needs_pack_size: bool = False
 
 
 @dataclass
@@ -82,6 +90,14 @@ class CostBreakdown:
     warnings: list[str] = field(default_factory=list)
 
 
+def _known_unit(unit: str) -> bool:
+    try:
+        normalize(unit)
+        return True
+    except IncompatibleUnitError:
+        return False
+
+
 def compute(
     ingredients: list[IngredientInput],
     overheads: dict[str, OverheadInput],
@@ -103,13 +119,19 @@ def compute(
         price = Decimal("0") if price_missing else Decimal(ing.cost_per_unit)
 
         # One bad unit costs its own line at 0 instead of failing the whole dish.
-        unit_error = False
+        unit_error = needs_pack_size = False
         try:
-            qty_in_stock_unit = convert(ing.quantity, ing.unit, ing.stock_unit)
+            qty_in_stock_unit = to_item_unit(ing.quantity, ing.unit, ing.stock_unit, ing.pack_size, ing.pack_unit)
         except IncompatibleUnitError as e:
             unit_error = True
             qty_in_stock_unit = Decimal("0")
-            warnings.append(f"{ing.name}: {e} - counted as 0")
+            needs_pack_size = not ing.is_presence and _known_unit(ing.unit)
+            if needs_pack_size:
+                warnings.append(
+                    f"{ing.name}: set its pack size (1 {ing.stock_unit} = how many {ing.unit}?) - counted as 0"
+                )
+            else:
+                warnings.append(f"{ing.name}: {e} - counted as 0")
 
         line_cost = money(qty_in_stock_unit * price)
         raw += line_cost
@@ -132,6 +154,7 @@ def compute(
                 price_missing=price_missing,
                 is_active=ing.is_active,
                 unit_error=unit_error,
+                needs_pack_size=needs_pack_size,
             )
         )
 
