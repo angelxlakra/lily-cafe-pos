@@ -106,3 +106,40 @@ def test_startup_backfills_the_unit_on_old_rows():
     assert "unit" in {c["name"] for c in inspect(engine).get_columns("inventory_transactions")}
     with engine.connect() as conn:
         assert conn.execute(text("SELECT unit FROM inventory_transactions")).scalar() == "kg"
+
+
+def test_a_line_whose_unit_changed_kind_cant_be_edited_or_deleted(client, auth_headers, owner_headers, test_db):
+    """20 pcs can't be restated in kg, so neither change can move stock correctly: both are refused."""
+    lemons = _onions(test_db, unit="pcs")
+    line = _buy(client, auth_headers, lemons, 20, 100)
+    client.patch(ITEMS, headers=owner_headers, json={"items": [{"id": lemons.id, "unit": "kg"}]})
+
+    edit = client.patch(f"/api/v1/inventory/purchases/{line}", headers=auth_headers, json={"quantity": 2})
+    delete = client.delete(f"/api/v1/inventory/purchases/{line}", headers=auth_headers)
+
+    assert (edit.status_code, delete.status_code) == (409, 409)
+    assert "tonight's count" in edit.json()["detail"]
+
+
+def test_deleting_an_old_line_after_the_change_takes_out_the_same_amount(client, auth_headers, owner_headers, test_db):
+    """4000 g bought, now 4 kg in stock: deleting the line leaves 0 kg, not 4 - 4000."""
+    onion = _onions(test_db)
+    line = _buy(client, auth_headers, onion, 4000, 480)
+    client.patch(ITEMS, headers=owner_headers, json={"items": [{"id": onion.id, "unit": "kg"}]})
+
+    r = client.delete(f"/api/v1/inventory/purchases/{line}", headers=auth_headers)
+
+    assert r.status_code == 204, r.text
+    test_db.refresh(onion)
+    assert onion.current_quantity == Decimal("0")
+
+
+def test_a_stock_change_saved_with_a_unit_change_records_the_new_unit(client, owner_headers, test_db):
+    """One grid save switches g to kg and sets stock: the adjustment it logs is in kg."""
+    onion = _onions(test_db)
+
+    r = client.patch(ITEMS, headers=owner_headers, json={"items": [{"id": onion.id, "unit": "kg", "current_quantity": 3}]})
+
+    assert r.status_code == 200, r.text
+    (adjustment,) = test_db.query(InventoryTransaction).filter_by(item_id=onion.id).all()
+    assert (adjustment.quantity, adjustment.unit) == (Decimal("3"), "kg")
