@@ -33,6 +33,7 @@ class InventoryItemBase(BaseModel):
     count_mode: Literal["number", "presence"] = "number"
     pack_size: Optional[Decimal] = Field(None, gt=0)
     pack_unit: Optional[str] = Field(None, min_length=1, max_length=20)
+    default_vendor_id: Optional[int] = None
 
 class InventoryItemCreate(InventoryItemBase):
     current_quantity: Decimal = Field(default=0, ge=0)
@@ -47,6 +48,7 @@ class InventoryItemUpdate(BaseModel):
     count_mode: Optional[Literal["number", "presence"]] = None
     pack_size: Optional[Decimal] = Field(None, gt=0)
     pack_unit: Optional[str] = Field(None, min_length=1, max_length=20)
+    default_vendor_id: Optional[int] = None
 
 class BulkItemUpdate(InventoryItemUpdate):
     """One changed row from the setup grid. Only the fields sent are changed."""
@@ -141,9 +143,14 @@ class PriceCheckResult(BaseModel):
     change: Optional[Decimal]             # 0.625 = 62.5% up
     is_jump: bool
 
-# Vendors — just the table for now; the vendor screen comes later.
+# Vendors: who items are bought from, and who the order message goes to.
 class VendorCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
+    phone: Optional[str] = Field(None, max_length=30)
+    notes: Optional[str] = Field(None, max_length=500)
+
+class VendorUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
     phone: Optional[str] = Field(None, max_length=30)
     notes: Optional[str] = Field(None, max_length=500)
 

@@ -48,11 +48,15 @@ class InventoryItem(Base):
     # Added inline from the purchase sheet with just a name and unit; the owner
     # still has to configure it. Cleared when the setup grid saves the row.
     needs_setup = Column(Boolean, nullable=False, default=False, server_default="0")
+    # Who this is usually ordered from; groups the end-of-count order message.
+    # Optional: an item with none still alerts, under "Unassigned".
+    default_vendor_id = Column(Integer, ForeignKey("vendors.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     # Relationships
     category = relationship("InventoryCategory", back_populates="items")
+    default_vendor = relationship("Vendor")
     transactions = relationship("InventoryTransaction", back_populates="item")
     costing_ingredients = relationship("DishCostingIngredient", back_populates="inventory_item")
 

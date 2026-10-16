@@ -39,6 +39,7 @@ Kept here as well as in the spine, because decisions are worth having in git his
 | 2026-10-15 | No sub-recipes yet: a batch-made sauce is an inventory item with a typed price. |
 | 2026-10-15 | Overhead defaults confirmed: labour 15%, fixed 10%, wastage 5%, packaging ₹0, target margin 65%. |
 | 2026-10-15 | A suggested price rounds up to the next ₹10, and is offered only when every line is costed. |
+| 2026-10-16 | An order suggestion brings stock back to twice the alert level; there is no separate par level yet. |
 
 ## Build queue
 
@@ -58,7 +59,8 @@ In dependency order.
 
 Shipped already: the typed-input count row (`6b8cbf6`), the setup grid (1), yes/no items in
 the nightly count (2): the Out / Have it row, the model-level clamp, review sheet and stock log;
-the purchase sheet (3), pack size in costing (4) and the dish costing screen (5).
+the purchase sheet (3), pack size in costing (4), the dish costing screen (5), and vendors with
+the order messages (7).
 
 Purchase sheet (3), backend only: `total_amount` and `vendor_id` on purchase rows, a minimal
 `vendors` table, `POST /transactions/purchase/check` (the >30% jump warning, dry run) and
@@ -96,6 +98,16 @@ on every line that isn't costed, the pack-size question asked on the line itself
 overheads and target, and "Use ₹X as the menu price" behind a confirmation. Unsaved changes are
 kept on the device. Every costing route is now owner-only, and a recipe in the item's own unit
 (1 packet of a packet item) always costs, even for units the converter doesn't know.
+
+Vendors and order messages (7): each item has an optional usual vendor (`default_vendor_id`), set
+in the setup grid's Vendor column, where "+ New vendor…" adds one. A new **Order** tab in Inventory
+groups what's below its alert level by vendor, A to Z, with Unassigned last, and renders one
+paste-ready message per vendor ("Good evening. Please send tomorrow: • Hot sauce — 3 bottles")
+with a Copy button. The count's "Count saved" screen leads there, and the Daily count tab says how
+many items are low. Quantities are suggestions back to twice the alert level, rounded up to whole
+units or hundreds of g/ml, and editable; a line can be left out; yes/no items go by name alone.
+The owner can add or change a vendor's phone on the same screen (`PATCH /vendors/{id}`).
+Copy-paste only: nothing is sent automatically.
 
 ## State of `feature/dish-costing`
 

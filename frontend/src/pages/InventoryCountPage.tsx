@@ -199,7 +199,11 @@ export default function InventoryCountPage() {
             {count.items_checked} checked · {count.items_changed} changed · {count.items_skipped} not counted
           </p>
           {count.emailed && <p className="mt-1 text-sm text-neutral-text-muted">A report is on its way to the owner by email.</p>}
-          <button type="button" onClick={() => navigate('/admin/inventory')} className="btn-primary w-full mt-8">
+          {/* Low stock exists to drive ordering: the count ends on the order messages. */}
+          <button type="button" onClick={() => navigate('/admin/inventory?tab=order')} className="btn-primary w-full mt-8">
+            Write tonight's orders
+          </button>
+          <button type="button" onClick={() => navigate('/admin/inventory')} className="btn-secondary w-full mt-3">
             Done
           </button>
         </div>

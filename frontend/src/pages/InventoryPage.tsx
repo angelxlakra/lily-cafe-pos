@@ -1,17 +1,20 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { Package, Tag, ClockCounterClockwise, ClipboardText, ShoppingCart } from '@phosphor-icons/react';
+import { useSearchParams } from 'react-router-dom';
+import { Package, Tag, ClockCounterClockwise, ClipboardText, ShoppingCart, PaperPlaneTilt } from '@phosphor-icons/react';
 import { useSidebar } from '../context/SidebarContext';
 import { useAuth } from '../hooks/useAuth';
 import DailyCountTab from '../components/inventory/DailyCountTab';
 import PurchaseSheetTab from '../components/inventory/PurchaseSheetTab';
+import OrderTab from '../components/inventory/OrderTab';
 import InventoryItemsTab from '../components/inventory/InventoryItemsTab';
 import InventoryCategoriesTab from '../components/inventory/InventoryCategoriesTab';
 import InventoryTransactionsTab from '../components/inventory/InventoryTransactionsTab';
 
-type Tab = 'daily-count' | 'purchases' | 'items' | 'categories' | 'transactions';
+type Tab = 'daily-count' | 'order' | 'purchases' | 'items' | 'categories' | 'transactions';
 
 const TABS: { id: Tab; label: string; icon: JSX.Element; ownerOnly?: boolean }[] = [
   { id: 'daily-count', label: 'Daily count', icon: <ClipboardText size={20} aria-hidden /> },
+  { id: 'order', label: 'Order', icon: <PaperPlaneTilt size={20} aria-hidden /> },
   { id: 'purchases', label: 'Purchases', icon: <ShoppingCart size={20} aria-hidden /> },
   { id: 'items', label: 'Items', icon: <Package size={20} aria-hidden />, ownerOnly: true },
   { id: 'categories', label: 'Categories', icon: <Tag size={20} aria-hidden />, ownerOnly: true },
@@ -19,7 +22,11 @@ const TABS: { id: Tab; label: string; icon: JSX.Element; ownerOnly?: boolean }[]
 ];
 
 export default function InventoryPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('daily-count');
+  // ?tab=order opens straight onto tonight's orders, from the end of the count.
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<Tab>(() =>
+    TABS.some(tab => tab.id === searchParams.get('tab') && !tab.ownerOnly) ? (searchParams.get('tab') as Tab) : 'daily-count'
+  );
   const { setMobileOpen } = useSidebar();
   // Items and categories are owner-only master data: admins don't see them.
   const { isOwner } = useAuth();
@@ -112,7 +119,8 @@ export default function InventoryPage() {
         aria-labelledby={`inventory-tab-${activeTab}`}
         className="p-4 lg:p-6 w-full"
       >
-        {activeTab === 'daily-count' && <DailyCountTab />}
+        {activeTab === 'daily-count' && <DailyCountTab onOrder={() => setActiveTab('order')} />}
+        {activeTab === 'order' && <OrderTab onSetUpVendors={isOwner ? () => setActiveTab('items') : undefined} />}
         {activeTab === 'purchases' && <PurchaseSheetTab />}
         {isOwner && activeTab === 'items' && <InventoryItemsTab />}
         {isOwner && activeTab === 'categories' && <InventoryCategoriesTab />}

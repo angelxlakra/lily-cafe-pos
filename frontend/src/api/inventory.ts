@@ -144,6 +144,12 @@ export const inventoryApi = {
     return response.data;
   },
 
+  /** Owner only. A name another vendor already has is refused (409). */
+  updateVendor: async (id: number, data: { name?: string; phone?: string | null }): Promise<Vendor> => {
+    const response = await apiClient.patch<Vendor>(`/inventory/vendors/${id}`, data);
+    return response.data;
+  },
+
   recordUsage: async (data: UsageCreate): Promise<any> => {
     const response = await apiClient.post('/inventory/transactions/usage', data);
     return response.data;
