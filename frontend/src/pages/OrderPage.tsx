@@ -196,7 +196,7 @@ export default function OrderPage() {
     createOrUpdateOrder(orderData, {
       onSuccess: () => {
         // Show success toast
-        toast.success("Order saved successfully!", {
+        toast.success("Sent to kitchen", {
           description: `Table ${tableNumber} order has been sent to the kitchen.`
         });
 
@@ -399,6 +399,7 @@ export default function OrderPage() {
         gstRatePercent={gstRatePercent}
         notes={notes}
         onNotesChange={setNotes}
+        alreadySentCount={existingOrder?.order_items.reduce((sum, i) => sum + i.quantity, 0) ?? 0}
       />
 
       {/* Bottom Navigation */}
