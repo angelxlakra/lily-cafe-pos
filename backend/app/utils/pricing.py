@@ -8,6 +8,11 @@ One order of precedence, no blending:
 3. Otherwise no price. A stored 0 is a placeholder, not "free" — 98 live
    items were created at 0.00.
 
+A purchase is read in the item's unit as it is now, not as it was: a line
+recorded as 4000 g stays 4 kg after the item moves to kg, so its price is
+₹120/kg rather than ₹0.12. A line in a unit the item can no longer convert
+from (pcs, now kg) says nothing about today's price and is passed over.
+
 A ₹0 purchase is a gift ("the vendor threw in coriander"). It raises stock
 but says nothing about what the item costs, so it never becomes the price.
 
@@ -24,6 +29,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.inventory_models import InventoryItem, InventoryTransaction, TransactionType
+from app.utils.units import IncompatibleUnitError, convert
 
 # A new purchase more than this far from the current price is worth a
 # "chicken was ₹320/kg, this is ₹520/kg — right?" at entry.
@@ -48,6 +54,19 @@ def unit_price(total_amount, quantity) -> Optional[Decimal]:
     if quantity <= 0:
         return None
     return (Decimal(total_amount) / quantity).quantize(_PRICE_PLACES)
+
+
+def quantity_in(t: InventoryTransaction, item_unit: str) -> Optional[Decimal]:
+    """A movement's quantity in the item's current unit, or None if it can't be read in it."""
+    recorded = (t.unit or "").strip()
+    if t.quantity is None:
+        return None
+    if not recorded or recorded.lower() == (item_unit or "").strip().lower():
+        return Decimal(t.quantity)
+    try:
+        return convert(t.quantity, recorded, item_unit)
+    except IncompatibleUnitError:
+        return None
 
 
 @dataclass(frozen=True)
@@ -103,7 +122,7 @@ def resolve(item: InventoryItem, latest_purchase: Optional[InventoryTransaction]
     if item.is_presence:
         return NO_PRICE  # a yes/no item has no quantity to price against
     if latest_purchase is not None:
-        price = unit_price(latest_purchase.total_amount, latest_purchase.quantity)
+        price = unit_price(latest_purchase.total_amount, quantity_in(latest_purchase, item.unit))
         if price is not None and price > 0:
             return ResolvedPrice(price, SOURCE_PURCHASE, latest_purchase.created_at)
     return _typed(item)

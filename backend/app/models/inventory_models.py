@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Numeric, Boolean, ForeignKey, DateTime, Date, Enum
+from sqlalchemy import Column, Integer, String, Numeric, Boolean, ForeignKey, DateTime, Date, Enum, event, select
 from decimal import Decimal
 
 from sqlalchemy.orm import relationship, validates
@@ -121,10 +121,28 @@ class InventoryTransaction(Base):
     # How many were bought ("2" × 1 kg at ₹65). quantity ÷ pack_count is the
     # unit quantity and total_amount ÷ pack_count the rate; neither is stored.
     pack_count = Column(Numeric(10, 3), nullable=True)
+    # The item's unit when this was recorded. quantity is in it, so a later
+    # g -> kg change can't turn "4000 g for ₹480" into a price of ₹0.12/kg.
+    # Filled in on insert (below); rows from before it existed were backfilled
+    # with their item's unit at the time.
+    unit = Column(String(20), nullable=True)
 
     # Relationships
     item = relationship("InventoryItem", back_populates="transactions")
     vendor = relationship("Vendor")
+
+
+@event.listens_for(InventoryTransaction, "before_insert")
+def _record_unit(mapper, connection, target):
+    """Every movement records its item's unit, whichever of the writers made it.
+
+    Read through the flush's connection: an item's own unit change in the same
+    flush is written first, since the transaction row depends on the item.
+    """
+    if target.unit is None and target.item_id is not None:
+        target.unit = connection.execute(
+            select(InventoryItem.unit).where(InventoryItem.id == target.item_id)
+        ).scalar()
 
 
 class CountLineStatus(str, enum.Enum):
