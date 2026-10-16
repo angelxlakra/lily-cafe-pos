@@ -9,6 +9,7 @@ source of truth. This file exists so anyone in the codebase can find them.
 | [The plan (spine)](https://claude.ai/code/artifact/30397532-3e3f-4f74-bb49-2ba053856314) | The ledger identity, shared vocabulary, order of work, decisions log |
 | [Hybrid stock count](https://claude.ai/code/artifact/118e2484-b467-4ef8-b622-096b050098db) | Item kinds, the count screen, the setup grid, pack size, migration |
 | [Purchases and reconciliation](https://claude.ai/code/artifact/fd94a0a3-5dde-43f6-b47c-865b73685002) | The daily purchase sheet, where price comes from, waste, variance |
+| [Dish costing screen](https://claude.ai/artifact/13qxuj8UoDnqMRZcrNik19) | Step 5's spec: the recipe sheet, named gaps, the backend it needs |
 
 Start at the spine. When a spec and the spine disagree, the spine is wrong — fix it there.
 
@@ -33,6 +34,11 @@ Kept here as well as in the spine, because decisions are worth having in git his
 | 2026-09-26 | The sheet's rows are only what was bought that day. |
 | 2026-09-26 | Day-end on the sheet *is* tonight's count for that item — one number, one source. |
 | 2026-09-26 | Each day's sheet is kept; staff see today's, only the owner opens other days. The sheet's day is the count night (to 04:00). |
+| 2026-10-15 | Dish costing lives on the Menu page, owner only: a Cost column and a recipe sheet per dish. |
+| 2026-10-15 | Yes/no items on a recipe are covered by overheads — shown, never costed, never a gap. |
+| 2026-10-15 | No sub-recipes yet: a batch-made sauce is an inventory item with a typed price. |
+| 2026-10-15 | Overhead defaults confirmed: labour 15%, fixed 10%, wastage 5%, packaging ₹0, target margin 65%. |
+| 2026-10-15 | A suggested price rounds up to the next ₹10, and is offered only when every line is costed. |
 
 ## Build queue
 
@@ -50,8 +56,9 @@ In dependency order.
 6. **Reconciliation** (~1½ days) — weekly variance per item. Needs everything above.
 7. **Vendors and order messages** (~1 day) — independent once low stock is trustworthy.
 
-Shipped already: the typed-input count row (`6b8cbf6`), the setup grid (1), and yes/no items in
-the nightly count (2): the Out / Have it row, the model-level clamp, review sheet and stock log.
+Shipped already: the typed-input count row (`6b8cbf6`), the setup grid (1), yes/no items in
+the nightly count (2): the Out / Have it row, the model-level clamp, review sheet and stock log;
+the purchase sheet (3), pack size in costing (4) and the dish costing screen (5).
 
 Purchase sheet (3), backend only: `total_amount` and `vendor_id` on purchase rows, a minimal
 `vendors` table, `POST /transactions/purchase/check` (the >30% jump warning, dry run) and
@@ -79,6 +86,16 @@ pack size would fix comes back with `needs_pack_size: true` and a warning naming
 ("1 bottle = how many ml?"); yes/no items and unknown units (tbsp) never ask. The prompt itself
 is the dish costing UI's job (5): ask when that flag is set, save it through the setup grid's
 pack columns, and re-cost.
+
+Dish costing screen (5), shipped on the **Menu** page, owner only: a Margin chip per dish
+(`54% · below 65%`, `≤ 54% · 2 gaps`, `+ Recipe`) and a "Needs attention" filter that lists
+below-target dishes worst first, then dishes with gaps, then dishes with no recipe. The chip opens
+the recipe sheet (`frontend/src/components/costing/RecipeSheet.tsx`): ingredients with quantity
+and unit, a live cost from `POST /costing/preview`, each price's source and date, a named reason
+on every line that isn't costed, the pack-size question asked on the line itself, per-dish
+overheads and target, and "Use ₹X as the menu price" behind a confirmation. Unsaved changes are
+kept on the device. Every costing route is now owner-only, and a recipe in the item's own unit
+(1 packet of a packet item) always costs, even for units the converter doesn't know.
 
 ## State of `feature/dish-costing`
 
@@ -234,8 +251,9 @@ Read docs/INVENTORY_PLAN.md for context. There is NO spec for this UI yet — pr
 before building, and check it with me.
 
 A recipe builder per menu item (pick inventory items, quantity, unit) plus a cost readout
-with margin. Items that can't be costed — yes/no items, no price, unconvertible units —
-must show as incomplete with a named reason, never as ₹0. Show the price's as-of date.
+with margin. Items that can't be costed — no price, unconvertible units, retired items —
+must show as incomplete with a named reason (each line's `reason`), never as ₹0. Yes/no
+items are covered by overheads: shown on the line, not a gap. Show the price's as-of date.
 When a line comes back with needs_pack_size, ask "1 <item unit> = how many <recipe unit>?"
 right there, save it to the item's pack_size/pack_unit, and re-cost.
 

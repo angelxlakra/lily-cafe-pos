@@ -1,5 +1,6 @@
 """Pydantic schemas for dish costing."""
 
+from datetime import datetime
 from decimal import Decimal
 from typing import List, Literal, Optional
 
@@ -45,6 +46,10 @@ class IngredientLineOut(BaseModel):
     is_active: bool
     unit_error: bool = False
     needs_pack_size: bool = False
+    price_source: Optional[Literal["purchase", "typed"]] = None
+    price_as_of: Optional[datetime] = None
+    reason: Optional[Literal["retired", "needs_pack_size", "unknown_unit", "no_price"]] = None
+    is_presence: bool = False
 
 
 class OverheadLineOut(BaseModel):
@@ -103,6 +108,8 @@ class DishCostingSummary(BaseModel):
     target_margin_percent: Decimal
     below_target: bool
     is_complete: bool
+    # Ingredients that aren't costed yet; 0 when is_complete.
+    gap_count: int = 0
 
 
 class PriceChange(BaseModel):

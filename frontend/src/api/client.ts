@@ -3,6 +3,7 @@
 // Lily Cafe POS System - Frontend
 // ========================================
 
+import { clearCostingDrafts } from '../utils/costing';
 import axios, {
   AxiosError,
   AxiosInstance,
@@ -156,6 +157,8 @@ export const authApi = {
    */
   logout: (): void => {
     removeAuthToken();
+    // Only on a real sign-out, not an expired token: the owner's unsaved recipe survives a re-login.
+    clearCostingDrafts();
   },
 
   /**
