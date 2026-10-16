@@ -161,7 +161,8 @@ def compute(
         except IncompatibleUnitError as e:
             unit_error = True
             qty_in_stock_unit = Decimal("0")
-            needs_pack_size = not ing.is_presence and _known_unit(ing.unit)
+            # Yes/no items never get here, so a known recipe unit means a pack size would fix it.
+            needs_pack_size = _known_unit(ing.unit)
             if needs_pack_size:
                 warnings.append(
                     f"{ing.name}: set its pack size (1 {ing.stock_unit} = how many {ing.unit}?) - counted as 0"
@@ -309,23 +310,3 @@ def resolve_target_margin(costing=None) -> Decimal:
     if costing is not None and costing.target_margin_percent is not None:
         return Decimal(costing.target_margin_percent)
     return Decimal(settings_store.get("costing.target_margin_percent", "65"))
-
-
-def to_inputs(costing, price_overrides: dict[int, Decimal] | None = None) -> list[IngredientInput]:
-    overrides = price_overrides or {}
-    inputs = []
-    for row in costing.ingredients:
-        item = row.inventory_item
-        price = overrides.get(item.id, item.cost_per_unit)
-        inputs.append(
-            IngredientInput(
-                item_id=item.id,
-                name=item.name,
-                quantity=Decimal(row.quantity),
-                unit=row.unit,
-                stock_unit=item.unit,
-                cost_per_unit=Decimal(price) if price is not None else None,
-                is_active=item.is_active,
-            )
-        )
-    return inputs

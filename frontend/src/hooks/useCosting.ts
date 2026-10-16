@@ -55,10 +55,13 @@ export function useSaveCosting() {
 export function useApplySuggestedPrice() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (costingId: number) => costingApi.applySuggestedPrice(costingId),
+    mutationFn: ({ costingId, price }: { costingId: number; price: number }) =>
+      costingApi.applySuggestedPrice(costingId, price),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: costingKeys.all });
       queryClient.invalidateQueries({ queryKey: menuQueryKeys.all });
     },
+    // Refused because the cost moved: fetch the new cost so the sheet shows the new price.
+    onError: () => queryClient.invalidateQueries({ queryKey: costingKeys.all }),
   });
 }

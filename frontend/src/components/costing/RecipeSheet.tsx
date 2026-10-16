@@ -274,9 +274,9 @@ function RecipeEditor({ menuItem, saved, onClose }: { menuItem: MenuItem; saved:
   };
 
   const handleApplyPrice = async () => {
-    if (!saved) return;
+    if (!saved || breakdown?.suggested_price == null) return;
     try {
-      await applyPrice.mutateAsync(saved.id);
+      await applyPrice.mutateAsync({ costingId: saved.id, price: Number(breakdown.suggested_price) });
       setConfirmingPrice(false);
       toast.success('Menu price changed');
     } catch (error) {

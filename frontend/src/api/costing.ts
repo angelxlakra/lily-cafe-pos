@@ -46,9 +46,12 @@ export const costingApi = {
     return response.data;
   },
 
-  /** Sets the menu price to the suggested one. Refused (409) while the dish has gaps. */
-  applySuggestedPrice: async (id: number): Promise<DishCosting> => {
-    const response = await apiClient.post<DishCosting>(`/costing/${id}/apply-price`);
+  /**
+   * Sets the menu price to the suggested one. `price` is what the owner confirmed:
+   * refused (409) if the cost has moved since, or while the dish has gaps.
+   */
+  applySuggestedPrice: async (id: number, price: number): Promise<DishCosting> => {
+    const response = await apiClient.post<DishCosting>(`/costing/${id}/apply-price`, { price });
     return response.data;
   },
 };

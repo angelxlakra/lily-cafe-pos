@@ -389,8 +389,10 @@ def delete_costing(costing_id: int, db: Session = Depends(get_db), current_user:
 # APPLY SUGGESTED PRICE
 
 @router.post("/{costing_id}/apply-price", response_model=costing_schemas.DishCostingOut)
-def apply_suggested_price(costing_id: int, db: Session = Depends(get_db), current_user: TokenData = _OWNER):
-    # Apply the calculated suggested selling price to the menu item.
+def apply_suggested_price(costing_id: int, data: costing_schemas.ApplyPriceIn, db: Session = Depends(get_db), current_user: TokenData = _OWNER):
+    # Apply the calculated suggested selling price to the menu item. data.price is
+    # the price the owner confirmed; if a purchase moved the cost since, refuse
+    # rather than write a price they never saw.
     costing = costing_crud.get_costing(db, costing_id)
 
     if not costing:
@@ -410,7 +412,12 @@ def apply_suggested_price(costing_id: int, db: Session = Depends(get_db), curren
         )
     if breakdown.suggested_price is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No suggested price is available.")
-    
+    if breakdown.suggested_price != data.price:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"The cost changed: the suggested price is now ₹{breakdown.suggested_price:,.0f}. Check it and try again.",
+        )
+
     # MenuItem.price is stored in paise.
     menu_item.price = int(breakdown.suggested_price * Decimal("100"))
 

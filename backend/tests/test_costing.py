@@ -395,7 +395,7 @@ class TestCostingEndpoints:
         test_db.commit()
         costing_id = self._costing(client, owner_headers, sample_menu_items[0].id, [paneer.id])
 
-        r = client.post(f"/api/v1/costing/{costing_id}/apply-price", headers=owner_headers)
+        r = client.post(f"/api/v1/costing/{costing_id}/apply-price", headers=owner_headers, json={"price": "380"})
 
         assert r.status_code == 200, r.text
         test_db.refresh(sample_menu_items[0])
@@ -407,11 +407,45 @@ class TestCostingEndpoints:
         test_db.commit()
         costing_id = self._costing(client, owner_headers, sample_menu_items[0].id, [maida.id])
 
-        r = client.post(f"/api/v1/costing/{costing_id}/apply-price", headers=owner_headers)
+        r = client.post(f"/api/v1/costing/{costing_id}/apply-price", headers=owner_headers, json={"price": "100"})
 
         assert r.status_code == 409
         test_db.refresh(sample_menu_items[0])
         assert sample_menu_items[0].price == 8000
+
+    def test_apply_price_refuses_a_price_the_owner_didnt_see(self, client, test_db, owner_headers, sample_menu_items):
+        """Confirmed ₹380, then a purchase moved the cost: the menu keeps its price and the answer says the new one."""
+        paneer = InventoryItem(name="Paneer", unit="kg", cost_per_unit=Decimal("400"))
+        test_db.add(paneer)
+        test_db.commit()
+        costing_id = self._costing(client, owner_headers, sample_menu_items[0].id, [paneer.id])
+        test_db.add(InventoryTransaction(
+            item_id=paneer.id, transaction_type="PURCHASE", quantity=Decimal("1"),
+            total_amount=Decimal("500"), recorded_by="test",
+            previous_quantity=Decimal("0"), new_quantity=Decimal("1"),
+        ))
+        test_db.commit()
+
+        r = client.post(f"/api/v1/costing/{costing_id}/apply-price", headers=owner_headers, json={"price": "380"})
+
+        assert r.status_code == 409
+        assert "₹470" in r.json()["detail"]
+        test_db.refresh(sample_menu_items[0])
+        assert sample_menu_items[0].price == 8000
+
+    def test_preview_saves_nothing(self, client, test_db, owner_headers, sample_menu_items):
+        from app.models.costing_models import DishCosting, DishCostingIngredient
+        paneer = InventoryItem(name="Paneer", unit="kg", cost_per_unit=Decimal("400"))
+        test_db.add(paneer)
+        test_db.commit()
+
+        r = client.post("/api/v1/costing/preview", headers=owner_headers, json={
+            "menu_item_id": sample_menu_items[0].id, "yield_units": "1",
+            "ingredients": [{"inventory_item_id": paneer.id, "quantity": "250", "unit": "g"}],
+        })
+
+        assert r.status_code == 200, r.text
+        assert test_db.query(DishCosting).count() == test_db.query(DishCostingIngredient).count() == 0
 
     def test_defaults_are_the_cafe_wide_overheads(self, client, owner_headers):
         r = client.get("/api/v1/costing/defaults", headers=owner_headers)
