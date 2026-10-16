@@ -108,6 +108,8 @@ class DishCostingSummary(BaseModel):
     target_margin_percent: Decimal
     below_target: bool
     is_complete: bool
+    # Ingredients that aren't costed yet; 0 when is_complete.
+    gap_count: int = 0
 
 
 class PriceChange(BaseModel):

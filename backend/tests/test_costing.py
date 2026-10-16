@@ -134,6 +134,16 @@ class TestCompute:
         assert not any(line.unit_error or line.needs_pack_size for line in breakdown.ingredients)
         assert breakdown.is_complete is True
 
+    def test_a_recipe_in_the_items_own_unit_always_costs(self):
+        """1 packet of noodles counted in packets is 1 packet, though "packet" isn't a unit the converter knows."""
+        breakdown = compute(
+            ingredients=[_ingredient(1, "Glass noodles", "1", "Packet", "packet", "60")],
+            overheads=_no_overheads(), yield_units=Decimal("1"),
+        )
+
+        line = breakdown.ingredients[0]
+        assert (line.unit_error, line.reason, line.line_cost) == (False, None, Decimal("60.00"))
+
     def test_missing_or_wrong_pack_size_asks_for_one(self):
         """No pack size, or one in the wrong family, flags the line instead of guessing."""
         no_pack = _ingredient(1, "Chilli oil", "30", "ml", "bottle", "350")
@@ -385,3 +395,20 @@ class TestCostingEndpoints:
         data = r.json()
         assert data["labour"] == {"mode": "percent", "value": "15"}
         assert Decimal(data["target_margin_percent"]) == Decimal("65")
+
+    def test_costs_are_the_owners_alone(self, client, auth_headers, owner_headers):
+        """A staff login can't read costs or margins, not even the defaults."""
+        assert client.get("/api/v1/costing", headers=auth_headers).status_code == 403
+        assert client.get("/api/v1/costing/defaults", headers=auth_headers).status_code == 403
+        assert client.get("/api/v1/costing", headers=owner_headers).status_code == 200
+
+    def test_list_counts_each_dishs_gaps(self, client, test_db, owner_headers, sample_menu_items):
+        paneer = InventoryItem(name="Paneer", unit="kg", cost_per_unit=Decimal("400"))
+        maida = InventoryItem(name="Maida", unit="kg", cost_per_unit=None)
+        test_db.add_all([paneer, maida])
+        test_db.commit()
+        self._costing(client, owner_headers, sample_menu_items[0].id, [paneer.id, maida.id])
+
+        (row,) = client.get("/api/v1/costing", headers=owner_headers).json()
+
+        assert (row["gap_count"], row["is_complete"]) == (1, False)

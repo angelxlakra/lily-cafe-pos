@@ -56,8 +56,9 @@ In dependency order.
 6. **Reconciliation** (~1½ days) — weekly variance per item. Needs everything above.
 7. **Vendors and order messages** (~1 day) — independent once low stock is trustworthy.
 
-Shipped already: the typed-input count row (`6b8cbf6`), the setup grid (1), and yes/no items in
-the nightly count (2): the Out / Have it row, the model-level clamp, review sheet and stock log.
+Shipped already: the typed-input count row (`6b8cbf6`), the setup grid (1), yes/no items in
+the nightly count (2): the Out / Have it row, the model-level clamp, review sheet and stock log;
+the purchase sheet (3), pack size in costing (4) and the dish costing screen (5).
 
 Purchase sheet (3), backend only: `total_amount` and `vendor_id` on purchase rows, a minimal
 `vendors` table, `POST /transactions/purchase/check` (the >30% jump warning, dry run) and
@@ -85,6 +86,16 @@ pack size would fix comes back with `needs_pack_size: true` and a warning naming
 ("1 bottle = how many ml?"); yes/no items and unknown units (tbsp) never ask. The prompt itself
 is the dish costing UI's job (5): ask when that flag is set, save it through the setup grid's
 pack columns, and re-cost.
+
+Dish costing screen (5), shipped on the **Menu** page, owner only: a Margin chip per dish
+(`54% · below 65%`, `≤ 54% · 2 gaps`, `+ Recipe`) and a "Needs attention" filter that lists
+below-target dishes worst first, then dishes with gaps, then dishes with no recipe. The chip opens
+the recipe sheet (`frontend/src/components/costing/RecipeSheet.tsx`): ingredients with quantity
+and unit, a live cost from `POST /costing/preview`, each price's source and date, a named reason
+on every line that isn't costed, the pack-size question asked on the line itself, per-dish
+overheads and target, and "Use ₹X as the menu price" behind a confirmation. Unsaved changes are
+kept on the device. Every costing route is now owner-only, and a recipe in the item's own unit
+(1 packet of a packet item) always costs, even for units the converter doesn't know.
 
 ## State of `feature/dish-costing`
 

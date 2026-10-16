@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter , Depends, HTTPException, status
 from sqlalchemy.orm import Session, object_session
 
-from app.api.deps import get_current_owner, get_current_user, get_optional_user
+from app.api.deps import get_current_owner
 from app.db.session import get_db
 from app.models.costing_models import DishCosting, DishCostingIngredient
 from app.models.inventory_models import InventoryItem
@@ -19,7 +19,8 @@ from app.utils.units import IncompatibleUnitError
 
 router = APIRouter()
 
-_READ = Depends(get_current_user)
+# Costs and margins are the owner's: staff never see them, here or on screen.
+_READ = Depends(get_current_owner)
 _OWNER = Depends(get_current_owner)
 
 
@@ -188,6 +189,7 @@ def get_costings(db: Session = Depends(get_db), current_user: TokenData = _READ)
             target_margin_percent=target,
             below_target=below_target,
             is_complete=breakdown.is_complete,
+            gap_count=sum(1 for line in breakdown.ingredients if line.reason),
         ))
     
     return result

@@ -79,6 +79,10 @@ def to_item_unit(quantity, unit: str, item_unit: str, pack_size=None, pack_unit:
     size bridges: 30 ml of a sauce counted in bottles, with 1 bottle = 700 ml,
     is 30/700 of a bottle. Raises IncompatibleUnitError when neither works.
     """
+    # The item's own unit always works, even one the converter doesn't know:
+    # 1 packet of noodles counted in packets is 1 packet.
+    if (unit or "").strip().lower() == (item_unit or "").strip().lower():
+        return Decimal(quantity)
     try:
         return convert(quantity, unit, item_unit)
     except IncompatibleUnitError:
