@@ -67,6 +67,7 @@ _INVENTORY_ADDED_COLUMNS = {
         # vendors is created by create_all() before this runs.
         "vendor_id": "INTEGER REFERENCES vendors(id)",
         "pack_count": "NUMERIC(10, 3)",
+        "unit": "VARCHAR(20)",
     },
 }
 
@@ -108,7 +109,25 @@ def ensure_inventory_columns(bind=None) -> list[str]:
     added = []
     for table, columns in _INVENTORY_ADDED_COLUMNS.items():
         added += _ensure_columns(bind, table, columns)
+    _backfill_transaction_units(bind)
     return added
+
+
+def _backfill_transaction_units(bind) -> None:
+    """Give rows from before transactions recorded a unit their item's current one.
+
+    That is the unit everything already assumed they were in, so nothing that
+    worked before changes; from here on each new row records its own.
+    """
+    tables = set(inspect(bind).get_table_names())
+    if not {"inventory_transactions", "inventory_items"} <= tables:
+        return
+    with bind.begin() as conn:
+        conn.execute(text(
+            "UPDATE inventory_transactions SET unit = "
+            "(SELECT unit FROM inventory_items WHERE inventory_items.id = inventory_transactions.item_id) "
+            "WHERE unit IS NULL"
+        ))
 
 
 def init_db():

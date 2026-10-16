@@ -66,9 +66,11 @@ Purchase sheet (3), backend only: `total_amount` and `vendor_id` on purchase row
 `vendors` table, `POST /transactions/purchase/check` (the >30% jump warning, dry run) and
 `GET /purchases?business_date=` (the day's lines and total). Price resolution lives in
 `backend/app/utils/pricing.py`; items return `current_price`, `price_source`, `price_as_of`,
-and dish costing now prices from it. Known gap: purchase quantities are in the unit the item
-had at the time, so changing an item's unit (g → kg) after purchases with amounts skews its
-derived price until the next purchase.
+and dish costing now prices from it. Every stock movement records the unit it was entered in
+(`inventory_transactions.unit`), and a purchase is read in the item's unit as it is now: after a
+g → kg change, "4000 g for ₹480" still prices at ₹120/kg and shows as 4 kg on the day's sheet. A
+purchase in a unit the item can no longer convert from (pcs → kg) is passed over for the typed
+price. Rows from before the column existed were backfilled with their item's unit at the time.
 
 Purchase sheet screen (3), shipped as the **Purchases** tab in Inventory, built to the owners'
 paper sketch: an editable table per day plus a keyboard-first new line (item ⏎ rate ⏎ count ⏎;

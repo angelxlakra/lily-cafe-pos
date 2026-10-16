@@ -456,15 +456,21 @@ def _price_check(item: InventoryItem, quantity, total_amount, current: pricing.R
     }
 
 def _purchase_dict(t: InventoryTransaction) -> dict:
+    # Shown in the item's unit as it is now, so a line bought before a g -> kg
+    # change reads 4 kg at ₹120, not 4000 kg at ₹0.12. A line in a unit the
+    # item can't convert from any more keeps its own.
+    quantity = pricing.quantity_in(t, t.item.unit)
+    unit = t.item.unit if quantity is not None else t.unit
+    quantity = t.quantity if quantity is None else quantity
     return {
         "id": t.id,
         "item_id": t.item_id,
         "item_name": t.item.name,
-        "unit": t.item.unit,
+        "unit": unit,
         "transaction_type": t.transaction_type,
-        "quantity": t.quantity,
+        "quantity": quantity,
         "total_amount": t.total_amount,
-        "unit_price": pricing.unit_price(t.total_amount, t.quantity),
+        "unit_price": pricing.unit_price(t.total_amount, quantity),
         "vendor_id": t.vendor_id,
         "vendor_name": t.vendor.name if t.vendor else None,
         "notes": t.notes,
@@ -728,9 +734,28 @@ def _editable_purchase(db: Session, purchase_id: int) -> InventoryTransaction:
         raise HTTPException(status_code=409, detail="Tonight's count already includes this purchase; use a stock adjustment")
     return t
 
+def _restate_in_item_unit(t: InventoryTransaction) -> None:
+    """Rewrite a line recorded before its item's unit changed in the unit it has now."""
+    unit = t.item.unit
+    if (t.unit or unit).strip().lower() == unit.strip().lower():
+        return
+    quantity = pricing.quantity_in(t, unit)
+    if quantity is None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"{t.item.name} was bought in {t.unit} and is now counted in {unit}, so this line can't be changed. Correct the stock in tonight's count.",
+        )
+    t.previous_quantity = convert(t.previous_quantity, t.unit, unit)
+    t.quantity, t.new_quantity, t.unit = quantity, convert(t.new_quantity, t.unit, unit), unit
+
 def _move_purchase_stock(t: InventoryTransaction, quantity: Decimal) -> None:
-    """Re-apply a purchase line as `quantity` (0 undoes it), keeping stock and the row in step."""
+    """Re-apply a purchase line as `quantity` (0 undoes it), keeping stock and the row in step.
+
+    `quantity` is in the item's unit now; a line recorded before a unit change
+    is first brought into it, so stock moves by like amounts.
+    """
     item = t.item
+    _restate_in_item_unit(t)
     before = item.current_quantity
     item.current_quantity = before - t.quantity + quantity  # clamped by the model for yes/no
     t.quantity += item.current_quantity - before
