@@ -123,6 +123,21 @@ export function rupees(amount: number | string | null | undefined): string {
   return `₹${value.toLocaleString('en-IN', { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
 }
 
+/** Unsaved recipes are kept on the device under this prefix, one key per dish. */
+export const COSTING_DRAFT_PREFIX = 'lily.costing-draft.';
+
+/** Signing out forgets them: a shared device shouldn't keep the owner's recipes for the next person. */
+export function clearCostingDrafts(storage: Storage = localStorage) {
+  try {
+    const keys = Array.from({ length: storage.length }, (_, i) => storage.key(i)).filter(
+      (key): key is string => key !== null && key.startsWith(COSTING_DRAFT_PREFIX),
+    );
+    keys.forEach(key => storage.removeItem(key));
+  } catch {
+    // Storage off: there were no drafts to forget.
+  }
+}
+
 /** A recipe quantity as typed: a positive number, or null for blank or unreadable. */
 export function parseQuantity(text: string): number | null {
   const cleaned = text.trim().replace(/,/g, '.');

@@ -21,7 +21,7 @@ import { formatCurrency } from '../../utils/formatCurrency';
 import { pickItems } from '../../utils/purchaseSheet';
 import { toast } from '../../utils/toast';
 import {
-  describeGap, describeSource, isStalePrice, parseQuantity, rupees, unitOptions,
+  COSTING_DRAFT_PREFIX, describeGap, describeSource, isStalePrice, parseQuantity, rupees, unitOptions,
 } from '../../utils/costing';
 import type { MenuItem } from '../../types';
 import type { InventoryItem } from '../../types/inventory';
@@ -68,7 +68,7 @@ const field =
 let keySeed = 0;
 const newKey = () => `line-${++keySeed}`;
 
-const draftStorageKey = (menuItemId: number) => `lily.costing-draft.${menuItemId}`;
+const draftStorageKey = (menuItemId: number) => `${COSTING_DRAFT_PREFIX}${menuItemId}`;
 
 function readStoredDraft(menuItemId: number): Draft | null {
   try {

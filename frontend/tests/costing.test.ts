@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  attentionRank, costStatus, describeGap, describeSource, isStalePrice, parseQuantity, rupees, unitOptions,
+  attentionRank, clearCostingDrafts, costStatus, describeGap, describeSource, isStalePrice, parseQuantity, rupees, unitOptions,
 } from '../src/utils/costing.ts';
 
 const summary = (over: Record<string, unknown> = {}) => ({
@@ -71,4 +71,15 @@ test('quantities and rupees read the way people type and expect them', () => {
   assert.equal(rupees('90.00'), '₹90');
   assert.equal(rupees(1280), '₹1,280');
   assert.equal(rupees(null), '—');
+});
+
+test('signing out forgets unsaved recipes and nothing else', () => {
+  const data = new Map<string, string>([['lily.costing-draft.4', '{}'], ['lily.costing-draft.9', '{}'], ['lily-cafe-theme', 'dark']]);
+  const storage = {
+    get length() { return data.size; },
+    key: (i: number) => [...data.keys()][i] ?? null,
+    removeItem: (key: string) => { data.delete(key); },
+  } as unknown as Storage;
+  clearCostingDrafts(storage);
+  assert.deepEqual([...data.keys()], ['lily-cafe-theme']);
 });

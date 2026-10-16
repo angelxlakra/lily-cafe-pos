@@ -182,6 +182,31 @@ class TestCompute:
         assert breakdown.is_complete is True
         assert not any("Coriander" in w for w in breakdown.warnings)
 
+    def test_a_retired_yes_no_item_is_still_a_gap(self):
+        """Covered by overheads while it's stocked; once retired it needs swapping, like any retired item."""
+        coriander = IngredientInput(
+            item_id=1, name="Coriander", quantity=Decimal("5"), unit="g", stock_unit="yes/no",
+            cost_per_unit=None, is_presence=True, is_active=False,
+        )
+        breakdown = compute(ingredients=[coriander], overheads=_no_overheads(), yield_units=Decimal("1"))
+
+        assert breakdown.ingredients[0].reason == "retired"
+        assert breakdown.is_complete is False
+
+    def test_a_dish_that_costs_nothing_gets_no_suggested_price(self):
+        """Only yes/no items: complete, ₹0, and no ₹0 price to apply to the menu."""
+        coriander = IngredientInput(
+            item_id=1, name="Coriander", quantity=Decimal("5"), unit="g", stock_unit="yes/no",
+            cost_per_unit=None, is_presence=True,
+        )
+        breakdown = compute(
+            ingredients=[coriander], overheads=_no_overheads(), yield_units=Decimal("1"),
+            target_margin_percent=Decimal("65"),
+        )
+
+        assert breakdown.is_complete is True
+        assert breakdown.suggested_price is None
+
     def test_every_gap_has_one_named_reason(self):
         retired = _ingredient(4, "Old ghee", "10", "g", "kg", "600")
         retired.is_active = False

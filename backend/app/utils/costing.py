@@ -263,8 +263,8 @@ def compute(
         if target >= 100:
             raise ValueError("Target margin must be below 100%")
         # A price from a cost with gaps would be too low, so offer none until
-        # every line is costed.
-        if is_complete:
+        # every line is costed; a dish that costs nothing has no price to suggest.
+        if is_complete and cost_per_unit > 0:
             suggested_price = menu_price(cost_per_unit / (1 - target / 100))
 
     return CostBreakdown(

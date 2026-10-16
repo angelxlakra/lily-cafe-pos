@@ -20,7 +20,6 @@ from app.utils.units import IncompatibleUnitError
 router = APIRouter()
 
 # Costs and margins are the owner's: staff never see them, here or on screen.
-_READ = Depends(get_current_owner)
 _OWNER = Depends(get_current_owner)
 
 
@@ -166,7 +165,7 @@ def _build_costing_model(data: costing_schemas.DishCostingIn, inventory_items: d
 # Routes
 
 @router.get("", response_model=List[costing_schemas.DishCostingSummary])
-def get_costings(db: Session = Depends(get_db), current_user: TokenData = _READ):
+def get_costings(db: Session = Depends(get_db), current_user: TokenData = _OWNER):
     # Get all dish costing.
     costings = costing_crud.get_costings(db)
     result = []
@@ -195,7 +194,7 @@ def get_costings(db: Session = Depends(get_db), current_user: TokenData = _READ)
     return result
 
 @router.get("/defaults", response_model=costing_schemas.DefaultsOut)
-def get_costing_defaults(current_user: TokenData = _READ):
+def get_costing_defaults(current_user: TokenData = _OWNER):
     """The cafe-wide overheads and target margin a dish uses unless it overrides them."""
     overheads = costing_utils.resolve_overheads()
     return costing_schemas.DefaultsOut(
@@ -204,7 +203,7 @@ def get_costing_defaults(current_user: TokenData = _READ):
     )
 
 @router.get("/{costing_id}", response_model=costing_schemas.DishCostingOut)
-def get_costing(costing_id: int, db: Session = Depends(get_db), current_user: TokenData = _READ):
+def get_costing(costing_id: int, db: Session = Depends(get_db), current_user: TokenData = _OWNER):
     # Get single dish costing
     costing = costing_crud.get_costing(db, costing_id)
 
@@ -214,7 +213,7 @@ def get_costing(costing_id: int, db: Session = Depends(get_db), current_user: To
     return _costing_to_schema(costing)
 
 @router.get("/menu/{menu_item_id}", response_model=costing_schemas.DishCostingOut)
-def get_menu_item_costing(menu_item_id: int, db: Session = Depends(get_db), current_user: TokenData = _READ):
+def get_menu_item_costing(menu_item_id: int, db: Session = Depends(get_db), current_user: TokenData = _OWNER):
     # Get costing for a specific menu item.
     menu_item = costing_crud.get_menu_item(db, menu_item_id)
 
@@ -231,7 +230,7 @@ def get_menu_item_costing(menu_item_id: int, db: Session = Depends(get_db), curr
 # PREVIW
 
 @router.post("/preview", response_model=costing_schemas.CostBreakdownOut)
-def preview_costing(data: costing_schemas.DishCostingIn, db: Session = Depends(get_db), current_user: TokenData = _READ):
+def preview_costing(data: costing_schemas.DishCostingIn, db: Session = Depends(get_db), current_user: TokenData = _OWNER):
     # Calculate costing without saving it.
     menu_item = costing_crud.get_menu_item(
         db,
