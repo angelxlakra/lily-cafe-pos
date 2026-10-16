@@ -6,7 +6,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from app.models.inventory_models import InventoryItem, InventoryTransaction
-from app.utils.costing import IngredientInput, OverheadInput, compute
+from app.utils.costing import IngredientInput, OverheadInput, compute, menu_price
 
 
 def _no_overheads():
@@ -236,6 +236,11 @@ class TestCompute:
         assert complete.suggested_price == Decimal("290")
         assert with_gap.suggested_price is None
 
+    def test_menu_price_rounds_up_only_past_a_ten(self):
+        assert menu_price(Decimal("230.00")) == Decimal("230")
+        assert menu_price(Decimal("230.01")) == Decimal("240")
+        assert menu_price(Decimal("285.71")) == Decimal("290")
+
     def test_price_source_and_date_ride_along_only_with_a_real_price(self):
         bought = datetime(2026, 10, 12, 5)
         paneer = _ingredient(1, "Paneer", "250", "g", "kg", "400")
@@ -459,6 +464,8 @@ class TestCostingEndpoints:
         """A staff login can't read costs or margins, not even the defaults."""
         assert client.get("/api/v1/costing", headers=auth_headers).status_code == 403
         assert client.get("/api/v1/costing/defaults", headers=auth_headers).status_code == 403
+        preview = {"menu_item_id": 1, "yield_units": "1", "ingredients": []}
+        assert client.post("/api/v1/costing/preview", headers=auth_headers, json=preview).status_code == 403
         assert client.get("/api/v1/costing", headers=owner_headers).status_code == 200
 
     def test_list_counts_each_dishs_gaps(self, client, test_db, owner_headers, sample_menu_items):
