@@ -34,6 +34,8 @@ export interface InventoryItem {
   /** Latest paid purchase's unit price, else the typed price; per the item's unit. */
   current_price?: number | null;
   price_source?: 'purchase' | 'typed' | null;
+  /** Who it's usually ordered from; groups the order message. */
+  default_vendor_id?: number | null;
   created_at: string;
   updated_at?: string;
 }
@@ -61,6 +63,7 @@ export interface InventoryItemUpdate {
   count_mode?: CountMode;
   pack_size?: number | null;
   pack_unit?: string | null;
+  default_vendor_id?: number | null;
 }
 
 /** One changed row from the setup grid; only the fields sent change. */
@@ -145,6 +148,8 @@ export interface PurchaseDay {
 export interface Vendor {
   id: number;
   name: string;
+  phone?: string | null;
+  notes?: string | null;
 }
 
 export interface UsageItem {

@@ -36,7 +36,7 @@ const savedAt = (count: CountSummary) =>
 const tally = (count: CountSummary) =>
   `${count.items_checked} checked · ${count.items_changed} changed · ${count.items_skipped} not counted`;
 
-export default function DailyCountTab() {
+export default function DailyCountTab({ onOrder }: { onOrder?: () => void }) {
   const { isOwner } = useAuth();
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [draft, setDraft] = useState(loadCountDraft);
@@ -54,6 +54,11 @@ export default function DailyCountTab() {
     queryKey: ['inventory', 'counts', 'recent'],
     queryFn: () => inventoryApi.getCounts(7),
   });
+  const { data: activeItems } = useQuery({
+    queryKey: ['inventory', 'items', { is_active: true }],
+    queryFn: () => inventoryApi.getItems({ is_active: true }),
+  });
+  const lowCount = activeItems?.low_stock_count ?? 0;
   const { data: categories = [] } = useQuery({
     queryKey: ['inventory', 'categories'],
     queryFn: inventoryApi.getCategories,
@@ -129,6 +134,14 @@ export default function DailyCountTab() {
             </button>
           )}
         </div>
+        {lowCount > 0 && onOrder && (
+          <p className="mt-4 border-t border-neutral-border pt-3 text-neutral-text-body">
+            {lowCount} {lowCount === 1 ? 'item is' : 'items are'} below the alert level.{' '}
+            <button type="button" onClick={onOrder} className="font-semibold text-coffee-brown underline underline-offset-2">
+              Write the orders
+            </button>
+          </p>
+        )}
       </section>
 
       {recent.length > 0 && (

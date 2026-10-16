@@ -230,6 +230,13 @@ def _item_dict(item: InventoryItem, price: pricing.ResolvedPrice, schema=invento
     item_dict.update(price.as_dict())
     return item_dict
 
+def _check_vendors(db: Session, vendor_ids: set) -> None:
+    """A default vendor must exist: SQLite doesn't enforce the foreign key."""
+    vendor_ids = vendor_ids - {None}
+    known = {v.id for v in db.query(Vendor.id).filter(Vendor.id.in_(vendor_ids))} if vendor_ids else set()
+    if vendor_ids - known:
+        raise HTTPException(status_code=400, detail=f"Vendors not found: {sorted(vendor_ids - known)}")
+
 # Columns that can't hold NULL; sending null for one is a client error, not a 500.
 _REQUIRED_ITEM_FIELDS = ("name", "unit", "min_threshold", "count_mode", "is_active")
 _CENT = Decimal("0.01")
@@ -300,6 +307,7 @@ def bulk_update_items(
     known = {c.id for c in db.query(InventoryCategory.id).filter(InventoryCategory.id.in_(category_ids))}
     if category_ids - known:
         raise HTTPException(status_code=400, detail=f"Categories not found: {sorted(category_ids - known)}")
+    _check_vendors(db, {row.default_vendor_id for row in payload.items})
 
     adjusted = 0
     for row in payload.items:
@@ -340,6 +348,7 @@ def create_item(
     current_user: TokenData = _OWNER,
 ):
     """Create a new inventory item. Owner login only."""
+    _check_vendors(db, {item.default_vendor_id})
     # Check uniqueness within category if category provided
     if item.category_id:
         existing = db.query(InventoryItem).filter(
@@ -359,6 +368,7 @@ def create_item(
         count_mode=item.count_mode,
         pack_size=item.pack_size,
         pack_unit=item.pack_unit,
+        default_vendor_id=item.default_vendor_id,
         sort_order=_next_sort_order(db, InventoryItem),
     )
     _apply_presence_rules(new_item)
@@ -384,6 +394,7 @@ def update_item(
     blank = [key for key in _REQUIRED_ITEM_FIELDS if key in update_data and update_data[key] is None]
     if blank:
         raise HTTPException(status_code=422, detail=f"{', '.join(blank)} can't be empty")
+    _check_vendors(db, {update_data.get("default_vendor_id")})
     before = item.current_quantity
     for key, value in update_data.items():
         setattr(item, key, value)
@@ -809,6 +820,34 @@ def create_vendor(
     db.commit()
     db.refresh(new_vendor)
     return new_vendor
+
+@router.patch("/vendors/{vendor_id}", response_model=inventory_schemas.Vendor)
+def update_vendor(
+    vendor_id: int,
+    changes: inventory_schemas.VendorUpdate,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _OWNER,
+):
+    """Rename a vendor or set their phone. Owner only; two vendors can't share a name."""
+    vendor = db.get(Vendor, vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+    data = changes.model_dump(exclude_unset=True)
+    if "name" in data:
+        name = (data["name"] or "").strip()
+        if not name:
+            raise HTTPException(status_code=422, detail="Vendor name is blank")
+        clash = db.query(Vendor).filter(func.lower(Vendor.name) == name.lower(), Vendor.id != vendor_id).first()
+        if clash:
+            raise HTTPException(status_code=409, detail=f"There is already a vendor called {clash.name}")
+        data["name"] = name
+    if "phone" in data:
+        data["phone"] = (data["phone"] or "").strip() or None
+    for key, value in data.items():
+        setattr(vendor, key, value)
+    db.commit()
+    db.refresh(vendor)
+    return vendor
 
 @router.post("/transactions/usage", status_code=status.HTTP_201_CREATED)
 def record_usage(

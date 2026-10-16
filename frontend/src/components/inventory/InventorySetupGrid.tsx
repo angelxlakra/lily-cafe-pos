@@ -12,7 +12,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowCounterClockwise, ArrowsIn, ArrowsOut, Copy, Lock, LockOpen, MagnifyingGlass } from '@phosphor-icons/react';
 import { inventoryApi } from '../../api/inventory';
 import { useInventoryCategories, useInventoryItems } from '../../hooks/useInventory';
@@ -20,11 +20,11 @@ import ConfirmDialog from '../ConfirmDialog';
 import LoadingSpinner from '../LoadingSpinner';
 import { describeApiError } from '../../utils/apiError';
 import { formatQty, parseQty } from '../../utils/countQuantity';
-import type { BulkItemUpdate, InventoryCategory, InventoryItem } from '../../types/inventory';
+import type { BulkItemUpdate, InventoryCategory, InventoryItem, Vendor } from '../../types/inventory';
 
 type Field =
   | 'category_id' | 'name' | 'count_mode' | 'current_quantity' | 'unit'
-  | 'pack_size' | 'pack_unit' | 'min_threshold' | 'cost_per_unit';
+  | 'pack_size' | 'pack_unit' | 'min_threshold' | 'cost_per_unit' | 'default_vendor_id';
 type Cells = Record<Field, string>;
 type RowState = { cells: Cells; retired: boolean };
 
@@ -40,7 +40,10 @@ const COLUMNS: { field: Field; label: string; width: number; left?: number; nume
   { field: 'pack_unit', label: 'Pack unit', width: 104 },
   { field: 'min_threshold', label: 'Alert below', width: 120, numeric: true },
   { field: 'cost_per_unit', label: 'Price ₹', width: 136, numeric: true },
+  // Who it's usually ordered from: groups tonight's order messages.
+  { field: 'default_vendor_id', label: 'Vendor', width: 180 },
 ];
+const NEW_VENDOR = '__new__';
 const NUMERIC = new Set(COLUMNS.filter(c => c.numeric).map(c => c.field));
 // A yes/no item has none of these; the server sets them.
 const NOT_FOR_PRESENCE = new Set<Field>(['unit', 'pack_size', 'pack_unit', 'min_threshold', 'cost_per_unit']);
@@ -74,6 +77,7 @@ function toCells(item: InventoryItem): Cells {
     pack_unit: item.pack_unit ?? '',
     min_threshold: num(item.min_threshold),
     cost_per_unit: num(item.cost_per_unit),
+    default_vendor_id: item.default_vendor_id ? String(item.default_vendor_id) : '',
   };
 }
 
@@ -127,7 +131,7 @@ function toUpdate(id: number, original: Cells, row: RowState): BulkItemUpdate | 
     if (!isDirty(field, original, row.cells) || !applies(field, row.cells)) continue;
     changed = true;
     const text = row.cells[field].trim();
-    if (field === 'category_id') update[field] = text ? Number(text) : null;
+    if (field === 'category_id' || field === 'default_vendor_id') update[field] = text ? Number(text) : null;
     else if (NUMERIC.has(field)) update[field] = text === '' ? null : parseQty(text);
     else if (field === 'pack_unit') update[field] = text || null;
     else update[field] = text;
@@ -140,11 +144,12 @@ function toUpdate(id: number, original: Cells, row: RowState): BulkItemUpdate | 
 }
 
 /** A pasted value in the form the cell stores, or null if it can't be read. */
-function coerce(field: Field, raw: string, categories: InventoryCategory[]): string | null {
+function coerce(field: Field, raw: string, categories: InventoryCategory[], vendors: Vendor[]): string | null {
   const text = raw.trim();
-  if (field === 'category_id') {
+  if (field === 'category_id' || field === 'default_vendor_id') {
     if (!text) return '';
-    const match = categories.find(c => c.name.toLowerCase() === text.toLowerCase());
+    const options = field === 'category_id' ? categories : vendors;
+    const match = options.find(o => o.name.toLowerCase() === text.toLowerCase());
     return match ? String(match.id) : null;
   }
   if (field === 'count_mode') {
@@ -160,6 +165,7 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
   const queryClient = useQueryClient();
   const { data: itemsData, isLoading, refetch } = useInventoryItems({ is_active: true });
   const { data: categories = [] } = useInventoryCategories();
+  const { data: vendors = [] } = useQuery({ queryKey: ['inventory', 'vendors'], queryFn: inventoryApi.getVendors });
 
   // A snapshot, not live data: a background refetch must never wipe edits.
   const [base, setBase] = useState<InventoryItem[] | null>(null);
@@ -272,6 +278,20 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
     });
   }, []);
 
+  // "+ New vendor…" in a Vendor cell: one name, then the cell holds the new vendor.
+  // POST /vendors returns an existing vendor of the same name instead of a twin.
+  const newVendor = useCallback(async (id: number) => {
+    const name = window.prompt('New vendor name')?.trim();
+    if (!name) return;
+    try {
+      const vendor = await inventoryApi.createVendor(name);
+      await queryClient.invalidateQueries({ queryKey: ['inventory', 'vendors'] });
+      setCell(id, 'default_vendor_id', String(vendor.id));
+    } catch (error) {
+      setNotice(`Couldn't add ${name}: ${describeApiError(error)}`);
+    }
+  }, [queryClient, setCell]);
+
   const toggleSelect = useCallback((id: number) => {
     setSelected(prev => {
       const next = new Set(prev);
@@ -321,7 +341,7 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
       const row = id === undefined ? undefined : next.get(id);
       if (!row || !column) return void outside++;
       if (locked.has(column.field)) return void skippedLocked++;
-      const value = coerce(column.field, raw, categories);
+      const value = coerce(column.field, raw, categories, vendors);
       if (value === null) return void unreadable++;
       next.set(id, { ...row, cells: { ...row.cells, [column.field]: value } });
       filled++;
@@ -329,7 +349,7 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
     setRows(next);
     const skipped = [
       skippedLocked && `${skippedLocked} in locked columns`,
-      unreadable && `${unreadable} unreadable (unknown category or kind)`,
+      unreadable && `${unreadable} unreadable (unknown category, vendor or kind)`,
       outside && `${outside} past the edge of the table`,
     ].filter(Boolean);
     setNotice(`Pasted ${filled} cell${filled === 1 ? '' : 's'}.${skipped.length ? ` Skipped ${skipped.join(', ')}.` : ''}`);
@@ -349,11 +369,13 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
 
   const copyTable = async () => {
     const byId = new Map(categories.map(c => [String(c.id), c.name]));
+    const vendorById = new Map(vendors.map(v => [String(v.id), v.name]));
     const lines = [COLUMNS.map(c => c.label).join('\t')];
     visibleIds.forEach(id => {
       const cells = rows.get(id)!.cells;
       lines.push(COLUMNS.map(({ field }) =>
         field === 'category_id' ? byId.get(cells[field]) ?? ''
+          : field === 'default_vendor_id' ? vendorById.get(cells[field]) ?? ''
           : field === 'count_mode' ? MODE_LABEL[cells[field]]
           : cells[field]).join('\t'));
     });
@@ -546,6 +568,8 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
                 selected={selected.has(id)}
                 locked={locked}
                 categories={categories}
+                vendors={vendors}
+                onNewVendor={newVendor}
                 onCell={setCell}
                 onSelect={toggleSelect}
                 onRetire={toggleRetire}
@@ -574,7 +598,7 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
   return fullScreen ? createPortal(grid, document.body) : grid;
 }
 
-const GridRow = memo(function GridRow({ id, index, original, row, selected, locked, categories, onCell, onSelect, onRetire, isNew }: {
+const GridRow = memo(function GridRow({ id, index, original, row, selected, locked, categories, vendors, onNewVendor, onCell, onSelect, onRetire, isNew }: {
   id: number;
   index: number;
   original: Cells;
@@ -582,6 +606,8 @@ const GridRow = memo(function GridRow({ id, index, original, row, selected, lock
   selected: boolean;
   locked: Set<Field>;
   categories: InventoryCategory[];
+  vendors: Vendor[];
+  onNewVendor: (id: number) => void;
   onCell: (id: number, field: Field, value: string) => void;
   onSelect: (id: number) => void;
   onRetire: (id: number) => void;
@@ -590,6 +616,7 @@ const GridRow = memo(function GridRow({ id, index, original, row, selected, lock
 }) {
   const { cells, retired } = row;
   const categoryName = (value: string) => categories.find(c => String(c.id) === value)?.name ?? '—';
+  const vendorName = (value: string) => vendors.find(v => String(v.id) === value)?.name ?? '—';
 
   return (
     <tr className={retired ? 'text-neutral-text-light' : ''}>
@@ -620,6 +647,7 @@ const GridRow = memo(function GridRow({ id, index, original, row, selected, lock
           content = <span className="block px-2 text-neutral-text-light">—</span>;
         } else if (locked.has(field)) {
           const text = field === 'category_id' ? categoryName(cells[field])
+            : field === 'default_vendor_id' ? vendorName(cells[field])
             : field === 'count_mode' ? MODE_LABEL[cells[field]]
             : field === 'cost_per_unit' && cells[field] !== '' ? `${cells[field]} /${cells.unit.trim() || 'unit'}`
             : column.numeric && cells[field] !== '' ? formatQty(cells[field]) : cells[field];
@@ -630,6 +658,18 @@ const GridRow = memo(function GridRow({ id, index, original, row, selected, lock
             <select {...common} value={cells[field]} onChange={e => onCell(id, field, e.target.value)}>
               <option value="">None</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          );
+        } else if (field === 'default_vendor_id') {
+          content = (
+            <select
+              {...common}
+              value={cells[field]}
+              onChange={e => (e.target.value === NEW_VENDOR ? onNewVendor(id) : onCell(id, field, e.target.value))}
+            >
+              <option value="">None</option>
+              {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+              <option value={NEW_VENDOR}>+ New vendor…</option>
             </select>
           );
         } else if (field === 'count_mode') {
