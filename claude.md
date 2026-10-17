@@ -19,3 +19,9 @@ Do NOT use:
 
 - `/backend` - FastAPI backend application
 - `/frontend` - React TypeScript frontend application
+
+## Inventory, costing and purchases
+
+The plan of record is `docs/INVENTORY_PLAN.md`. Read its "Next up" section before starting
+inventory, dish costing, purchase, vendor or reconciliation work, and update it when you ship
+a step. PRs for this work target `pre-release`, not `main`.
