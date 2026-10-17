@@ -41,6 +41,24 @@ Kept here as well as in the spine, because decisions are worth having in git his
 | 2026-10-15 | A suggested price rounds up to the next ₹10, and is offered only when every line is costed. |
 | 2026-10-16 | An order suggestion brings stock back to twice the alert level; there is no separate par level yet. |
 
+## Next up
+
+Read this first in a new session. In order:
+
+1. **Ship `pre-release` to `main`** (owner). Everything from steps 1–5 and 7 is merged into
+   `pre-release` but not deployed. Follow "Landing `pre-release`" below.
+2. **Re-price items whose unit was changed before the unit fix** (owner, after the deploy).
+   Purchases logged before `inventory_transactions.unit` existed were backfilled with the
+   item's unit at deploy time, so an item whose unit changed earlier (g → kg) may still price
+   wrongly. Log a fresh purchase or type a price for those items.
+3. **Enter real recipes on the Menu page** (owner). Costing and reconciliation are only as good
+   as the recipes; step 6 is pointless without them.
+4. **Build step 6, reconciliation.** The session prompt is under "Session prompts" below.
+   Start it once recipes exist.
+
+Optional, not scheduled: a per-item stock target to replace "twice the alert level" in order
+suggestions (see the 2026-10-16 decision).
+
 ## Build queue
 
 In dependency order.
