@@ -28,16 +28,24 @@ function familyOf(unit: string | null | undefined): string[] | null {
 }
 
 /**
- * The units a recipe line can use for an item, the likeliest first: the small
- * unit of the item's own family (250 g of something bought by the kg), then the
- * pack's family (ml of a sauce counted in bottles), then the item's own unit.
+ * The units a recipe line can use for an item, the likeliest first. An item with
+ * a pack size has one because recipes use it in that other unit, so the pack's
+ * family leads (ml of soda counted in bottles, not 200 bottles); otherwise the
+ * small unit of the item's own family (250 g of something bought by the kg).
+ * Something counted in pieces or packs with no pack size yet also offers weight
+ * and volume, because a kitchen cooks with 25 g of butter, not 1 pack: picking
+ * one makes the line ask "1 pcs = how many g?", and the answer becomes the pack size.
  */
 export function unitOptions(item: UnitItem): string[] {
   const options: string[] = [];
   const add = (unit: string) => { if (!options.includes(unit)) options.push(unit); };
-  familyOf(item.unit)?.forEach(add);
   if (Number(item.pack_size) > 0) familyOf(item.pack_unit)?.forEach(add);
+  familyOf(item.unit)?.forEach(add);
   add(normalize(item.unit) ?? item.unit);
+  const own = familyOf(item.unit);
+  if (!(Number(item.pack_size) > 0) && own !== FAMILIES.mass && own !== FAMILIES.volume) {
+    [...FAMILIES.mass, ...FAMILIES.volume].forEach(add);
+  }
   return options;
 }
 
@@ -79,7 +87,8 @@ export type CostStatus =
   | { kind: 'below'; label: string; margin: number | null }
   | { kind: 'ok'; label: string; margin: number | null };
 
-const percent = (value: number) => `${Math.round(value)}%`;
+// Rounded down, so a margin never reads as reaching a target it misses (64.9% is not 65%).
+export const percent = (value: number) => `${Math.floor(value)}%`;
 
 /** A dish's margin as the Menu page's chip reads it. */
 export function costStatus(summary: DishCostingSummary | undefined): CostStatus {
