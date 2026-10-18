@@ -2,7 +2,8 @@
  * DenominationCounter Component
  *
  * Touch-optimized component for counting Indian currency denominations.
- * Displays rows for ₹500, ₹200, ₹100, ₹50, ₹20, ₹10 notes.
+ * Displays rows for ₹500 down to ₹10 notes, then ₹5, ₹2 and ₹1 coins.
+ * ₹10 and ₹20 coins count in the ₹10 and ₹20 rows: same value, same total.
  * Auto-calculates total from denomination counts.
  */
 
@@ -16,6 +17,9 @@ export interface Denominations {
   50: number;
   20: number;
   10: number;
+  5: number;
+  2: number;
+  1: number;
 }
 
 interface DenominationCounterProps {
@@ -24,8 +28,16 @@ interface DenominationCounterProps {
   readOnly?: boolean;
 }
 
-// Define denominations in descending order
-const DENOMINATION_VALUES: (keyof Denominations)[] = [500, 200, 100, 50, 20, 10];
+// Largest first. Below ₹10 the drawer holds only coins.
+export const DENOMINATION_VALUES: (keyof Denominations)[] = [500, 200, 100, 50, 20, 10, 5, 2, 1];
+export const isCoin = (denom: number) => denom < 10;
+
+export const emptyDenominations = (): Denominations =>
+  ({ 500: 0, 200: 0, 100: 0, 50: 0, 20: 0, 10: 0, 5: 0, 2: 0, 1: 0 });
+
+/** The API's field names for one stage: { opening_500s: 2, …, opening_1s: 0 }. */
+export const denominationFields = <S extends 'opening' | 'closing'>(stage: S, counts: Denominations) =>
+  Object.fromEntries(DENOMINATION_VALUES.map(d => [`${stage}_${d}s`, counts[d]])) as Record<`${S}_${keyof Denominations}s`, number>;
 
 export default function DenominationCounter({
   denominations,
@@ -73,6 +85,7 @@ export default function DenominationCounter({
                   <span className="text-sm font-bold text-neutral-text-dark dark:text-cream">
                     {denom}
                   </span>
+                  {isCoin(denom) && <span className="text-xs text-neutral-text-muted">coin</span>}
                 </div>
                 <div className={`text-xs font-mono font-bold ${count > 0 ? 'text-lily-ink' : 'text-neutral-text-muted'}`}>
                   ₹{subtotal.toLocaleString('en-IN')}
@@ -124,7 +137,7 @@ export default function DenominationCounter({
                   "
                   min="0"
                   step="1"
-                  aria-label={`Count of ₹${denom} notes`}
+                  aria-label={`Count of ₹${denom} ${isCoin(denom) ? 'coins' : 'notes'}`}
                 />
 
                 {/* Increment Buttons */}
