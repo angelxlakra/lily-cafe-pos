@@ -231,6 +231,12 @@ function ItemRow({ item, canEdit, onEdit, onDelete }: {
   );
 }
 
+// Units a recipe can already measure in. Anything else (pcs, a packet, a bottle) needs a pack
+// size before 25 g of it can be costed.
+const MEASURED = new Set(['g', 'kg', 'ml', 'l']);
+const PACK_UNITS = ['g', 'kg', 'ml', 'L'];
+const OTHER_UNITS = ['pkt', 'bottle', 'tin', 'box', 'portion'];
+
 function ItemFormModal({ categories, item, onClose }: { categories: InventoryCategory[], item: InventoryItem | null, onClose: () => void }) {
   const createItem = useCreateItem();
   const updateItem = useUpdateItem();
@@ -247,6 +253,14 @@ function ItemFormModal({ categories, item, onClose }: { categories: InventoryCat
   // Blank means no price. Sending 0 is what left 98 items looking free.
   const [cost, setCost] = useState(item?.cost_per_unit != null && Number(item.cost_per_unit) > 0 ? String(Number(item.cost_per_unit)) : '');
   const costPerUnit = cost.trim() === '' ? null : Number(cost);
+  // "1 pcs = 500 g": blank means not set, and clearing it un-sets it.
+  const [packSize, setPackSize] = useState(item?.pack_size != null ? String(Number(item.pack_size)) : '');
+  const [packUnit, setPackUnit] = useState(item?.pack_unit || 'g');
+  // Yes/no items are never measured, so they never take one.
+  const takesPack = !(item && isPresence(item)) && !MEASURED.has(formData.unit.trim().toLowerCase());
+  const pack = takesPack && packSize.trim() !== ''
+    ? { pack_size: Number(packSize), pack_unit: packUnit }
+    : { pack_size: null, pack_unit: null };
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => event.key === 'Escape' && !saving && onClose();
@@ -266,11 +280,12 @@ function ItemFormModal({ categories, item, onClose }: { categories: InventoryCat
             category_id: formData.category_id,
             unit: formData.unit,
             min_threshold: formData.min_threshold,
-            cost_per_unit: costPerUnit
+            cost_per_unit: costPerUnit,
+            ...pack,
           }
         });
       } else {
-        await createItem.mutateAsync({ ...formData, cost_per_unit: costPerUnit });
+        await createItem.mutateAsync({ ...formData, cost_per_unit: costPerUnit, ...pack });
       }
       onClose();
     } catch (err) {
@@ -340,9 +355,43 @@ function ItemFormModal({ categories, item, onClose }: { categories: InventoryCat
                 <option value="g">Grams (g)</option>
                 <option value="L">Litres (L)</option>
                 <option value="ml">Millilitres (ml)</option>
+                {OTHER_UNITS.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                {![...MEASURED, 'pcs', 'L', ...OTHER_UNITS].includes(formData.unit) && (
+                  <option value={formData.unit}>{formData.unit}</option>
+                )}
               </select>
             </div>
           </div>
+
+          {takesPack && (
+            <div>
+              <label htmlFor="item-pack-size" className={field}>What one {formData.unit} holds <span className="font-normal text-neutral-text-muted">(optional)</span></label>
+              <div className="flex items-center gap-2">
+                <span className="shrink-0 text-neutral-text-body">1 {formData.unit} =</span>
+                <input
+                  id="item-pack-size"
+                  type="number"
+                  min="0"
+                  step="any"
+                  inputMode="decimal"
+                  value={packSize}
+                  placeholder="e.g. 500"
+                  onChange={e => setPackSize(e.target.value)}
+                  className="input-field min-w-0 flex-1"
+                />
+                <select
+                  aria-label="Pack unit"
+                  value={packUnit}
+                  onChange={e => setPackUnit(e.target.value)}
+                  className="input-field w-24 shrink-0"
+                >
+                  {PACK_UNITS.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                  {!PACK_UNITS.includes(packUnit) && <option value={packUnit}>{packUnit}</option>}
+                </select>
+              </div>
+              <p className="mt-1 text-sm text-neutral-text-muted">So a recipe can use it by weight or volume: 1 pack of butter = 500 g.</p>
+            </div>
+          )}
 
           {!item && (
             <div>
