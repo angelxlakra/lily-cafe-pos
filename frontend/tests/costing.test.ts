@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  attentionRank, clearCostingDrafts, costStatus, describeGap, describeSource, isStalePrice, parseQuantity, rupees, unitOptions,
+  attentionRank, clearCostingDrafts, costStatus, describeGap, describeSource, isStalePrice, parseQuantity, percent, rupees, unitOptions,
 } from '../src/utils/costing.ts';
 
 const summary = (over: Record<string, unknown> = {}) => ({
@@ -16,8 +16,18 @@ test('a recipe line offers the units that will convert, likeliest first', () => 
   assert.deepEqual(unitOptions({ unit: 'L' }), ['ml', 'l']);
   assert.deepEqual(unitOptions({ unit: 'bottle', pack_size: '700', pack_unit: 'ml' }), ['ml', 'l', 'bottle']);
   assert.deepEqual(unitOptions({ unit: 'portion', pack_size: 6, pack_unit: 'pcs' }), ['pcs', 'portion']);
-  // No pack size yet: only the item's own unit, so a recipe in ml shows up as a named gap.
-  assert.deepEqual(unitOptions({ unit: 'bottle', pack_size: null, pack_unit: 'ml' }), ['bottle']);
+  // Counted in pieces or packs with no pack size yet: weight and volume are offered too,
+  // so 25 g of butter bought by the pack becomes a named gap that asks for the pack size.
+  assert.deepEqual(unitOptions({ unit: 'bottle', pack_size: null, pack_unit: 'ml' }), ['bottle', 'g', 'kg', 'ml', 'l']);
+  assert.deepEqual(unitOptions({ unit: 'pcs' }), ['pcs', 'g', 'kg', 'ml', 'l']);
+  // Bought by weight: never offered ml or pcs.
+  assert.deepEqual(unitOptions({ unit: 'kg', pack_size: null }), ['g', 'kg']);
+});
+
+test('a margin never reads as reaching a target it misses', () => {
+  assert.equal(percent(64.9), '64%');
+  assert.equal(percent(65), '65%');
+  assert.equal(costStatus(summary({ margin_percent: '64.9', below_target: true })).label, '64% · below 65%');
 });
 
 test('a price says where it came from, and a month-old purchase is stale', () => {

@@ -21,7 +21,7 @@ import { formatCurrency } from '../../utils/formatCurrency';
 import { pickItems } from '../../utils/purchaseSheet';
 import { toast } from '../../utils/toast';
 import {
-  COSTING_DRAFT_PREFIX, describeGap, describeSource, isStalePrice, parseQuantity, rupees, unitOptions,
+  COSTING_DRAFT_PREFIX, describeGap, describeSource, isStalePrice, parseQuantity, percent, rupees, unitOptions,
 } from '../../utils/costing';
 import type { MenuItem } from '../../types';
 import type { InventoryItem } from '../../types/inventory';
@@ -613,8 +613,8 @@ function Readout({ breakdown, gapCount, pending, menuPrice, updating }: {
   const portions = Number(breakdown.yield_units);
   // With nothing costed yet, "at most 100%" says nothing: show no margin until something is.
   const nothingCosted = Number(breakdown.cost_per_unit) <= 0;
-  const margin = breakdown.margin_percent == null || nothingCosted ? null : Math.round(Number(breakdown.margin_percent));
-  const target = breakdown.target_margin_percent == null ? null : Math.round(Number(breakdown.target_margin_percent));
+  const margin = breakdown.margin_percent == null || nothingCosted ? null : Number(breakdown.margin_percent);
+  const target = breakdown.target_margin_percent == null ? null : Number(breakdown.target_margin_percent);
   const food = breakdown.food_cost_percent == null || nothingCosted ? null : Math.round(Number(breakdown.food_cost_percent));
   const overheads = breakdown.overheads
     .filter(o => Number(o.amount) > 0)
@@ -651,7 +651,7 @@ function Readout({ breakdown, gapCount, pending, menuPrice, updating }: {
       {margin != null && (
         <div className={`${row} text-lg font-semibold ${below ? 'text-error' : 'text-neutral-text-dark'}`}>
           <span>Margin</span>
-          <span>{hasGaps && 'at most '}{margin}%{target != null && <span className="text-sm font-normal text-neutral-text-muted"> · target {target}%</span>}</span>
+          <span>{hasGaps && 'at most '}{percent(margin)}{target != null && <span className="text-sm font-normal text-neutral-text-muted"> · target {percent(target)}</span>}</span>
         </div>
       )}
       {food != null && (
