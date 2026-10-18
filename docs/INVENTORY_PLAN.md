@@ -54,24 +54,39 @@ messages, and the unit fix. `main` has 4 commits `pre-release` lacks (the waiter
 and chit centring). A trial merge is clean.
 
 **The bottleneck is owner data entry, not code.** Reconciliation is the payoff, and it can't
-read true until the owner has repriced items and entered recipes, and a clean week of counts
-and purchases has run on top of them. Code for step 6 can be written in parallel, but nobody
+read true until purchases have been logged, recipes entered, and a clean week of counts and
+purchases has run on top of them. Code for step 6 can be written in parallel, but nobody
 should read its numbers before then.
+
+**Production data, from a read-only snapshot on 2026-10-18:**
+
+| What | Count | So |
+| --- | --- | --- |
+| Active inventory items | 173 (21 yes/no) | — |
+| Items with a price above ₹0 | **0** | Every dish cost reads as gaps until purchases are logged or prices typed |
+| Purchases ever logged | **0** | No price history exists. Nothing can misprice from the old g → kg unit changes, so that re-pricing step is dropped |
+| Recipes (`dish_costings`) | **0** of 112 menu items | Used / Remaining / Wastage on the sheet and all of reconciliation are empty until recipes exist |
+| Nightly counts | 5 of the last 7 days, last on 2026-10-16 | The count habit is in place |
+| `digest.enabled` / `smtp.enabled` | `false` / `false` | The digest is already off in production; no action needed before deploying |
+
+Starting `pre-release` against the snapshot applied its migrations cleanly: the four new
+transaction columns and the `vendors` table. That's a dry run of the production deploy.
 
 ### Critical path
 
 1. **Land `pre-release` on `main` and deploy** (dev, then owner). See "Landing
    `pre-release`" below.
-2. **Re-price items whose unit changed before the unit fix** (owner, right after the deploy).
-   Older purchases were backfilled with the item's unit *at deploy time*, so an item that went
-   g → kg earlier may price wrongly. Log a fresh purchase or type a price for those items.
+2. **Start logging purchases on the Purchases tab** (staff, daily from the deploy). That's
+   where prices come from, and production has none. Two weeks of logging prices the items
+   bought often. Type prices in the setup grid only for things bought rarely.
 3. **Enter real recipes on the Menu page** (owner). Start with the dishes that sell most and
    the expensive middle of the list: chicken, cheese, bulk sauces. Reconciliation only covers
    items that appear in a recipe.
 4. **Name the opening count** (owner). The first full count after recipes exist is the opening
    balance. Reconciliation starts the week after it. Until then, every week's variance is
    setup noise.
-5. **Build the waste log, then step 6, reconciliation** (dev). They can be built during 2–4.
+5. **Build the waste log, then step 6, reconciliation** (dev). They can be built during 2–4, against a local copy of production (see "Testing locally on a
+   copy of production").
    Prompts are under "Session prompts".
 6. **First week of variance = a recipe-accuracy test** (owner). Fix recipes where the gap is
    a portioning difference, not a loss.
@@ -83,7 +98,7 @@ should read its numbers before then.
 | Waste log: `WASTE` type + `reason`, one button on the Purchases tab | ~½ day | — | Not built; `TransactionType` has only PURCHASE / USAGE / ADJUSTMENT. Reasons: spoiled, spilled, burnt / remade, staff meal, returned. Without it every variance is anonymous. |
 | Reconciliation (step 6) | ~1½ days | waste log; recipes for real numbers | Weekly, worst-first, in rupees. |
 | Cash link: day's purchase total as a named deduction on the cash counter | ~½ day | owner answer: paid from the till or separate cash? | Unbuilt. `expected_closing` deducts nothing for cash purchases today. |
-| Settings toggle for the morning digest | ~½ day | — | `digest.enabled` defaults to `true` and has no UI; changing it is a DB edit. The scheduler is already live from #59. |
+| Settings toggle for the morning digest | ~½ day | — | Low priority: production already has `digest.enabled = false`. The code default is still `true` and there's no UI, so turning it on is a DB edit plus a restart. |
 | Per-item stock target in order suggestions | small | — | Optional. Replaces "twice the alert level" (2026-10-16). |
 | Test isolation from the local `.env` | small | — | `load_dotenv()` lets `backend/.env` usernames and passwords leak into tests: 14 failures locally, 3 with `ADMIN_USERNAME=admin OWNER_USERNAME=owner` set. The code is fine; `main` fails the same way. Pin test credentials in `conftest.py`. |
 
@@ -101,8 +116,15 @@ From the Purchases doc. Each one changes what gets built.
 - **Who logged a purchase.** Every row already stores `recorded_by`. Check whether the sheet
   should show it before calling this settled.
 
-Not checked: how many items have prices, recipe counts, and which items had unit changes.
-That needs production data, which wasn't read for this plan.
+### Testing locally on a copy of production
+
+Enter test data here, never in production. Snapshot production read-only with SQLite's
+backup API into `backend/prodcopy.db` (gitignored, like every `*.db`). Use the same method as
+`scripts/refresh-dev-db-from-prod.sh`, but download the file instead of installing it on
+staging. Then start the `backend-prodcopy` and `frontend-local` configurations in
+`.claude/launch.json`. The backend serves the copy on :8000 with MCP off. The frontend pins
+`VITE_API_BASE_URL=http://localhost:8000`, so it can't reach production by accident. The copy
+holds customer data: delete it when you're done.
 
 ## What shipped
 
@@ -234,11 +256,10 @@ Order:
    `git rev-parse origin/main`, and `GET /api/v1/inventory/purchases?business_date=…`
    answers rather than 404s.
 
-**Morning digest.** The scheduler went live with #59 and `digest.enabled` defaults to
-`true` (`digest.email_enabled` defaults to `false`). Whether the owner turned it off isn't
-known. If they want it off, set it in `app_settings` (`flyctl ssh console -a lily-cafe-pos`,
-then an `INSERT OR REPLACE` of `('digest.enabled','false',…)`). Turning it back on needs an
-app restart, because the boot check is what creates the task.
+**Morning digest.** Already off: production's `app_settings` has `digest.enabled = false`
+(checked 2026-10-18), so this deploy starts nothing. To turn it on, set the row to `'true'`
+over `flyctl ssh console -a lily-cafe-pos`, then restart the app, because the boot check is
+what creates the task.
 
 ## Deploying, and knowing what's deployed
 
