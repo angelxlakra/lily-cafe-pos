@@ -16,6 +16,8 @@ test('a recipe line offers the units that will convert, likeliest first', () => 
   assert.deepEqual(unitOptions({ unit: 'L' }), ['ml', 'l']);
   assert.deepEqual(unitOptions({ unit: 'bottle', pack_size: '700', pack_unit: 'ml' }), ['ml', 'l', 'bottle']);
   assert.deepEqual(unitOptions({ unit: 'portion', pack_size: 6, pack_unit: 'pcs' }), ['pcs', 'portion']);
+  // A pack size means recipes use the pack's unit: butter in 100 g packs defaults to g, not 100 packs.
+  assert.deepEqual(unitOptions({ unit: 'pcs', pack_size: 100, pack_unit: 'g' }), ['g', 'kg', 'pcs']);
   // Counted in pieces or packs with no pack size yet: weight and volume are offered too,
   // so 25 g of butter bought by the pack becomes a named gap that asks for the pack size.
   assert.deepEqual(unitOptions({ unit: 'bottle', pack_size: null, pack_unit: 'ml' }), ['bottle', 'g', 'kg', 'ml', 'l']);
