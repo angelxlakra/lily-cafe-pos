@@ -116,6 +116,24 @@ From the Purchases doc. Each one changes what gets built.
 - **Who logged a purchase.** Every row already stores `recorded_by`. Check whether the sheet
   should show it before calling this settled.
 
+### Walkthrough of the owner screens (2026-10-18)
+
+13 recipes and 22 item fixes were entered through the UI, on a local copy of production, to see where
+it fights a real kitchen. Everything found, plus the recipes and estimated prices used, is in
+[UI_WALKTHROUGH_NOTES.md](UI_WALKTHROUGH_NOTES.md). The ones that matter most:
+
+- **Recipe lines defaulted to the count unit**, so "200" of soda meant 200 bottles and a ₹100 cooler read
+  ₹16,909 a portion. Fixed in #73, along with offering g/ml for piece-counted items and pack size on the
+  item form.
+- **Nothing sanity-checks a number.** Not a ₹22,220 noodle packet in the grid, and not a line costing 40×
+  the dish's menu price.
+- **A unit change across families (pcs → kg) leaves stock untouched**, so 1202 g read as 1202 kg. Same-family
+  changes are converted correctly.
+- **Yes/no items on a recipe still ask for a quantity**, and every next ingredient needs the mouse.
+- **The data needs an owner pass before reconciliation:** duplicate items (COCOA POWDER, CARAMEL/CAREMAL,
+  KIT KAT, RAMEN/JAPANESE NOODLE, FRIES/FRENCH FRIES), CHEST BONELESS holding grams in `pcs`, and nightly
+  counts that cover about a third of the list.
+
 ### Testing locally on a copy of production
 
 Enter test data here, never in production. Snapshot production read-only with SQLite's
