@@ -43,37 +43,68 @@ Kept here as well as in the spine, because decisions are worth having in git his
 
 ## Next up
 
-Read this first in a new session. In order:
+Read this first in a new session. Last checked 2026-10-18 against `origin/pre-release`
+(`767cff3`) and `origin/main` (`6c75aa4`).
 
-1. **Ship `pre-release` to `main`** (owner). Everything from steps 1–5 and 7 is merged into
-   `pre-release` but not deployed. Follow "Landing `pre-release`" below.
-2. **Re-price items whose unit was changed before the unit fix** (owner, after the deploy).
-   Purchases logged before `inventory_transactions.unit` existed were backfilled with the
-   item's unit at deploy time, so an item whose unit changed earlier (g → kg) may still price
-   wrongly. Log a fresh purchase or type a price for those items.
-3. **Enter real recipes on the Menu page** (owner). Costing and reconciliation are only as good
-   as the recipes; step 6 is pointless without them.
-4. **Build step 6, reconciliation.** The session prompt is under "Session prompts" below.
-   Start it once recipes exist.
+**Where things stand.** Steps 1–5 and 7 are built. The first batch (setup grid, hybrid
+count) reached `main` in #59 and is live. Production's backend reports commit `c99044b`,
+which is that merge. The second batch is 26 commits on `pre-release` that have never been
+deployed: the purchase sheet, pack size in costing, the dish costing screen, vendors and order
+messages, and the unit fix. `main` has 4 commits `pre-release` lacks (the waiter order review
+and chit centring). A trial merge is clean.
 
-Optional, not scheduled: a per-item stock target to replace "twice the alert level" in order
-suggestions (see the 2026-10-16 decision).
+**The bottleneck is owner data entry, not code.** Reconciliation is the payoff, and it can't
+read true until the owner has repriced items and entered recipes, and a clean week of counts
+and purchases has run on top of them. Code for step 6 can be written in parallel, but nobody
+should read its numbers before then.
 
-## Build queue
+### Critical path
 
-In dependency order.
+1. **Land `pre-release` on `main` and deploy** (dev, then owner). See "Landing
+   `pre-release`" below.
+2. **Re-price items whose unit changed before the unit fix** (owner, right after the deploy).
+   Older purchases were backfilled with the item's unit *at deploy time*, so an item that went
+   g → kg earlier may price wrongly. Log a fresh purchase or type a price for those items.
+3. **Enter real recipes on the Menu page** (owner). Start with the dishes that sell most and
+   the expensive middle of the list: chicken, cheese, bulk sauces. Reconciliation only covers
+   items that appear in a recipe.
+4. **Name the opening count** (owner). The first full count after recipes exist is the opening
+   balance. Reconciliation starts the week after it. Until then, every week's variance is
+   setup noise.
+5. **Build the waste log, then step 6, reconciliation** (dev). They can be built during 2–4.
+   Prompts are under "Session prompts".
+6. **First week of variance = a recipe-accuracy test** (owner). Fix recipes where the gap is
+   a portioning difference, not a loss.
 
-0. **Merge dish costing's backend, fix its four bugs** (~½ day) — do this soon and
-   independently of everything else. See below.
-1. **Setup grid** (~2 days) — bulk-edit every item's kind, unit, pack size, threshold, price.
-   The only true prerequisite; nothing else can be configured without it.
-2. **Hybrid count** (~1½ days) — yes/no items and the two-button row.
-3. **Purchase sheet** (~1½ days) — daily log with amount and vendor. Runs alongside 2.
-4. **Pack size** (~½ day) — the two columns plus the prompt when an item joins a recipe.
-5. **Dish costing UI** (2–3 days, not yet specced) — recipe builder and cost readout.
-   Pointless before real prices exist, so it follows 3.
-6. **Reconciliation** (~1½ days) — weekly variance per item. Needs everything above.
-7. **Vendors and order messages** (~1 day) — independent once low stock is trustworthy.
+### Pending work, not on the critical path
+
+| Work | Size | Blocked by | Notes |
+| --- | --- | --- | --- |
+| Waste log: `WASTE` type + `reason`, one button on the Purchases tab | ~½ day | — | Not built; `TransactionType` has only PURCHASE / USAGE / ADJUSTMENT. Reasons: spoiled, spilled, burnt / remade, staff meal, returned. Without it every variance is anonymous. |
+| Reconciliation (step 6) | ~1½ days | waste log; recipes for real numbers | Weekly, worst-first, in rupees. |
+| Cash link: day's purchase total as a named deduction on the cash counter | ~½ day | owner answer: paid from the till or separate cash? | Unbuilt. `expected_closing` deducts nothing for cash purchases today. |
+| Settings toggle for the morning digest | ~½ day | — | `digest.enabled` defaults to `true` and has no UI; changing it is a DB edit. The scheduler is already live from #59. |
+| Per-item stock target in order suggestions | small | — | Optional. Replaces "twice the alert level" (2026-10-16). |
+| Test isolation from the local `.env` | small | — | `load_dotenv()` lets `backend/.env` usernames and passwords leak into tests: 14 failures locally, 3 with `ADMIN_USERNAME=admin OWNER_USERNAME=owner` set. The code is fine; `main` fails the same way. Pin test credentials in `conftest.py`. |
+
+### Open questions for the owner
+
+From the Purchases doc. Each one changes what gets built.
+
+- **Where does purchase money come from: the till or separate cash?** This decides the cash
+  link. It also matters because across 194 closed days the drawer read about ₹3,000 *over*
+  expected. That deserves its own investigation.
+- **Staff meals: track them or ignore them?** If the kitchen feeds staff daily, that shows up
+  as unexplained variance every week unless it's logged under its own reason.
+- **Photograph bills?** Useful in disputes, but it costs storage and adds a step at entry.
+  Nothing is built for it.
+- **Who logged a purchase.** Every row already stores `recorded_by`. Check whether the sheet
+  should show it before calling this settled.
+
+Not checked: how many items have prices, recipe counts, and which items had unit changes.
+That needs production data, which wasn't read for this plan.
+
+## What shipped
 
 Shipped already: the typed-input count row (`6b8cbf6`), the setup grid (1), yes/no items in
 the nightly count (2): the Out / Have it row, the model-level clamp, review sheet and stock log;
@@ -129,337 +160,99 @@ units or hundreds of g/ml, and editable; a line can be left out; yes/no items go
 The owner can add or change a vendor's phone on the same screen (`PATCH /vendors/{id}`).
 Copy-paste only: nothing is sent automatically.
 
-## State of `feature/dish-costing`
-
-Backend is done — models, CRUD, endpoints, schemas and strict unit conversion, ~1,250 lines.
-There is **no frontend**: the only frontend files on the branch are a stray `pnpm-lock.yaml`
-and `pnpm-workspace.yaml`, which should not be merged since this project uses npm.
-
-The branch is 49 commits behind `main` and 13 ahead, drifting further each day. Since it is
-backend-only it merges cheaply now and expensively later — merge it early and leave the API
-unused until prices exist.
-
-Four confirmed bugs to fix on the way in:
-
-- `details=` instead of `detail=` on `HTTPException` at `endpoints/costing.py:66,68,99`, and
-  `sataus_code=` at `:306`. All four are `TypeError`s that surface as 500s.
-- `utils/costing.py:99` calls `convert()` before checking the price, so one ingredient with an
-  unconvertible unit raises and kills the whole dish instead of one line.
-- `price_missing` tests only for `None`, so a price of `0` counts as free. With 98 live items
-  priced `0.00`, dishes would report confident ₹0 ingredient lines and still look complete.
-
 ## Session prompts
 
-One per module, each self-contained so a fresh session needs no other context. Two things
-are in every prompt on purpose: read `origin/pre-release` rather than `main` (it is more
-than twenty commits ahead), and read the spec before touching code.
+Self-contained, so a fresh session needs no other context. Prompts for shipped steps were
+removed. Their history is in git (`git log -p docs/INVENTORY_PLAN.md`). Branch from
+`pre-release` and target PRs there. The two prompts both touch inventory files, so run them
+one after the other, or in separate worktrees.
 
-**Running these:** prompts 1, 2 and 3 all touch inventory files. Run them one at a time,
-or give each its own git worktree — concurrent sessions in a single checkout will
-overwrite each other. Suggested order: 0 now, then 1, then 2 and 3 together, then
-4 → 5 → 6, with 7 whenever ordering help matters more than waste reporting.
-
-### 0 — Fix and merge dish costing's backend
-
-Fix on the branch first, then merge. A merge commit that also carries fixes is hard to
-review and hard to back out of, and if the merge goes badly you keep the fixes.
+### Waste log
 
 ```
-In /Users/angelxlakra/dev/lily-cafe-pos: get origin/feature/dish-costing ready and merge
-it into pre-release. Read docs/INVENTORY_PLAN.md first — its "State of
-feature/dish-costing" section lists what's wrong. Work ON that branch, don't merge first.
+In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Add a waste log.
 
-Step 1, fix these four bugs as their own commit on feature/dish-costing:
-- `details=` should be `detail=` at endpoints/costing.py:66,68,99, and `sataus_code=`
-  should be `status_code=` at :306. All four are TypeErrors that surface as 500s.
-- utils/costing.py calls convert() before checking the price, so one ingredient with an
-  unconvertible unit raises and kills the whole dish instead of costing one line at 0.
-- price_missing only tests for None, so a price of 0 counts as free. 98 live items are
-  priced 0.00, so dishes would report confident ₹0 lines and still look complete.
+Read docs/INVENTORY_PLAN.md, then "Waste, logged rather than inferred" and "Data model"
+in the linked Purchases and reconciliation doc.
 
-Step 2, add three tests — there are currently none for ~1,250 lines of money handling:
-a normal cost calculation, one with a missing price, one with an unconvertible unit.
+Add WASTE to TransactionType and a nullable `reason` column on inventory_transactions
+through the idempotent ADD COLUMN path in app/db/session.py. Reasons are a fixed list:
+spoiled, spilled, burnt / remade, staff meal, returned, plus an optional note. Waste lowers
+stock like any movement and must show in the stock log. Keep it in the one transactions
+table: the ledger is a sum over movements.
 
-Step 3, merge main into the branch, then the branch into pre-release. Do NOT bring its
-frontend/pnpm-lock.yaml or pnpm-workspace.yaml — this project uses npm.
+UI: one button on the Purchases tab, a few seconds per entry. It's for the tray that got
+thrown out, not a spilled spoonful. Staff can log, same as purchases. Show staff meal
+separately from waste wherever totals appear.
 
-Don't build any costing UI; the frontend doesn't exist yet and comes much later. Leave
-the API unused until real prices exist.
-
-Done = bugs fixed with tests proving it, merged into pre-release, full test suite passes.
+Done = staff log a thrown-out tray in seconds, stock drops, the stock log names the reason.
 ```
 
-### 1 — Setup grid
-
-```
-In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Build the inventory
-setup grid: one editable table where the owner sets every item's kind, unit, pack size,
-threshold and price, with ONE save.
-
-Read docs/INVENTORY_PLAN.md, then the "Setup grid" section of the linked Hybrid stock
-count doc. Check TemplateImportModal.tsx on pre-release before planning — it was rebuilt
-and differs from main.
-
-Key points from the spec: plain inputs in table cells (no grid library), paste from
-Google Sheets support, freeze Name/Category, per-column locks with Stock locked by
-default, dirty-cell highlighting and Revert, one bulk PATCH endpoint. ~196 rows means
-memoize per row.
-
-The grid also needs a way to retire an item. Run backend/scripts/inventory_review.py first
-for the candidate list — note that "sitting at zero" does NOT mean dead: 36 active items
-have never had a transaction and they include SALT, MAIDA and the garbage bags. Retire
-means deactivate, not delete: DELETE /items/{id} is already a soft delete that flips
-is_active, because transactions reference those rows.
-
-Done = the owner can edit every field for all items, retire dead ones, and save once.
-```
-
-### 2 — Hybrid count
-
-```
-In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Add yes/no items to
-the nightly stock count.
-
-Read docs/INVENTORY_PLAN.md and the Hybrid stock count doc it links.
-
-Items split two ways: counted with a number, or answered Out / Have it. Add count_mode
-to inventory_items, clamp presence quantities in a model validator — there are FIVE
-writers of current_quantity, not one. Replace the count row's control with two buttons
-for presence items.
-
-Do NOT reintroduce the ✓ / − / + cluster; it failed user testing. Keep the review sheet,
-the saved counts and the 1½ fraction idiom. Exclude presence items from the
-"big differences" list.
-
-Done = a yes/no item can be answered, saved, and reads correctly in the review sheet
-and stock log.
-```
-
-### 3 — Purchase sheet
-
-```
-In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Build the daily
-purchase sheet.
-
-Read docs/INVENTORY_PLAN.md, then the linked Purchases and reconciliation doc.
-
-POST /inventory/transactions/purchase already exists and raises stock — it just has no
-concept of money or vendors. Extend it: total_amount and vendor_id on the transaction.
-
-Capture the TOTAL paid, not a unit price — people know "4 kg for ₹480". Show a running
-day total. Entry must take ~90 seconds for 5–15 lines; this is an append log, not the
-setup grid. Allow adding an unknown item inline. No credit purchases — buying and paying
-are one event.
-
-Done = a day's purchases can be logged in under two minutes and stock goes up correctly.
-```
-
-### 4 — Pack size
-
-```
-In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Add pack size to
-inventory items.
-
-Read docs/INVENTORY_PLAN.md and the "Data model" section of the Hybrid stock count doc.
-
-Two optional columns meaning "1 bottle holds 700 ml" / "1 portion = 6 pcs". You count and
-price in the item's own unit; pack size bridges to the recipe's unit. Only needed when the
-recipe unit is in a different family from the count unit — backend/app/utils/units.py on
-the costing branch handles same-family conversion already.
-
-Prompt for it when an item joins a recipe and units don't bridge, not from everyone at setup.
-
-Done = a recipe in ml can cost against an item counted in bottles.
-```
-
-### 5 — Dish costing UI
-
-```
-In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Build the frontend for
-dish costing. The backend already exists (merged from feature/dish-costing) — read its
-endpoints and schemas before designing anything.
-
-Read docs/INVENTORY_PLAN.md for context. There is NO spec for this UI yet — propose one
-before building, and check it with me.
-
-A recipe builder per menu item (pick inventory items, quantity, unit) plus a cost readout
-with margin. Items that can't be costed — no price, unconvertible units, retired items —
-must show as incomplete with a named reason (each line's `reason`), never as ₹0. Yes/no
-items are covered by overheads: shown on the line, not a gap. Show the price's as-of date.
-When a line comes back with needs_pack_size, ask "1 <item unit> = how many <recipe unit>?"
-right there, save it to the item's pack_size/pack_unit, and re-cost.
-
-Done = a menu item's recipe can be built and its true cost read, with honest gaps.
-```
-
-### 6 — Reconciliation
+### Reconciliation (step 6)
 
 ```
 In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Build weekly stock
-reconciliation.
+reconciliation. The waste log should already be merged; check first.
 
 Read docs/INVENTORY_PLAN.md, then the "Reconciliation" section of the Purchases doc.
+Reuse app/utils/usage.py (sales × recipes, the sheet's Used column) and units.py's
+to_item_unit. Don't write a second expected-consumption path.
 
 opening + purchased − waste − counted = consumed; dishes sold × recipe = expected;
-the gap is unexplained. Add a WASTE transaction type with a reason code.
+the gap is unexplained. Count nights run to 04:00 (app/core/business_day.py).
 
-WEEKLY, not daily — daily variance at this scale is noise. Only for items where every term
-exists; don't list yes/no items. Present as "these five don't add up, worst first, in
-rupees" — not a ledger dump. Say in the UI that early variance reflects recipe accuracy,
-not theft.
+WEEKLY, not daily: daily variance at this scale is noise. Only list items where every term
+exists, and never yes/no items. A missed count breaks the chain, so mark that week
+incomplete rather than assuming the previous number. Present it as "these five don't add
+up, worst first, in rupees", not a ledger dump. Say in the UI that early variance reflects
+recipe accuracy, not theft. Owner only.
 
 Done = a weekly variance list the owner can act on.
 ```
 
-### 7 — Vendors and order messages
+## Landing `pre-release`
 
-```
-In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Build vendors and the
-end-of-day order message.
+This lands the second batch. The first landed in #59. Checked 2026-10-18:
 
-Read docs/INVENTORY_PLAN.md, then "Vendors and the order message" in the Purchases doc.
+- The trial merge of `pre-release` into `main` is clean. Merge `main` into `pre-release`
+  first so the PR carries the 4 commits `main` has.
+- The frontend builds. The backend suite passes apart from the `.env` leak noted in
+  "Pending work".
+- Schema changes are additive: a `vendors` table; `total_amount`, `vendor_id`, `pack_count`
+  and `unit` on `inventory_transactions`; `default_vendor_id` and `needs_setup` on items.
+  The `unit` backfill only fills `WHERE unit IS NULL`, so running it twice is safe.
+- `orders`, `payments`, `print_jobs`, `cash_counter`, `auth` and `admin` aren't touched.
 
-A vendors table, an optional default vendor per item, and the low-stock list grouped by
-vendor rendered as paste-ready messages with a copy button each. Unmapped items go in an
-"Unassigned" group — vendor setup must never block the alert. Suggested quantities are
-editable suggestions, not calculations.
+Order:
 
-Copy-paste only for now. If automatic delivery comes up: Telegram is a bot token and a
-chat id; WhatsApp needs the Business API with approved templates and per-message fees.
+1. `scripts/refresh-dev-db-from-prod.sh`, then `scripts/deploy-backend.sh dev`. Click
+   through Purchases, Order and a dish's recipe sheet on staging.
+2. Merge to `main`. Vercel ships the frontend on push.
+3. `scripts/deploy-backend.sh prod`, outside service hours. The script refuses anything but
+   `origin/main` and confirms the live commit afterwards.
+4. Check: `curl -s https://lily-cafe-pos.fly.dev/ | jq -r .commit` equals
+   `git rev-parse origin/main`, and `GET /api/v1/inventory/purchases?business_date=…`
+   answers rather than 404s.
 
-Done = the owner finishes a count and can send each vendor an order in one tap each.
-```
+**Morning digest.** The scheduler went live with #59 and `digest.enabled` defaults to
+`true` (`digest.email_enabled` defaults to `false`). Whether the owner turned it off isn't
+known. If they want it off, set it in `app_settings` (`flyctl ssh console -a lily-cafe-pos`,
+then an `INSERT OR REPLACE` of `('digest.enabled','false',…)`). Turning it back on needs an
+app restart, because the boot check is what creates the task.
 
 ## Deploying, and knowing what's deployed
 
-The frontend auto-deploys from `main` on every push (Vercel). The backend does **not** —
-it needs someone to run `flyctl deploy` by hand. The two drift, silently.
+The frontend auto-deploys from `main` on Vercel. The backend deploys only by hand, through
+`scripts/deploy-backend.sh <prod|dev>`. Don't run `flyctl deploy` directly. It builds from
+the working directory rather than git, and the local `fly.toml` names the *dev* app. Both
+have already caused outages (2026-09-26: a "successful" release without the count routes,
+and the cafe lost a night's count to a 404).
 
-**Two gotchas, both of which have already caused an outage:**
+`GET /` returns the commit the image was built from. `"unknown"` means an unstamped build.
+After any backend change, hit the new endpoint rather than trusting the release status.
 
-1. **The local `fly.toml` says `app = "lily-cafe-pos-dev"`.** It is gitignored, so it
-   differs per machine. A plain `flyctl deploy` from the repo root deploys to the *dev*
-   app. Production needs the app named explicitly:
-
-   ```
-   flyctl deploy -a lily-cafe-pos --build-arg GIT_SHA=$(git rev-parse HEAD)
-   ```
-
-2. **A deploy can report success while shipping stale code.** On 2026-09-26 the backend
-   was found to have no `/inventory/counts` routes at all, five days after they landed on
-   `main` and four days after a "successful" release. The image built, the health check
-   passed and `fly releases` looked clean — while the endpoint the staff needed simply was
-   not there. The cafe counted 82 items that night and lost all of it to a 404.
-
-   The cause was never confirmed. The most likely explanation is that `flyctl deploy` was
-   run from a checkout that predated the merge — it builds from the working directory, not
-   from git, so a stale local tree ships stale code with no warning. (An earlier note here
-   blamed [#56](https://github.com/angelxlakra/lily-cafe-pos/pull/56); that PR fixed a
-   different problem, see below.)
-
-3. **Until #56, every image carried local files.** `fly.toml` builds from the repo root, so
-   `backend/.dockerignore` was never read and `COPY backend/ .` baked the developer's
-   `.venv`, `restaurant.db` and `.env` into the image — a 941 MB context, now about 2 MB.
-   Production itself was unaffected: Fly secrets are real environment variables and
-   `load_dotenv()` does not override those, so the baked `.env` was inert. But images v26
-   and earlier still hold a copy of whatever was in that local `.env`.
-
-**The underlying gap was that nothing reported what is actually deployed.** `GET /`
-returned `version: 0.2.0`, hardcoded and equally true of the stale image. It now also
-returns the commit the image was built from, so checking is one line rather than grepping
-inside a running container:
-
-```
-curl -s https://lily-cafe-pos.fly.dev/ | jq -r .commit    # vs: git rev-parse origin/main
-```
-
-An unstamped build reports `"unknown"` rather than claiming a version it cannot vouch for,
-so a forgotten `--build-arg` is visible instead of silent. Either way, after any backend
-change, verify the thing you shipped rather than the release status — hit the new endpoint
-and check it answers.
-
-## Follow-up: make a stale deploy impossible, not just visible
-
-On 2026-09-26, an hour after the section above was written, the same failure happened
-again. Local `main` was one commit behind `origin/main`; `flyctl deploy` built from the
-working directory, and v28 shipped without the change. Every signal said success — the
-release completed, the health check passed, the app served traffic — and it surfaced only
-by grepping inside the running container.
-
-That is the shape of the problem: **`flyctl deploy` takes its input from the filesystem,
-while everything else in this workflow reasons about git.** The two disagree silently, and
-only the filesystem gets shipped. A clean working tree is not a current one.
-
-The commit stamp added in [#57](https://github.com/angelxlakra/lily-cafe-pos/pull/57)
-reports the problem afterwards, and it cannot report on an image built before it existed —
-a stale image cannot tell you it is stale. So it needs a partner that refuses the deploy in
-the first place. Roughly five lines, as `scripts/deploy-backend.sh`:
-
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-git fetch -q origin main
-[ -z "$(git status --porcelain)" ] || { echo "working tree is dirty — refusing"; exit 1; }
-[ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || {
-  echo "HEAD is not origin/main — refusing"; exit 1; }
-flyctl deploy -a lily-cafe-pos --build-arg GIT_SHA="$(git rev-parse HEAD)"
-```
-
-It also removes the two things a human has to remember every time: naming the production
-app (the local `fly.toml` says `lily-cafe-pos-dev`) and passing the build stamp.
-
-Worth doing before the next feature that spans both halves of the stack — which is the
-setup grid, since it needs `PATCH /items` on the backend and the grid on the frontend.
-
-## Landing `pre-release`
-
-**Decision (2026-09-26): land it once the setup grid is usable.** Not before, not much
-after. At 61 commits the merge is still cheap; it gets dearer every week, and
-`TemplateImportModal.tsx` is edited on both sides.
-
-Checked on 2026-09-26 against `origin/main`:
-
-- Merge is clean, no conflicts.
-- Backend suite on the merged result: **557 passed**.
-- Frontend typechecks and builds.
-- Schema changes are **purely additive** — `dish_costings`, `dish_costing_ingredients` and
-  `daily_digests` via `create_all`, plus `count_mode` (NOT NULL with a default), `pack_size`
-  and `pack_unit` (nullable) on `inventory_items`, through the same idempotent
-  `ALTER TABLE ADD COLUMN` path that already added `sort_order`.
-- **The cafe's core paths are untouched**: `orders`, `payments`, `print_jobs`,
-  `cash_counter`, `menu`, `admin` and `auth` have zero changes.
-
-Landing means a **backend deploy as well as a Vercel push** — the grid needs `PATCH /items`.
-Use `scripts/deploy-backend.sh prod`, and do it outside service hours.
-
-### Turn the morning digest off first
-
-`pre-release` adds an in-process scheduler (`app/ask/scheduler.py`) that runs a daily digest
-and is **enabled by default**. Deploying without acting starts a daily email the owner never
-asked for, and its catch-up can fire within seconds of boot if the send time has passed.
-
-The implementation itself is sound — `run_for` is idempotent per date so restarts cannot
-re-send, `_tick` never raises, and it runs in a threadpool. This is a behaviour decision,
-not a stability risk.
-
-Set it **before deploying the merge**, so the loop is never created. Safe to run today: the
-currently deployed code does not know the key, and settings live in the database rather than
-the image, so the row survives every deploy.
-
-```bash
-flyctl ssh console -a lily-cafe-pos -C "python -c \"import sqlite3,datetime; d=sqlite3.connect('/data/restaurant.db'); d.execute('INSERT OR REPLACE INTO app_settings (key,value,updated_at) VALUES (?,?,?)',('digest.enabled','false',datetime.datetime.utcnow().isoformat())); d.commit(); print(list(d.execute('select key,value from app_settings')))\""
-```
-
-`settings_store.load()` overlays database rows on top of `DEFAULTS` and nothing re-seeds
-them, so the row wins permanently.
-
-**To re-enable:** same command with `'true'`, then `flyctl apps restart lily-cafe-pos` — the
-boot check is what creates the task, so a live switch to true does nothing until a restart.
-Disabling works live in either case, since `_tick` re-reads the setting on every run.
-
-**There is no UI for this.** If the owner ever wants the digest, it is a database edit or a
-new Settings toggle. Worth building the toggle when the grid lands, rather than leaving it
-to be rediscovered.
+Images v26 and earlier carry a copy of a developer's local `.env` (fixed in #56). It was
+inert in production, but those images still hold it.
 
 ## Not covered here
 
