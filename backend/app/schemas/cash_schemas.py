@@ -15,6 +15,10 @@ class DailyCashCounterOpen(DailyCashCounterBase):
     opening_50s: int = Field(..., ge=0)
     opening_20s: int = Field(..., ge=0)
     opening_10s: int = Field(..., ge=0)
+    # Coins default to none, so a client from before coins still opens the day.
+    opening_5s: int = Field(0, ge=0)
+    opening_2s: int = Field(0, ge=0)
+    opening_1s: int = Field(0, ge=0)
 
 class DailyCashCounterClose(BaseModel):
     date: date
@@ -25,6 +29,9 @@ class DailyCashCounterClose(BaseModel):
     closing_50s: int = Field(..., ge=0)
     closing_20s: int = Field(..., ge=0)
     closing_10s: int = Field(..., ge=0)
+    closing_5s: int = Field(0, ge=0)
+    closing_2s: int = Field(0, ge=0)
+    closing_1s: int = Field(0, ge=0)
     notes: Optional[str] = Field(None, max_length=500)
 
 class DailyCashCounterVerify(BaseModel):
@@ -53,12 +60,18 @@ class DailyCashCounter(DailyCashCounterBase):
     opening_50s: int
     opening_20s: int
     opening_10s: int
+    opening_5s: int = 0
+    opening_2s: int = 0
+    opening_1s: int = 0
     closing_500s: Optional[int] = None
     closing_200s: Optional[int] = None
     closing_100s: Optional[int] = None
     closing_50s: Optional[int] = None
     closing_20s: Optional[int] = None
     closing_10s: Optional[int] = None
+    closing_5s: Optional[int] = None
+    closing_2s: Optional[int] = None
+    closing_1s: Optional[int] = None
 
     class Config:
         from_attributes = True  # Pydantic v2 syntax (was orm_mode in v1)

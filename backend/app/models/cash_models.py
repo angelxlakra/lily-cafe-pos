@@ -2,6 +2,11 @@ from sqlalchemy import Column, Integer, String, Numeric, Boolean, Date, DateTime
 from sqlalchemy.sql import func
 from app.db.session import Base
 
+# Every note and coin the drawer is counted in, largest first. ₹10 and ₹20 coins
+# count in the ₹10 and ₹20 rows: same value, so the drawer total is the same.
+DENOMINATIONS = (500, 200, 100, 50, 20, 10, 5, 2, 1)
+
+
 class DailyCashCounter(Base):
     __tablename__ = "daily_cash_counter"
     
@@ -27,6 +32,9 @@ class DailyCashCounter(Base):
     opening_50s = Column(Integer, nullable=False, default=0)
     opening_20s = Column(Integer, nullable=False, default=0)
     opening_10s = Column(Integer, nullable=False, default=0)
+    opening_5s = Column(Integer, nullable=False, default=0)
+    opening_2s = Column(Integer, nullable=False, default=0)
+    opening_1s = Column(Integer, nullable=False, default=0)
 
     # v0.2 Patch - Denomination counting for closing balance
     closing_500s = Column(Integer, nullable=True)
@@ -35,6 +43,9 @@ class DailyCashCounter(Base):
     closing_50s = Column(Integer, nullable=True)
     closing_20s = Column(Integer, nullable=True)
     closing_10s = Column(Integer, nullable=True)
+    closing_5s = Column(Integer, nullable=True)
+    closing_2s = Column(Integer, nullable=True)
+    closing_1s = Column(Integer, nullable=True)
 
     @property
     def status(self) -> str:
