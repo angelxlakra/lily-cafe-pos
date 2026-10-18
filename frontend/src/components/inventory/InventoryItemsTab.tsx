@@ -234,7 +234,7 @@ function ItemRow({ item, canEdit, onEdit, onDelete }: {
 // Units a recipe can already measure in. Anything else (pcs, a packet, a bottle) needs a pack
 // size before 25 g of it can be costed.
 const MEASURED = new Set(['g', 'kg', 'ml', 'l']);
-const PACK_UNITS = ['g', 'kg', 'ml', 'L'];
+const PACK_UNITS = ['g', 'kg', 'ml', 'L', 'pcs'];
 const OTHER_UNITS = ['pkt', 'bottle', 'tin', 'box', 'portion'];
 
 function ItemFormModal({ categories, item, onClose }: { categories: InventoryCategory[], item: InventoryItem | null, onClose: () => void }) {
@@ -258,9 +258,12 @@ function ItemFormModal({ categories, item, onClose }: { categories: InventoryCat
   const [packUnit, setPackUnit] = useState(item?.pack_unit || 'g');
   // Yes/no items are never measured, so they never take one.
   const takesPack = !(item && isPresence(item)) && !MEASURED.has(formData.unit.trim().toLowerCase());
-  const pack = takesPack && packSize.trim() !== ''
-    ? { pack_size: Number(packSize), pack_unit: packUnit }
-    : { pack_size: null, pack_unit: null };
+  // The row is hidden for measured units, and a pack size set in the grid ("1 kg = 40 pcs") must
+  // survive an edit here, so it's only sent when shown, or cleared when the unit itself changes.
+  const unitChanged = !!item && formData.unit !== item.unit;
+  const pack = takesPack
+    ? (packSize.trim() !== '' ? { pack_size: Number(packSize), pack_unit: packUnit } : { pack_size: null, pack_unit: null })
+    : unitChanged ? { pack_size: null, pack_unit: null } : {};
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => event.key === 'Escape' && !saving && onClose();
