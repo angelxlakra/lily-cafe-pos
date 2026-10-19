@@ -9,7 +9,7 @@ from sqlalchemy import func, and_, text, extract
 from app.core.config import settings
 from app.models.models import Order, OrderItem, Payment, PaymentMethod, OrderStatus, MenuItem, Category
 from app.models.inventory_models import InventoryItem, InventoryCategory, InventoryTransaction, TransactionType
-from app.models.cash_models import DailyCashCounter
+from app.models.cash_models import DENOMINATIONS, DailyCashCounter
 
 
 # ============================================================================
@@ -299,25 +299,11 @@ def get_cash_counter_status_tool(db: Session, date: Optional[str] = None) -> str
 
     # Build denomination breakdown
     denomination_breakdown = {
-        "opening": {
-            "500s": counter.opening_500s,
-            "200s": counter.opening_200s,
-            "100s": counter.opening_100s,
-            "50s": counter.opening_50s,
-            "20s": counter.opening_20s,
-            "10s": counter.opening_10s
-        }
+        "opening": {f"{d}s": getattr(counter, f"opening_{d}s") or 0 for d in DENOMINATIONS}
     }
 
     if counter.closing_balance is not None:
-        denomination_breakdown["closing"] = {
-            "500s": counter.closing_500s or 0,
-            "200s": counter.closing_200s or 0,
-            "100s": counter.closing_100s or 0,
-            "50s": counter.closing_50s or 0,
-            "20s": counter.closing_20s or 0,
-            "10s": counter.closing_10s or 0
-        }
+        denomination_breakdown["closing"] = {f"{d}s": getattr(counter, f"closing_{d}s") or 0 for d in DENOMINATIONS}
 
     result = {
         "date": str(target_date),

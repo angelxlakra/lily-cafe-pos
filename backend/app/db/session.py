@@ -72,6 +72,15 @@ _INVENTORY_ADDED_COLUMNS = {
 }
 
 
+# Coins, added after the cash counter shipped with notes only.
+_CASH_ADDED_COLUMNS = {
+    "daily_cash_counter": {
+        **{f"opening_{d}s": "INTEGER DEFAULT 0 NOT NULL" for d in (5, 2, 1)},
+        **{f"closing_{d}s": "INTEGER" for d in (5, 2, 1)},
+    },
+}
+
+
 def _ensure_columns(bind, table: str, columns: dict[str, str]) -> list[str]:
     """Add any of ``columns`` missing from ``table``. Idempotent."""
     inspector = inspect(bind)
@@ -130,6 +139,15 @@ def _backfill_transaction_units(bind) -> None:
         ))
 
 
+def ensure_cash_columns(bind=None) -> list[str]:
+    """Add the coin columns to older cash counters. Idempotent."""
+    bind = bind or engine
+    added = []
+    for table, columns in _CASH_ADDED_COLUMNS.items():
+        added += _ensure_columns(bind, table, columns)
+    return added
+
+
 def init_db():
     """
     Initialize database by creating all tables.
@@ -146,3 +164,4 @@ def init_db():
     # up to date with the columns added to `orders` since it shipped.
     ensure_order_columns(engine)
     ensure_inventory_columns(engine)
+    ensure_cash_columns(engine)

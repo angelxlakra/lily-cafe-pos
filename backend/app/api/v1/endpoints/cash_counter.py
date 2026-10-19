@@ -7,7 +7,7 @@ from decimal import Decimal
 import os
 
 from app.db.session import get_db
-from app.models.cash_models import DailyCashCounter
+from app.models.cash_models import DENOMINATIONS, DailyCashCounter
 from app.models.models import Payment, PaymentMethod
 from app.schemas import cash_schemas
 from app.core.config import settings
@@ -56,35 +56,27 @@ def open_cash_counter(
     Requires a login, and records who opened it. The admin login may only
     open today's counter; the owner can also open an earlier day.
     """
-    _require_own_day(current_user, data.date, "open the cash counter")
+    # No date means the server's business day: a browser clock (or its UTC date
+    # after midnight IST) must not decide which day the till belongs to.
+    day = data.date or access.business_today()
+    _require_own_day(current_user, day, "open the cash counter")
 
     # Check if already open
-    existing = db.query(DailyCashCounter).filter(DailyCashCounter.date == data.date).first()
+    existing = db.query(DailyCashCounter).filter(DailyCashCounter.date == day).first()
     if existing:
         raise HTTPException(status_code=400, detail="Counter already open for this date")
 
-    if data.date > access.business_today():
+    if day > access.business_today():
         raise HTTPException(status_code=400, detail="Date cannot be in the future")
 
     # v0.2 Patch - Calculate opening_balance from denomination counts
-    opening_balance = Decimal(
-        data.opening_500s * 500 +
-        data.opening_200s * 200 +
-        data.opening_100s * 100 +
-        data.opening_50s * 50 +
-        data.opening_20s * 20 +
-        data.opening_10s * 10
-    )
+    counts = {f"opening_{d}s": getattr(data, f"opening_{d}s") for d in DENOMINATIONS}
+    opening_balance = Decimal(sum(getattr(data, f"opening_{d}s") * d for d in DENOMINATIONS))
 
     counter = DailyCashCounter(
-        date=data.date,
+        date=day,
         opening_balance=opening_balance,
-        opening_500s=data.opening_500s,
-        opening_200s=data.opening_200s,
-        opening_100s=data.opening_100s,
-        opening_50s=data.opening_50s,
-        opening_20s=data.opening_20s,
-        opening_10s=data.opening_10s,
+        **counts,
         notes=data.notes,
         opened_by=current_user.username,
     )
@@ -115,14 +107,7 @@ def close_cash_counter(
         raise HTTPException(status_code=400, detail="Counter already closed")
 
     # v0.2 Patch - Calculate closing_balance from denomination counts
-    closing_balance = Decimal(
-        data.closing_500s * 500 +
-        data.closing_200s * 200 +
-        data.closing_100s * 100 +
-        data.closing_50s * 50 +
-        data.closing_20s * 20 +
-        data.closing_10s * 10
-    )
+    closing_balance = Decimal(sum(getattr(data, f"closing_{d}s") * d for d in DENOMINATIONS))
 
     # Get total cash payments for the day
     cash_payments = db.query(func.sum(Payment.amount)).filter(
@@ -137,12 +122,8 @@ def close_cash_counter(
     variance = closing_balance - expected_closing
 
     counter.closing_balance = closing_balance
-    counter.closing_500s = data.closing_500s
-    counter.closing_200s = data.closing_200s
-    counter.closing_100s = data.closing_100s
-    counter.closing_50s = data.closing_50s
-    counter.closing_20s = data.closing_20s
-    counter.closing_10s = data.closing_10s
+    for d in DENOMINATIONS:
+        setattr(counter, f"closing_{d}s", getattr(data, f"closing_{d}s"))
     counter.expected_closing = expected_closing
     counter.variance = variance
     counter.notes = data.notes
@@ -348,12 +329,8 @@ def reopen_cash_counter(
 
     # Reset counter to "open" state - clear closing data
     counter.closing_balance = None
-    counter.closing_500s = None
-    counter.closing_200s = None
-    counter.closing_100s = None
-    counter.closing_50s = None
-    counter.closing_20s = None
-    counter.closing_10s = None
+    for d in DENOMINATIONS:
+        setattr(counter, f"closing_{d}s", None)
     counter.expected_closing = None
     counter.variance = None
     counter.closed_by = None

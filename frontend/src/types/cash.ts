@@ -21,16 +21,22 @@ export interface DailyCashCounter {
   opening_50s: number;
   opening_20s: number;
   opening_10s: number;
+  opening_5s: number;
+  opening_2s: number;
+  opening_1s: number;
   closing_500s: number | null;
   closing_200s: number | null;
   closing_100s: number | null;
   closing_50s: number | null;
   closing_20s: number | null;
   closing_10s: number | null;
+  closing_5s: number | null;
+  closing_2s: number | null;
+  closing_1s: number | null;
 }
 
 export interface CashCounterOpen {
-  date: string; // ISO date format (YYYY-MM-DD)
+  date?: string; // YYYY-MM-DD; left out, the server opens its own business day
   // v0.2 Patch - Denomination counting replaces single balance
   opening_500s: number;
   opening_200s: number;
@@ -38,6 +44,9 @@ export interface CashCounterOpen {
   opening_50s: number;
   opening_20s: number;
   opening_10s: number;
+  opening_5s: number;
+  opening_2s: number;
+  opening_1s: number;
   notes?: string;
 }
 
@@ -50,6 +59,9 @@ export interface CashCounterClose {
   closing_50s: number;
   closing_20s: number;
   closing_10s: number;
+  closing_5s: number;
+  closing_2s: number;
+  closing_1s: number;
   notes?: string;
 }
 

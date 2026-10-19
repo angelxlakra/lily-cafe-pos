@@ -4,6 +4,14 @@
 // ========================================
 
 /**
+ * A date as YYYY-MM-DD on the cafe's own clock. Not toISOString(): that is the
+ * UTC date, which is still yesterday between midnight and 05:30 IST.
+ */
+export function localDate(d: Date = new Date()): string {
+  return d.toLocaleDateString('en-CA');
+}
+
+/**
  * Helper to ensure the timestamp is treated as UTC if it lacks timezone info
  */
 function ensureUtc(isoString: string): string {
