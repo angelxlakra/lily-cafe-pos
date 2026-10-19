@@ -254,9 +254,8 @@ function OpenCounterForm() {
     e.preventDefault();
     if (total === 0) return;
     try {
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+      // No date: the server opens its own business day, whatever this device's clock says.
       await openCounter.mutateAsync({
-        date: today,
         ...denominationFields('opening', denominations),
         notes
       });
@@ -366,9 +365,9 @@ function CloseCounterForm({ counter }: { counter: any }) {
 
   const handleConfirmClose = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+      // Close the day this counter belongs to, not this device's idea of today.
       await closeCounter.mutateAsync({
-        date: today,
+        date: counter.date,
         ...denominationFields('closing', denominations),
         notes
       });

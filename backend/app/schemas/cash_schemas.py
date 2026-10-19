@@ -1,4 +1,5 @@
 from typing import Optional
+import datetime as dt
 from datetime import date, datetime
 from decimal import Decimal
 from pydantic import BaseModel, Field
@@ -8,6 +9,8 @@ class DailyCashCounterBase(BaseModel):
     notes: Optional[str] = Field(None, max_length=500)
 
 class DailyCashCounterOpen(DailyCashCounterBase):
+    # Optional: left out, the server opens its own business day.
+    date: Optional[dt.date] = None
     # v0.2 Patch - Denomination counting replaces single balance input
     opening_500s: int = Field(..., ge=0)
     opening_200s: int = Field(..., ge=0)

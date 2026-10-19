@@ -1,5 +1,6 @@
 
 import { useState, useMemo } from 'react';
+import { localDate } from '../../utils/formatDateTime';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import DatePickerWithQuickFilters, { quickFilters } from '../../components/DatePickerWithQuickFilters';
 import { useRevenue, useProductPerformance, useOrderStatistics, useHeatmap, useCalendarHeatmap } from '../../hooks/useAnalytics';
@@ -42,7 +43,7 @@ import OrderTimeline from '../../components/analytics/charts/OrderTimeline';
 type TopDishesView = 'list' | 'bar' | 'pie';
 
 export default function AnalyticsDashboard() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDate();
   // Default to "All Time" (last 3 months)
   const allTimeFilter = quickFilters.find(f => f.label === 'All Time');
   const initialRange = allTimeFilter ? allTimeFilter.getRange() : { start: today, end: today };

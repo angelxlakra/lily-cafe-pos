@@ -1,5 +1,6 @@
 
 import { useMemo } from 'react';
+import { localDate } from '../../../utils/formatDateTime';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { CalendarHeatmapPoint } from '../../../api/analytics';
 import { formatCurrency } from '../../../utils/formatCurrency';
@@ -43,7 +44,7 @@ export default function CalendarHeatmap({ data, metric = 'value' }: CalendarHeat
         currentDate.setDate(weekStart.getDate() + d);
         
         // Format YYYY-MM-DD
-        const dateStr = currentDate.toISOString().split('T')[0];
+        const dateStr = localDate(currentDate);
         const point = dataMap.get(dateStr);
         
         days.push({

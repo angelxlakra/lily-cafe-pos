@@ -56,14 +56,17 @@ def open_cash_counter(
     Requires a login, and records who opened it. The admin login may only
     open today's counter; the owner can also open an earlier day.
     """
-    _require_own_day(current_user, data.date, "open the cash counter")
+    # No date means the server's business day: a browser clock (or its UTC date
+    # after midnight IST) must not decide which day the till belongs to.
+    day = data.date or access.business_today()
+    _require_own_day(current_user, day, "open the cash counter")
 
     # Check if already open
-    existing = db.query(DailyCashCounter).filter(DailyCashCounter.date == data.date).first()
+    existing = db.query(DailyCashCounter).filter(DailyCashCounter.date == day).first()
     if existing:
         raise HTTPException(status_code=400, detail="Counter already open for this date")
 
-    if data.date > access.business_today():
+    if day > access.business_today():
         raise HTTPException(status_code=400, detail="Date cannot be in the future")
 
     # v0.2 Patch - Calculate opening_balance from denomination counts
@@ -71,7 +74,7 @@ def open_cash_counter(
     opening_balance = Decimal(sum(getattr(data, f"opening_{d}s") * d for d in DENOMINATIONS))
 
     counter = DailyCashCounter(
-        date=data.date,
+        date=day,
         opening_balance=opening_balance,
         **counts,
         notes=data.notes,
