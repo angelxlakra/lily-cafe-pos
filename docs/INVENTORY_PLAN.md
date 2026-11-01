@@ -40,8 +40,169 @@ Kept here as well as in the spine, because decisions are worth having in git his
 | 2026-10-15 | Overhead defaults confirmed: labour 15%, fixed 10%, wastage 5%, packaging ₹0, target margin 65%. |
 | 2026-10-15 | A suggested price rounds up to the next ₹10, and is offered only when every line is costed. |
 | 2026-10-16 | An order suggestion brings stock back to twice the alert level; there is no separate par level yet. |
+| 2026-11-02 | Inventory gets a fresh set of operational pages (see "Ops redesign"), with their own plain spreadsheet look, separate from the POS theme. Old tabs stay until the owners switch. |
+| 2026-11-02 | Dish costing moves to its own pages, one table per dish. Reverses 2026-10-15 "costing lives on the Menu page" (the Menu chip keeps working; it reads the same rows). |
+| 2026-11-02 | Sub-recipes are in: a kitchen-made item (Cajun masala, sauces, bao) is an inventory item with its own recipe, costed from it. Reverses 2026-10-15 "no sub-recipes yet". |
+| 2026-11-02 | A purchase becomes the price only once an owner approves it. Owners' own entries are approved as they're made. Amends 2026-09-23 "price comes from the purchase log". |
+| 2026-11-02 | Brand is a plain field on the item. Two brands stocked at once are two items; nothing enforces either way. |
+| 2026-11-02 | AI insights and alerts wait for a second pass, after a couple of weeks of real prices. |
+
+## Ops redesign (2026-11-02)
+
+Agreed with the owner's developer on 2026-11-02, from the owners' two paper sketches (the daily
+"ingredient / inventory calculator" and the dish costing table) and their WhatsApp sample data.
+Mockups: [docs/ops-redesign-mockups/](ops-redesign-mockups/). This section is authoritative for the
+new pages. Where the spine artifact disagrees on costing, sub-recipes or price approval, this wins.
+
+**Why.** The owners tried the recipe sheet on the Menu page and the inventory tabs and found them
+too hard to onboard. They do this by hand today on paper and in WhatsApp, and they picture a
+Google Sheet: a table where people type some columns and the rest is worked out.
+
+**Who.**
+- The **manager** (admin login) buys chicken, vegetables and masalas and logs them on the daily
+  sheet, on a phone or laptop. Staff count stock nightly on a phone.
+- The **owners** (owner login) want the overview. They check every price change and approve it,
+  and they can log purchases too. Phone and laptop both.
+
+**Goals.** Owners see what each dish costs per portion and its margin, what changed today and which
+dishes it hit, and stock as plain numbers. The manager logs a day's buying fast on a phone.
+
+**Non-goals for this pass.** AI insights and alerts. A "made a batch" action (see Known gaps).
+Retiring the old Inventory tabs or the Menu recipe sheet.
+
+**Anti-goals.** Anything that needs the owners to understand pack-size bridging or units to get a
+cost. A count screen that asks more than one answer per row.
+
+### Three kinds of thing
+
+1. **Bought ingredients** (onion, Amul butter, Ganesh maida): an inventory item with a brand and a
+   price per pack, counted in inventory.
+2. **Kitchen-made items** (Cajun masala, house sauces, bao): an inventory item that is never bought.
+   It has its own recipe, and its cost per unit is the recipe's batch cost ÷ the batch yield. It's
+   counted in inventory, has no menu price, and gets no overheads.
+3. **Dishes**: a menu item with a recipe of ingredients and/or kitchen-made items. It has a cost per
+   portion, a menu price and a margin, with overheads (packaging, labour, fixed, wastage) as today.
+
+### Pages
+
+All under `/admin/ops/…`, in a standalone layout (no POS sidebar, like `/admin/tools`), with a small
+top bar linking the four pages. Light and dark, phone and laptop. The admin sidebar gets one entry.
+
+| Page | Route | Who |
+| --- | --- | --- |
+| Recipes list | `/admin/ops/recipes` | owner |
+| Recipe page (a dish or a made item) | `/admin/ops/recipes/:id` | owner |
+| Daily sheet | `/admin/ops/sheet` (today) and `?date=` | admin: today only; owner: any day, plus approvals |
+| Inventory | `/admin/ops/inventory` | admin and owner |
+
+**Recipe page.** Sketch 2's columns plus brand: *Ingredient · Brand · Amount used · Price per pack ·
+Cost in recipe · % of food cost*. Under the lines: raw material for the batch, per portion and as %
+of menu price, then *Packaging · Labour · Fixed cost · Wastage* (each a % of raw material or a ₹
+amount, defaulting to 0 / 15 / 10 / 5%), then cost per portion, menu price, margin against target.
+Top of the page: *Batch makes* (e.g. 4 cookies; for a made item, e.g. 1,012 g), raw material per
+batch, cost per portion, menu price, margin.
+- Typed by a person: ingredient, amount used, batch size, menu price, overheads. Worked out: cost
+  in recipe, %, totals, margin. Typed and worked-out cells look different.
+- **Price per pack** shows the item's current price as "₹99 / 10 g" with its source. When the item
+  has no approved purchase, the owner can type it right in the cell, in that form: one entry sets
+  price and pack together. If the item's unit is kg/g/L/ml, the price converts to the item's unit.
+  Otherwise the pack size and pack unit are set from it (so "₹99 / 10 g" on a pkt item means
+  1 pkt = 10 g at ₹99). The cell then reads "typed" until a purchase replaces it.
+- A made item is a line like any other: *Cajun masala · 10 g · ₹1,541 / kg · ₹15.41*.
+- A line with no price reads "no price yet", and totals show as "≥ ₹…".
+- Overheads and menu price appear only on dishes. A made item's page shows batch cost, yield
+  and cost per unit, plus a list of the dishes that use it.
+- Brand is shown from the item and editable from this page.
+
+**Recipes list.** One table of every dish and made item: *Name · Type · Cost / portion (made: per kg
+or pc) · Menu price · Margin · vs last week · Status*. Status is below target / N prices missing /
+no recipe / on target / costed. Totals at the top: below target, missing a price, no recipe yet,
+average margin. Filters: All, Needs attention (worst first), Made here, No recipe. "+ New recipe"
+creates a dish recipe for a menu item, or a new made item with its recipe. "vs last week" is the
+change in cost per portion priced as of 7 days ago.
+
+**Daily sheet.** Sketch 1's columns plus brand: *Item · Brand · Unit qty · Rate · Purchased · In (₹) ·
+Out (used) · Remaining · Day-end · Wastage*, with "Spent today" at the bottom. The manager types item,
+unit qty, rate, purchased and day-end. In, Out, Remaining and Wastage are worked out, exactly as on
+today's Purchases tab (same endpoints, same rules). The new part, owner only: **price changes to
+approve**. Each pending purchase whose price differs from the current one, or which is a new item,
+shows: old → new per unit, % change, who bought it and how much, and its ripple. The ripple lists how
+many dishes cost more, the range per portion, which drop below target, and which made items it
+passes through ("Bao buns +₹0.40 → 3 dishes"). Buttons: Approve, Not this time, Approve all. A
+purchase at the same price as the current one is approved without asking.
+
+**Inventory.** Laptop: a table of plain numbers, *Item · Brand · In stock · Alert below · Price ·
+Value · Counted*, grouped by category, with made items in their own group tagged "made". Filters:
+All, Low, Made here, plus search. A side box has "Start tonight's count" and the last 7 nights (who,
+and how many of all items were counted; tap for that night's changes). Phone: the count box on top,
+then one row per item (name, brand · price; stock and alert on the right), touch-sized. "Start
+tonight's count" opens the existing count screen (`/admin/inventory/count`): number boxes, one
+answer per row, Out / Have it for yes/no items. Staff accepted it, so it stays. "Edit all" opens the
+existing setup grid (`InventorySetupGrid`) with a Brand column added.
+
+### Backend
+
+- `inventory_items.brand` (VARCHAR, nullable), via `_INVENTORY_ADDED_COLUMNS`. Returned on items,
+  editable in the grid, the item form and the recipe page.
+- **Price approval.** `inventory_transactions.price_status` (`pending` / `approved` / `rejected`;
+  NULL means approved: rows from before the gate) and `price_reviewed_at`.
+  - A purchase is saved `pending` when logged by admin, and `approved` when logged by an owner or
+    when its unit price equals the current price.
+  - `latest_priced_purchases` and the >30% jump check read approved rows only.
+  - "Not this time" sets `rejected`: stock and the day's spend still count, it just never becomes
+    the price.
+  - Approving does **not** go through `/costing/reprice`, which writes `cost_per_unit` and would turn
+    a purchase price into a typed one.
+  - Endpoints: `GET /purchases/pending-prices` (with ripple), `POST /purchases/{id}/price-review`
+    (`approve` / `reject`), and an approve-all.
+  - Production has no purchases, so nothing to backfill.
+- **Made-item recipes.** `dish_costings` gets a nullable `inventory_item_id` (unique), and
+  `menu_item_id` becomes nullable. Exactly one of the two is set, checked in the API. SQLite can't
+  drop NOT NULL in place, so the startup migration rebuilds the table once (copy rows, swap) when
+  `menu_item_id` is still NOT NULL. Production has 0 rows. A made item's yield is stored as
+  `yield_units` in the made item's own unit. It defaults to the summed line quantities when every
+  line converts to that unit, and is typed otherwise (bao, a reduced sauce). Everything that walks
+  `dish_costings` assuming a menu item (the Menu chip list, `usage.py`, reprice) must skip
+  made-item recipes, or use them only through recursion.
+- **Costing recurses.** When an ingredient has its own recipe, its unit price is that recipe's raw
+  batch cost ÷ yield (no overheads), memoized per request. Saving a recipe that would use itself,
+  directly or through another made item, is refused with the chain named. A made item's missing
+  prices propagate as gaps.
+- **Ripple is transitive.** `_get_reprice_impacts` counts a dish as affected when any line uses the
+  changed item directly or through a made item, and reports the made items it passed through.
+- **As-of pricing** for "vs last week": the latest approved purchase reviewed before the date (typed
+  prices have no history, so they read as unchanged).
+- **Check left behind:** one test seeds the WhatsApp sample. It asserts cookie (makes 4, ₹130):
+  raw ₹150.21 a batch, ₹37.55 a cookie, ₹48.82 with default overheads, 62% margin. It asserts Cajun
+  masala's priced lines total ₹1,559.11, with salt as a gap. It also asserts that a dish using
+  10 g of masala picks up its cost, and that a self-referencing recipe is refused.
+
+### Calls made by the developer, not the owners
+
+Check these when reading. All are cheap to change.
+- Brand lives on the item, not on each purchase line. A one-off purchase of another brand shows
+  in the approval list (the price will differ) but doesn't change the item's brand.
+- An owner's own purchases skip approval. A purchase at an unchanged price skips it too.
+- Price and Value on the inventory page are visible to admin as well as owner. The manager types
+  rates anyway. The recipe pages stay owner-only, as costing is today.
+- The count screen and the setup grid are reused as they are (plus Brand), not redesigned this pass.
+- The daily sheet is rebuilt in the new look on the existing purchase endpoints, rather than
+  restyling `PurchaseSheetTab`.
+- One PR to `pre-release`, built in this order: backend → recipe page → recipes list → daily sheet
+  with approvals → inventory page.
+
+### Known gaps after this pass
+
+- **Nothing records "made a batch".** Sales × recipes take Cajun masala out of stock, but nothing
+  takes the spices out when a batch is made. Until a "Made 1 batch" button exists on the made item's
+  page (spices out, masala in), the daily sheet's Out and Wastage for spices used only inside made
+  items read low or empty.
+- **Typed prices have no history**, so "vs last week" sees only purchase-driven changes.
+- AI insights and alerts (second pass).
 
 ## Next up
+
+**New (2026-11-02):** the ops redesign above is the current build. Its PR targets `pre-release`.
 
 Read this first in a new session. Last checked 2026-10-18 against `origin/pre-release`
 (`767cff3`) and `origin/main` (`6c75aa4`).
