@@ -340,3 +340,21 @@ class TestInventoryDailyWorkStaysWithAdmin:
             headers=auth_headers,
         )
         assert response.status_code == 201
+
+
+class TestBusinessDay:
+    """The server, not the browser's clock, decides which day the till belongs to."""
+
+    def test_admin_opens_the_servers_day_when_no_date_is_sent(self, client, auth_headers):
+        payload = _open_payload(TODAY)
+        del payload["date"]
+        response = client.post("/api/v1/cash-counter/open", json=payload, headers=auth_headers)
+        assert response.status_code == 201, response.text
+        assert response.json()["date"] == TODAY.isoformat()
+
+    def test_admin_sending_yesterdays_utc_date_is_still_refused(self, client, auth_headers):
+        # What the form used to send between midnight and 05:30 IST.
+        response = client.post(
+            "/api/v1/cash-counter/open", json=_open_payload(YESTERDAY), headers=auth_headers
+        )
+        assert response.status_code == 403

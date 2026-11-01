@@ -14,6 +14,7 @@
  */
 
 import { useMemo, useRef, useState } from 'react';
+import { localDate } from '../../utils/formatDateTime';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Warning, X } from '@phosphor-icons/react';
 import { inventoryApi } from '../../api/inventory';
@@ -46,7 +47,7 @@ const perUnit = (price: number | string | null | undefined, unit: string) => {
   return price == null ? null : `${rupees(Number(price) * factor)}/${label}`;
 };
 
-const localToday = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+const localToday = () => localDate();
 
 export default function PurchaseSheetTab() {
   const queryClient = useQueryClient();

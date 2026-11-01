@@ -36,7 +36,7 @@ export interface DailyCashCounter {
 }
 
 export interface CashCounterOpen {
-  date: string; // ISO date format (YYYY-MM-DD)
+  date?: string; // YYYY-MM-DD; left out, the server opens its own business day
   // v0.2 Patch - Denomination counting replaces single balance
   opening_500s: number;
   opening_200s: number;

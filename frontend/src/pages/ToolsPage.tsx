@@ -11,12 +11,13 @@ import { useAuth } from '../hooks/useAuth';
 import { analyticsApi } from '../api/analytics';
 import type { DishFrequencyParams } from '../api/analytics';
 import { Wrench, MagnifyingGlass, X } from '@phosphor-icons/react';
+import { localDate } from '../utils/formatDateTime';
 
 // Local YYYY-MM-DD for an offset number of days ago (IST-ish, uses browser locale).
 function isoDaysAgo(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() - days);
-  return d.toISOString().slice(0, 10);
+  return localDate(d);
 }
 
 export default function ToolsPage() {

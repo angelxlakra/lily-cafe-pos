@@ -13,7 +13,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useAppConfig } from '../hooks/useConfig';
 import { useSortableTable } from '../hooks/useSortableTable';
 import { formatCurrency } from '../utils/formatCurrency';
-import { formatDateTime } from '../utils/formatDateTime';
+import { formatDateTime, localDate } from '../utils/formatDateTime';
 import { CalendarDots, Printer, PencilSimple, MagnifyingGlass, X, CaretLeft, CaretRight, Trash } from '@phosphor-icons/react';
 import { UpiIcon, CashIcon, CardIcon } from '../components/icons/PaymentIcons';
 import DailyRevenueModal from '../components/DailyRevenueModal';
@@ -23,7 +23,7 @@ import type { PaymentMethod, PaymentCreateRequest, Order } from '../types';
 
 export default function OrderHistoryPage() {
   // Get today's date for max date validation
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDate();
 
 
   const [dateRange, setDateRange] = useState({ start: today, end: today });
