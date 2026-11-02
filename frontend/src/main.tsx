@@ -16,7 +16,7 @@ import AdminActiveOrdersPage from './pages/AdminActiveOrdersPage.tsx'
 import MenuManagementPage from './pages/MenuManagementPage.tsx'
 import OrderHistoryPage from './pages/OrderHistoryPage.tsx'
 import InventoryPage from './pages/InventoryPage.tsx'
-import InventoryCountPage from './pages/InventoryCountPage.tsx'
+import CountPage from './ops/CountPage.tsx'
 import CashCounterPage from './pages/CashCounterPage.tsx'
 import AnalyticsPage from './pages/AnalyticsPage.tsx'
 import ToolsPage from './pages/ToolsPage.tsx'
@@ -169,11 +169,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             />
 
             {/* Tonight's count — full screen, no sidebar or bottom nav */}
+            <Route path="/admin/ops/count" element={<ProtectedRoute><CountPage /></ProtectedRoute>} />
             <Route
               path="/admin/inventory/count"
               element={
                 <ProtectedRoute>
-                  <InventoryCountPage />
+                  <CountPage />
                 </ProtectedRoute>
               }
             />

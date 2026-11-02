@@ -9,6 +9,7 @@ import { useInventoryItems } from '../hooks/useInventory';
 import { describeApiError } from '../utils/apiError';
 import { rupees } from '../utils/costing';
 import { formatQty, haveIt, isPresence } from '../utils/countQuantity';
+import { loadCountDraft } from '../utils/countDraft';
 import { localDate } from '../utils/formatDateTime';
 import type { CountSummary, InventoryItem } from '../types/inventory';
 import { usePurchaseDay } from './api';
@@ -64,6 +65,7 @@ export default function OpsInventoryPage() {
   const counts = useQuery({ queryKey: ['inventory', 'counts', 'recent', 'ops'], queryFn: () => inventoryApi.getCounts(20) });
   // The server's business date (the count night runs to 04:00); local while it loads.
   const today = usePurchaseDay(undefined).data?.business_date ?? localDate();
+  const hasDraft = useMemo(() => Object.keys(loadCountDraft()?.counts ?? {}).length > 0, []);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
 
@@ -101,7 +103,7 @@ export default function OpsInventoryPage() {
       <div className="ops-inv">
         <aside className="ops-inv-side">
           <h2>Daily count</h2>
-          <Link to="/admin/inventory/count" className="btn ops-link-btn">Start tonight's count</Link>
+          <Link to="/admin/ops/count" className="btn ops-link-btn">{hasDraft ? "Continue tonight's count" : "Start tonight's count"}</Link>
           <table className="ops-nights">
             <caption className="sr-only">Last {NIGHTS} nights</caption>
             <tbody>
