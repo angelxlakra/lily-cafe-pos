@@ -51,6 +51,8 @@ class InventoryItem(Base):
     # Who this is usually ordered from; groups the end-of-count order message.
     # Optional: an item with none still alerts, under "Unassigned".
     default_vendor_id = Column(Integer, ForeignKey("vendors.id"), nullable=True)
+    # "Amul", "Nashik": which make of the item this is. Free text, shown beside the name.
+    brand = Column(String(100), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
@@ -126,6 +128,11 @@ class InventoryTransaction(Base):
     # Filled in on insert (below); rows from before it existed were backfilled
     # with their item's unit at the time.
     unit = Column(String(20), nullable=True)
+    # PURCHASE rows only: "pending" until the owner approves the price, then
+    # "approved" or "rejected". NULL is a legacy row and counts as approved.
+    # Only approved rows can become the item's price; stock moves regardless.
+    price_status = Column(String(10), nullable=True)
+    price_reviewed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     item = relationship("InventoryItem", back_populates="transactions")

@@ -61,6 +61,7 @@ _INVENTORY_ADDED_COLUMNS = {
         "needs_setup": "BOOLEAN DEFAULT 0 NOT NULL",
         # vendors is created by create_all() before this runs.
         "default_vendor_id": "INTEGER REFERENCES vendors(id)",
+        "brand": "VARCHAR(100)",
     },
     "inventory_transactions": {
         "total_amount": "NUMERIC(10, 2)",
@@ -68,6 +69,8 @@ _INVENTORY_ADDED_COLUMNS = {
         "vendor_id": "INTEGER REFERENCES vendors(id)",
         "pack_count": "NUMERIC(10, 3)",
         "unit": "VARCHAR(20)",
+        "price_status": "VARCHAR(10)",
+        "price_reviewed_at": "DATETIME",
     },
 }
 

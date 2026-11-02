@@ -3,7 +3,7 @@
 One order of precedence, no blending:
 
 1. The unit price of the item's most recent purchase that was paid for
-   (total_amount > 0): total ÷ quantity, in the item's own unit.
+   (total_amount > 0) and whose price the owner has approved: total ÷ quantity, in the item's own unit.
 2. Otherwise the typed ``cost_per_unit``, if it is above 0.
 3. Otherwise no price. A stored 0 is a placeholder, not "free" — 98 live
    items were created at 0.00.
@@ -25,7 +25,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Iterable, Optional
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.models.inventory_models import InventoryItem, InventoryTransaction, TransactionType
@@ -37,6 +37,11 @@ PRICE_JUMP_THRESHOLD = Decimal("0.30")
 
 SOURCE_PURCHASE = "purchase"
 SOURCE_TYPED = "typed"
+
+# A purchase's price_status. NULL (rows from before approval) reads as approved.
+PRICE_PENDING = "pending"
+PRICE_APPROVED = "approved"
+PRICE_REJECTED = "rejected"
 
 _PRICE_PLACES = Decimal("0.0001")
 
@@ -93,6 +98,8 @@ def _priced_purchases(db: Session):
         InventoryTransaction.transaction_type == TransactionType.PURCHASE,
         InventoryTransaction.total_amount > 0,
         InventoryTransaction.quantity > 0,
+        # Awaiting the owner, or turned down: stock moved, the price did not.
+        or_(InventoryTransaction.price_status.is_(None), InventoryTransaction.price_status == PRICE_APPROVED),
     )
 
 

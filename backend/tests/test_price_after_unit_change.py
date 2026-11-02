@@ -40,7 +40,9 @@ def test_every_movement_records_its_unit(client, auth_headers, test_db):
 
 def test_the_price_survives_a_g_to_kg_change(client, auth_headers, owner_headers, test_db):
     onion = _onions(test_db)
-    _buy(client, auth_headers, onion, 4000, 480)
+    line = _buy(client, auth_headers, onion, 4000, 480)
+    # Staff logged a new price; it only counts once the owner approves it.
+    client.post(f"/api/v1/inventory/purchases/{line}/price-review", headers=owner_headers, json={"action": "approve"})
     assert pricing.resolve_one(test_db, onion).price == Decimal("0.12")  # ₹0.12 a gram
 
     r = client.patch(ITEMS, headers=owner_headers, json={"items": [{"id": onion.id, "unit": "kg"}]})

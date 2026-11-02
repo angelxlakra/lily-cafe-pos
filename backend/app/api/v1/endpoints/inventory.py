@@ -479,6 +479,7 @@ def _purchase_dict(t: InventoryTransaction) -> dict:
         "new_quantity": t.new_quantity,
         "recorded_by": t.recorded_by,
         "created_at": t.created_at,
+        "price_status": t.price_status,
     }
 
 @router.post("/transactions/purchase/check", response_model=List[inventory_schemas.PriceCheckResult])
@@ -528,7 +529,15 @@ def record_purchase(
     transactions = []
     for line in purchase.items:
         item = items[line.item_id]
-        checks.append(_price_check(item, line.quantity, line.total_amount, prices[item.id]))
+        check = _price_check(item, line.quantity, line.total_amount, prices[item.id])
+        checks.append(check)
+        # Staff can't move a price on their own: a line at a new price waits
+        # for the owner. Stock is not held back, only the price.
+        approved = (
+            current_user.role == UserRole.OWNER
+            or line.total_amount is None or line.total_amount <= 0
+            or check["unit_price"] == prices[item.id].price
+        )
 
         previous_qty = item.current_quantity
         item.current_quantity += line.quantity
@@ -544,7 +553,9 @@ def record_purchase(
             pack_count=line.pack_count,
             recorded_by=current_user.username,
             previous_quantity=previous_qty,
-            new_quantity=new_qty
+            new_quantity=new_qty,
+            price_status=pricing.PRICE_APPROVED if approved else pricing.PRICE_PENDING,
+            price_reviewed_at=utcnow() if approved else None,
         )
         db.add(transaction)
         transactions.append(transaction)
@@ -761,6 +772,79 @@ def _move_purchase_stock(t: InventoryTransaction, quantity: Decimal) -> None:
     t.quantity += item.current_quantity - before
     t.new_quantity = t.previous_quantity + t.quantity
 
+@router.get("/purchases/pending-prices", response_model=List[inventory_schemas.PendingPrice])
+def get_pending_prices(db: Session = Depends(get_db), current_user: TokenData = _OWNER):
+    """Purchases whose price waits for the owner, oldest first, against the price now."""
+    rows = (
+        db.query(InventoryTransaction)
+        .filter(
+            InventoryTransaction.transaction_type == TransactionType.PURCHASE,
+            InventoryTransaction.price_status == pricing.PRICE_PENDING,
+        )
+        .order_by(InventoryTransaction.id)
+        .all()
+    )
+    current = pricing.resolve_many(db, {t.item_id: t.item for t in rows}.values())
+    result = []
+    for t in rows:
+        line = _purchase_dict(t)
+        old, new = current[t.item_id].price, line["unit_price"]
+        result.append({
+            "purchase_id": t.id,
+            "item_id": t.item_id,
+            "item_name": line["item_name"],
+            "brand": t.item.brand,
+            "unit": line["unit"],
+            "recorded_by": t.recorded_by,
+            "created_at": t.created_at,
+            "quantity": line["quantity"],
+            "total_amount": t.total_amount,
+            "pack_count": t.pack_count,
+            "old_price": old,
+            "new_price": new,
+            "change": pricing.price_change(old, new),
+            "is_new_item": old is None,
+            "ripple": None,
+        })
+    return result
+
+@router.post("/purchases/price-review/approve-all", response_model=dict)
+def approve_all_prices(db: Session = Depends(get_db), current_user: TokenData = _OWNER):
+    """Approve every purchase price waiting for review. Owner only."""
+    approved = (
+        db.query(InventoryTransaction)
+        .filter(
+            InventoryTransaction.transaction_type == TransactionType.PURCHASE,
+            InventoryTransaction.price_status == pricing.PRICE_PENDING,
+        )
+        .update({"price_status": pricing.PRICE_APPROVED, "price_reviewed_at": utcnow()}, synchronize_session=False)
+    )
+    db.commit()
+    return {"approved": approved}
+
+@router.post("/purchases/{purchase_id}/price-review", response_model=dict)
+def review_purchase_price(
+    purchase_id: int,
+    review: inventory_schemas.PriceReview,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _OWNER,
+):
+    """Approve a purchase's price (it becomes the item's price) or reject it (stock stays, price doesn't).
+
+    The price is the highest-id approved purchase, so approving out of order
+    can't leave an older price in charge. Owner only.
+    """
+    t = db.get(InventoryTransaction, purchase_id)
+    if not t or t.transaction_type != TransactionType.PURCHASE:
+        raise HTTPException(status_code=404, detail="Purchase not found")
+    if t.price_status != pricing.PRICE_PENDING:
+        raise HTTPException(status_code=400, detail="This purchase's price isn't waiting for review")
+    t.price_status = pricing.PRICE_APPROVED if review.action == "approve" else pricing.PRICE_REJECTED
+    t.price_reviewed_at = utcnow()
+    db.commit()
+    db.refresh(t)
+    return _purchase_dict(t)
+
 @router.patch("/purchases/{purchase_id}", response_model=dict)
 def edit_purchase(
     purchase_id: int,
@@ -773,10 +857,14 @@ def edit_purchase(
     changes = edit.model_dump(exclude_unset=True)
     if changes.get("vendor_id") is not None and not db.get(Vendor, changes["vendor_id"]):
         raise HTTPException(status_code=400, detail="Vendor not found")
+    priced_as = (t.total_amount, t.quantity)
     if changes.get("quantity") is not None:
         _move_purchase_stock(t, changes.pop("quantity"))
     for key, value in changes.items():
         setattr(t, key, value)
+    if (t.total_amount, t.quantity) != priced_as and current_user.role != UserRole.OWNER:
+        # A changed total (or quantity, which changes the rate) is a new price to approve.
+        t.price_status, t.price_reviewed_at = pricing.PRICE_PENDING, None
     if t.total_amount is not None and t.total_amount == 0 and not (t.notes or "").strip():
         raise HTTPException(status_code=422, detail="A purchase of ₹0 needs a note saying why (e.g. free from the vendor)")
     db.commit()
