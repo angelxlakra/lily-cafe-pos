@@ -91,7 +91,7 @@ top bar linking the four pages. Light and dark, phone and laptop. The admin side
 | Page | Route | Who |
 | --- | --- | --- |
 | Recipes list | `/admin/ops/recipes` | owner |
-| Recipe page (a dish or a made item) | `/admin/ops/recipes/:id` | owner |
+| Recipe page (a dish or a made item) | `/admin/ops/recipes/dish/:menuItemId`, `/admin/ops/recipes/made/:itemId` | owner |
 | Daily sheet | `/admin/ops/sheet` (today) and `?date=` | admin: today only; owner: any day, plus approvals |
 | Inventory | `/admin/ops/inventory` | admin and owner |
 
