@@ -173,10 +173,17 @@ def get_items(
         items = [item for item in items if item.is_low_stock]
         
     prices = pricing.resolve_many(db, items)
+    # One grouped query for the whole list: the latest night each item was actually counted.
+    last_counted = dict(
+        db.query(InventoryCountLine.item_id, func.max(InventoryCount.business_date))
+        .join(InventoryCount, InventoryCount.id == InventoryCountLine.count_id)
+        .filter(InventoryCountLine.status != CountLineStatus.SKIPPED.value)
+        .group_by(InventoryCountLine.item_id).all()
+    )
     result_items = []
     low_stock_count = 0
     for item in items:
-        result_items.append(_item_dict(item, prices[item.id]))
+        result_items.append(_item_dict(item, prices[item.id], last_counted=last_counted.get(item.id)))
         if item.is_low_stock:
             low_stock_count += 1
 
@@ -222,13 +229,14 @@ def reorder_items(
     """Set the order items appear in within their category. Owner only."""
     _apply_sort_order(db, InventoryItem, order.ids)
 
-def _item_dict(item: InventoryItem, price: pricing.ResolvedPrice, schema=inventory_schemas.InventoryItem) -> dict:
+def _item_dict(item: InventoryItem, price: pricing.ResolvedPrice, schema=inventory_schemas.InventoryItem, last_counted=None) -> dict:
     """An item as the API returns it, with its category and resolved price."""
     item_dict = schema.model_validate(item, from_attributes=True).model_dump()
     if item.category:
         item_dict['category_name'] = item.category.name
     item_dict['is_low_stock'] = item.is_low_stock
     item_dict['has_recipe'] = item.recipe is not None
+    item_dict['last_counted'] = last_counted
     item_dict.update(price.as_dict())
     return item_dict
 

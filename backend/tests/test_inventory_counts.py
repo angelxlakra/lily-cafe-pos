@@ -286,3 +286,13 @@ def test_stock_log_says_which_items_are_yes_no(client, auth_headers, sauces):
     )
     tx = client.get("/api/v1/inventory/transactions", headers=auth_headers).json()["transactions"][0]
     assert (tx["count_mode"], tx["notes"]) == ("presence", "Daily count: ran out")
+
+
+def test_item_list_says_when_each_item_was_last_counted(client, auth_headers, stock):
+    client.post("/api/v1/inventory/counts", headers=auth_headers, json={"lines": [
+        {"item_id": stock["Ramen"].id, "counted_quantity": 46},   # checked
+        {"item_id": stock["Milk"].id, "counted_quantity": None},  # skipped
+    ]})
+    items = {i["name"]: i for i in client.get("/api/v1/inventory/items", headers=auth_headers).json()["items"]}
+    assert items["Ramen"]["last_counted"] is not None
+    assert items["Milk"]["last_counted"] is None and items["Eggs"]["last_counted"] is None

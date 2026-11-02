@@ -71,6 +71,7 @@ class InventoryItem(InventoryItemBase):
     category_name: Optional[str] = None # Computed in API
     is_low_stock: bool # Computed property
     needs_setup: bool = False
+    last_counted: Optional[date] = None  # latest night it was checked or changed in a count
     has_recipe: bool = False  # made in the kitchen: it has its own recipe
     # Resolved price (app/utils/pricing.py): latest paid purchase, else the
     # typed cost_per_unit (> 0), else None. Per the item's own unit.

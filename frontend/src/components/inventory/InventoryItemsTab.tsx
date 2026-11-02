@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus, MagnifyingGlass, Warning, PencilSimple, Archive, X, ListNumbers, Upload, Table } from '@phosphor-icons/react';
 import CountOrderEditor from './CountOrderEditor';
 import InventorySetupGrid from './InventorySetupGrid';
@@ -20,7 +21,12 @@ export default function InventoryItemsTab() {
   const [deletingItem, setDeletingItem] = useState<InventoryItem | null>(null);
   const [arranging, setArranging] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [editingAll, setEditingAll] = useState(() => new URLSearchParams(window.location.search).get('edit') === 'all'); // ops page's "Edit all"
+  // The ops page's "Edit all" arrives as ?edit=all; it opens the grid once, then leaves the URL.
+  const [params, setParams] = useSearchParams();
+  const [editingAll, setEditingAll] = useState(() => params.get('edit') === 'all');
+  useEffect(() => {
+    if (params.has('edit')) setParams(p => { p.delete('edit'); return p; }, { replace: true });
+  }, [params, setParams]);
 
   // Items are master data (cost prices, reorder levels), so only the owner
   // may add, change or remove them. Enforced on the API too.

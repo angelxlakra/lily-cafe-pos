@@ -39,6 +39,8 @@ export interface InventoryItem {
   brand?: string | null;
   /** Made in the kitchen: has a recipe of its own. */
   has_recipe?: boolean;
+  /** Latest night it was checked or changed in a count (YYYY-MM-DD), else null. */
+  last_counted?: string | null;
   /** Who it's usually ordered from; groups the order message. */
   default_vendor_id?: number | null;
   created_at: string;
