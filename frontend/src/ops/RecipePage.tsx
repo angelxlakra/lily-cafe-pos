@@ -132,7 +132,8 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
     updateMenu.mutate(
       { id: subjectId, data: { price: paise } },
       {
-        onSuccess: () => { setPriceDirty(false); queryClient.invalidateQueries({ queryKey: costingKeys.all }); },
+        // Clear the flag only once the refetched price is in, or the old one flashes back.
+        onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: costingKeys.all }); setPriceDirty(false); },
         onError: error => toast.error(describeApiError(error)),
       },
     );
