@@ -30,16 +30,16 @@ export default function NewMadeItemPage() {
     <form onSubmit={submit} className="ops-form">
       <h1>New made item</h1>
       <p className="muted">Something the kitchen makes and then uses in dishes, like a masala or a sauce.</p>
-      <label>Name
-        <input autoFocus required value={name} onChange={e => setName(e.target.value)} />
+      <label htmlFor="mi-name">Name
+        <input id="mi-name" autoFocus required value={name} onChange={e => setName(e.target.value)} />
       </label>
-      <label>Unit
-        <select value={unit} onChange={e => setUnit(e.target.value)}>
+      <label htmlFor="mi-unit">Unit
+        <select id="mi-unit" value={unit} onChange={e => setUnit(e.target.value)}>
           {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
         </select>
       </label>
-      <label>Category
-        <select value={categoryId} onChange={e => setCategoryId(e.target.value)}>
+      <label htmlFor="mi-cat">Category
+        <select id="mi-cat" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
           <option value="">No category</option>
           {categories.data?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { useInventoryItems } from '../hooks/useInventory';
+import { inventoryKeys, useInventoryItems } from '../hooks/useInventory';
+import { inventoryApi } from '../api/inventory';
 import { useUpdateMenuItem } from '../hooks/useMenu';
 import { costingKeys } from '../hooks/useCosting';
 import { toast } from '../utils/toast';
@@ -195,6 +196,19 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
     setLines(current => [...current, { key, itemId: item.id, quantity: '', unit: unitOptions(item)[0] }]);
     setFocusKey(key);
   };
+  /** Quick-add an item that isn't in inventory yet ("oregano", or "oregano kg"; unit defaults to g), then add it as a line. */
+  const addNew = async (text: string) => {
+    const m = text.trim().match(/^(.*\S)\s+(kg|g|l|ml|pcs|pkt)$/i);
+    const name = m ? m[1] : text.trim();
+    const unit = m ? (m[2].toLowerCase() === 'l' ? 'L' : m[2].toLowerCase()) : 'g';
+    try {
+      const item = await inventoryApi.quickAddItem(name, unit);
+      await queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      addLine(item);
+    } catch (e) {
+      toast.error(describeApiError(e));
+    }
+  };
   const patchLine = (key: string, patch: Partial<Line>) => setLines(current => current.map(l => (l.key === key ? { ...l, ...patch } : l)));
 
   const onSave = () => {
@@ -365,7 +379,7 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
             })}
             <tr>
               <td colSpan={7}>
-                <Picker items={pickable} madeIds={madeIds} inputRef={pickerRef} onPick={addLine} />
+                <Picker items={pickable} madeIds={madeIds} inputRef={pickerRef} onPick={addLine} onAddNew={addNew} />
               </td>
             </tr>
 
@@ -433,7 +447,7 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
           {save.isPending ? 'Saving…' : 'Save recipe'}
         </button>
         {incomplete > 0 && <span className="muted">Some rows need an amount first.</span>}
-        {preview.isError && <span className="err">Can&apos;t cost this yet: {describeApiError(preview.error)}</span>}
+        {preview.isError && lines.length > 0 && <span className="err">Can&apos;t cost this yet: {describeApiError(preview.error)}</span>}
         {!payload && <span className="muted">Say how many portions a batch makes.</span>}
       </div>
     </div>
@@ -483,23 +497,26 @@ function PriceCell({ item, text, editable, note, onCommit }: {
 }
 
 /** Search over active inventory items; Enter takes the first match. */
-function Picker({ items, madeIds, inputRef, onPick }: {
+function Picker({ items, madeIds, inputRef, onPick, onAddNew }: {
   items: InventoryItem[];
   madeIds: Set<number | null>;
   inputRef: React.RefObject<HTMLInputElement>;
   onPick: (item: InventoryItem) => void;
+  onAddNew: (text: string) => void;
 }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const matches = items.filter(i => i.name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 8);
   const pick = (item: InventoryItem) => { onPick(item); setQuery(''); setOpen(false); };
+  const typed = query.trim();
+  const addNew = () => { onAddNew(typed); setQuery(''); setOpen(false); };
   return (
     <div className="ops-pick">
       <input
         ref={inputRef}
         role="combobox"
         aria-label="Add ingredient"
-        aria-expanded={open && matches.length > 0}
+        aria-expanded={open && (matches.length > 0 || typed.length > 0)}
         aria-controls="ops-pick-list"
         className="cell-in"
         style={{ maxWidth: 280 }}
@@ -509,11 +526,15 @@ function Picker({ items, madeIds, inputRef, onPick }: {
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         onKeyDown={event => {
-          if (event.key === 'Enter' && matches[0]) { event.preventDefault(); pick(matches[0]); }
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            if (matches[0]) pick(matches[0]);
+            else if (typed) addNew();
+          }
           if (event.key === 'Escape') setOpen(false);
         }}
       />
-      {open && matches.length > 0 && (
+      {open && (matches.length > 0 || typed.length > 0) && (
         <ul id="ops-pick-list" role="listbox" aria-label="Ingredients">
           {matches.map(item => (
             <li key={item.id} role="presentation">
@@ -523,6 +544,13 @@ function Picker({ items, madeIds, inputRef, onPick }: {
               </button>
             </li>
           ))}
+          {typed && (
+            <li role="presentation">
+              <button type="button" role="option" aria-selected="false" onMouseDown={event => event.preventDefault()} onClick={addNew}>
+                + Add “{typed}” as a new ingredient
+              </button>
+            </li>
+          )}
         </ul>
       )}
     </div>

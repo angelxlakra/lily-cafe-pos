@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { describeApiError } from '../utils/apiError';
 import { rupees } from '../utils/costing';
@@ -22,7 +22,7 @@ const matches = (row: OverviewRow, filter: Filter) =>
 export const rowPath = (row: OverviewRow) =>
   row.kind === 'dish' ? `/admin/ops/recipes/dish/${row.menu_item_id}` : `/admin/ops/recipes/made/${row.inventory_item_id}`;
 
-const num = (v: number | string | null | undefined) => (v == null ? null : Number(v));
+const num = (v: number | string | null | undefined) => (v == null || !Number.isFinite(Number(v)) ? null : Number(v));
 const incomplete = (row: OverviewRow) => row.missing_count > 0;
 
 function costText(row: OverviewRow): string {
@@ -32,13 +32,15 @@ function costText(row: OverviewRow): string {
   return `${incomplete(row) ? '≥ ' : ''}${rupees(cost)}${unit}`;
 }
 
+const percentText = (n: number) => `${Math.round(n) < 0 ? '−' : ''}${Math.abs(Math.round(n))}%`;
+
 function marginText(row: OverviewRow): string {
   if (incomplete(row)) {
     const ceiling = num(row.margin_ceiling);
-    return ceiling == null ? '—' : `≤ ${Math.round(ceiling)}%`;
+    return ceiling == null ? '—' : `≤ ${percentText(ceiling)}`;
   }
   const margin = num(row.margin_percent);
-  return margin == null ? '—' : `${Math.round(margin)}%`;
+  return margin == null ? '—' : percentText(margin);
 }
 
 /** Change in cost since last week. */
@@ -54,7 +56,7 @@ function weekChange(row: OverviewRow): { text: string; tone?: 'up' | 'down' } {
 function Status({ row }: { row: OverviewRow }) {
   switch (row.status) {
     case 'below_target':
-      return <span className="pill bad">below {Math.round(Number(row.target_margin_percent ?? 0))}%</span>;
+      return <span className="pill bad">{num(row.target_margin_percent) == null ? 'below target' : `below ${Math.round(Number(row.target_margin_percent))}%`}</span>;
     case 'missing_prices':
       return <span className="pill warn">{row.missing_count === 1 ? '1 price missing' : `${row.missing_count} prices missing`}</span>;
     case 'no_recipe':
@@ -70,10 +72,20 @@ function NewRecipeMenu({ rows }: { rows: OverviewRow[] }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState<'closed' | 'menu' | 'dish'>('closed');
   const [q, setQ] = useState('');
+  const box = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (open === 'closed') return;
+    const away = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen('closed'); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { setOpen('closed'); trigger.current?.focus(); } };
+    document.addEventListener('mousedown', away);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', away); document.removeEventListener('keydown', esc); };
+  }, [open]);
   const dishes = rows.filter(r => r.kind === 'dish' && r.status === 'no_recipe' && r.name.toLowerCase().includes(q.trim().toLowerCase()));
   return (
-    <div className="ops-new">
-      <button type="button" className="btn" aria-expanded={open !== 'closed'} onClick={() => setOpen(open === 'closed' ? 'menu' : 'closed')}>
+    <div className="ops-new" ref={box}>
+      <button ref={trigger} type="button" className="btn" aria-expanded={open !== 'closed'} onClick={() => setOpen(open === 'closed' ? 'menu' : 'closed')}>
         + New recipe
       </button>
       {open === 'menu' && (
