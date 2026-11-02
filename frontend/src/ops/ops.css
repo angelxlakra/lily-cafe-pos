@@ -331,7 +331,7 @@
 
 .count-foot { position: fixed; bottom: 0; left: 0; right: 0; z-index: 20; background: var(--ops-bar); border-top: 1px solid var(--ops-rule); }
 .count-foot-row { max-width: 720px; margin: 0 auto; display: flex; gap: 8px; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); }
-.ops .btn.grow { flex: 1; white-space: nowrap; }
+.ops .btn.grow { flex: 1; white-space: normal; text-align: center; line-height: 1.25; padding: 6px 10px; }
 
 .count-sheet-wrap { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
 .count-scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.5); }
@@ -362,7 +362,7 @@
 .count-fail { margin-top: 18px; padding: 10px 12px; border: 1px solid var(--ops-bad); border-radius: 8px; background: var(--ops-bad-bg); font-size: 14px; }
 .count-fail strong { display: block; }
 .count-actions { display: flex; gap: 8px; padding: 10px 16px max(10px, env(safe-area-inset-bottom)); border-top: 1px solid var(--ops-rule); }
-.count-actions .btn { flex: 1; }
+.count-actions .btn { flex: 1; white-space: normal; text-align: center; line-height: 1.25; padding: 6px 10px; }
 .count-actions .btn.grow { flex: 1.4; }
 
 .ops-count-done { display: grid; place-items: center; padding: 40px 24px; }
