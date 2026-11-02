@@ -134,7 +134,8 @@
   .ops-main { padding: 12px; }
   .ops-bar .long { display: none; }
   .ops-bar .short { display: inline; }
-  .ops-bar { flex-wrap: nowrap; padding: 0 8px; }
+  .ops-bar { flex-wrap: wrap; justify-content: flex-end; padding: 0 8px; }
+  .ops-links { order: 3; flex: 1 1 100%; flex-wrap: wrap; overflow: visible; }
   .ops-bar button, .ops-bar a { padding: 0 10px; }
   .ops-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; align-items: start; }
   .ops-stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
@@ -407,5 +408,18 @@
 /* Stock log */
 .ops-log td.item, .ops-log td.note { white-space: normal; min-width: 140px; }
 .ops-log td .src { white-space: nowrap; }
+@media (max-width: 640px) {
+  .ops-log thead { display: none; }
+  .ops-log, .ops-log tbody { display: block; }
+  .ops-log tr {
+    display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 8px 0; border-bottom: 1px solid var(--ops-rule);
+  }
+  .ops-log td { display: block; padding: 0 8px; border: 0; white-space: normal; position: static; background: none; }
+  .ops-log td:first-child { grid-column: 1; grid-row: 1; }
+  .ops-log td.n { grid-column: 2; grid-row: 1; text-align: right; }
+  .ops-log td.item, .ops-log td.type, .ops-log td.note { grid-column: 1 / -1; min-width: 0; }
+  .ops-log td.note:empty { display: none; }
+  .ops-log td[data-l]::before { content: attr(data-l); display: block; font-size: 13px; color: var(--ops-muted); }
+}
 .ops-form.full { max-width: none; }
 .count-sheet .ops-form label { color: var(--ops-fg); }

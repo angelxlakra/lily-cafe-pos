@@ -130,7 +130,7 @@ function StockLog() {
                         {timeFormat.format(parseTimestamp(tx.created_at))}
                         <span className="src">{tx.recorded_by}</span>
                       </td>
-                      <td className="item">{tx.item_name ?? 'Deleted item'}</td>
+                      <td className="item" data-l="Item">{tx.item_name ?? 'Deleted item'}</td>
                       <td className="n">
                         <b>
                           {yesNo
@@ -142,8 +142,8 @@ function StockLog() {
                             : `${formatQty(tx.previous_quantity)} → ${formatQty(tx.new_quantity)}`}
                         </span>
                       </td>
-                      <td>{movementLabel(tx)}</td>
-                      <td className="note">{tx.notes && !tx.notes.startsWith('Daily count') ? tx.notes : ''}</td>
+                      <td className="type" data-l="Type">{movementLabel(tx)}</td>
+                      <td className="note" data-l="Note">{tx.notes && !tx.notes.startsWith('Daily count') ? tx.notes : ''}</td>
                     </tr>
                   );
                 })}
