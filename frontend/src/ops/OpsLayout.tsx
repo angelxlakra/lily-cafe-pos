@@ -31,13 +31,3 @@ export default function OpsLayout() {
     </div>
   );
 }
-
-/** Stands in for a page a later step builds. */
-export function OpsPlaceholder({ title }: { title: string }) {
-  return (
-    <>
-      <h1>{title}</h1>
-      <p className="muted">Coming in the next step.</p>
-    </>
-  );
-}

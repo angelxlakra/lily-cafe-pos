@@ -20,7 +20,7 @@ export default function InventoryItemsTab() {
   const [deletingItem, setDeletingItem] = useState<InventoryItem | null>(null);
   const [arranging, setArranging] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [editingAll, setEditingAll] = useState(false);
+  const [editingAll, setEditingAll] = useState(() => new URLSearchParams(window.location.search).get('edit') === 'all'); // ops page's "Edit all"
 
   // Items are master data (cost prices, reorder levels), so only the owner
   // may add, change or remove them. Enforced on the API too.

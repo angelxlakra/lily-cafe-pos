@@ -37,6 +37,8 @@ export interface InventoryItem {
   /** Purchase date behind a purchase price. */
   price_as_of?: string | null;
   brand?: string | null;
+  /** Made in the kitchen: has a recipe of its own. */
+  has_recipe?: boolean;
   /** Who it's usually ordered from; groups the order message. */
   default_vendor_id?: number | null;
   created_at: string;

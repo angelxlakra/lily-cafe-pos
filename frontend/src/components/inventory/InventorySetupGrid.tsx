@@ -23,7 +23,7 @@ import { formatQty, parseQty } from '../../utils/countQuantity';
 import type { BulkItemUpdate, InventoryCategory, InventoryItem, Vendor } from '../../types/inventory';
 
 type Field =
-  | 'category_id' | 'name' | 'count_mode' | 'current_quantity' | 'unit'
+  | 'category_id' | 'name' | 'brand' | 'count_mode' | 'current_quantity' | 'unit'
   | 'pack_size' | 'pack_unit' | 'min_threshold' | 'cost_per_unit' | 'default_vendor_id';
 type Cells = Record<Field, string>;
 type RowState = { cells: Cells; retired: boolean };
@@ -33,6 +33,7 @@ const RETIRE_WIDTH = 96;
 const COLUMNS: { field: Field; label: string; width: number; left?: number; numeric?: boolean }[] = [
   { field: 'category_id', label: 'Category', width: 150, left: 44 },
   { field: 'name', label: 'Name', width: 220, left: 194 },
+  { field: 'brand', label: 'Brand', width: 130 },
   { field: 'count_mode', label: 'Counted as', width: 130 },
   { field: 'current_quantity', label: 'Stock', width: 84, numeric: true },
   { field: 'unit', label: 'Unit', width: 96 },
@@ -70,6 +71,7 @@ function toCells(item: InventoryItem): Cells {
   return {
     category_id: item.category_id ? String(item.category_id) : '',
     name: item.name,
+    brand: item.brand ?? '',
     count_mode: item.count_mode ?? 'number',
     current_quantity: num(item.current_quantity),
     unit: item.unit,
@@ -114,6 +116,7 @@ function cellError(field: Field, cells: Cells): string | null {
   if (!applies(field, cells)) return null;
   const text = cells[field].trim();
   if (field === 'name' || field === 'unit') return text ? null : 'Required';
+  if (field === 'brand' && text.length > 100) return 'Too long';
   if (field === 'pack_unit' && !text && cells.pack_size.trim()) return 'Needs a unit';
   if (field === 'pack_size' && !text && cells.pack_unit.trim()) return 'Needs a size';
   if (!NUMERIC.has(field)) return null;
@@ -133,7 +136,7 @@ function toUpdate(id: number, original: Cells, row: RowState): BulkItemUpdate | 
     const text = row.cells[field].trim();
     if (field === 'category_id' || field === 'default_vendor_id') update[field] = text ? Number(text) : null;
     else if (NUMERIC.has(field)) update[field] = text === '' ? null : parseQty(text);
-    else if (field === 'pack_unit') update[field] = text || null;
+    else if (field === 'pack_unit' || field === 'brand') update[field] = text || null;
     else update[field] = text;
   }
   if (row.retired) {

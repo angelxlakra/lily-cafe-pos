@@ -240,3 +240,35 @@
   .ops-in { grid-column: 1 / -1; text-align: left; }
   .ops-in span { display: inline; margin-right: 6px; }
 }
+
+/* Inventory */
+.ops-inv { display: flex; gap: 18px; align-items: flex-start; flex-direction: row-reverse; }
+.ops-inv-main { flex: 1 1 0; min-width: 0; }
+.ops-inv-side { flex: 0 0 260px; border: 1px solid var(--ops-rule); border-radius: 8px; padding: 12px; }
+.ops-inv-side h2 { font-size: 15px; margin: 0 0 8px; }
+.ops-inv-side .btn { display: flex; align-items: center; justify-content: center; width: 100%; margin-bottom: 10px; }
+.ops-nights { width: 100%; border-collapse: collapse; font-size: 12px; }
+.ops-nights td { padding: 4px 2px; border-bottom: 1px solid var(--ops-rule); }
+.ops-nights td.n { text-align: right; font-variant-numeric: tabular-nums; }
+.ops-inv-t tr.cat th { padding-top: 14px; font-size: 12px; border-bottom: 1px solid var(--ops-rule); }
+.ops-inv-t td.brand { color: var(--ops-muted); }
+.ops-inv-t .sub { display: none; }
+
+@media (max-width: 767px) {
+  /* The count box sits above the table. */
+  .ops-inv { flex-direction: column-reverse; align-items: stretch; }
+  .ops-inv-side { flex: none; }
+  .ops-inv-t thead, .ops-inv-t td.brand, .ops-inv-t td.price, .ops-inv-t td.val { display: none; }
+  .ops-inv-t, .ops-inv-t tbody { display: block; }
+  .ops-inv-t tr.row {
+    display: grid; grid-template-columns: 1fr auto; column-gap: 8px; align-items: center;
+    min-height: 52px; padding: 4px 0; border-bottom: 1px solid var(--ops-rule);
+  }
+  .ops-inv-t tr.cat, .ops-inv-t tr.cat th { display: block; position: static; }
+  .ops-inv-t td { display: block; border: 0; padding: 0 8px; white-space: normal; position: static; background: none; }
+  .ops-inv-t td.name { grid-row: 1 / span 2; font-size: 15px; }
+  .ops-inv-t .sub { display: block; font-size: 12px; color: var(--ops-muted); }
+  .ops-inv-t td.stock { font-weight: 600; }
+  .ops-inv-t td.alert { grid-column: 2; font-size: 12px; color: var(--ops-muted); }
+  .ops-inv-t td.alert::before { content: 'alert '; }
+}

@@ -24,12 +24,12 @@ const TABS: { id: Tab; label: string; icon: JSX.Element; ownerOnly?: boolean }[]
 export default function InventoryPage() {
   // ?tab=order opens straight onto tonight's orders, from the end of the count.
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<Tab>(() =>
-    TABS.some(tab => tab.id === searchParams.get('tab') && !tab.ownerOnly) ? (searchParams.get('tab') as Tab) : 'daily-count'
-  );
-  const { setMobileOpen } = useSidebar();
   // Items and categories are owner-only master data: admins don't see them.
   const { isOwner } = useAuth();
+  const [activeTab, setActiveTab] = useState<Tab>(() =>
+    TABS.some(tab => tab.id === searchParams.get('tab') && (isOwner || !tab.ownerOnly)) ? (searchParams.get('tab') as Tab) : 'daily-count'
+  );
+  const { setMobileOpen } = useSidebar();
   const tabs = TABS.filter(tab => isOwner || !tab.ownerOnly);
 
   // One underline that slides to the selected tab, so the eye follows the

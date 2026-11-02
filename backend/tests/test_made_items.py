@@ -90,6 +90,9 @@ def test_cajun_masala_made_item(client, test_db, owner_headers):
     got = client.get(f"{API}/costing/item/{made.id}", headers=owner_headers)
     assert got.status_code == 200 and got.json()["id"] == body["id"]
     assert client.get(f"{API}/costing/item/999999", headers=owner_headers).status_code == 404
+    # The item list says which items are made here (admin can't call costing).
+    flags = {i["name"]: i["has_recipe"] for i in client.get(f"{API}/inventory/items", headers=owner_headers).json()["items"]}
+    assert flags["Cajun masala"] is True and flags["Pepper"] is False
 
 
 def test_dish_uses_made_item(client, test_db, owner_headers, sample_menu_items):

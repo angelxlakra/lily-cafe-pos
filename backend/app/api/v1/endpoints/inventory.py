@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import case, func, desc
 from decimal import ROUND_HALF_UP, Decimal
 
@@ -155,7 +155,7 @@ def get_items(
     current_user: TokenData = _READ
 ):
     """Get all inventory items with filtering."""
-    query = db.query(InventoryItem)
+    query = db.query(InventoryItem).options(selectinload(InventoryItem.recipe))
     
     if is_active:
         query = query.filter(InventoryItem.is_active == True)
@@ -228,6 +228,7 @@ def _item_dict(item: InventoryItem, price: pricing.ResolvedPrice, schema=invento
     if item.category:
         item_dict['category_name'] = item.category.name
     item_dict['is_low_stock'] = item.is_low_stock
+    item_dict['has_recipe'] = item.recipe is not None
     item_dict.update(price.as_dict())
     return item_dict
 

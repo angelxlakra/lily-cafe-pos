@@ -23,7 +23,8 @@ import ToolsPage from './pages/ToolsPage.tsx'
 import CashDayPage from './pages/CashDayPage.tsx'
 import SettingsPage from './pages/SettingsPage.tsx'
 import ProtectedRoute from './components/ProtectedRoute.tsx'
-import OpsLayout, { OpsPlaceholder } from './ops/OpsLayout.tsx'
+import OpsLayout from './ops/OpsLayout.tsx'
+import OpsInventoryPage from './ops/OpsInventoryPage.tsx'
 import DailySheetPage from './ops/DailySheetPage.tsx'
 import RecipePage from './ops/RecipePage.tsx'
 import RecipesListPage from './ops/RecipesListPage.tsx'
@@ -149,7 +150,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             {/* Ops pages: their own layout, no POS sidebar */}
             <Route path="/admin/ops" element={<ProtectedRoute><OpsLayout /></ProtectedRoute>}>
               <Route index element={<Navigate to="/admin/ops/inventory" replace />} />
-              <Route path="inventory" element={<OpsPlaceholder title="Inventory" />} />
+              <Route path="inventory" element={<OpsInventoryPage />} />
               <Route path="sheet" element={<DailySheetPage />} />
               <Route path="recipes" element={<ProtectedRoute requiredRole="owner"><RecipesListPage /></ProtectedRoute>} />
               <Route path="recipes/dish/:menuItemId" element={<ProtectedRoute requiredRole="owner"><RecipePage kind="dish" /></ProtectedRoute>} />
