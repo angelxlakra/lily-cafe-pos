@@ -176,6 +176,7 @@ def ensure_costing_made_items(bind=None) -> bool:
     )
     shared = ", ".join(c.name for c in table.columns if c.name in old)
     conn = bind.connect()
+    fk_before = conn.exec_driver_sql("PRAGMA foreign_keys").scalar()
     try:
         # A no-op inside a transaction, so it goes first.
         conn.exec_driver_sql("PRAGMA foreign_keys=OFF")
@@ -191,7 +192,7 @@ def ensure_costing_made_items(bind=None) -> bool:
         conn.rollback()
         raise
     finally:
-        conn.exec_driver_sql("PRAGMA foreign_keys=ON")
+        conn.exec_driver_sql(f"PRAGMA foreign_keys={'ON' if fk_before else 'OFF'}")
         conn.close()
     return True
 
