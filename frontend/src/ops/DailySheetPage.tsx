@@ -514,7 +514,7 @@ function Approvals() {
           onReview={action => review.mutate({ purchaseId: p.purchase_id, action })}
         />
       ))}
-      <button type="button" className="btn" disabled={busy} onClick={() => approveAll.mutate()}>
+      <button type="button" className="btn" disabled={busy} onClick={() => approveAll.mutate(list.map(p => p.purchase_id))}>
         Approve all ({list.length})
       </button>
       {review.isError && <p role="alert" className="err">{describeApiError(review.error)}</p>}
@@ -558,6 +558,7 @@ function ApprovalCard({ p, targets, busy, onReview }: {
         <span className="muted">bought by {p.recorded_by} · {showQuantity(p.quantity, p.unit)}</span>
       </div>
       <ul>
+        {p.superseded ? <li>A newer approved price is in use; approving won&apos;t change it</li> : <>
         {up.length > 0 && <li>{dishesText(up.length)} more, {range(up)}</li>}
         {down.length > 0 && <li>{dishesText(down.length)} less, {range(down)}</li>}
         {dishes.filter(d => d.crosses_below_target).map(d => {
@@ -578,6 +579,7 @@ function ApprovalCard({ p, targets, busy, onReview }: {
           );
         })}
         {dishes.length === 0 && <li>{p.is_new_item ? 'Not in any recipe yet' : 'No recipe uses it yet'}</li>}
+        </>}
       </ul>
       <div className="acts">
         <button type="button" className="btn" disabled={busy} onClick={() => onReview('approve')}>Approve</button>

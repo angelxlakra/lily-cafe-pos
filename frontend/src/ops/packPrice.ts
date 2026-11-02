@@ -1,5 +1,7 @@
 // "₹99 / 10 g": a price and the pack it buys, as the owners write it. Pure, tested in tests/packPrice.test.ts.
 
+import { sameFamily } from '../utils/costing.ts';
+
 export interface PackPrice {
   price: number;
   quantity: number;
@@ -16,6 +18,11 @@ export function parsePackPrice(text: string): PackPrice | null {
   const quantity = match[2] === undefined ? 1 : Number(match[2]);
   if (!(price > 0) || !(quantity > 0)) return null;
   return { price, quantity, unit: match[3].toLowerCase() };
+}
+
+/** Pack form ("₹99 / 10 g") only for a packet priced by weight; a kg item priced per 500 g is plain per-kg. */
+export function usesPackForm(item: { unit: string; pack_size?: number | string | null; pack_unit?: string | null }): boolean {
+  return !!(item.pack_size && item.pack_unit) && !sameFamily(item.unit, item.pack_unit);
 }
 
 const number = (value: number) => value.toLocaleString('en-IN', { maximumFractionDigits: 4 });

@@ -54,6 +54,8 @@ export interface Recipe extends Omit<DishCosting, 'menu_item_id' | 'menu_item_na
   name: string;
   unit: string | null;
   used_in: UsedIn[];
+  /** Made items: the lines summed in the item's unit; null if one doesn't convert. */
+  auto_yield: Num | null;
 }
 
 const opsKeys = {
@@ -214,6 +216,8 @@ export interface PendingPrice {
   /** A fraction: 0.25 is 25% up. */
   change: Num | null;
   is_new_item: boolean;
+  /** A newer approved price is in use, so approving this changes nothing. */
+  superseded: boolean;
   ripple: Ripple | null;
 }
 
@@ -247,7 +251,9 @@ export function useReviewPrice() {
 export function useApproveAllPrices() {
   const after = useAfterReview();
   return useMutation({
-    mutationFn: async () => (await apiClient.post<{ approved: number }>('/inventory/purchases/price-review/approve-all')).data,
+    // The ids on screen: a purchase that arrived since is not approved unseen.
+    mutationFn: async (purchaseIds: number[]) =>
+      (await apiClient.post<{ approved: number }>('/inventory/purchases/price-review/approve-all', { purchase_ids: purchaseIds })).data,
     onSuccess: after,
   });
 }

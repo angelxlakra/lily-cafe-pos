@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { describeApiError } from '../utils/apiError';
-import { rupees } from '../utils/costing';
+import { perUnitCost, rupees } from '../utils/costing';
 import { useOverview } from './api';
 import type { OverviewRow } from './api';
 
@@ -28,8 +28,8 @@ const incomplete = (row: OverviewRow) => row.missing_count > 0;
 function costText(row: OverviewRow): string {
   const cost = num(row.cost_per_unit);
   if (row.status === 'no_recipe' || cost == null) return '—';
-  const unit = row.kind === 'made' && row.unit ? ` / ${row.unit}` : '';
-  return `${incomplete(row) ? '≥ ' : ''}${rupees(cost)}${unit}`;
+  const shown = row.kind === 'made' && row.unit ? perUnitCost(cost, row.unit) : { cost, unit: null };
+  return `${incomplete(row) ? '≥ ' : ''}${rupees(shown.cost)}${shown.unit ? ` / ${shown.unit}` : ''}`;
 }
 
 const percentText = (n: number) => `${Math.round(n) < 0 ? '−' : ''}${Math.abs(Math.round(n))}%`;
@@ -48,7 +48,9 @@ function weekChange(row: OverviewRow): { text: string; tone?: 'up' | 'down' } {
   const now = num(row.cost_per_unit);
   const before = num(row.cost_last_week);
   if (now == null || before == null) return { text: '—' };
-  const diff = Math.round((now - before) * 100) / 100;
+  // A made item's cost is per g or ml; the change reads per kg or L, scaled before it is rounded.
+  const raw = now - before;
+  const diff = Math.round((row.kind === 'made' ? perUnitCost(raw, row.unit).cost : raw) * 100) / 100;
   if (diff === 0) return { text: '—' };
   return { text: `${diff > 0 ? '+' : '−'}${rupees(Math.abs(diff))}`, tone: diff > 0 ? 'up' : 'down' };
 }

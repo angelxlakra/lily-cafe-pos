@@ -1,7 +1,7 @@
 // Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { formatPackPrice, parsePackPrice } from '../src/ops/packPrice.ts';
+import { formatPackPrice, parsePackPrice, usesPackForm } from '../src/ops/packPrice.ts';
 
 test('parsePackPrice reads the forms the owners type', () => {
   assert.deepEqual(parsePackPrice('₹99 / 10 g'), { price: 99, quantity: 10, unit: 'g' });
@@ -26,4 +26,12 @@ test('formatPackPrice writes it the way it is typed', () => {
   assert.equal(formatPackPrice(40, 1, 'kg'), '₹40 / kg');
   assert.equal(formatPackPrice(1541.25, 1, 'kg'), '₹1,541.25 / kg');
   assert.deepEqual(parsePackPrice(formatPackPrice(220, 400, 'g')), { price: 220, quantity: 400, unit: 'g' });
+});
+
+test('usesPackForm is for packets priced by weight, not a kg item priced per 500 g', () => {
+  assert.equal(usesPackForm({ unit: 'pcs', pack_size: 52, pack_unit: 'g' }), true);
+  assert.equal(usesPackForm({ unit: 'pkt', pack_size: '100', pack_unit: 'g' }), true);
+  assert.equal(usesPackForm({ unit: 'kg', pack_size: 0.5, pack_unit: 'kg' }), false);
+  assert.equal(usesPackForm({ unit: 'g', pack_size: 500, pack_unit: 'kg' }), false);
+  assert.equal(usesPackForm({ unit: 'g', pack_size: null, pack_unit: null }), false);
 });

@@ -1,5 +1,6 @@
 // Pure helpers for the dish costing screen. No React, no API: tested in tests/costing.test.ts.
 
+import { entryUnit } from './purchaseSheet.ts';
 import type { DishCostingSummary, GapReason, IngredientLine } from '../types/costing';
 
 interface UnitItem {
@@ -25,6 +26,30 @@ function normalize(unit: string | null | undefined): string | null {
 function familyOf(unit: string | null | undefined): string[] | null {
   const known = normalize(unit);
   return known ? Object.values(FAMILIES).find(units => units.includes(known))! : null;
+}
+
+/** Whether two units convert into each other (g and kg yes, g and ml no). Unknown units never do. */
+export function sameFamily(a: string | null | undefined, b: string | null | undefined): boolean {
+  const family = familyOf(a);
+  return family !== null && family === familyOf(b);
+}
+
+/** g, kg, ml, L: a quantity of stuff, as opposed to a count of things. */
+export function isMeasure(unit: string | null | undefined): boolean {
+  const family = familyOf(unit);
+  return family === FAMILIES.mass || family === FAMILIES.volume;
+}
+
+/** The measure family's small unit: ml for ml/L, g for g/kg, otherwise null. */
+export function baseUnitOf(unit: string | null | undefined): 'g' | 'ml' | null {
+  const family = familyOf(unit);
+  return family === FAMILIES.mass ? 'g' : family === FAMILIES.volume ? 'ml' : null;
+}
+
+/** A cost per g or ml as it reads in a kitchen: per kg or L. Other units are left alone. */
+export function perUnitCost(cost: number, unit: string | null | undefined): { cost: number; unit: string | null } {
+  const { label, factor } = entryUnit(unit ?? '');
+  return { cost: cost * factor, unit: unit ? label : null };
 }
 
 /**

@@ -12,7 +12,7 @@ import { formatQty, haveIt, isPresence } from '../utils/countQuantity';
 import { localDate } from '../utils/formatDateTime';
 import type { CountSummary, InventoryItem } from '../types/inventory';
 import { usePurchaseDay } from './api';
-import { formatPackPrice } from './packPrice';
+import { formatPackPrice, usesPackForm } from './packPrice';
 
 type Filter = 'all' | 'low' | 'made';
 const MADE = 'Made in the kitchen';
@@ -26,7 +26,7 @@ const alertText = (item: InventoryItem) => (isPresence(item) ? '—' : `${format
 function priceText(item: InventoryItem): string {
   if (item.current_price == null) return item.has_recipe ? 'from recipe' : '—';
   const price = Number(item.current_price);
-  return item.pack_size && item.pack_unit
+  return usesPackForm(item) && item.pack_unit
     ? formatPackPrice(price, Number(item.pack_size), item.pack_unit)
     : formatPackPrice(price, 1, item.unit);
 }

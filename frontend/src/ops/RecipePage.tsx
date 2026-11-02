@@ -1,20 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { inventoryKeys, useInventoryItems } from '../hooks/useInventory';
+import { inventoryKeys, useInventoryItems, useUpdateItem } from '../hooks/useInventory';
 import { inventoryApi } from '../api/inventory';
 import { useUpdateMenuItem } from '../hooks/useMenu';
 import { costingKeys } from '../hooks/useCosting';
 import { toast } from '../utils/toast';
 import { describeApiError } from '../utils/apiError';
-import { describeSource, parseQuantity, percent, rupees, unitOptions } from '../utils/costing';
+import { baseUnitOf, describeSource, isMeasure, parseQuantity, percent, perUnitCost, rupees, sameFamily, unitOptions } from '../utils/costing';
 import type { CostBreakdown, DishCostingIn, IngredientLine, OverheadKind, OverheadMode, OverheadOverride } from '../types/costing';
 import type { InventoryItem } from '../types/inventory';
 import {
   useCostingDefaults, useDishRecipe, useMadeRecipe, useOverview, useRecipePreview, useSaveRecipe, useSetBrand, useSetPackPrice,
 } from './api';
 import type { OverviewRow, Recipe } from './api';
-import { formatPackPrice, parsePackPrice } from './packPrice';
+import { formatPackPrice, parsePackPrice, usesPackForm } from './packPrice';
 
 const OVERHEADS: { kind: OverheadKind; label: string }[] = [
   { kind: 'packaging', label: 'Packaging' },
@@ -41,7 +41,7 @@ function parseAmount(text: string): number | null {
 function priceText(item: InventoryItem | undefined, line: IngredientLine | undefined): string | null {
   if (line?.price_source === 'recipe') return line.price_missing ? null : formatPackPrice(Number(line.unit_price), 1, line.stock_unit);
   if (!item || item.current_price == null) return null;
-  return item.pack_size && item.pack_unit
+  return usesPackForm(item) && item.pack_unit
     ? formatPackPrice(Number(item.current_price), Number(item.pack_size), item.pack_unit)
     : formatPackPrice(Number(item.current_price), 1, item.unit);
 }
@@ -105,10 +105,9 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
     if (!recipe) return isMade ? '' : '1';
     const saved = Number(recipe.yield_units);
     if (!isMade) return String(saved);
-    // A made item's yield is the sum of its lines unless someone typed one: keep it automatic when it still is.
-    const sameUnit = recipe.ingredients.length > 0 && recipe.ingredients.every(i => i.unit === recipe.ingredients[0].unit);
-    const sum = recipe.ingredients.reduce((total, i) => total + Number(i.quantity), 0);
-    return sameUnit && Math.abs(sum - saved) < 1e-6 ? '' : String(saved);
+    // A made item's yield is the sum of its lines (in its own unit, worked out by the server) unless someone typed one.
+    const auto = recipe.auto_yield == null ? null : Number(recipe.auto_yield);
+    return auto !== null && Math.abs(auto - saved) < 1e-6 ? '' : String(saved);
   });
   const [overheads, setOverheads] = useState<Record<OverheadKind, OverheadDraft>>(() => {
     const start = {} as Record<OverheadKind, OverheadDraft>;
@@ -195,6 +194,24 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
   const save = useSaveRecipe();
   const setBrand = useSetBrand();
   const setPackPrice = useSetPackPrice();
+  const updateItem = useUpdateItem();
+  const [packErrors, setPackErrors] = useState<Record<string, string | null>>({});
+
+  /** Post a typed pack price. A fresh item (no stock, no price) quick-added in g takes the pack's measure family first. */
+  const commitPack = async (item: InventoryItem, line: Line, pack: { price: number; quantity: number; unit: string }) => {
+    setPackErrors(c => ({ ...c, [line.key]: null }));
+    try {
+      const base = baseUnitOf(pack.unit);
+      const fresh = Number(item.current_quantity) === 0 && item.current_price == null;
+      if (fresh && base && isMeasure(item.unit) && !sameFamily(item.unit, pack.unit)) {
+        await updateItem.mutateAsync({ id: item.id, data: { unit: base } });
+        patchLine(line.key, { unit: base });
+      }
+      await setPackPrice.mutateAsync({ id: item.id, price: pack.price, pack_quantity: pack.quantity, pack_unit: pack.unit });
+    } catch (error) {
+      setPackErrors(c => ({ ...c, [line.key]: describeApiError(error) }));
+    }
+  };
 
   const pickable = items.filter(i => i.is_active && !(isMade && i.id === subjectId) && !lines.some(l => l.itemId === i.id));
   const addLine = (item: InventoryItem) => {
@@ -244,6 +261,10 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
   // The typed menu price counts at once; the server's margin catches up once it is saved.
   const price = isMade ? null : typedPrice !== null && typedPrice > 0 ? typedPrice : breakdown?.selling_price == null ? null : Number(breakdown.selling_price);
   const perUnit = breakdown ? Number(breakdown.cost_per_unit) : 0;
+  // A made item's cost is per g or ml; it reads per kg or L.
+  const shown = isMade && breakdown ? perUnitCost(perUnit, unitLabel) : null;
+  const costLabel = isMade ? `Cost per ${shown?.unit ?? unitLabel}` : 'Cost per portion';
+  const costText = !breakdown ? '—' : shown ? `${lower ? '≥ ' : ''}${rupees(shown.cost)}` : money(breakdown.cost_per_unit);
   const margin = price && Number(breakdown?.raw_material_cost ?? 0) > 0 ? ((price - perUnit) / price) * 100 : null;
   const foodCost = price && breakdown ? (Number(breakdown.raw_cost_per_unit) / price) * 100 : null;
   const target = breakdown?.target_margin_percent == null ? null : Number(breakdown.target_margin_percent);
@@ -266,7 +287,7 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
           />
         </div>
         <div className="ops-stat"><span>Raw material / batch</span><b>{breakdown ? money(breakdown.raw_material_cost) : '—'}</b></div>
-        <div className="ops-stat"><span>{isMade ? `Cost per ${unitLabel}` : 'Cost per portion'}</span><b>{breakdown ? money(breakdown.cost_per_unit) : '—'}</b></div>
+        <div className="ops-stat"><span>{costLabel}</span><b>{costText}</b></div>
         {!isMade && (
           <>
             <div className="ops-stat"><span>Menu price</span><input
@@ -370,10 +391,8 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
                         text={text}
                         editable={!!item && !lineIsMade && source !== 'purchase'}
                         note={bl ? describeSource(bl) : null}
-                        onCommit={pack => item && setPackPrice.mutate(
-                          { id: item.id, price: pack.price, pack_quantity: pack.quantity, pack_unit: pack.unit },
-                          { onError: error => toast.error(describeApiError(error)) },
-                        )}
+                        serverError={packErrors[line.key] ?? null}
+                        onCommit={pack => item && commitPack(item, line, pack)}
                       />
                     )}
                   </td>
@@ -443,8 +462,8 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
               </>
             )}
             <tr className="tot">
-              <td colSpan={4}>{isMade ? `Cost per ${unitLabel}` : 'Cost per portion'}</td>
-              <td className="n">{breakdown ? money(breakdown.cost_per_unit) : '—'}</td>
+              <td colSpan={4}>{costLabel}</td>
+              <td className="n">{costText}</td>
               <td colSpan={2} />
             </tr>
           </tbody>
@@ -465,11 +484,12 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
 }
 
 /** Price per pack: plain when a purchase set it, typed ("₹99 / 10 g") when it didn't. */
-function PriceCell({ item, text, editable, note, onCommit }: {
+function PriceCell({ item, text, editable, note, serverError, onCommit }: {
   item?: InventoryItem;
   text: string | null;
   editable: boolean;
   note: string | null;
+  serverError?: string | null;
   onCommit: (pack: { price: number; quantity: number; unit: string }) => void;
 }) {
   const [value, setValue] = useState(text ?? '');
@@ -501,7 +521,7 @@ function PriceCell({ item, text, editable, note, onCommit }: {
         onBlur={commit}
         onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); }}
       />
-      {error ? <span className="err">Type it like ₹99 / 10 g</span> : note && <span className="src">{note}</span>}
+      {error ? <span className="err">Type it like ₹99 / 10 g</span> : serverError ? <span className="err" role="alert">{serverError}</span> : note && <span className="src">{note}</span>}
     </>
   );
 }
