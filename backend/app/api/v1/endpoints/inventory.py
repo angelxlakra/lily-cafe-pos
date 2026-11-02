@@ -455,6 +455,16 @@ def _price_check(item: InventoryItem, quantity, total_amount, current: pricing.R
         "is_jump": not is_gift and pricing.is_price_jump(current.price, new_price),
     }
 
+def _needs_price_review(user: TokenData, total_amount, new_price, current: pricing.ResolvedPrice) -> bool:
+    """Whether a purchase line's price must wait for the owner.
+
+    Not for the owner, a line with no positive total (a gift or no amount
+    says nothing about the price), or one at the price already in force.
+    """
+    if user.role == UserRole.OWNER or total_amount is None or total_amount <= 0:
+        return False
+    return new_price != current.price
+
 def _purchase_dict(t: InventoryTransaction) -> dict:
     # Shown in the item's unit as it is now, so a line bought before a g -> kg
     # change reads 4 kg at ₹120, not 4000 kg at ₹0.12. A line in a unit the
@@ -533,11 +543,7 @@ def record_purchase(
         checks.append(check)
         # Staff can't move a price on their own: a line at a new price waits
         # for the owner. Stock is not held back, only the price.
-        approved = (
-            current_user.role == UserRole.OWNER
-            or line.total_amount is None or line.total_amount <= 0
-            or check["unit_price"] == prices[item.id].price
-        )
+        approved = not _needs_price_review(current_user, line.total_amount, check["unit_price"], prices[item.id])
 
         previous_qty = item.current_quantity
         item.current_quantity += line.quantity
@@ -857,14 +863,20 @@ def edit_purchase(
     changes = edit.model_dump(exclude_unset=True)
     if changes.get("vendor_id") is not None and not db.get(Vendor, changes["vendor_id"]):
         raise HTTPException(status_code=400, detail="Vendor not found")
-    priced_as = (t.total_amount, t.quantity)
+    # Taken before anything moves: the line may itself be the price in force.
+    current = pricing.resolve_one(db, t.item)
+    was_priced_at = pricing.unit_price(t.total_amount, pricing.quantity_in(t, t.item.unit))
     if changes.get("quantity") is not None:
         _move_purchase_stock(t, changes.pop("quantity"))
     for key, value in changes.items():
         setattr(t, key, value)
-    if (t.total_amount, t.quantity) != priced_as and current_user.role != UserRole.OWNER:
-        # A changed total (or quantity, which changes the rate) is a new price to approve.
-        t.price_status, t.price_reviewed_at = pricing.PRICE_PENDING, None
+    now_priced_at = pricing.unit_price(t.total_amount, pricing.quantity_in(t, t.item.unit))
+    if now_priced_at != was_priced_at and current_user.role != UserRole.OWNER:
+        # A changed total or quantity is a new rate; same rules as a new line.
+        if _needs_price_review(current_user, t.total_amount, now_priced_at, current):
+            t.price_status, t.price_reviewed_at = pricing.PRICE_PENDING, None
+        else:
+            t.price_status, t.price_reviewed_at = pricing.PRICE_APPROVED, utcnow()
     if t.total_amount is not None and t.total_amount == 0 and not (t.notes or "").strip():
         raise HTTPException(status_code=422, detail="A purchase of ₹0 needs a note saying why (e.g. free from the vendor)")
     db.commit()

@@ -157,6 +157,46 @@ def test_owner_edit_keeps_it_approved(client, auth_headers, owner_headers, onion
     assert _n(_item(client, owner_headers, onion)["current_price"]) == _n(50)
 
 
+def test_staff_purchase_without_a_total_or_for_nothing_is_approved(client, auth_headers, onion):
+    no_total = client.post(PURCHASE, headers=auth_headers, json={"items": [{"item_id": onion.id, "quantity": "1"}]})
+    gift = client.post(PURCHASE, headers=auth_headers, json={
+        "items": [{"item_id": onion.id, "quantity": "1", "total_amount": "0", "notes": "free"}]})
+
+    assert no_total.json()["transactions"][0]["price_status"] == "approved"
+    assert gift.json()["transactions"][0]["price_status"] == "approved"
+
+
+def test_admin_quantity_edit_goes_back_to_pending(client, auth_headers, owner_headers, onion):
+    line = _buy(client, auth_headers, onion)  # 160 / 4 = 40
+    _review(client, owner_headers, line["id"], "approve")
+
+    edited = client.patch(f"{PURCHASES}/{line['id']}", headers=auth_headers, json={"quantity": "2"})  # 80/kg
+
+    assert edited.json()["price_status"] == "pending"
+
+
+def test_admin_edit_to_no_total_or_zero_is_approved_and_pending_list_still_works(client, auth_headers, owner_headers, onion):
+    first = _buy(client, auth_headers, onion)
+    second = _buy(client, auth_headers, onion)
+
+    nulled = client.patch(f"{PURCHASES}/{first['id']}", headers=auth_headers, json={"total_amount": None})
+    zeroed = client.patch(f"{PURCHASES}/{second['id']}", headers=auth_headers, json={"total_amount": "0", "notes": "free"})
+
+    assert nulled.json()["price_status"] == "approved"
+    assert zeroed.json()["price_status"] == "approved"
+    assert client.get(f"{PURCHASES}/pending-prices", headers=owner_headers).status_code == 200
+    assert _n(_item(client, owner_headers, onion)["current_price"]) == _n(32)
+
+
+def test_notes_only_edit_keeps_it_approved(client, auth_headers, owner_headers, onion):
+    line = _buy(client, auth_headers, onion)
+    _review(client, owner_headers, line["id"], "approve")
+
+    edited = client.patch(f"{PURCHASES}/{line['id']}", headers=auth_headers, json={"notes": "from Raju"})
+
+    assert edited.json()["price_status"] == "approved"
+
+
 def test_brand_round_trips(client, owner_headers, onion):
     assert client.patch(f"{ITEMS}/{onion.id}", headers=owner_headers, json={"brand": "Nashik"}).status_code == 200
     assert _item(client, owner_headers, onion)["brand"] == "Nashik"
