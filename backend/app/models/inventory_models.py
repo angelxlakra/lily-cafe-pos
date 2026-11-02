@@ -61,6 +61,8 @@ class InventoryItem(Base):
     default_vendor = relationship("Vendor")
     transactions = relationship("InventoryTransaction", back_populates="item")
     costing_ingredients = relationship("DishCostingIngredient", back_populates="inventory_item")
+    # How this is made, when it is made in the kitchen rather than bought.
+    recipe = relationship("DishCosting", back_populates="made_item", uselist=False, cascade="all, delete-orphan")
 
     @validates("current_quantity", "count_mode")
     def _clamp_presence(self, key, value):

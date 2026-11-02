@@ -271,3 +271,10 @@ class CountResult(CountSummary):
     changes: List[CountChange]
     skipped_item_names: List[str]
     emailed: bool
+
+
+class PackPriceIn(BaseModel):
+    """"₹58 for a 100 g pack": what the owner knows, rather than a price per unit."""
+    price: Decimal = Field(..., gt=0)
+    pack_quantity: Decimal = Field(..., gt=0)
+    pack_unit: str = Field(..., min_length=1, max_length=20)

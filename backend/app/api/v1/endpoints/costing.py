@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, object_session
 
 from app.api.deps import get_current_owner
 from app.db.session import get_db
-from app.models.costing_models import DishCosting, DishCostingIngredient
+from app.models.costing_models import OVERHEAD_KINDS, DishCosting, DishCostingIngredient
 from app.models.inventory_models import InventoryItem
 
 from app.schemas import costing_schemas
@@ -15,7 +15,7 @@ from app.crud import costing_crud
 
 from app.utils import costing as costing_utils
 from app.utils import pricing
-from app.utils.units import IncompatibleUnitError
+from app.utils.units import IncompatibleUnitError, to_item_unit
 
 router = APIRouter()
 
@@ -30,10 +30,24 @@ def _menu_price_rupees(menu_item) -> Decimal | None:
         return None
     return Decimal(menu_item.price) / Decimal("100")
 
-def _build_ingredient_inputs(ingredients: list[DishCostingIngredient], price_overrides: dict[int, Decimal] | None = None) -> list[costing_utils.IngredientInput]:
+def _made_unit_price(item: InventoryItem, price_overrides, memo: dict, stack: tuple[int, ...]) -> tuple[Decimal | None, bool]:
+    # What one unit of a kitchen-made item costs (its batch's raw cost / yield, no
+    # overheads), and whether every ingredient inside it is priced. Memoised per request.
+    if item.id in memo:
+        return memo[item.id]
+    if item.id in stack:
+        return None, False  # a loop that got past the save-time check: a gap, not a crash
+    breakdown = _compute_breakdown(item.recipe, None, price_overrides, memo, stack + (item.id,))
+    result = (breakdown.raw_material_cost / breakdown.yield_units, breakdown.is_complete)
+    memo[item.id] = result
+    return result
+
+def _build_ingredient_inputs(ingredients: list[DishCostingIngredient], price_overrides: dict[int, Decimal] | None = None, memo: dict | None = None, stack: tuple[int, ...] = ()) -> list[costing_utils.IngredientInput]:
     # Convert DB ingredient rows into the pure calculation input format.
     # Prices come from the purchase log, falling back to the typed price
-    # (app/utils/pricing.py); an override replaces either.
+    # (app/utils/pricing.py); an override replaces either. A kitchen-made item
+    # is priced from its own recipe instead.
+    memo = {} if memo is None else memo
     overrides = price_overrides or {}
     inputs = []
 
@@ -48,6 +62,14 @@ def _build_ingredient_inputs(ingredients: list[DishCostingIngredient], price_ove
         item = row.inventory_item
         current = resolved.get(item.id)
         overridden = item.id in overrides
+        if item.recipe is not None and not overridden:
+            made_price, complete = _made_unit_price(item, price_overrides, memo, stack)
+            inputs.append(costing_utils.IngredientInput(
+                item_id=item.id, name=item.name, quantity=Decimal(row.quantity), unit=row.unit, stock_unit=item.unit,
+                cost_per_unit=made_price, is_active=item.is_active, pack_size=item.pack_size, pack_unit=item.pack_unit,
+                price_source="recipe", incomplete=not complete,
+            ))
+            continue
         price = overrides.get(item.id, current.price if current else item.cost_per_unit)
         source = None if overridden or current is None else current.source
         as_of = None if overridden or current is None else current.as_of
@@ -64,13 +86,20 @@ def _build_ingredient_inputs(ingredients: list[DishCostingIngredient], price_ove
         ))
     return inputs
 
-def _compute_breakdown(costing: DishCosting, menu_item, price_overrides: dict[int, Decimal] | None = None):
+def _compute_breakdown(costing: DishCosting, menu_item, price_overrides: dict[int, Decimal] | None = None, memo: dict | None = None, stack: tuple[int, ...] = ()):
     # Calculate a costing breakdown for a persisted or temporary costing.
-    ingredients = _build_ingredient_inputs(costing.ingredients, price_overrides=price_overrides)
+    if costing.inventory_item_id is not None:
+        stack = stack + (costing.inventory_item_id,)
+    ingredients = _build_ingredient_inputs(costing.ingredients, price_overrides=price_overrides, memo=memo, stack=stack)
 
-    overheads = costing_utils.resolve_overheads(costing)
-    target_margin = costing_utils.resolve_target_margin(costing)
-    selling_price = _menu_price_rupees(menu_item)
+    if menu_item is None:
+        # A made item shows its raw batch cost: overheads and a price belong to the dish.
+        overheads = {kind: costing_utils.OverheadInput(mode="percent", value=Decimal("0"), inherited=True) for kind in OVERHEAD_KINDS}
+        target_margin = selling_price = None
+    else:
+        overheads = costing_utils.resolve_overheads(costing)
+        target_margin = costing_utils.resolve_target_margin(costing)
+        selling_price = _menu_price_rupees(menu_item)
 
     try:
         return costing_utils.compute(ingredients=ingredients, overheads=overheads, yield_units=costing.yield_units, selling_price=selling_price, target_margin_percent=target_margin)
@@ -109,15 +138,28 @@ def _breakdown_to_schema(breakdown: costing_utils.CostBreakdown) -> costing_sche
 def _costing_to_schema(costing: DishCosting) -> costing_schemas.DishCostingOut:
     # Build the complete costing response.
 
-    if costing.menu_item is None:
+    made = costing.made_item
+    if costing.menu_item is None and made is None:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Costing has no associated menu item.")
-    
+
     breakdown = _compute_breakdown(costing, costing.menu_item)
+
+    # The recipes that list this made item as an ingredient.
+    used_in = {}
+    for row in (made.costing_ingredients if made else []):
+        user = row.costing
+        dish = user.menu_item
+        used_in[user.id] = costing_schemas.UsedIn(costing_id=user.id, name=(dish or user.made_item).name, kind="dish" if dish else "made")
 
     return costing_schemas.DishCostingOut(
         id=costing.id,
         menu_item_id=costing.menu_item_id,
-        menu_item_name=costing.menu_item.name,
+        menu_item_name=costing.menu_item.name if costing.menu_item else None,
+        inventory_item_id=costing.inventory_item_id,
+        kind="dish" if costing.menu_item else "made",
+        name=(costing.menu_item or made).name,
+        unit=made.unit if made else None,
+        used_in=list(used_in.values()),
         yield_units=costing.yield_units,
         target_margin_percent=costing.target_margin_percent,
         notes=costing.notes,
@@ -141,10 +183,23 @@ def _apply_overhead(costing: DishCosting, kind: str, override: costing_schemas.O
     setattr(costing, f"{kind}_mode", override.mode)
     setattr(costing, f"{kind}_value", override.value)
 
-def _build_costing_model(data: costing_schemas.DishCostingIn, inventory_items: dict[int, InventoryItem]) -> tuple[DishCosting, list[DishCostingIngredient]]:
+def _batch_yield(data: costing_schemas.DishCostingIn, made_item: InventoryItem | None):
+    # A dish says how many portions it makes. A made item may leave it out, and then
+    # the batch makes the sum of its lines, if they all convert to the item's unit.
+    if data.yield_units is not None:
+        return data.yield_units
+    try:
+        total = sum((to_item_unit(row.quantity, row.unit, made_item.unit) for row in data.ingredients), Decimal(0))
+    except IncompatibleUnitError:
+        total = Decimal(0)
+    if total <= 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Type how much one batch makes")
+    return total
+
+def _build_costing_model(data: costing_schemas.DishCostingIn, inventory_items: dict[int, InventoryItem], yield_units) -> tuple[DishCosting, list[DishCostingIngredient]]:
     # Build ORM costing + ingredient rows from validated API input.
 
-    costing = DishCosting(menu_item_id=data.menu_item_id, yield_units=data.yield_units, target_margin_percent=data.target_margin_percent, notes=data.notes)
+    costing = DishCosting(menu_item_id=data.menu_item_id, inventory_item_id=data.inventory_item_id, yield_units=yield_units, target_margin_percent=data.target_margin_percent, notes=data.notes)
 
     for kind in ("packaging", "labour", "fixed", "wastage"):
         override = getattr(data, kind)
@@ -212,6 +267,16 @@ def get_costing(costing_id: int, db: Session = Depends(get_db), current_user: To
     
     return _costing_to_schema(costing)
 
+@router.get("/item/{inventory_item_id}", response_model=costing_schemas.DishCostingOut)
+def get_made_item_costing(inventory_item_id: int, db: Session = Depends(get_db), current_user: TokenData = _OWNER):
+    # Get the recipe of a kitchen-made inventory item.
+    costing = costing_crud.get_costing_by_made_item(db, inventory_item_id)
+
+    if not costing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No recipe found for this item.")
+
+    return _costing_to_schema(costing)
+
 @router.get("/menu/{menu_item_id}", response_model=costing_schemas.DishCostingOut)
 def get_menu_item_costing(menu_item_id: int, db: Session = Depends(get_db), current_user: TokenData = _OWNER):
     # Get costing for a specific menu item.
@@ -227,53 +292,49 @@ def get_menu_item_costing(menu_item_id: int, db: Session = Depends(get_db), curr
     
     return _costing_to_schema(costing)
 
-# PREVIW
+# PREPARE (shared by preview, create and update)
+
+def _prepare(db: Session, data: costing_schemas.DishCostingIn, own_id: int | None = None):
+    # Resolve what the costing is for, check it, and build the unsaved costing + rows.
+    if data.menu_item_id is not None:
+        subject = costing_crud.get_menu_item(db, data.menu_item_id)
+        if not subject:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Menu item not found")
+        existing = costing_crud.get_costing_by_menu_item(db, data.menu_item_id)
+        made_item = None
+    else:
+        made_item = subject = costing_crud.get_inventory_item(db, data.inventory_item_id)
+        if not made_item:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found")
+        existing = costing_crud.get_costing_by_made_item(db, data.inventory_item_id)
+
+    if existing and existing.id != own_id:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A costing already exists for this " + ("menu item." if made_item is None else "item."))
+
+    inventory_ids = {ingredient.inventory_item_id for ingredient in data.ingredients}
+    inventory_items = (
+        db.query(InventoryItem).filter(InventoryItem.id.in_(inventory_ids)).all()
+        if inventory_ids
+        else []
+    )
+    costing, ingredient_rows = _build_costing_model(data, {item.id: item for item in inventory_items}, _batch_yield(data, made_item))
+    costing.ingredients = ingredient_rows
+
+    if made_item is not None:
+        loop = costing_crud.find_cycle(db, made_item.id, list(inventory_ids))
+        if loop:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A recipe can't use itself: " + " → ".join(loop))
+
+    return subject if made_item is None else None, costing, ingredient_rows
+
+
+# PREVIEW
 
 @router.post("/preview", response_model=costing_schemas.CostBreakdownOut)
 def preview_costing(data: costing_schemas.DishCostingIn, db: Session = Depends(get_db), current_user: TokenData = _OWNER):
     # Calculate costing without saving it.
-    menu_item = costing_crud.get_menu_item(
-        db,
-        data.menu_item_id,
-    )
-
-    if not menu_item:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Menu item not found",
-        )
-
-    inventory_ids = {
-        ingredient.inventory_item_id
-        for ingredient in data.ingredients
-    }
-
-    inventory_items = (
-        db.query(InventoryItem)
-        .filter(InventoryItem.id.in_(inventory_ids))
-        .all()
-        if inventory_ids
-        else []
-    )
-
-    inventory_map = {
-        item.id: item
-        for item in inventory_items
-    }
-
-    costing, ingredient_rows = _build_costing_model(
-        data,
-        inventory_map,
-    )
-
-    costing.ingredients = ingredient_rows
-
-    breakdown = _compute_breakdown(
-        costing,
-        menu_item,
-    )
-
-    return _breakdown_to_schema(breakdown)
+    menu_item, costing, _ = _prepare(db, data)
+    return _breakdown_to_schema(_compute_breakdown(costing, menu_item))
 
 
 # CREATE
@@ -281,28 +342,7 @@ def preview_costing(data: costing_schemas.DishCostingIn, db: Session = Depends(g
 @router.post("", response_model=costing_schemas.DishCostingOut, status_code=status.HTTP_201_CREATED)
 def create_costing(data: costing_schemas.DishCostingIn, db: Session = Depends(get_db), current_user: TokenData=_OWNER):
     # Create a dish costing.
-    menu_item = costing_crud.get_menu_item(db, data.menu_item_id)
-    if not menu_item:
-         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Menu item not found")
-    
-    existing = costing_crud.get_costing_by_menu_item(db, data.menu_item_id)
-
-    if existing:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A costing already exists for this menu item.")
-    
-    inventory_ids = {ingredient.inventory_item_id for ingredient in data.ingredients}
-
-    inventory_items = (
-        db.query(InventoryItem).filter(InventoryItem.id.in_(inventory_ids)).all()
-        if inventory_ids
-        else []
-    )
-
-    inventory_map = {item.id: item for item in inventory_items}
-
-    costing, ingredient_rows = _build_costing_model(data, inventory_map)
-
-    costing.ingredients = ingredient_rows
+    menu_item, costing, ingredient_rows = _prepare(db, data)
 
     # Validating the calculation before writing to DB
     _compute_breakdown(costing, menu_item)
@@ -322,32 +362,11 @@ def update_costing(costing_id: int, data: costing_schemas.DishCostingIn, db: Ses
 
     if not costing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Costing not found")
-    
-    if costing.menu_item_id != data.menu_item_id:
-        existing = costing_crud.get_costing_by_menu_item(db, data.menu_item_id)
 
-        if existing and existing.id != costing_id:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A costing already exists for this menu item.")
-        
-    menu_item = costing_crud.get_menu_item(db, data.menu_item_id)
+    if (costing.menu_item_id is None) != (data.menu_item_id is None):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A dish's recipe can't become a made item's, or the other way round.")
 
-    if not menu_item:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Menu item not found",
-        )
-    
-    inventory_ids = {ingredient.inventory_item_id for ingredient in data.ingredients}
-
-    inventory_items = (
-        db.query(InventoryItem).filter(InventoryItem.id.in_(inventory_ids)).all()
-        if inventory_ids
-        else []
-    )
-
-    inventory_map = {item.id: item for item in inventory_items}
-
-    new_costing, ingredient_rows = _build_costing_model(data, inventory_map)
+    menu_item, new_costing, ingredient_rows = _prepare(db, data, own_id=costing_id)
 
     # Keeping the existing costing ID.
     new_costing.id = costing.id
@@ -356,7 +375,8 @@ def update_costing(costing_id: int, data: costing_schemas.DishCostingIn, db: Ses
 
     update_data = {
         "menu_item_id": data.menu_item_id,
-        "yield_units": data.yield_units,
+        "inventory_item_id": data.inventory_item_id,
+        "yield_units": new_costing.yield_units,
         "target_margin_percent": data.target_margin_percent,
         "notes": data.notes,
         "packaging_mode": data.packaging.mode,

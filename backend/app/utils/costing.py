@@ -50,6 +50,9 @@ class IngredientInput:
     # Where the price came from ("purchase" or "typed") and, for a purchase, when.
     price_source: str | None = None
     price_as_of: datetime | None = None
+    # A kitchen-made item with an unpriced ingredient: its price is only partial,
+    # so the line reads as a gap rather than a cheap price.
+    incomplete: bool = False
 
 
 @dataclass
@@ -151,7 +154,7 @@ def compute(
 
         # A price of 0 is not a real price: many items were created with 0.00
         # as a placeholder, so treat it the same as no price at all.
-        price_missing = ing.cost_per_unit is None or Decimal(ing.cost_per_unit) <= 0
+        price_missing = ing.incomplete or ing.cost_per_unit is None or Decimal(ing.cost_per_unit) <= 0
         price = Decimal("0") if price_missing else Decimal(ing.cost_per_unit)
 
         # One bad unit costs its own line at 0 instead of failing the whole dish.
@@ -174,7 +177,10 @@ def compute(
         raw += line_cost
 
         if price_missing:
-            warnings.append(f"No price on record for {ing.name} - counted as 0")
+            if ing.incomplete:
+                warnings.append(f"{ing.name} has ingredients with no price - counted as 0")
+            else:
+                warnings.append(f"No price on record for {ing.name} - counted as 0")
         if not ing.is_active:
             warnings.append(f"{ing.name} is no longer an active inventory item")
 
@@ -203,7 +209,7 @@ def compute(
                 is_active=ing.is_active,
                 unit_error=unit_error,
                 needs_pack_size=needs_pack_size,
-                price_source=None if price_missing else ing.price_source,
+                price_source=ing.price_source if ing.incomplete or not price_missing else None,
                 price_as_of=None if price_missing else ing.price_as_of,
                 reason=reason,
             )

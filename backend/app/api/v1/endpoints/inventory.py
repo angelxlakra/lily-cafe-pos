@@ -405,6 +405,29 @@ def update_item(
     db.refresh(item)
     return _item_dict(item, pricing.resolve_one(db, item))
 
+@router.post("/items/{item_id}/pack-price", response_model=inventory_schemas.InventoryItem)
+def set_pack_price(
+    item_id: int,
+    data: inventory_schemas.PackPriceIn,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _OWNER,
+):
+    """Price an item by the pack it is bought in ("₹58 for a 100 g pack"). Owner login only."""
+    item = db.query(InventoryItem).filter(InventoryItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    if item.is_presence:
+        raise HTTPException(status_code=400, detail="A yes/no item has no price")
+    if compatible(item.unit, data.pack_unit):
+        # kg priced by a 500 g pack: the price is per the item's own unit.
+        item.cost_per_unit = _to_cents(data.price / convert(data.pack_quantity, data.pack_unit, item.unit))
+    else:
+        # A packet priced by its weight: one packet costs the price, and the pack size bridges the units.
+        item.pack_size, item.pack_unit, item.cost_per_unit = data.pack_quantity, data.pack_unit, data.price
+    db.commit()
+    db.refresh(item)
+    return _item_dict(item, pricing.resolve_one(db, item))
+
 @router.delete("/items/{item_id}")
 def delete_item(
     item_id: int,

@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 OverheadMode = Literal["amount", "percent"]
 OverheadKind = Literal["packaging", "labour", "fixed", "wastage"]
@@ -22,8 +22,11 @@ class CostingIngredientIn(BaseModel):
 
 
 class DishCostingIn(BaseModel):
-    menu_item_id: int
-    yield_units: Decimal = Field(..., gt=0)
+    # A dish (menu_item_id) or a kitchen-made item (inventory_item_id): exactly one.
+    menu_item_id: Optional[int] = None
+    inventory_item_id: Optional[int] = None
+    # A made item may leave it out: the batch then makes the sum of its lines.
+    yield_units: Optional[Decimal] = Field(None, gt=0)
     target_margin_percent: Optional[Decimal] = Field(None, ge=0, lt=100)
     notes: Optional[str] = Field(None, max_length=500)
     ingredients: List[CostingIngredientIn] = Field(default_factory=list)
@@ -31,6 +34,14 @@ class DishCostingIn(BaseModel):
     labour: OverheadOverride = Field(default_factory=OverheadOverride)
     fixed: OverheadOverride = Field(default_factory=OverheadOverride)
     wastage: OverheadOverride = Field(default_factory=OverheadOverride)
+
+    @model_validator(mode="after")
+    def _one_subject(self):
+        if (self.menu_item_id is None) == (self.inventory_item_id is None):
+            raise ValueError("Give either menu_item_id or inventory_item_id")
+        if self.menu_item_id is not None and self.yield_units is None:
+            raise ValueError("yield_units is required for a dish")
+        return self
 
 
 class IngredientLineOut(BaseModel):
@@ -46,7 +57,7 @@ class IngredientLineOut(BaseModel):
     is_active: bool
     unit_error: bool = False
     needs_pack_size: bool = False
-    price_source: Optional[Literal["purchase", "typed"]] = None
+    price_source: Optional[Literal["purchase", "typed", "recipe"]] = None
     price_as_of: Optional[datetime] = None
     reason: Optional[Literal["retired", "needs_pack_size", "unknown_unit", "no_price"]] = None
     is_presence: bool = False
@@ -80,10 +91,22 @@ class CostBreakdownOut(BaseModel):
     warnings: List[str]
 
 
+class UsedIn(BaseModel):
+    costing_id: int
+    name: str
+    kind: Literal["dish", "made"]
+
+
 class DishCostingOut(BaseModel):
     id: int
-    menu_item_id: int
-    menu_item_name: str
+    menu_item_id: Optional[int] = None
+    menu_item_name: Optional[str] = None
+    inventory_item_id: Optional[int] = None
+    kind: Literal["dish", "made"] = "dish"
+    # The dish's or the made item's name, and the made item's unit.
+    name: str = ""
+    unit: Optional[str] = None
+    used_in: List[UsedIn] = Field(default_factory=list)
     yield_units: Decimal
     target_margin_percent: Optional[Decimal]
     notes: Optional[str]

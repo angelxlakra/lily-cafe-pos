@@ -151,6 +151,56 @@ def ensure_cash_columns(bind=None) -> list[str]:
     return added
 
 
+def ensure_costing_made_items(bind=None) -> bool:
+    """Let a costing belong to a kitchen-made inventory item instead of a menu item.
+
+    SQLite can't drop NOT NULL, so an older dish_costings is rebuilt with the
+    documented procedure: build the new table beside it, copy, drop the old,
+    rename the new. The old table is never renamed, which would make SQLite
+    rewrite the foreign key in dish_costing_ingredients. Idempotent; returns
+    whether it rebuilt.
+    """
+    from sqlalchemy.schema import CreateTable
+    from app.models.costing_models import DishCosting
+
+    bind = bind or engine
+    if "dish_costings" not in inspect(bind).get_table_names():
+        return False
+    old = {r[1]: r[3] for r in _table_info(bind, "dish_costings")}
+    if "inventory_item_id" in old and not old["menu_item_id"]:
+        return False
+
+    table = DishCosting.__table__
+    ddl = str(CreateTable(table).compile(dialect=bind.dialect)).replace(
+        "CREATE TABLE dish_costings", "CREATE TABLE dish_costings_new", 1
+    )
+    shared = ", ".join(c.name for c in table.columns if c.name in old)
+    conn = bind.connect()
+    try:
+        # A no-op inside a transaction, so it goes first.
+        conn.exec_driver_sql("PRAGMA foreign_keys=OFF")
+        conn.exec_driver_sql("DROP TABLE IF EXISTS dish_costings_new")
+        conn.exec_driver_sql(ddl)
+        conn.exec_driver_sql(f"INSERT INTO dish_costings_new ({shared}) SELECT {shared} FROM dish_costings")
+        conn.exec_driver_sql("DROP TABLE dish_costings")
+        conn.exec_driver_sql("ALTER TABLE dish_costings_new RENAME TO dish_costings")
+        for index in table.indexes:
+            index.create(conn)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.exec_driver_sql("PRAGMA foreign_keys=ON")
+        conn.close()
+    return True
+
+
+def _table_info(bind, table: str):
+    with bind.connect() as conn:
+        return conn.exec_driver_sql(f"PRAGMA table_info({table})").fetchall()
+
+
 def init_db():
     """
     Initialize database by creating all tables.
@@ -167,4 +217,5 @@ def init_db():
     # up to date with the columns added to `orders` since it shipped.
     ensure_order_columns(engine)
     ensure_inventory_columns(engine)
+    ensure_costing_made_items(engine)
     ensure_cash_columns(engine)

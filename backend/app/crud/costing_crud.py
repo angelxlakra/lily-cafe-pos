@@ -7,14 +7,14 @@ from app.models.models import MenuItem
 from app.models.inventory_models import InventoryItem
 
 def get_costings(db: Session) -> List[DishCosting]:
-    """Get all dish costings."""
-    return (db.query(DishCosting).order_by(DishCosting.id.desc()).all())
+    """Get all dish costings (not the recipes of kitchen-made items)."""
+    return (db.query(DishCosting).filter(DishCosting.menu_item_id.isnot(None)).order_by(DishCosting.id.desc()).all())
     
 def get_costing(db: Session, costing_id: int) -> Optional[DishCosting]:
     """
     Fetch one costing by its ID with all related data.
     """
-    stmt = (select(DishCosting).options(selectinload(DishCosting.menu_item), selectinload(DishCosting.ingredients).selectinload(DishCostingIngredient.inventory_item)).where(DishCosting.id == costing_id))
+    stmt = (select(DishCosting).options(selectinload(DishCosting.menu_item), selectinload(DishCosting.made_item), selectinload(DishCosting.ingredients).selectinload(DishCostingIngredient.inventory_item)).where(DishCosting.id == costing_id))
     return db.scalar(stmt)
 
 # def get_costing(
@@ -33,6 +33,40 @@ def get_costing_by_menu_item(db: Session, menu_item_id: int) -> Optional[DishCos
     """
     stmt = (select(DishCosting).options(selectinload(DishCosting.menu_item), selectinload(DishCosting.ingredients).selectinload(DishCostingIngredient.inventory_item)).where(DishCosting.menu_item_id == menu_item_id))
     return db.scalar(stmt)
+
+def get_costing_by_made_item(db: Session, inventory_item_id: int) -> Optional[DishCosting]:
+    """
+    Fetch the recipe of one kitchen-made inventory item.
+    """
+    stmt = (select(DishCosting).options(selectinload(DishCosting.made_item), selectinload(DishCosting.ingredients).selectinload(DishCostingIngredient.inventory_item)).where(DishCosting.inventory_item_id == inventory_item_id))
+    return db.scalar(stmt)
+
+def find_cycle(db: Session, made_item_id: int, ingredient_item_ids: list[int]) -> Optional[list[str]]:
+    """The names along a loop if a made item's new ingredients lead back to it, else None."""
+    made = db.get(InventoryItem, made_item_id)
+    seen: set[int] = set()
+
+    def walk(item_id: int, path: list[str]):
+        item = db.get(InventoryItem, item_id)
+        if item is None:
+            return None
+        path = path + [item.name]
+        if item_id == made_item_id:
+            return path
+        if item_id in seen:
+            return None
+        seen.add(item_id)
+        for row in (item.recipe.ingredients if item.recipe else []):
+            found = walk(row.inventory_item_id, path)
+            if found:
+                return found
+        return None
+
+    for item_id in ingredient_item_ids:
+        found = walk(item_id, [made.name])
+        if found:
+            return found
+    return None
 
 def list_costings(db: Session,)-> list[DishCosting]:
     """
