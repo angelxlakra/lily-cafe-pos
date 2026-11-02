@@ -49,7 +49,8 @@ export default function RecipePage({ kind }: { kind: 'dish' | 'made' }) {
   const made = useMadeRecipe(subjectId, kind === 'made');
   const recipeQuery = kind === 'dish' ? dish : made;
   const overview = useOverview();
-  const items = useInventoryItems();
+  // is_active=false means "don't filter": a saved recipe can still hold a retired item.
+  const items = useInventoryItems({ is_active: false });
   const defaults = useCostingDefaults();
 
   if (!Number.isFinite(subjectId)) return <p>That recipe doesn't exist.</p>;
@@ -130,6 +131,9 @@ function Editor({ kind, subjectId, name, recipe, items, overviewRows, defaults }
     const data: DishCostingIn = {
       ...(isMade ? { inventory_item_id: subjectId } : { menu_item_id: subjectId }),
       yield_units: yieldUnits,
+      // Not edited here, but a save replaces them: carry the recipe's own through.
+      target_margin_percent: recipe?.target_margin_percent ?? null,
+      notes: recipe?.notes ?? null,
       ingredients: usable.map(l => {
         const item = byId.get(l.itemId)!;
         return isPresence(item)
@@ -145,7 +149,7 @@ function Editor({ kind, subjectId, name, recipe, items, overviewRows, defaults }
     }
     return data;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lines, yieldText, overheads, byId, isMade, subjectId]);
+  }, [lines, yieldText, overheads, byId, isMade, subjectId, recipe?.target_margin_percent, recipe?.notes]);
 
   const payloadKey = JSON.stringify(payload);
   const [settled, setSettled] = useState(payloadKey);
@@ -256,7 +260,7 @@ function Editor({ kind, subjectId, name, recipe, items, overviewRows, defaults }
               const source = bl?.price_source ?? item?.price_source ?? null;
               return (
                 <tr key={line.key}>
-                  <td>
+                  <td className="typed">
                     {item?.name ?? bl?.name ?? 'Unknown item'}
                     {lineIsMade && <> <span className="pill">made</span></>}
                     {item && !item.is_active && <> <span className="pill bad">retired</span></>}
