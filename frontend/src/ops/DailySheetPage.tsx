@@ -14,7 +14,7 @@ import { localDate } from '../utils/formatDateTime';
 import { entryUnit, isPriceJump, lineColumns, parseRupees, pickItems, rupees, showQuantity, trim } from '../utils/purchaseSheet';
 import type { DayItemColumns, InventoryItem, Purchase, PurchaseItem } from '../types/inventory';
 import { useApproveAllPrices, useOverview, usePendingPrices, usePurchaseDay, useReviewPrice } from './api';
-import type { PendingPrice } from './api';
+import type { PendingPrice, RippleDish } from './api';
 
 const NEW_ITEM_UNITS = ['kg', 'L', 'pcs', 'pack', 'bottle'];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -44,13 +44,17 @@ export default function DailySheetPage() {
   const queryClient = useQueryClient();
   const { isOwner } = useAuth();
   const [params, setParams] = useSearchParams();
-  const today = localDate();
-  // Admin sees today only: a date in the URL is ignored. Today itself sends no date (the server's "today").
+  // Today is the server's (the count night runs to 04:00, so it can be the local yesterday).
+  // The no-date response carries it; the same query is today's sheet for admin.
+  const todayQuery = usePurchaseDay(undefined);
+  const today = todayQuery.data?.business_date ?? localDate();
+  // Admin sees today only: a date in the URL is ignored. Today itself sends no date.
   const asked = isOwner ? params.get('date') : null;
   const date = asked && DATE.test(asked) && asked < today ? asked : undefined;
   const setDate = (next: string) => setParams(next && next < today ? { date: next } : {});
 
   const dayQuery = usePurchaseDay(date);
+  const nextKey = useRef(0);
   const day = dayQuery.data;
   const editable = day?.editable ?? !date;
   const { data: itemsResponse } = useInventoryItems({ is_active: true });
@@ -202,7 +206,7 @@ export default function DailySheetPage() {
       return;
     }
     save({
-      key: Date.now(),
+      key: ++nextKey.current,
       label: presence ? picked.name : `${picked.name} · ${trim(unitQty!)} ${unit!.label} × ${trim(count)}`,
       amount: draftIn!,
       line: {
@@ -412,6 +416,8 @@ export default function DailySheetPage() {
         </form>
       )}
 
+      <p className="ops-spent">{isToday ? 'Spent today' : `Spent on ${dateLabel}`} <b>{rupees(dayTotal)}</b></p>
+
       <div className="ops-wrap">
         <table className="ops-t ops-sheet">
           <thead>
@@ -487,6 +493,8 @@ function Approvals() {
   const pending = usePendingPrices(true);
   const overview = useOverview(true);
   const approveAll = useApproveAllPrices();
+  const review = useReviewPrice();
+  const busy = review.isPending || approveAll.isPending;
   // The ripple names the dishes; their margin target comes with the costing overview.
   const targets = useMemo(
     () => new Map((overview.data?.rows ?? []).filter(r => r.costing_id != null).map(r => [r.costing_id, r.target_margin_percent])),
@@ -500,26 +508,40 @@ function Approvals() {
   return (
     <section className="ops-approve" aria-labelledby="approve-h">
       <h2 id="approve-h">Price changes to approve ({list.length})</h2>
-      {list.map(p => <ApprovalCard key={p.purchase_id} p={p} targets={targets} />)}
-      <button type="button" className="btn" disabled={approveAll.isPending} onClick={() => approveAll.mutate()}>
-        Approve all {list.length}
+      {list.map(p => (
+        <ApprovalCard
+          key={p.purchase_id} p={p} targets={targets} busy={busy}
+          onReview={action => review.mutate({ purchaseId: p.purchase_id, action })}
+        />
+      ))}
+      <button type="button" className="btn" disabled={busy} onClick={() => approveAll.mutate()}>
+        Approve all ({list.length})
       </button>
-      {approveAll.isError && <span role="alert" className="err">{describeApiError(approveAll.error)}</span>}
+      {review.isError && <p role="alert" className="err">{describeApiError(review.error)}</p>}
+      {approveAll.isError && <p role="alert" className="err">{describeApiError(approveAll.error)}</p>}
     </section>
   );
 }
 
-function ApprovalCard({ p, targets }: { p: PendingPrice; targets: Map<number | null, number | string | null> }) {
-  const review = useReviewPrice();
+function ApprovalCard({ p, targets, busy, onReview }: {
+  p: PendingPrice;
+  targets: Map<number | null, number | string | null>;
+  busy: boolean;
+  onReview: (action: 'approve' | 'reject') => void;
+}) {
   const { label, factor } = entryUnit(p.unit);
-  const per = (v: number | string | null) => (v == null ? '' : money(Number(v) * factor));
+  const per = (v: number | string | null) => (v == null ? '—' : money(Number(v) * factor));
   const change = p.change == null ? null : Number(p.change);
   const dishes = p.ripple?.affected_dishes ?? [];
-  const deltas = dishes.map(d => Math.abs(Number(d.cost_after) - Number(d.cost_before)));
-  const lo = Math.min(...deltas);
-  const hi = Math.max(...deltas);
-  const cheaper = dishes.length > 0 && dishes.every(d => Number(d.cost_after) < Number(d.cost_before));
-  const act = (action: 'approve' | 'reject') => review.mutate({ purchaseId: p.purchase_id, action });
+  const move = (d: RippleDish) => Number(d.cost_after) - Number(d.cost_before);
+  const up = dishes.filter(d => move(d) > 0).map(move);
+  const down = dishes.filter(d => move(d) < 0).map(move);
+  const range = (deltas: number[]) => {
+    const lo = Math.min(...deltas.map(Math.abs));
+    const hi = Math.max(...deltas.map(Math.abs));
+    return lo === hi ? `${money(lo)} a portion` : `${money(lo)} to ${money(hi)} a portion`;
+  };
+  const dishesText = (n: number) => `${n} dish${n === 1 ? '' : 'es'} cost${n === 1 ? 's' : ''}`;
 
   return (
     <div className="chg">
@@ -534,18 +556,10 @@ function ApprovalCard({ p, targets }: { p: PendingPrice; targets: Map<number | n
             : change != null && <span className={`pill ${change > 0.1 ? 'bad' : 'warn'}`}>{change < 0 ? '−' : '+'}{Math.abs(Math.round(change * 100))}%</span>}
         </span>
         <span className="muted">bought by {p.recorded_by} · {showQuantity(p.quantity, p.unit)}</span>
-        <span className="acts">
-          <button type="button" className="btn" disabled={review.isPending} onClick={() => act('approve')}>Approve</button>
-          <button type="button" className="btn ghost" disabled={review.isPending} onClick={() => act('reject')}>Not this time</button>
-        </span>
       </div>
       <ul>
-        {dishes.length > 0 && (
-          <li>
-            {dishes.length} dish{dishes.length === 1 ? '' : 'es'} cost{dishes.length === 1 ? 's' : ''} {cheaper ? 'less' : 'more'},{' '}
-            {lo === hi ? `${money(lo)} a portion` : `${money(lo)} to ${money(hi)} a portion`}
-          </li>
-        )}
+        {up.length > 0 && <li>{dishesText(up.length)} more, {range(up)}</li>}
+        {down.length > 0 && <li>{dishesText(down.length)} less, {range(down)}</li>}
         {dishes.filter(d => d.crosses_below_target).map(d => {
           const target = targets.get(d.costing_id);
           return (
@@ -565,7 +579,10 @@ function ApprovalCard({ p, targets }: { p: PendingPrice; targets: Map<number | n
         })}
         {dishes.length === 0 && <li>{p.is_new_item ? 'Not in any recipe yet' : 'No recipe uses it yet'}</li>}
       </ul>
-      {review.isError && <p role="alert" className="err">{describeApiError(review.error)}</p>}
+      <div className="acts">
+        <button type="button" className="btn" disabled={busy} onClick={() => onReview('approve')}>Approve</button>
+        <button type="button" className="btn ghost" disabled={busy} onClick={() => onReview('reject')}>Not this time</button>
+      </div>
     </div>
   );
 }

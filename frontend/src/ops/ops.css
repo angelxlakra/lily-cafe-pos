@@ -224,7 +224,9 @@
 .ops-approve h2 { font-size: 15px; margin: 0 0 8px; }
 .ops-approve .chg { border: 1px solid var(--ops-rule); border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; background: var(--ops-bar); }
 .ops-approve .top { display: flex; gap: 8px 16px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
-.ops-approve .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.ops-approve .acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.ops-spent { margin: 8px 0; }
+.ops-spent b { font-variant-numeric: tabular-nums; }
 .ops-approve ul { margin: 6px 0 0; padding-left: 18px; }
 
 @media (max-width: 640px) {
@@ -232,5 +234,9 @@
   .ops-line .item, .ops-line .btn.add { grid-column: 1 / -1; }
   .ops-line label input { font-size: 16px; }
   .ops-line .item ul { position: static; }
-  .ops-approve .acts, .ops-approve .acts .btn { width: 100%; }
+  .ops-approve .acts { flex-wrap: nowrap; }
+  .ops-approve .acts .btn { flex: 1 1 0; min-height: 44px; padding: 0 8px; }
+  .ops .sheet-cell { font-size: 16px; }
+  .ops-in { grid-column: 1 / -1; text-align: left; }
+  .ops-in span { display: inline; margin-right: 6px; }
 }
