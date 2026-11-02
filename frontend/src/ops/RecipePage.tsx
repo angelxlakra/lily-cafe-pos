@@ -202,10 +202,12 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
     setPackErrors(c => ({ ...c, [line.key]: null }));
     try {
       const base = baseUnitOf(pack.unit);
-      const fresh = Number(item.current_quantity) === 0 && item.current_price == null;
+      // Only a just-quick-added item (not yet set up in the grid) may change family; anything older could be in other recipes.
+      const fresh = item.needs_setup === true && Number(item.current_quantity) === 0 && item.current_price == null;
       if (fresh && base && isMeasure(item.unit) && !sameFamily(item.unit, pack.unit)) {
         await updateItem.mutateAsync({ id: item.id, data: { unit: base } });
-        patchLine(line.key, { unit: base });
+        // The typed amount was meant in the new family: 5 g → 5 ml, 0.25 kg → 0.25 L.
+        patchLine(line.key, { unit: ({ g: 'ml', kg: 'L', ml: 'g', L: 'kg' } as Record<string, string>)[line.unit] ?? base });
       }
       await setPackPrice.mutateAsync({ id: item.id, price: pack.price, pack_quantity: pack.quantity, pack_unit: pack.unit });
     } catch (error) {

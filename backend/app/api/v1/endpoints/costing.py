@@ -365,7 +365,7 @@ def get_menu_item_costing(menu_item_id: int, db: Session = Depends(get_db), curr
 
 # PREPARE (shared by preview, create and update)
 
-def _prepare(db: Session, data: costing_schemas.DishCostingIn, own_id: int | None = None):
+def _prepare(db: Session, data: costing_schemas.DishCostingIn, own_id: int | None = None, unique: bool = True):
     # Resolve what the costing is for, check it, and build the unsaved costing + rows.
     if data.menu_item_id is not None:
         subject = costing_crud.get_menu_item(db, data.menu_item_id)
@@ -379,7 +379,7 @@ def _prepare(db: Session, data: costing_schemas.DishCostingIn, own_id: int | Non
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found")
         existing = costing_crud.get_costing_by_made_item(db, data.inventory_item_id)
 
-    if existing and existing.id != own_id:
+    if unique and existing and existing.id != own_id:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A costing already exists for this " + ("menu item." if made_item is None else "item."))
 
     inventory_ids = {ingredient.inventory_item_id for ingredient in data.ingredients}
@@ -405,8 +405,8 @@ def _prepare(db: Session, data: costing_schemas.DishCostingIn, own_id: int | Non
 
 @router.post("/preview", response_model=costing_schemas.CostBreakdownOut)
 def preview_costing(data: costing_schemas.DishCostingIn, db: Session = Depends(get_db), current_user: TokenData = _OWNER):
-    # Calculate costing without saving it.
-    menu_item, costing, _ = _prepare(db, data)
+    # Calculate costing without saving it. Editing a saved recipe previews too, so no uniqueness check.
+    menu_item, costing, _ = _prepare(db, data, unique=False)
     return _breakdown_to_schema(_compute_breakdown(costing, menu_item))
 
 

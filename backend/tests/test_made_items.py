@@ -288,3 +288,15 @@ def test_made_item_returns_auto_yield_in_its_unit(client, test_db, owner_headers
     assert r.status_code == 201, r.text
     assert Decimal(r.json()["auto_yield"]) == Decimal("0.5")
     assert Decimal(r.json()["yield_units"]) == 2
+
+
+def test_preview_works_for_a_saved_recipe(client, test_db, owner_headers, sample_menu_items):
+    pepper = _priced(client, test_db, owner_headers, [("Pepper", 100, 100, "g")])["Pepper"]
+    body = {"menu_item_id": sample_menu_items[0].id, "yield_units": "1", "ingredients": _lines((pepper, 10, "g"))}
+    assert client.post(f"{API}/costing", headers=owner_headers, json=body).status_code == 201
+    body["ingredients"] = _lines((pepper, 20, "g"))
+    r = client.post(f"{API}/costing/preview", headers=owner_headers, json=body)
+    assert r.status_code == 200, r.text
+    assert Decimal(r.json()["raw_material_cost"]) == 20
+    # A second recipe for the same dish is still refused.
+    assert client.post(f"{API}/costing", headers=owner_headers, json=body).status_code == 409
