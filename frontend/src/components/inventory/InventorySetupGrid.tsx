@@ -18,6 +18,7 @@ import { inventoryApi } from '../../api/inventory';
 import { useInventoryCategories, useInventoryItems } from '../../hooks/useInventory';
 import ConfirmDialog from '../ConfirmDialog';
 import LoadingSpinner from '../LoadingSpinner';
+import { costingKeys } from '../../hooks/useCosting';
 import { describeApiError } from '../../utils/apiError';
 import { formatQty, parseQty } from '../../utils/countQuantity';
 import type { BulkItemUpdate, InventoryCategory, InventoryItem, Vendor } from '../../types/inventory';
@@ -396,6 +397,7 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
       const fresh = await refetch();
       if (fresh.data) load(fresh.data.items);
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: costingKeys.all });
       setNotice(`Saved ${result.updated} item${result.updated === 1 ? '' : 's'}.${result.adjusted ? ` Stock changed on ${result.adjusted}, logged as adjustments.` : ''}`);
     },
   });
