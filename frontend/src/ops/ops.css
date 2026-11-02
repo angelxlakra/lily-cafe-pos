@@ -193,3 +193,6 @@
   .ops-list td[data-l]::before { content: attr(data-l); display: block; font-size: 10px; text-transform: uppercase; color: var(--ops-muted); }
   .ops-list td.cost, .ops-list td.price, .ops-list td.margin, .ops-list td.week { grid-row: 2; }
 }
+
+.ops-similar { list-style: none; margin: 0; padding: 0; }
+.ops-similar a { display: flex; align-items: center; min-height: 44px; }
