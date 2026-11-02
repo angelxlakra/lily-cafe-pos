@@ -107,7 +107,7 @@ def test_pending_prices_lists_change(client, auth_headers, owner_headers, onion,
         Decimal(32), Decimal(40), Decimal("0.25"))
     assert row["is_new_item"] is False
     assert row["item_name"] == "Onion"
-    assert row["ripple"] is None
+    assert row["ripple"] == {"affected_dishes": [], "unaffected_count": 0, "made_items": []}
     assert rows[new_line["id"]]["is_new_item"] is True
     assert rows[new_line["id"]]["old_price"] is None
 

@@ -103,8 +103,11 @@ def _priced_purchases(db: Session):
     )
 
 
-def latest_priced_purchases(db: Session, item_ids: Iterable[int]) -> dict[int, InventoryTransaction]:
+def latest_priced_purchases(db: Session, item_ids: Iterable[int], as_of: Optional[datetime] = None) -> dict[int, InventoryTransaction]:
     """The most recent paid purchase per item, in one query.
+
+    With ``as_of``, only purchases that were the price by then: approved on or
+    before it (created, for rows from before approval existed).
 
     "Most recent" is the highest id: ids are assigned in insert order, and
     unlike created_at (second resolution in SQLite) they never tie when the
@@ -113,8 +116,13 @@ def latest_priced_purchases(db: Session, item_ids: Iterable[int]) -> dict[int, I
     ids = list(set(item_ids))
     if not ids:
         return {}
+    purchases = _priced_purchases(db)
+    if as_of is not None:
+        purchases = purchases.filter(
+            func.coalesce(InventoryTransaction.price_reviewed_at, InventoryTransaction.created_at) <= as_of
+        )
     latest_ids = (
-        _priced_purchases(db)
+        purchases
         .filter(InventoryTransaction.item_id.in_(ids))
         .with_entities(func.max(InventoryTransaction.id))
         .group_by(InventoryTransaction.item_id)
@@ -135,9 +143,9 @@ def resolve(item: InventoryItem, latest_purchase: Optional[InventoryTransaction]
     return _typed(item)
 
 
-def resolve_many(db: Session, items: Iterable[InventoryItem]) -> dict[int, ResolvedPrice]:
+def resolve_many(db: Session, items: Iterable[InventoryItem], as_of: Optional[datetime] = None) -> dict[int, ResolvedPrice]:
     items = list(items)
-    latest = latest_priced_purchases(db, (i.id for i in items))
+    latest = latest_priced_purchases(db, (i.id for i in items), as_of)
     return {i.id: resolve(i, latest.get(i.id)) for i in items}
 
 

@@ -152,6 +152,15 @@ class DishImpact(BaseModel):
     margin_before: Optional[Decimal]
     margin_after: Optional[Decimal]
     crosses_below_target: bool
+    via: List[str] = []   # kitchen-made items the change passed through to reach this dish
+
+
+class MadeImpact(BaseModel):
+    item_id: int
+    name: str
+    unit: str
+    cost_before: Decimal
+    cost_after: Decimal
 
 
 class RepricePreview(BaseModel):
@@ -169,3 +178,32 @@ class DefaultsOut(BaseModel):
 
 class ApplyPriceIn(BaseModel):
     price: Decimal = Field(..., gt=0)
+
+
+class OverviewRow(BaseModel):
+    kind: Literal["dish", "made"]
+    costing_id: Optional[int] = None
+    menu_item_id: Optional[int] = None
+    inventory_item_id: Optional[int] = None
+    name: str
+    category: Optional[str] = None
+    cost_per_unit: Optional[Decimal] = None
+    unit: Optional[str] = None
+    selling_price: Optional[Decimal] = None
+    margin_percent: Optional[Decimal] = None
+    target_margin_percent: Optional[Decimal] = None
+    missing_count: int = 0
+    cost_last_week: Optional[Decimal] = None
+    status: Literal["below_target", "missing_prices", "no_recipe", "on_target", "costed"]
+
+
+class OverviewTotals(BaseModel):
+    below_target: int
+    missing_prices: int
+    no_recipe: int
+    average_margin: Optional[Decimal] = None
+
+
+class Overview(BaseModel):
+    rows: List[OverviewRow]
+    totals: OverviewTotals

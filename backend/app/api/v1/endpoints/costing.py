@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import List
 from fastapi import APIRouter , Depends, HTTPException, status
@@ -6,7 +7,9 @@ from sqlalchemy.orm import Session, object_session
 from app.api.deps import get_current_owner
 from app.db.session import get_db
 from app.models.costing_models import OVERHEAD_KINDS, DishCosting, DishCostingIngredient
+from app.core.business_day import utcnow
 from app.models.inventory_models import InventoryItem
+from app.models.models import MenuItem
 
 from app.schemas import costing_schemas
 from app.schemas import TokenData
@@ -30,19 +33,19 @@ def _menu_price_rupees(menu_item) -> Decimal | None:
         return None
     return Decimal(menu_item.price) / Decimal("100")
 
-def _made_unit_price(item: InventoryItem, price_overrides, memo: dict, stack: tuple[int, ...]) -> tuple[Decimal | None, bool]:
+def _made_unit_price(item: InventoryItem, price_overrides, memo: dict, stack: tuple[int, ...], as_of: datetime | None = None) -> tuple[Decimal | None, bool]:
     # What one unit of a kitchen-made item costs (its batch's raw cost / yield, no
     # overheads), and whether every ingredient inside it is priced. Memoised per request.
     if item.id in memo:
         return memo[item.id]
     if item.id in stack:
         return None, False  # a loop that got past the save-time check: a gap, not a crash
-    breakdown = _compute_breakdown(item.recipe, None, price_overrides, memo, stack + (item.id,))
+    breakdown = _compute_breakdown(item.recipe, None, price_overrides, memo, stack + (item.id,), as_of)
     result = (breakdown.raw_material_cost / breakdown.yield_units, breakdown.is_complete)
     memo[item.id] = result
     return result
 
-def _build_ingredient_inputs(ingredients: list[DishCostingIngredient], price_overrides: dict[int, Decimal] | None = None, memo: dict | None = None, stack: tuple[int, ...] = ()) -> list[costing_utils.IngredientInput]:
+def _build_ingredient_inputs(ingredients: list[DishCostingIngredient], price_overrides: dict[int, Decimal] | None = None, memo: dict | None = None, stack: tuple[int, ...] = (), as_of: datetime | None = None) -> list[costing_utils.IngredientInput]:
     # Convert DB ingredient rows into the pure calculation input format.
     # Prices come from the purchase log, falling back to the typed price
     # (app/utils/pricing.py); an override replaces either. A kitchen-made item
@@ -56,14 +59,14 @@ def _build_ingredient_inputs(ingredients: list[DishCostingIngredient], price_ove
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Inventory item {row.inventory_item_id} not found.")
     items = [row.inventory_item for row in ingredients]
     db = object_session(items[0]) if items else None
-    resolved = pricing.resolve_many(db, items) if db is not None else {}
+    resolved = pricing.resolve_many(db, items, as_of) if db is not None else {}
 
     for row in ingredients:
         item = row.inventory_item
         current = resolved.get(item.id)
         overridden = item.id in overrides
         if item.recipe is not None and not overridden:
-            made_price, complete = _made_unit_price(item, price_overrides, memo, stack)
+            made_price, complete = _made_unit_price(item, price_overrides, memo, stack, as_of)
             inputs.append(costing_utils.IngredientInput(
                 item_id=item.id, name=item.name, quantity=Decimal(row.quantity), unit=row.unit, stock_unit=item.unit,
                 cost_per_unit=made_price, is_active=item.is_active, pack_size=item.pack_size, pack_unit=item.pack_unit,
@@ -86,11 +89,11 @@ def _build_ingredient_inputs(ingredients: list[DishCostingIngredient], price_ove
         ))
     return inputs
 
-def _compute_breakdown(costing: DishCosting, menu_item, price_overrides: dict[int, Decimal] | None = None, memo: dict | None = None, stack: tuple[int, ...] = ()):
+def _compute_breakdown(costing: DishCosting, menu_item, price_overrides: dict[int, Decimal] | None = None, memo: dict | None = None, stack: tuple[int, ...] = (), as_of: datetime | None = None):
     # Calculate a costing breakdown for a persisted or temporary costing.
     if costing.inventory_item_id is not None:
         stack = stack + (costing.inventory_item_id,)
-    ingredients = _build_ingredient_inputs(costing.ingredients, price_overrides=price_overrides, memo=memo, stack=stack)
+    ingredients = _build_ingredient_inputs(costing.ingredients, price_overrides=price_overrides, memo=memo, stack=stack, as_of=as_of)
 
     if menu_item is None:
         # A made item shows its raw batch cost: overheads and a price belong to the dish.
@@ -250,6 +253,62 @@ def get_costings(db: Session = Depends(get_db), current_user: TokenData = _OWNER
         ))
     
     return result
+
+_STATUS_ORDER = {"below_target": 0, "missing_prices": 1, "no_recipe": 2}
+
+@router.get("/overview", response_model=costing_schemas.Overview)
+def get_overview(db: Session = Depends(get_db), current_user: TokenData = _OWNER):
+    # Every recipe in one list: dishes (and sellable dishes with no recipe yet) and
+    # kitchen-made items, with this week's cost against last week's.
+    week_ago = utcnow() - timedelta(days=7)
+    rows = []
+
+    def last_week(costing, menu_item):
+        past = _compute_breakdown(costing, menu_item, as_of=week_ago)
+        return past.cost_per_unit if past.is_complete else None
+
+    for costing in db.query(DishCosting).all():
+        menu_item, made = costing.menu_item, costing.made_item
+        if menu_item is None and (made is None or not made.is_active):
+            continue
+        b = _compute_breakdown(costing, menu_item)
+        missing = sum(1 for line in b.ingredients if line.reason)
+        if not b.is_complete:
+            state = "missing_prices"
+        elif menu_item is None:
+            state = "costed"
+        else:
+            state = "below_target" if b.margin_percent is not None and b.margin_percent < b.target_margin_percent else "on_target"
+        rows.append(costing_schemas.OverviewRow(
+            kind="dish" if menu_item else "made", costing_id=costing.id,
+            menu_item_id=costing.menu_item_id, inventory_item_id=costing.inventory_item_id,
+            name=(menu_item or made).name,
+            category=(menu_item.category.name if menu_item.category else None) if menu_item else (made.category.name if made.category else None),
+            cost_per_unit=b.cost_per_unit, unit=made.unit if made else None,
+            selling_price=b.selling_price, margin_percent=b.margin_percent if b.is_complete else None, target_margin_percent=b.target_margin_percent,
+            missing_count=missing, cost_last_week=last_week(costing, menu_item), status=state,
+        ))
+
+    costed = {r.menu_item_id for r in rows if r.menu_item_id}
+    for menu_item in db.query(MenuItem).filter(MenuItem.is_available.is_(True)).all():
+        if menu_item.id not in costed:
+            rows.append(costing_schemas.OverviewRow(
+                kind="dish", menu_item_id=menu_item.id, name=menu_item.name,
+                category=menu_item.category.name if menu_item.category else None,
+                selling_price=_menu_price_rupees(menu_item), status="no_recipe",
+            ))
+
+    rows.sort(key=lambda r: (_STATUS_ORDER.get(r.status, 3), r.margin_percent if r.status == "below_target" else 0, r.name.lower()))
+    margins = [r.margin_percent for r in rows if r.kind == "dish" and r.margin_percent is not None]
+    return costing_schemas.Overview(
+        rows=rows,
+        totals=costing_schemas.OverviewTotals(
+            below_target=sum(r.status == "below_target" for r in rows),
+            missing_prices=sum(r.status == "missing_prices" for r in rows),
+            no_recipe=sum(r.status == "no_recipe" for r in rows),
+            average_margin=(sum(margins) / len(margins)).quantize(Decimal("0.01")) if margins else None,
+        ),
+    )
 
 @router.get("/defaults", response_model=costing_schemas.DefaultsOut)
 def get_costing_defaults(current_user: TokenData = _OWNER):
@@ -450,24 +509,48 @@ def apply_suggested_price(costing_id: int, data: costing_schemas.ApplyPriceIn, d
 # REPRICING
 
 # Repricing supports
+def _passes_through(item: InventoryItem, overrides: dict[int, Decimal], cache: dict, stack: tuple[int, ...] = ()):
+    # Whether a changed price reaches this item: None if not, else the kitchen-made
+    # items between them (the item itself included, if it is one), by id.
+    if item.id in overrides:
+        return {}
+    if item.recipe is None or item.id in stack:
+        return None
+    if item.id not in cache:
+        found = None
+        for row in item.recipe.ingredients:
+            sub = _passes_through(row.inventory_item, overrides, cache, stack + (item.id,))
+            if sub is not None:
+                found = {**(found or {}), **sub}
+        cache[item.id] = None if found is None else {**found, item.id: item}
+    return cache[item.id]
+
 def _get_reprice_impacts(db: Session, price_overrides: dict[int, Decimal]):
-    # Calculate the impact of changed inventory prices across all dishes.
-    costings = costing_crud.get_costings(db)
+    # Calculate the impact of changed inventory prices across all dishes, directly
+    # or through the kitchen-made items they use, and on those made items.
     affected = []
     unaffected_count = 0
+    reach = {}
+    before_memo, after_memo = {}, {}
 
-    for costing in costings:
+    for costing in costing_crud.get_costings(db):
         if costing.menu_item is None:
             continue
 
-        uses_changed_item = any(row.inventory_item_id in price_overrides for row in costing.ingredients)
+        via = {}
+        touched = False
+        for row in costing.ingredients:
+            sub = _passes_through(row.inventory_item, price_overrides, reach)
+            if sub is not None:
+                touched = True
+                via.update(sub)
 
-        if not uses_changed_item:
+        if not touched:
             unaffected_count += 1
             continue
 
-        before = _compute_breakdown(costing, costing.menu_item)
-        after = _compute_breakdown(costing, costing.menu_item, price_overrides=price_overrides)
+        before = _compute_breakdown(costing, costing.menu_item, memo=before_memo)
+        after = _compute_breakdown(costing, costing.menu_item, price_overrides=price_overrides, memo=after_memo)
 
         target = costing_utils.resolve_target_margin(costing)
 
@@ -477,10 +560,22 @@ def _get_reprice_impacts(db: Session, price_overrides: dict[int, Decimal]):
         crosses_below_target = (margin_before is not None and margin_after is not None and margin_before >= target and margin_after < target)
 
         affected.append(costing_schemas.DishImpact(
-            costing_id=costing.id, menu_item_name=costing.menu_item.name, cost_before=before.cost_per_unit, cost_after=after.cost_per_unit, margin_before=margin_before, margin_after=margin_after, crosses_below_target=crosses_below_target
+            costing_id=costing.id, menu_item_name=costing.menu_item.name, cost_before=before.cost_per_unit, cost_after=after.cost_per_unit, margin_before=margin_before, margin_after=margin_after, crosses_below_target=crosses_below_target,
+            via=[m.name for m in via.values()],
         ))
 
-    return affected, unaffected_count
+    made_impacts = []
+    for costing in db.query(DishCosting).filter(DishCosting.inventory_item_id.isnot(None)).all():
+        item = costing.made_item
+        if item.id in price_overrides or _passes_through(item, price_overrides, reach) is None:
+            continue
+        made_impacts.append(costing_schemas.MadeImpact(
+            item_id=item.id, name=item.name, unit=item.unit,
+            cost_before=_made_unit_price(item, None, before_memo, ())[0],
+            cost_after=_made_unit_price(item, price_overrides, after_memo, ())[0],
+        ))
+
+    return affected, unaffected_count, made_impacts
 
 @router.post("/reprice/preview", response_model=costing_schemas.RepricePreview)
 def preview_reprice(data: costing_schemas.RepriceRequest, db: Session = Depends(get_db), current_user: TokenData = _OWNER):
@@ -501,7 +596,7 @@ def preview_reprice(data: costing_schemas.RepriceRequest, db: Session = Depends(
 
     price_overrides = {price.inventory_item_id: price.new_cost_per_unit for price in data.prices}
 
-    affected, unaffected_count = _get_reprice_impacts(db, price_overrides)
+    affected, unaffected_count, _ = _get_reprice_impacts(db, price_overrides)
 
     return costing_schemas.RepricePreview(affected_dishes=affected, unaffected_count=unaffected_count)
 
@@ -522,7 +617,7 @@ def reprice(data: costing_schemas.RepriceRequest, db: Session = Depends(get_db),
     price_overrides = {price.inventory_item_id: price.new_cost_per_unit for price in data.prices}
 
     # Calculating impacts using the new prices beofre presisting them.
-    affected, unaffected_count  = _get_reprice_impacts(db, price_overrides)
+    affected, unaffected_count, _ = _get_reprice_impacts(db, price_overrides)
 
     # Persisting new inventory prices.
     for item_id, new_price in price_overrides.items():

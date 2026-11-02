@@ -26,6 +26,7 @@ from app.api.deps import get_current_user, get_current_owner
 from app.schemas import TokenData, UserRole
 from app.utils.email_sender import send_inventory_report
 from app.utils.units import IncompatibleUnitError, compatible, convert, normalize
+from app.api.v1.endpoints import costing as costing_endpoints
 from app.utils import pricing, usage
 
 router = APIRouter()
@@ -807,6 +808,17 @@ def _move_purchase_stock(t: InventoryTransaction, quantity: Decimal) -> None:
     t.quantity += item.current_quantity - before
     t.new_quantity = t.previous_quantity + t.quantity
 
+def _ripple(db: Session, item_id: int, new_price: Optional[Decimal]) -> Optional[dict]:
+    """What the dishes (and kitchen-made items) would cost if this price were approved."""
+    if new_price is None:
+        return None
+    dishes, unaffected, made = costing_endpoints._get_reprice_impacts(db, {item_id: new_price})
+    return {
+        "affected_dishes": [d.model_dump() for d in dishes],
+        "unaffected_count": unaffected,
+        "made_items": [m.model_dump() for m in made],
+    }
+
 @router.get("/purchases/pending-prices", response_model=List[inventory_schemas.PendingPrice])
 def get_pending_prices(db: Session = Depends(get_db), current_user: TokenData = _OWNER):
     """Purchases whose price waits for the owner, oldest first, against the price now."""
@@ -839,7 +851,7 @@ def get_pending_prices(db: Session = Depends(get_db), current_user: TokenData = 
             "new_price": new,
             "change": pricing.price_change(old, new),
             "is_new_item": old is None,
-            "ripple": None,
+            "ripple": _ripple(db, t.item_id, new),
         })
     return result
 
