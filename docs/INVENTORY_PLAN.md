@@ -202,7 +202,9 @@ Check these when reading. All are cheap to change.
 
 ## Next up
 
-**New (2026-11-02):** the ops redesign above is the current build. Its PR targets `pre-release`.
+**New (2026-11-02):** the ops redesign above is built (see "What shipped"), with its PR to
+`pre-release`. Next for it: the owners enter real recipes on `/admin/ops/recipes`. Then come the
+known gaps: a "Made a batch" action and a history for typed prices.
 
 Read this first in a new session. Last checked 2026-10-18 against `origin/pre-release`
 (`767cff3`) and `origin/main` (`6c75aa4`).
@@ -311,6 +313,25 @@ Shipped already: the typed-input count row (`6b8cbf6`), the setup grid (1), yes/
 the nightly count (2): the Out / Have it row, the model-level clamp, review sheet and stock log;
 the purchase sheet (3), pack size in costing (4), the dish costing screen (5), and vendors with
 the order messages (7).
+
+**Ops redesign (2026-11-02)**, on branch `claude/ops-redesign`, with its PR to `pre-release`.
+- **Pages** under `/admin/ops`, in their own light/dark look and built for phone and laptop:
+  - the recipe page for dishes and made items, with pack-price entry ("58/100g") and adding a new
+    ingredient from the picker;
+  - the Recipes list, with status, margin and "vs last week";
+  - the New made item page, which points to an item already in stock instead of duplicating it;
+  - the Daily sheet, where the owner approves prices, with the ripple per change;
+  - the Inventory page, with the count box, a Counted column and Edit all.
+- **Backend:**
+  - `price_status` on purchases (only approved prices count; owner and unchanged-price lines are
+    approved straight away, and yes/no items never wait);
+  - made items costed recursively, with a cycle guard and an automatic yield;
+  - the transitive ripple, `GET /costing/overview` and `POST /items/{id}/pack-price`;
+  - `brand`, `has_recipe` and `last_counted` on items.
+- **Checked on the production copy:** the WhatsApp cookie comes to ₹150.21 a batch and ₹48.82 a
+  portion (62%). A +21% butter purchase showed "1 dish costs more, ₹3.9 a portion" and, once
+  approved, moved the cookie to ₹52.72 (59%).
+- The old Inventory tabs and Menu costing still work. The owners switch when ready.
 
 Purchase sheet (3), backend only: `total_amount` and `vendor_id` on purchase rows, a minimal
 `vendors` table, `POST /transactions/purchase/check` (the >30% jump warning, dry run) and
