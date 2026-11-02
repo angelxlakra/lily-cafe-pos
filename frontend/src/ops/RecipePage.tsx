@@ -62,7 +62,7 @@ export default function RecipePage({ kind }: { kind: 'dish' | 'made' }) {
   if (recipeQuery.isLoading || !overview.data || !items.data || !defaults.data) return <p className="muted">Loading the recipe…</p>;
 
   const row = overview.data.rows.find(r => (kind === 'dish' ? r.menu_item_id : r.inventory_item_id) === subjectId && r.kind === kind);
-  const item = items.data.items.find(i => i.id === subjectId);
+  const item = kind === 'made' ? items.data.items.find(i => i.id === subjectId) : undefined;
   const name = recipeQuery.data?.name || row?.name || item?.name;
   if (!name) return <p>That {kind === 'dish' ? 'dish' : 'item'} doesn't exist.</p>;
 
@@ -196,7 +196,7 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
   const setBrand = useSetBrand();
   const setPackPrice = useSetPackPrice();
 
-  const pickable = items.filter(i => i.is_active && i.id !== subjectId && !lines.some(l => l.itemId === i.id));
+  const pickable = items.filter(i => i.is_active && !(isMade && i.id === subjectId) && !lines.some(l => l.itemId === i.id));
   const addLine = (item: InventoryItem) => {
     const key = newKey();
     setLines(current => [...current, { key, itemId: item.id, quantity: '', unit: unitOptions(item)[0] }]);
@@ -211,7 +211,7 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
     try {
       const item = await inventoryApi.quickAddItem(name, unit);
       await queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
-      if (item.id === subjectId) { setPickNote("A recipe can't use itself"); return; }
+      if (isMade && item.id === subjectId) { setPickNote("A recipe can't use itself"); return; }
       const existing = linesRef.current.find(l => l.itemId === item.id);
       if (existing) setFocusKey(existing.key);
       else addLine(item);
