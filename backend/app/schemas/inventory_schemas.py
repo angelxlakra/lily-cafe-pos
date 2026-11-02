@@ -122,6 +122,9 @@ class PurchaseEdit(BaseModel):
 class PriceReview(BaseModel):
     action: Literal["approve", "reject"]
 
+class ApproveAllPrices(BaseModel):
+    purchase_ids: Optional[List[int]] = None   # None: everything pending
+
 class PendingPrice(BaseModel):
     """A purchase whose price waits for the owner: what it would change, and for whom."""
     purchase_id: int
@@ -138,6 +141,7 @@ class PendingPrice(BaseModel):
     new_price: Optional[Decimal] = None
     change: Optional[Decimal] = None      # fraction: 0.25 = 25% up
     is_new_item: bool
+    superseded: bool = False              # a newer approved price is in use; approving changes nothing
     ripple: Optional[dict] = None         # filled in by the dish-cost ripple
 
 class DayEndCount(BaseModel):

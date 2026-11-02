@@ -208,7 +208,7 @@ def test_migration_rebuilds_old_table():
         assert c.execute(text("SELECT menu_item_id, yield_units, notes FROM dish_costings")).one() == (7, 4, "keep")
         assert c.execute(text("SELECT costing_id, inventory_item_id FROM dish_costing_ingredients")).one() == (1, 3)
         assert c.exec_driver_sql("PRAGMA foreign_key_check").fetchall() == []
-        assert c.exec_driver_sql("PRAGMA foreign_keys").scalar() == 1
+        assert c.exec_driver_sql("PRAGMA foreign_keys").scalar() == 0  # as before the rebuild
         # Two made items (NULL menu item) can now coexist.
         c.execute(text("INSERT INTO inventory_items VALUES (4)"))
         c.execute(text("INSERT INTO inventory_items VALUES (5)"))
@@ -264,3 +264,27 @@ def test_cost_flows_through_two_levels_and_patch_with_yield(client, test_db, own
     assert r.status_code == 200, r.text
     assert Decimal(r.json()["yield_units"]) == 100
     assert Decimal(dish()) == Decimal("5.00")
+
+
+def test_cross_family_pack_price_is_refused_but_packets_still_work(client, test_db, owner_headers):
+    vanilla = _item(test_db, "Vanilla", "g")
+    r = client.post(f"{API}/inventory/items/{vanilla.id}/pack-price", headers=owner_headers,
+                    json={"price": "439", "pack_quantity": "500", "pack_unit": "ml"})
+    assert r.status_code == 400
+    assert r.json()["detail"] == "Vanilla is counted in g; give the pack in g or kg, or change its unit first"
+    test_db.refresh(vanilla)
+    assert vanilla.cost_per_unit is None
+    # A count item priced by weight is a packet: unchanged.
+    out = _pack_price(client, owner_headers, _item(test_db, "Paprika packet", "pcs"), 99, 52, "g")
+    assert (out["pack_size"], out["pack_unit"]) == ("52.000", "g") or Decimal(str(out["pack_size"])) == 52
+
+
+def test_made_item_returns_auto_yield_in_its_unit(client, test_db, owner_headers):
+    pepper = _priced(client, test_db, owner_headers, [("Pepper", 100, 100, "g")])["Pepper"]
+    mix = _item(test_db, "Big mix", "kg")
+    r = client.post(f"{API}/costing", headers=owner_headers, json={
+        "inventory_item_id": mix.id, "yield_units": "2", "ingredients": _lines((pepper, 300, "g"), (pepper, 200, "g")),
+    })
+    assert r.status_code == 201, r.text
+    assert Decimal(r.json()["auto_yield"]) == Decimal("0.5")
+    assert Decimal(r.json()["yield_units"]) == 2

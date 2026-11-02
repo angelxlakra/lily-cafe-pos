@@ -205,3 +205,35 @@ def test_brand_round_trips(client, owner_headers, onion):
     assert bulk.status_code == 200
     listed = client.get(ITEMS, headers=owner_headers).json()["items"]
     assert [i["brand"] for i in listed if i["id"] == onion.id] == ["Amul"]
+
+
+def test_presence_item_purchase_is_never_pending(client, auth_headers, test_db):
+    salt = InventoryItem(name="Salt", unit="pkt", count_mode="presence")
+    test_db.add(salt)
+    test_db.commit()
+
+    line = _buy(client, auth_headers, salt, quantity="1", total="40")
+
+    assert line["price_status"] == "approved"
+
+
+def test_pending_row_older_than_an_approved_purchase_is_superseded(client, auth_headers, owner_headers, onion):
+    older = _buy(client, auth_headers, onion, total="160")        # pending, 40/kg
+    _buy(client, owner_headers, onion, total="176")               # approved later, 44/kg
+    newer = _buy(client, auth_headers, onion, total="200")        # pending, after the approved one
+
+    rows = {r["purchase_id"]: r for r in client.get(f"{PURCHASES}/pending-prices", headers=owner_headers).json()}
+
+    assert rows[older["id"]]["superseded"] is True
+    assert rows[newer["id"]]["superseded"] is False
+
+
+def test_approve_all_only_the_listed_ids(client, auth_headers, owner_headers, onion):
+    first = _buy(client, auth_headers, onion, total="160")
+    second = _buy(client, auth_headers, onion, total="176")
+
+    r = client.post(f"{PURCHASES}/price-review/approve-all", headers=owner_headers, json={"purchase_ids": [first["id"]]})
+
+    assert r.json() == {"approved": 1}
+    left = client.get(f"{PURCHASES}/pending-prices", headers=owner_headers).json()
+    assert [row["purchase_id"] for row in left] == [second["id"]]

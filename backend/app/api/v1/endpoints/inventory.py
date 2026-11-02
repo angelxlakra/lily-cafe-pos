@@ -25,7 +25,7 @@ from app.core import settings_store
 from app.api.deps import get_current_user, get_current_owner
 from app.schemas import TokenData, UserRole
 from app.utils.email_sender import send_inventory_report
-from app.utils.units import IncompatibleUnitError, compatible, convert, normalize
+from app.utils.units import IncompatibleUnitError, compatible, convert, family, is_measure, normalize
 from app.api.v1.endpoints import costing as costing_endpoints
 from app.utils import pricing, usage
 
@@ -437,6 +437,8 @@ def set_pack_price(
         # kg priced by a 500 g pack: the price is per the item's own unit, kept to the 4 places the column holds.
         item.cost_per_unit = (data.price / convert(data.pack_quantity, data.pack_unit, item.unit)).quantize(_PRICE_PLACES, rounding=ROUND_HALF_UP)
         item.pack_size = item.pack_unit = None
+    elif is_measure(item.unit) and is_measure(data.pack_unit):
+        raise HTTPException(status_code=400, detail=f"{item.name} is counted in {item.unit}; give the pack in {'ml or L' if family(item.unit) == 'volume' else 'g or kg'}, or change its unit first")
     else:
         # A packet priced by its weight: one packet costs the price, and the pack size bridges the units.
         item.pack_size, item.pack_unit, item.cost_per_unit = data.pack_quantity, data.pack_unit, data.price
@@ -494,13 +496,13 @@ def _price_check(item: InventoryItem, quantity, total_amount, current: pricing.R
         "is_jump": not is_gift and pricing.is_price_jump(current.price, new_price),
     }
 
-def _needs_price_review(user: TokenData, total_amount, new_price, current: pricing.ResolvedPrice) -> bool:
+def _needs_price_review(user: TokenData, item: InventoryItem, total_amount, new_price, current: pricing.ResolvedPrice) -> bool:
     """Whether a purchase line's price must wait for the owner.
 
-    Not for the owner, a line with no positive total (a gift or no amount
+    Not for the owner, a yes/no item (it has no price), a line with no positive total (a gift or no amount
     says nothing about the price), or one at the price already in force.
     """
-    if user.role == UserRole.OWNER or total_amount is None or total_amount <= 0:
+    if user.role == UserRole.OWNER or item.is_presence or total_amount is None or total_amount <= 0:
         return False
     return new_price != current.price
 
@@ -582,7 +584,7 @@ def record_purchase(
         checks.append(check)
         # Staff can't move a price on their own: a line at a new price waits
         # for the owner. Stock is not held back, only the price.
-        approved = not _needs_price_review(current_user, line.total_amount, check["unit_price"], prices[item.id])
+        approved = not _needs_price_review(current_user, item, line.total_amount, check["unit_price"], prices[item.id])
 
         previous_qty = item.current_quantity
         item.current_quantity += line.quantity
@@ -840,7 +842,9 @@ def get_pending_prices(db: Session = Depends(get_db), current_user: TokenData = 
         .order_by(InventoryTransaction.id)
         .all()
     )
-    current = pricing.resolve_many(db, {t.item_id: t.item for t in rows}.values())
+    items = {t.item_id: t.item for t in rows}
+    latest = pricing.latest_priced_purchases(db, items)
+    current = {i: pricing.resolve(item, latest.get(i)) for i, item in items.items()}
     result = []
     for t in rows:
         line = _purchase_dict(t)
@@ -860,19 +864,27 @@ def get_pending_prices(db: Session = Depends(get_db), current_user: TokenData = 
             "new_price": new,
             "change": pricing.price_change(old, new),
             "is_new_item": old is None,
+            # A newer approved purchase is the price, so approving this one changes nothing.
+            "superseded": t.item_id in latest and latest[t.item_id].id > t.id,
             "ripple": _ripple(db, t.item_id, new),
         })
     return result
 
 @router.post("/purchases/price-review/approve-all", response_model=dict)
-def approve_all_prices(db: Session = Depends(get_db), current_user: TokenData = _OWNER):
-    """Approve every purchase price waiting for review. Owner only."""
+def approve_all_prices(
+    body: Optional[inventory_schemas.ApproveAllPrices] = None,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _OWNER,
+):
+    """Approve the purchase prices waiting for review: the listed ones, or all with no list. Owner only."""
+    query = db.query(InventoryTransaction).filter(
+        InventoryTransaction.transaction_type == TransactionType.PURCHASE,
+        InventoryTransaction.price_status == pricing.PRICE_PENDING,
+    )
+    if body is not None and body.purchase_ids is not None:
+        query = query.filter(InventoryTransaction.id.in_(body.purchase_ids))
     approved = (
-        db.query(InventoryTransaction)
-        .filter(
-            InventoryTransaction.transaction_type == TransactionType.PURCHASE,
-            InventoryTransaction.price_status == pricing.PRICE_PENDING,
-        )
+        query
         .update({"price_status": pricing.PRICE_APPROVED, "price_reviewed_at": utcnow()}, synchronize_session=False)
     )
     db.commit()
@@ -923,7 +935,7 @@ def edit_purchase(
     now_priced_at = pricing.unit_price(t.total_amount, pricing.quantity_in(t, t.item.unit))
     if now_priced_at != was_priced_at and current_user.role != UserRole.OWNER:
         # A changed total or quantity is a new rate; same rules as a new line.
-        if _needs_price_review(current_user, t.total_amount, now_priced_at, current):
+        if _needs_price_review(current_user, t.item, t.total_amount, now_priced_at, current):
             t.price_status, t.price_reviewed_at = pricing.PRICE_PENDING, None
         else:
             t.price_status, t.price_reviewed_at = pricing.PRICE_APPROVED, utcnow()
