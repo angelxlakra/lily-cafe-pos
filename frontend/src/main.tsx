@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { ThemeProvider } from './contexts/ThemeContext.tsx'
 import { SidebarProvider } from './context/SidebarContext.tsx'
@@ -15,7 +15,6 @@ import LoginPage from './pages/LoginPage.tsx'
 import AdminActiveOrdersPage from './pages/AdminActiveOrdersPage.tsx'
 import MenuManagementPage from './pages/MenuManagementPage.tsx'
 import OrderHistoryPage from './pages/OrderHistoryPage.tsx'
-import InventoryPage from './pages/InventoryPage.tsx'
 import CountPage from './ops/CountPage.tsx'
 import CashCounterPage from './pages/CashCounterPage.tsx'
 import AnalyticsPage from './pages/AnalyticsPage.tsx'
@@ -32,6 +31,7 @@ import SetupPage from './ops/SetupPage.tsx'
 import RecipePage from './ops/RecipePage.tsx'
 import RecipesListPage from './ops/RecipesListPage.tsx'
 import NewMadeItemPage from './ops/NewMadeItemPage.tsx'
+import { legacyInventoryPath } from './utils/legacyInventory.ts'
 import './index.css'
 
 // Configure TanStack Query client
@@ -59,6 +59,11 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+function LegacyInventoryRedirect() {
+  const [params] = useSearchParams()
+  return <Navigate to={legacyInventoryPath(params.get('tab'))} replace />
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -117,14 +122,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                 }
               />
               <Route
-                path="/admin/inventory"
-                element={
-                  <ProtectedRoute>
-                    <InventoryPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
                 path="/admin/cash-counter"
                 element={
                   <ProtectedRoute>
@@ -176,14 +173,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
             {/* Tonight's count — full screen, no sidebar or bottom nav */}
             <Route path="/admin/ops/count" element={<ProtectedRoute><CountPage /></ProtectedRoute>} />
-            <Route
-              path="/admin/inventory/count"
-              element={
-                <ProtectedRoute>
-                  <CountPage />
-                </ProtectedRoute>
-              }
-            />
+            {/* Old inventory URLs */}
+            <Route path="/admin/inventory" element={<ProtectedRoute><LegacyInventoryRedirect /></ProtectedRoute>} />
+            <Route path="/admin/inventory/count" element={<ProtectedRoute><Navigate to="/admin/ops/count" replace /></ProtectedRoute>} />
 
             {/* Standalone unlisted page — cash counter details for a chosen day */}
             <Route

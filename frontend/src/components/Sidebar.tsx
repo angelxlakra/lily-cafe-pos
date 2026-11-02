@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { ThemeToggle } from "./ThemeToggle";
 import { useSidebar } from "../context/SidebarContext";
@@ -9,7 +9,7 @@ import {
   WaiterViewIcon,
   LogoutIcon,
 } from "./icons/NavigationIcons";
-import { Package, Table, CurrencyInr, ChartLine, Gear, CaretLeft, CaretRight } from "@phosphor-icons/react";
+import { Package, CurrencyInr, ChartLine, Gear, CaretLeft, CaretRight } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 
 export default function Sidebar() {
@@ -129,16 +129,10 @@ export default function Sidebar() {
             isCollapsed={isCollapsed}
           />
           <NavItem
-            to="/admin/inventory"
+            to="/admin/ops/inventory"
+            activePrefix="/admin/ops"
             icon={<Package size={24} />}
             label="Inventory"
-            onClick={handleCloseMobile}
-            isCollapsed={isCollapsed}
-          />
-          <NavItem
-            to="/admin/ops/inventory"
-            icon={<Table size={24} />}
-            label="Ops"
             onClick={handleCloseMobile}
             isCollapsed={isCollapsed}
           />
@@ -201,20 +195,25 @@ interface NavItemProps {
   label: string;
   onClick: () => void;
   isCollapsed: boolean;
+  /** Lit for every path under this prefix, not only `to`. */
+  activePrefix?: string;
 }
 
-function NavItem({ to, icon, label, onClick, isCollapsed }: NavItemProps) {
+function NavItem({ to, icon, label, onClick, isCollapsed, activePrefix }: NavItemProps) {
+  const { pathname } = useLocation();
+  const inSection = !!activePrefix && (pathname === activePrefix || pathname.startsWith(activePrefix + "/"));
   return (
     <NavLink
       to={to}
       onClick={onClick}
-      className={({ isActive }) =>
-        `flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 rounded-lg transition-colors group relative ${
+      className={({ isActive: exact }) => {
+        const isActive = exact || inSection;
+        return `flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 rounded-lg transition-colors group relative ${
           isActive
             ? "bg-coffee-brown text-cream font-semibold"
             : "text-cream hover:bg-coffee-light"
-        }`
-      }
+        }`;
+      }}
       title={isCollapsed ? label : ""}
     >
       <span className="text-xl text-cream/80 shrink-0">{icon}</span>

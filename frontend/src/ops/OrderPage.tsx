@@ -20,7 +20,7 @@ import {
 } from '../utils/orderMessage';
 import type { InventoryItem, Vendor } from '../types/inventory';
 
-export default function OrderPage({ onSetUpVendors }: { onSetUpVendors?: () => void }) {
+export default function OrderPage() {
   const { isOwner } = useAuth();
   const navigate = useNavigate();
   const { data: itemsResponse, isLoading, error } = useQuery({
@@ -68,7 +68,7 @@ export default function OrderPage({ onSetUpVendors }: { onSetUpVendors?: () => v
             if (next.has(id)) next.delete(id); else next.add(id);
             return next;
           })}
-          onSetUpVendors={onSetUpVendors ?? (() => navigate('/admin/ops/setup'))}
+          onSetUpVendors={() => navigate('/admin/ops/setup')}
         />
       ))}
     </div>
@@ -82,7 +82,7 @@ interface VendorOrderProps {
   left: Set<number>;
   onQuantity: (id: number, text: string) => void;
   onToggle: (id: number) => void;
-  onSetUpVendors?: () => void;
+  onSetUpVendors: () => void;
 }
 
 function VendorOrder({ group, isOwner, quantities, left, onQuantity, onToggle, onSetUpVendors }: VendorOrderProps) {
@@ -133,7 +133,7 @@ function VendorOrder({ group, isOwner, quantities, left, onQuantity, onToggle, o
             ) : (
               <p className="muted">
                 No usual vendor set.{' '}
-                {isOwner && onSetUpVendors && (
+                {isOwner && (
                   <button type="button" onClick={onSetUpVendors} className="linkish">Set vendors in Setup</button>
                 )}
               </p>
