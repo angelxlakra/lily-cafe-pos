@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useDialogFocus } from '../hooks/useDialogFocus';
 
 interface OpsConfirmProps {
@@ -18,17 +18,20 @@ export default function OpsConfirm(props: OpsConfirmProps) {
 
 function Sheet({ title, message, confirmText, cancelText, onConfirm, onClose }: OpsConfirmProps) {
   const dialog = useRef<HTMLDivElement>(null);
+  const cancel = useRef<HTMLButtonElement>(null);
   useDialogFocus(dialog, onClose);
+  // Into the dialog on open; Cancel is the safe default for a destructive question.
+  useEffect(() => cancel.current?.focus(), []);
   return (
     <div className="count-sheet-wrap">
       <div className="count-scrim" onClick={onClose} />
-      <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="ops-confirm-title" className="count-sheet">
+      <div ref={dialog} role="alertdialog" aria-modal="true" aria-labelledby="ops-confirm-title" className="count-sheet">
         <div className="count-sheet-body">
           <h2 id="ops-confirm-title">{title}</h2>
           <p className="muted">{message}</p>
         </div>
         <div className="count-actions">
-          <button type="button" className="btn ghost" onClick={onClose}>{cancelText}</button>
+          <button type="button" ref={cancel} className="btn ghost" onClick={onClose}>{cancelText}</button>
           <button type="button" className="btn danger" onClick={onConfirm}>{confirmText}</button>
         </div>
       </div>
