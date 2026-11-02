@@ -142,11 +142,17 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const pickerRef = useRef<HTMLInputElement>(null);
 
+  // Focus once the row has rendered with its item, so what is typed lands in a bound, controlled input.
   useEffect(() => {
     if (!focusKey) return;
+    const line = lines.find(l => l.key === focusKey);
+    if (line && !byId.has(line.itemId)) return;
     (document.getElementById(`amt-${focusKey}`) ?? pickerRef.current)?.focus();
     setFocusKey(null);
-  }, [focusKey]);
+  }, [focusKey, lines, byId]);
+  const linesRef = useRef(lines);
+  linesRef.current = lines;
+  const [pickNote, setPickNote] = useState<string | null>(null);
 
   // What the server is asked to cost (and to save). Rows with no usable amount are left out of the preview.
   const usable = lines.filter(l => byId.has(l.itemId) && (isPresence(byId.get(l.itemId)) || parseQuantity(l.quantity) !== null));
@@ -198,13 +204,17 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
   };
   /** Quick-add an item that isn't in inventory yet ("oregano", or "oregano kg"; unit defaults to g), then add it as a line. */
   const addNew = async (text: string) => {
+    setPickNote(null);
     const m = text.trim().match(/^(.*\S)\s+(kg|g|l|ml|pcs|pkt)$/i);
     const name = m ? m[1] : text.trim();
     const unit = m ? (m[2].toLowerCase() === 'l' ? 'L' : m[2].toLowerCase()) : 'g';
     try {
       const item = await inventoryApi.quickAddItem(name, unit);
       await queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
-      addLine(item);
+      if (item.id === subjectId) { setPickNote("A recipe can't use itself"); return; }
+      const existing = linesRef.current.find(l => l.itemId === item.id);
+      if (existing) setFocusKey(existing.key);
+      else addLine(item);
     } catch (e) {
       toast.error(describeApiError(e));
     }
@@ -379,7 +389,7 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
             })}
             <tr>
               <td colSpan={7}>
-                <Picker items={pickable} madeIds={madeIds} inputRef={pickerRef} onPick={addLine} onAddNew={addNew} />
+                <Picker items={pickable} madeIds={madeIds} inputRef={pickerRef} onPick={item => { setPickNote(null); addLine(item); }} onAddNew={addNew} note={pickNote} />
               </td>
             </tr>
 
@@ -497,12 +507,13 @@ function PriceCell({ item, text, editable, note, onCommit }: {
 }
 
 /** Search over active inventory items; Enter takes the first match. */
-function Picker({ items, madeIds, inputRef, onPick, onAddNew }: {
+function Picker({ items, madeIds, inputRef, onPick, onAddNew, note }: {
   items: InventoryItem[];
   madeIds: Set<number | null>;
   inputRef: React.RefObject<HTMLInputElement>;
   onPick: (item: InventoryItem) => void;
   onAddNew: (text: string) => void;
+  note: string | null;
 }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -528,7 +539,8 @@ function Picker({ items, madeIds, inputRef, onPick, onAddNew }: {
         onKeyDown={event => {
           if (event.key === 'Enter') {
             event.preventDefault();
-            if (matches[0]) pick(matches[0]);
+            const exact = items.find(i => i.name.toLowerCase() === typed.toLowerCase());
+            if (exact || matches[0]) pick(exact ?? matches[0]);
             else if (typed) addNew();
           }
           if (event.key === 'Escape') setOpen(false);
@@ -553,6 +565,7 @@ function Picker({ items, madeIds, inputRef, onPick, onAddNew }: {
           )}
         </ul>
       )}
+      {note && <span className="err" role="alert">{note}</span>}
     </div>
   );
 }
