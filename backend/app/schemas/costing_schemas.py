@@ -108,6 +108,8 @@ class DishCostingOut(BaseModel):
     unit: Optional[str] = None
     used_in: List[UsedIn] = Field(default_factory=list)
     yield_units: Decimal
+    # Made items: the lines summed in the item's unit, or None if one doesn't convert.
+    auto_yield: Optional[Decimal] = None
     target_margin_percent: Optional[Decimal]
     notes: Optional[str]
     packaging: OverheadOverride

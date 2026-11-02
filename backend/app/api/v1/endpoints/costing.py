@@ -154,6 +154,13 @@ def _costing_to_schema(costing: DishCosting) -> costing_schemas.DishCostingOut:
         dish = user.menu_item
         used_in[user.id] = costing_schemas.UsedIn(costing_id=user.id, name=(dish or user.made_item).name, kind="dish" if dish else "made")
 
+    auto_yield = None
+    if made:
+        try:
+            auto_yield = sum((to_item_unit(r.quantity, r.unit, made.unit) for r in costing.ingredients), Decimal(0))
+        except IncompatibleUnitError:
+            pass
+
     return costing_schemas.DishCostingOut(
         id=costing.id,
         menu_item_id=costing.menu_item_id,
@@ -164,6 +171,7 @@ def _costing_to_schema(costing: DishCosting) -> costing_schemas.DishCostingOut:
         unit=made.unit if made else None,
         used_in=list(used_in.values()),
         yield_units=costing.yield_units,
+        auto_yield=auto_yield,
         target_margin_percent=costing.target_margin_percent,
         notes=costing.notes,
         packaging=costing_schemas.OverheadOverride(mode=costing.packaging_mode, value=costing.packaging_value),
