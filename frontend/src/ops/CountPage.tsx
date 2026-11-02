@@ -257,7 +257,7 @@ export default function CountPage() {
         {groups && groups.length === 0 && (
           <div className="count-card">
             <p><b>No items to count yet.</b></p>
-            <p className="muted">The owner can add them from the Items tab or import the WhatsApp checklist.</p>
+            <p className="muted">The owner can add them from Setup or import the WhatsApp checklist.</p>
           </div>
         )}
 

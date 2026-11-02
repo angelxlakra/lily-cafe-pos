@@ -1,4 +1,4 @@
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { ThemeToggle } from "./ThemeToggle";
 import { useSidebar } from "../context/SidebarContext";
@@ -130,7 +130,6 @@ export default function Sidebar() {
           />
           <NavItem
             to="/admin/ops/inventory"
-            activePrefix="/admin/ops"
             icon={<Package size={24} />}
             label="Inventory"
             onClick={handleCloseMobile}
@@ -195,25 +194,20 @@ interface NavItemProps {
   label: string;
   onClick: () => void;
   isCollapsed: boolean;
-  /** Lit for every path under this prefix, not only `to`. */
-  activePrefix?: string;
 }
 
-function NavItem({ to, icon, label, onClick, isCollapsed, activePrefix }: NavItemProps) {
-  const { pathname } = useLocation();
-  const inSection = !!activePrefix && (pathname === activePrefix || pathname.startsWith(activePrefix + "/"));
+function NavItem({ to, icon, label, onClick, isCollapsed }: NavItemProps) {
   return (
     <NavLink
       to={to}
       onClick={onClick}
-      className={({ isActive: exact }) => {
-        const isActive = exact || inSection;
-        return `flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 rounded-lg transition-colors group relative ${
+      className={({ isActive }) =>
+        `flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-3 rounded-lg transition-colors group relative ${
           isActive
             ? "bg-coffee-brown text-cream font-semibold"
             : "text-cream hover:bg-coffee-light"
-        }`;
-      }}
+        }`
+      }
       title={isCollapsed ? label : ""}
     >
       <span className="text-xl text-cream/80 shrink-0">{icon}</span>

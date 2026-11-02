@@ -177,7 +177,10 @@ function VendorOrder({ group, isOwner, quantities, left, onQuantity, onToggle, o
 
         <div className="ops-msg">
           <pre ref={messageRef} aria-label={`Message to ${vendor?.name ?? 'an unassigned vendor'}`}>{message}</pre>
-          <button type="button" className="btn ghost" onClick={copy} disabled={lines.length === 0}>
+          <button
+            type="button" className="btn ghost" onClick={copy} disabled={lines.length === 0}
+            aria-label={vendor ? `Copy message for ${vendor.name}` : 'Copy message'}
+          >
             {copied ? 'Copied' : 'Copy'}
           </button>
         </div>

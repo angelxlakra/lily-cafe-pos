@@ -36,7 +36,7 @@ type Row = { id: number; name: string; detail?: string };
 // Lists only move up and down.
 const restrictToVerticalAxis: Modifier = ({ transform }) => ({ ...transform, x: 0 });
 
-export default function CountOrderEditor({ onDone }: { onDone?: () => void }) {
+export default function CountOrderEditor() {
   const queryClient = useQueryClient();
   const { data: groups, isLoading } = useQuery({
     queryKey: ['inventory', 'count-sheet'],
@@ -53,10 +53,9 @@ export default function CountOrderEditor({ onDone }: { onDone?: () => void }) {
 
   return (
     <div>
-      {(openGroup || onDone) && (
+      {openGroup && (
         <div className="ops-actions" style={{ margin: '0 0 8px' }}>
-          {openGroup && <button type="button" onClick={() => setOpenCategoryId(null)} className="btn ghost">All categories</button>}
-          {onDone && <button type="button" onClick={onDone} className="btn ghost">Done</button>}
+          <button type="button" onClick={() => setOpenCategoryId(null)} className="btn ghost">All categories</button>
         </div>
       )}
       <p className="muted" style={{ margin: 0 }}>

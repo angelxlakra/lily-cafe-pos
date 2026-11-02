@@ -6,7 +6,6 @@ import type {
   InventoryCategoryUpdate,
   InventoryItemCreate,
   InventoryItemUpdate,
-  PurchaseCreate,
   UsageCreate,
   AdjustmentCreate,
   TransactionType
@@ -149,30 +148,7 @@ export function useUpdateItem() {
   });
 }
 
-export function useDeleteItem() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => inventoryApi.deleteItem(id),
-    onSuccess: () => {
-      // Stock and master data feed the count sheet, status card and lists alike.
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
-    },
-  });
-}
-
 // Transactions Hooks
-export function useRecordPurchase() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: PurchaseCreate) => inventoryApi.recordPurchase(data),
-    onSuccess: () => {
-      // Stock and master data feed the count sheet, status card and lists alike.
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
-      queryClient.invalidateQueries({ queryKey: costingKeys.all });
-    },
-  });
-}
-
 export function useRecordUsage() {
   const queryClient = useQueryClient();
   return useMutation({

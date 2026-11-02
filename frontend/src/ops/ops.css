@@ -285,7 +285,7 @@
   border: 0; background: none; color: inherit; font: inherit; cursor: pointer;
 }
 .count-top-row button:disabled { opacity: 0.45; cursor: default; }
-.count-exit { color: var(--ops-muted); }
+.count-top-row .count-exit { color: var(--ops-muted); }
 .count-jump { flex: 1; min-width: 0; font-weight: 600; }
 .count-prog { min-width: 64px; padding-right: 8px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ops-muted); }
 .count-bar { height: 4px; background: var(--ops-rule); }
@@ -328,7 +328,7 @@
   border: 1px solid var(--ops-rule); background: var(--ops-bar); color: var(--ops-muted); touch-action: manipulation;
 }
 .ops .count-choice.on { background: var(--ops-fg); color: var(--ops-bg); border-color: var(--ops-fg); }
-.ops .count-choice.on.changed { border-color: var(--ops-bad); background: var(--ops-bad); color: var(--ops-bg); }
+.ops .count-choice.on.changed { border-color: var(--ops-warn-line, #d67814); background: var(--ops-warn-bg); color: var(--ops-fg); }
 
 .count-foot { position: fixed; bottom: 0; left: 0; right: 0; z-index: 20; background: var(--ops-bar); border-top: 1px solid var(--ops-rule); }
 .count-foot-row { max-width: 720px; margin: 0 auto; display: flex; gap: 8px; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); }
@@ -423,3 +423,11 @@
 }
 .ops-form.full { max-width: none; }
 .count-sheet .ops-form label { color: var(--ops-fg); }
+
+.ops .btn.danger { background: var(--ops-bad); border-color: var(--ops-bad); color: var(--ops-bg); }
+.ops .text-btn {
+  min-height: 44px; padding: 0 12px; border: 0; background: none; color: var(--ops-muted); font: inherit; cursor: pointer;
+}
+.ops .text-btn:hover:not(:disabled) { color: var(--ops-fg); }
+.ops .text-btn.bad:hover:not(:disabled) { color: var(--ops-bad); }
+.ops .text-btn:disabled { opacity: 0.35; cursor: default; }

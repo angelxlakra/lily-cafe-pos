@@ -4,11 +4,12 @@
  * on the Daily sheet, not here.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { inventoryApi } from '../api/inventory';
 import { useInventoryTransactions, useRecordUsage, useRecordAdjustment } from '../hooks/useInventory';
+import { useDialogFocus } from '../hooks/useDialogFocus';
 import { describeApiError } from '../utils/apiError';
 import { describeChange, formatQty, isPresence } from '../utils/countQuantity';
 import type { InventoryTransaction, TransactionType } from '../types/inventory';
@@ -187,11 +188,10 @@ function TransactionFormModal({ type, onClose }: { type: Action; onClose: () => 
   const recordAdjustment = useRecordAdjustment();
   const isSubmitting = recordUsage.isPending || recordAdjustment.isPending;
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && !isSubmitting && onClose();
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose, isSubmitting]);
+  const dialog = useRef<HTMLFormElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  useDialogFocus(dialog, onClose, isSubmitting);
+  useEffect(() => heading.current?.focus(), []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -217,6 +217,7 @@ function TransactionFormModal({ type, onClose }: { type: Action; onClose: () => 
     <div className="count-sheet-wrap">
       <div className="count-scrim" onClick={isSubmitting ? undefined : onClose} />
       <form
+        ref={dialog}
         role="dialog"
         aria-modal="true"
         aria-labelledby="stock-form-title"
@@ -224,7 +225,7 @@ function TransactionFormModal({ type, onClose }: { type: Action; onClose: () => 
         onSubmit={handleSubmit}
       >
         <div className="count-sheet-body ops-form full">
-          <h2 id="stock-form-title">{copy.title}</h2>
+          <h2 id="stock-form-title" ref={heading} tabIndex={-1}>{copy.title}</h2>
           {copy.help && <p className="muted">{copy.help}</p>}
 
           <label>

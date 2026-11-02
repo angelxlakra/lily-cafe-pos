@@ -28,3 +28,9 @@ test('clearing, or saving nothing, leaves no draft', () => {
   saveCountDraft({}, Date.now());
   assert.equal(loadCountDraft(), null);
 });
+
+test('a draft last saved over 12 hours ago loads as none', () => {
+  store.set('lily.inventoryCountDraft', JSON.stringify({ startedAt: 1, savedAt: Date.now() - 13 * 60 * 60 * 1000, counts: { 1: 1 } }));
+  assert.equal(loadCountDraft(), null);
+  assert.equal(store.has('lily.inventoryCountDraft'), false);
+});

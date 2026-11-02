@@ -7,13 +7,6 @@
 }
 .count-sheet.wide textarea:focus-visible { outline: 2px solid var(--ops-fg); outline-offset: 1px; }
 .su-read code { padding: 0 4px; border-radius: 4px; background: var(--ops-pill); font-size: 14px; }
-.ops .btn.danger { background: var(--ops-bad); border-color: var(--ops-bad); color: var(--ops-bg); }
-.ops .text-btn {
-  min-height: 44px; padding: 0 12px; border: 0; background: none; color: var(--ops-muted); font: inherit; cursor: pointer;
-}
-.ops .text-btn:hover:not(:disabled) { color: var(--ops-fg); }
-.ops .text-btn.bad:hover:not(:disabled) { color: var(--ops-bad); }
-.ops .text-btn:disabled { opacity: 0.35; cursor: default; }
 
 .su-jump { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0 0; }
 .su-sec { margin-top: 36px; scroll-margin-top: 112px; }
