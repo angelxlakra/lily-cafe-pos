@@ -183,15 +183,18 @@ def _apply_overhead(costing: DishCosting, kind: str, override: costing_schemas.O
     setattr(costing, f"{kind}_mode", override.mode)
     setattr(costing, f"{kind}_value", override.value)
 
-def _batch_yield(data: costing_schemas.DishCostingIn, made_item: InventoryItem | None):
+def _batch_yield(data: costing_schemas.DishCostingIn, made_item: InventoryItem | None, inventory_items: list[InventoryItem]):
     # A dish says how many portions it makes. A made item may leave it out, and then
     # the batch makes the sum of its lines, if they all convert to the item's unit.
     if data.yield_units is not None:
         return data.yield_units
-    try:
-        total = sum((to_item_unit(row.quantity, row.unit, made_item.unit) for row in data.ingredients), Decimal(0))
-    except IncompatibleUnitError:
-        total = Decimal(0)
+    total = Decimal(0)
+    for row in data.ingredients:
+        try:
+            total += to_item_unit(row.quantity, row.unit, made_item.unit)
+        except IncompatibleUnitError:
+            name = next((i.name for i in inventory_items if i.id == row.inventory_item_id), "An ingredient")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Type how much one batch makes ({name} is in {row.unit}, the batch in {made_item.unit})")
     if total <= 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Type how much one batch makes")
     return total
@@ -317,8 +320,10 @@ def _prepare(db: Session, data: costing_schemas.DishCostingIn, own_id: int | Non
         if inventory_ids
         else []
     )
-    costing, ingredient_rows = _build_costing_model(data, {item.id: item for item in inventory_items}, _batch_yield(data, made_item))
-    costing.ingredients = ingredient_rows
+    costing, ingredient_rows = _build_costing_model(data, {item.id: item for item in inventory_items}, _batch_yield(data, made_item, inventory_items))
+    if own_id is None:
+        # On update the rows go straight to the saved costing: attaching them here would drag this unsaved copy into the session.
+        costing.ingredients = ingredient_rows
 
     if made_item is not None:
         loop = costing_crud.find_cycle(db, made_item.id, list(inventory_ids))
@@ -367,11 +372,6 @@ def update_costing(costing_id: int, data: costing_schemas.DishCostingIn, db: Ses
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A dish's recipe can't become a made item's, or the other way round.")
 
     menu_item, new_costing, ingredient_rows = _prepare(db, data, own_id=costing_id)
-
-    # Keeping the existing costing ID.
-    new_costing.id = costing.id
-
-    _compute_breakdown(new_costing, menu_item)
 
     update_data = {
         "menu_item_id": data.menu_item_id,

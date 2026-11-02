@@ -25,7 +25,7 @@ from app.core import settings_store
 from app.api.deps import get_current_user, get_current_owner
 from app.schemas import TokenData, UserRole
 from app.utils.email_sender import send_inventory_report
-from app.utils.units import compatible, convert
+from app.utils.units import IncompatibleUnitError, compatible, convert, normalize
 from app.utils import pricing, usage
 
 router = APIRouter()
@@ -240,6 +240,7 @@ def _check_vendors(db: Session, vendor_ids: set) -> None:
 # Columns that can't hold NULL; sending null for one is a client error, not a 500.
 _REQUIRED_ITEM_FIELDS = ("name", "unit", "min_threshold", "count_mode", "is_active")
 _CENT = Decimal("0.01")
+_PRICE_PLACES = Decimal("0.0001")
 
 def _to_cents(value: Decimal) -> Decimal:
     """Round to what the column holds, but never a positive amount down to 0:
@@ -418,9 +419,14 @@ def set_pack_price(
         raise HTTPException(status_code=404, detail="Item not found")
     if item.is_presence:
         raise HTTPException(status_code=400, detail="A yes/no item has no price")
+    try:
+        normalize(data.pack_unit)
+    except IncompatibleUnitError:
+        raise HTTPException(status_code=400, detail=f"Unknown unit: {data.pack_unit}")
     if compatible(item.unit, data.pack_unit):
-        # kg priced by a 500 g pack: the price is per the item's own unit.
-        item.cost_per_unit = _to_cents(data.price / convert(data.pack_quantity, data.pack_unit, item.unit))
+        # kg priced by a 500 g pack: the price is per the item's own unit, kept to the 4 places the column holds.
+        item.cost_per_unit = (data.price / convert(data.pack_quantity, data.pack_unit, item.unit)).quantize(_PRICE_PLACES, rounding=ROUND_HALF_UP)
+        item.pack_size = item.pack_unit = None
     else:
         # A packet priced by its weight: one packet costs the price, and the pack size bridges the units.
         item.pack_size, item.pack_unit, item.cost_per_unit = data.pack_quantity, data.pack_unit, data.price

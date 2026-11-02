@@ -139,7 +139,7 @@ def test_made_recipe_needs_yield_when_units_differ(client, test_db, owner_header
         "inventory_item_id": made.id, "ingredients": _lines((flour, 100, "g")),
     })
     assert r.status_code == 400
-    assert r.json()["detail"] == "Type how much one batch makes"
+    assert r.json()["detail"].startswith("Type how much one batch makes (Maida is in g")
 
 
 def test_one_id_required(client, test_db, owner_headers, sample_menu_items):
@@ -211,3 +211,53 @@ def test_migration_rebuilds_old_table():
         c.execute(text("INSERT INTO inventory_items VALUES (5)"))
         c.execute(text("INSERT INTO dish_costings (menu_item_id, inventory_item_id, yield_units) VALUES (NULL, 4, 1)"))
         c.execute(text("INSERT INTO dish_costings (menu_item_id, inventory_item_id, yield_units) VALUES (NULL, 5, 1)"))
+
+
+def test_small_unit_pack_price_is_exact(client, test_db, owner_headers, sample_menu_items):
+    paprika = _item(test_db, "Paprika", "g")
+    salt = _item(test_db, "Salt", "g")
+    _pack_price(client, owner_headers, paprika, 99, 52, "g")
+    _pack_price(client, owner_headers, salt, 28, 1000, "g")
+    for item, grams, cost in ((paprika, 52, "99.00"), (salt, 1000, "28.00")):
+        r = client.post(f"{API}/costing/preview", headers=owner_headers, json={
+            "menu_item_id": sample_menu_items[0].id, "yield_units": "1", "ingredients": _lines((item, grams, "g")),
+        })
+        assert Decimal(r.json()["ingredients"][0]["line_cost"]) == Decimal(cost)
+
+
+def test_pack_price_rejects_unknown_unit_and_clears_stale_pack(client, test_db, owner_headers):
+    flour = _item(test_db, "Flour", "kg")
+    flour.pack_size, flour.pack_unit = Decimal(5), "pcs"
+    test_db.commit()
+    r = client.post(f"{API}/inventory/items/{flour.id}/pack-price", headers=owner_headers,
+                    json={"price": "35", "pack_quantity": "500", "pack_unit": "bogus"})
+    assert r.status_code == 400
+    out = _pack_price(client, owner_headers, flour, 35, 500, "g")
+    assert out["pack_size"] is None and out["pack_unit"] is None
+
+
+def test_cost_flows_through_two_levels_and_patch_with_yield(client, test_db, owner_headers, sample_menu_items):
+    pepper = _priced(client, test_db, owner_headers, [("Pepper", 100, 100, "g")])["Pepper"]  # 1 rupee/g
+    mix = _item(test_db, "Spice mix", "g")
+    rub = _item(test_db, "Rub", "g")
+    r = client.post(f"{API}/costing", headers=owner_headers, json={
+        "inventory_item_id": mix.id, "ingredients": _lines((pepper, 100, "g")),
+    })
+    assert r.status_code == 201, r.text  # 100 g costing 100
+    r = client.post(f"{API}/costing", headers=owner_headers, json={
+        "inventory_item_id": rub.id, "ingredients": _lines((mix, 50, "g")),
+    })
+    assert r.status_code == 201, r.text  # 50 g of mix = 50, yield 50
+    rub_costing = r.json()["id"]
+    dish = lambda: client.post(f"{API}/costing/preview", headers=owner_headers, json={
+        "menu_item_id": sample_menu_items[0].id, "yield_units": "1", "ingredients": _lines((rub, 10, "g")),
+    }).json()["ingredients"][0]["line_cost"]
+    assert Decimal(dish()) == Decimal("10.00")
+
+    # Explicit yield on PATCH: the same 50 g now make 100 g, so a gram costs half.
+    r = client.patch(f"{API}/costing/{rub_costing}", headers=owner_headers, json={
+        "inventory_item_id": rub.id, "yield_units": "100", "ingredients": _lines((mix, 50, "g")),
+    })
+    assert r.status_code == 200, r.text
+    assert Decimal(r.json()["yield_units"]) == 100
+    assert Decimal(dish()) == Decimal("5.00")

@@ -36,7 +36,7 @@ class InventoryItem(Base):
     unit = Column(String(20), nullable=False)  # "L", "kg", "pcs", "g", "ml"
     current_quantity = Column(Numeric(10, 2), nullable=False, default=0)
     min_threshold = Column(Numeric(10, 2), nullable=False, default=0)
-    cost_per_unit = Column(Numeric(10, 2), nullable=True)
+    cost_per_unit = Column(Numeric(12, 4), nullable=True)
     category_id = Column(Integer, ForeignKey("inventory_categories.id"), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     sort_order = Column(Integer, nullable=False, default=0, server_default="0")
