@@ -52,6 +52,7 @@ export function unitOptions(item: UnitItem): string[] {
 /** Where a price came from and when, for the line under its rate. */
 export function describeSource(line: Pick<IngredientLine, 'price_source' | 'price_as_of'>): string | null {
   if (line.price_source === 'typed') return 'typed price';
+  if (line.price_source === 'recipe') return 'from its recipe';
   if (line.price_source === 'purchase' && line.price_as_of) {
     const date = new Date(line.price_as_of);
     return `bought ${date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;

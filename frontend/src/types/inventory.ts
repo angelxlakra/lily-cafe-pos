@@ -34,6 +34,9 @@ export interface InventoryItem {
   /** Latest paid purchase's unit price, else the typed price; per the item's unit. */
   current_price?: number | null;
   price_source?: 'purchase' | 'typed' | null;
+  /** Purchase date behind a purchase price. */
+  price_as_of?: string | null;
+  brand?: string | null;
   /** Who it's usually ordered from; groups the order message. */
   default_vendor_id?: number | null;
   created_at: string;
@@ -64,6 +67,7 @@ export interface InventoryItemUpdate {
   pack_size?: number | null;
   pack_unit?: string | null;
   default_vendor_id?: number | null;
+  brand?: string | null;
 }
 
 /** One changed row from the setup grid; only the fields sent change. */
@@ -123,6 +127,8 @@ export interface Purchase {
   pack_count: number | string | null;
   recorded_by: string;
   created_at: string;
+  /** Whether the owner has approved this line's price: pending ones don't move the item's price yet. */
+  price_status?: 'approved' | 'pending' | 'rejected';
 }
 
 /** The owners' columns for one item on a day's sheet, in the item's unit. Null = not worked out. */

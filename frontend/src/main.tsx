@@ -23,6 +23,8 @@ import ToolsPage from './pages/ToolsPage.tsx'
 import CashDayPage from './pages/CashDayPage.tsx'
 import SettingsPage from './pages/SettingsPage.tsx'
 import ProtectedRoute from './components/ProtectedRoute.tsx'
+import OpsLayout, { OpsPlaceholder } from './ops/OpsLayout.tsx'
+import RecipePage from './ops/RecipePage.tsx'
 import './index.css'
 
 // Configure TanStack Query client
@@ -139,6 +141,17 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                   </ProtectedRoute>
                 }
               />
+            </Route>
+
+            {/* Ops pages: their own layout, no POS sidebar */}
+            <Route path="/admin/ops" element={<ProtectedRoute><OpsLayout /></ProtectedRoute>}>
+              <Route index element={<Navigate to="/admin/ops/inventory" replace />} />
+              <Route path="inventory" element={<OpsPlaceholder title="Inventory" />} />
+              <Route path="sheet" element={<OpsPlaceholder title="Daily sheet" />} />
+              <Route path="recipes" element={<ProtectedRoute requiredRole="owner"><OpsPlaceholder title="Recipes" /></ProtectedRoute>} />
+              <Route path="recipes/dish/:menuItemId" element={<ProtectedRoute requiredRole="owner"><RecipePage kind="dish" /></ProtectedRoute>} />
+              <Route path="recipes/made/new" element={<ProtectedRoute requiredRole="owner"><OpsPlaceholder title="New made item" /></ProtectedRoute>} />
+              <Route path="recipes/made/:itemId" element={<ProtectedRoute requiredRole="owner"><RecipePage kind="made" /></ProtectedRoute>} />
             </Route>
 
             {/* Standalone unlisted tool — auth required, but no sidebar chrome */}

@@ -1,0 +1,129 @@
+/* The ops pages: a plain spreadsheet look, deliberately unlike the POS app. All scoped under .ops. */
+.ops {
+  --ops-bg: #fbfaf7;
+  --ops-fg: #1d1b18;
+  --ops-muted: #6b665e;
+  --ops-rule: #dcd7cd;
+  --ops-strong: #1d1b18;
+  --ops-typed: rgba(60, 120, 230, 0.1);
+  --ops-typed-line: rgba(60, 120, 230, 0.45);
+  --ops-bad: #b3261e;
+  --ops-bad-bg: rgba(179, 38, 30, 0.12);
+  --ops-warn-bg: rgba(214, 120, 20, 0.18);
+  --ops-pill: rgba(120, 115, 105, 0.16);
+  --ops-bar: #fff;
+  background: var(--ops-bg);
+  color: var(--ops-fg);
+  min-height: 100vh;
+  font: 14px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+.dark .ops {
+  --ops-bg: #16150f;
+  --ops-fg: #ece8de;
+  --ops-muted: #9c968a;
+  --ops-rule: #34312a;
+  --ops-strong: #ece8de;
+  --ops-typed: rgba(110, 160, 255, 0.14);
+  --ops-typed-line: rgba(110, 160, 255, 0.5);
+  --ops-bad: #ff8a80;
+  --ops-bad-bg: rgba(255, 138, 128, 0.16);
+  --ops-warn-bg: rgba(255, 170, 70, 0.2);
+  --ops-pill: rgba(200, 195, 180, 0.16);
+  --ops-bar: #1e1d16;
+}
+
+.ops *, .ops *::before, .ops *::after { box-sizing: border-box; }
+.ops a { color: inherit; }
+
+/* Top bar */
+.ops-bar {
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  padding: 0 16px; background: var(--ops-bar); border-bottom: 1px solid var(--ops-rule);
+  position: sticky; top: 0; z-index: 20;
+}
+.ops-bar a, .ops-bar button {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px;
+  text-decoration: none; color: var(--ops-muted); font: inherit; background: none; border: 0;
+  border-bottom: 2px solid transparent; cursor: pointer;
+}
+.ops-bar a:hover, .ops-bar button:hover { color: var(--ops-fg); }
+.ops-bar a.active { color: var(--ops-fg); border-bottom-color: var(--ops-fg); font-weight: 600; }
+.ops-bar .spacer { flex: 1; }
+.ops-main { padding: 16px; max-width: 1100px; margin: 0 auto; }
+.ops h1 { font-size: 20px; margin: 0 0 4px; }
+.ops .muted { color: var(--ops-muted); font-size: 12px; }
+
+/* Stat strip */
+.ops-stats { display: flex; gap: 12px 28px; flex-wrap: wrap; margin: 14px 0; align-items: flex-end; }
+.ops-stat > span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ops-muted); }
+.ops-stat > b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+.ops-stat input { width: 90px; font-size: 16px; font-weight: 700; text-align: right; }
+
+/* Tables */
+.ops-wrap { overflow-x: auto; border-top: 1px solid var(--ops-rule); -webkit-overflow-scrolling: touch; }
+.ops-t { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ops-t th {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ops-muted);
+  text-align: left; padding: 8px; border-bottom: 2px solid var(--ops-strong); white-space: nowrap; font-weight: 600;
+}
+.ops-t td { padding: 4px 8px; border-bottom: 1px solid var(--ops-rule); white-space: nowrap; vertical-align: middle; }
+.ops-t .n { text-align: right; font-variant-numeric: tabular-nums; }
+.ops-t th:first-child, .ops-t td:first-child { position: sticky; left: 0; background: var(--ops-bg); z-index: 1; }
+.ops-t tr.tot td { font-weight: 600; border-top: 2px solid var(--ops-strong); }
+.ops-t tr.sub td { color: var(--ops-muted); }
+.ops-t .gap { color: var(--ops-bad); font-style: italic; }
+.ops-t .src { display: block; font-size: 11px; color: var(--ops-muted); }
+
+/* Inputs: typed cells look typed */
+.ops input, .ops select {
+  font: inherit; color: inherit; min-height: 36px; padding: 0 8px;
+  border: 1px solid var(--ops-typed-line); border-radius: 4px; background: var(--ops-typed);
+}
+.ops input:focus-visible, .ops select:focus-visible, .ops button:focus-visible, .ops a:focus-visible {
+  outline: 2px solid var(--ops-fg); outline-offset: 1px;
+}
+.ops .cell-in { width: 100%; min-width: 110px; }
+.ops .cell-in.num { text-align: right; font-variant-numeric: tabular-nums; }
+.ops .amount { display: inline-flex; gap: 4px; }
+.ops .amount input { width: 72px; text-align: right; }
+.ops .err { color: var(--ops-bad); font-size: 11px; display: block; white-space: normal; }
+
+/* Buttons and pills */
+.ops .btn {
+  min-height: 44px; padding: 0 16px; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--ops-fg); background: var(--ops-fg); color: var(--ops-bg);
+}
+.ops .btn:disabled { opacity: 0.45; cursor: default; }
+.ops .btn.ghost { background: none; color: var(--ops-fg); }
+.ops .icon-btn {
+  min-height: 44px; min-width: 44px; border: 0; background: none; color: var(--ops-muted); cursor: pointer; font-size: 16px;
+}
+.ops .icon-btn:hover { color: var(--ops-bad); }
+.ops .mode {
+  min-height: 36px; min-width: 36px; border-radius: 4px; border: 1px solid var(--ops-typed-line);
+  background: var(--ops-typed); color: inherit; font: inherit; cursor: pointer;
+}
+.ops .pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; background: var(--ops-pill); }
+.ops .pill.warn { background: var(--ops-warn-bg); }
+.ops .pill.bad { background: var(--ops-bad-bg); }
+
+/* Ingredient picker */
+.ops-pick { position: relative; }
+.ops-pick ul {
+  position: absolute; left: 0; top: 100%; z-index: 10; margin: 2px 0 0; padding: 4px; list-style: none;
+  min-width: 260px; max-height: 280px; overflow-y: auto; background: var(--ops-bar);
+  border: 1px solid var(--ops-rule); border-radius: 6px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+.ops-pick li button {
+  display: flex; width: 100%; justify-content: space-between; gap: 8px; align-items: center;
+  min-height: 44px; padding: 0 10px; text-align: left; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; border-radius: 4px;
+}
+.ops-pick li button:hover, .ops-pick li button:focus-visible { background: var(--ops-pill); }
+
+.ops-actions { display: flex; gap: 8px; align-items: center; margin: 16px 0; flex-wrap: wrap; }
+.ops-used a { margin-right: 10px; }
+
+@media (max-width: 640px) {
+  .ops-main { padding: 12px; }
+  .ops-stats { gap: 10px 20px; }
+}
