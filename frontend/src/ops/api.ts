@@ -111,6 +111,7 @@ export function useRecipePreview(draft: DishCostingIn | null) {
     enabled: draft !== null,
     placeholderData: keepPreviousData,
     staleTime: 0,
+    retry: false,
   });
 }
 
@@ -143,7 +144,7 @@ export interface PackPriceIn {
 export function useSetBrand() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, brand }: { id: number; brand: string }) => inventoryApi.updateItem(id, { brand }),
+    mutationFn: ({ id, brand }: { id: number; brand: string | null }) => inventoryApi.updateItem(id, { brand }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: inventoryKeys.all }),
   });
 }

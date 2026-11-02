@@ -125,6 +125,9 @@
 .ops-used a { margin-right: 10px; }
 
 @media (max-width: 640px) {
+  .ops input, .ops select, .ops .mode { min-height: 44px; }
+  .ops .mode { min-width: 44px; }
+  .ops-t td { padding: 2px 8px; }
   .ops-main { padding: 12px; }
   .ops-stats { gap: 10px 20px; }
 }

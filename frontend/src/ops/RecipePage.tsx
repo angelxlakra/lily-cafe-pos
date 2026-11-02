@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useInventoryItems } from '../hooks/useInventory';
+import { useUpdateMenuItem } from '../hooks/useMenu';
+import { costingKeys } from '../hooks/useCosting';
 import { toast } from '../utils/toast';
 import { describeApiError } from '../utils/apiError';
 import { describeSource, parseQuantity, percent, rupees, unitOptions } from '../utils/costing';
@@ -69,6 +72,7 @@ export default function RecipePage({ kind }: { kind: 'dish' | 'made' }) {
       subjectId={subjectId}
       name={name}
       recipe={recipeQuery.data ?? null}
+      sellingPrice={row?.selling_price ?? recipeQuery.data?.breakdown.selling_price ?? null}
       items={items.data.items}
       overviewRows={overview.data.rows}
       defaults={defaults.data}
@@ -81,12 +85,14 @@ interface EditorProps {
   subjectId: number;
   name: string;
   recipe: Recipe | null;
+  /** The menu price in rupees; dishes only. */
+  sellingPrice: number | string | null;
   items: InventoryItem[];
   overviewRows: OverviewRow[];
   defaults: Record<OverheadKind, OverheadOverride>;
 }
 
-function Editor({ kind, subjectId, name, recipe, items, overviewRows, defaults }: EditorProps) {
+function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRows, defaults }: EditorProps) {
   const isMade = kind === 'made';
   const byId = useMemo(() => new Map(items.map(i => [i.id, i])), [items]);
   const madeIds = useMemo(() => new Set(overviewRows.filter(r => r.kind === 'made').map(r => r.inventory_item_id)), [overviewRows]);
@@ -113,6 +119,23 @@ function Editor({ kind, subjectId, name, recipe, items, overviewRows, defaults }
     }
     return start;
   });
+  const [savedId, setSavedId] = useState<number | null>(recipe?.id ?? null);
+  const [priceInput, setPriceInput] = useState(sellingPrice == null ? '' : String(Number(sellingPrice)));
+  const typedPrice = parseAmount(priceInput);
+  const updateMenu = useUpdateMenuItem();
+  const queryClient = useQueryClient();
+  const commitPrice = () => {
+    if (typedPrice === null || typedPrice <= 0) return;
+    const paise = Math.round(typedPrice * 100);
+    if (paise === Math.round(Number(sellingPrice ?? 0) * 100)) return;
+    updateMenu.mutate(
+      { id: subjectId, data: { price: paise } },
+      {
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: costingKeys.all }),
+        onError: error => toast.error(describeApiError(error)),
+      },
+    );
+  };
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const pickerRef = useRef<HTMLInputElement>(null);
 
@@ -175,26 +198,25 @@ function Editor({ kind, subjectId, name, recipe, items, overviewRows, defaults }
   const onSave = () => {
     if (!payload) return;
     save.mutate(
-      { id: recipe?.id ?? null, data: payload },
-      { onSuccess: () => toast.success('Saved'), onError: error => toast.error(describeApiError(error)) },
+      { id: savedId, data: payload },
+      { onSuccess: saved => { setSavedId(saved.id); toast.success('Saved'); }, onError: error => toast.error(describeApiError(error)) },
     );
   };
 
-  // The server's costed lines follow the lines sent, in order.
-  const costed = (lineIndexInUsable: number, itemId: number): IngredientLine | undefined => {
-    const all = breakdown?.ingredients;
-    if (!all) return undefined;
-    return all.length === usable.length ? all[lineIndexInUsable] : all.find(l => l.inventory_item_id === itemId);
-  };
+  // Matched by item, not position: the preview can be a debounce behind the rows.
+  const costed = (itemId: number): IngredientLine | undefined => breakdown?.ingredients.find(l => l.inventory_item_id === itemId);
 
   const lower = breakdown ? !breakdown.is_complete : false;
   const money = (value: number | string | null | undefined) => (value == null ? '—' : `${lower ? '≥ ' : ''}${rupees(value)}`);
   const unitLabel = isMade ? (recipe?.unit ?? ownItem?.unit ?? '') : 'portion';
-  const margin = breakdown?.margin_percent == null ? null : Number(breakdown.margin_percent);
+  // The typed menu price counts at once; the server's margin catches up once it is saved.
+  const price = isMade ? null : typedPrice !== null && typedPrice > 0 ? typedPrice : breakdown?.selling_price == null ? null : Number(breakdown.selling_price);
+  const perUnit = breakdown ? Number(breakdown.cost_per_unit) : 0;
+  const margin = price ? ((price - perUnit) / price) * 100 : null;
+  const foodCost = price && breakdown ? (Number(breakdown.raw_cost_per_unit) / price) * 100 : null;
   const target = breakdown?.target_margin_percent == null ? null : Number(breakdown.target_margin_percent);
   const usedIn = recipe?.used_in ?? [];
 
-  let usableIndex = -1;
   return (
     <div>
       <p className="muted"><Link to="/admin/ops/recipes">← Recipes</Link></p>
@@ -215,7 +237,16 @@ function Editor({ kind, subjectId, name, recipe, items, overviewRows, defaults }
         <div className="ops-stat"><span>{isMade ? `Cost per ${unitLabel}` : 'Cost per portion'}</span><b>{breakdown ? money(breakdown.cost_per_unit) : '—'}</b></div>
         {!isMade && (
           <>
-            <div className="ops-stat"><span>Menu price</span><b>{breakdown?.selling_price == null ? '—' : rupees(breakdown.selling_price)}</b></div>
+            <div className="ops-stat"><span>Menu price</span><input
+                id="menu-price"
+                inputMode="decimal"
+                aria-label="Menu price in rupees"
+                placeholder="₹"
+                value={priceInput}
+                onChange={event => setPriceInput(event.target.value)}
+                onBlur={commitPrice}
+                onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+              /></div>
             <div className="ops-stat">
               <span>Margin</span>
               <b>
@@ -231,9 +262,9 @@ function Editor({ kind, subjectId, name, recipe, items, overviewRows, defaults }
         <p className="ops-used muted">
           Used in:{' '}
           {usedIn.map(u => {
-            const target = overviewRows.find(r => r.costing_id === u.costing_id);
-            const to = u.kind === 'dish' ? `/admin/ops/recipes/dish/${target?.menu_item_id}` : `/admin/ops/recipes/made/${target?.inventory_item_id}`;
-            return target ? <Link key={u.costing_id} to={to}>{u.name}</Link> : <span key={u.costing_id}>{u.name} </span>;
+            const linkTarget = overviewRows.find(r => r.costing_id === u.costing_id);
+            const to = u.kind === 'dish' ? `/admin/ops/recipes/dish/${linkTarget?.menu_item_id}` : `/admin/ops/recipes/made/${linkTarget?.inventory_item_id}`;
+            return linkTarget ? <Link key={u.costing_id} to={to}>{u.name}</Link> : <span key={u.costing_id}>{u.name} </span>;
           })}
         </p>
       )}
@@ -251,8 +282,7 @@ function Editor({ kind, subjectId, name, recipe, items, overviewRows, defaults }
               const item = byId.get(line.itemId);
               const presence = isPresence(item);
               const ok = presence || parseQuantity(line.quantity) !== null;
-              if (ok && item) usableIndex += 1;
-              const bl = ok && item ? costed(usableIndex, line.itemId) : undefined;
+              const bl = ok && item ? costed(line.itemId) : undefined;
               const lineIsMade = madeIds.has(line.itemId);
               const options = item ? unitOptions(item) : [line.unit];
               if (!options.includes(line.unit)) options.push(line.unit);
@@ -275,8 +305,8 @@ function Editor({ kind, subjectId, name, recipe, items, overviewRows, defaults }
                         placeholder="—"
                         onBlur={event => {
                           const brand = event.target.value.trim();
-                          if (brand && brand !== (item.brand ?? '')) {
-                            setBrand.mutate({ id: item.id, brand }, { onError: error => toast.error(describeApiError(error)) });
+                          if (brand !== (item.brand ?? '')) {
+                            setBrand.mutate({ id: item.id, brand: brand || null }, { onError: error => toast.error(describeApiError(error)) });
                           }
                         }}
                       />
@@ -342,7 +372,7 @@ function Editor({ kind, subjectId, name, recipe, items, overviewRows, defaults }
                 <tr className="sub">
                   <td colSpan={4}>Per portion</td>
                   <td className="n">{money(breakdown.raw_cost_per_unit)}</td>
-                  <td className="n">{breakdown.food_cost_percent != null && breakdown.selling_price != null ? `${Number(breakdown.food_cost_percent).toFixed(1)}% of ${rupees(breakdown.selling_price)}` : ''}</td>
+                  <td className="n">{foodCost !== null && price ? `${foodCost.toFixed(1)}% of ${rupees(price)}` : ''}</td>
                   <td />
                 </tr>
                 {OVERHEADS.map(({ kind: k, label }) => {
@@ -391,10 +421,11 @@ function Editor({ kind, subjectId, name, recipe, items, overviewRows, defaults }
       <p className="muted">Blue cells are typed. Everything else is worked out. A made item&apos;s cost per {isMade ? unitLabel : 'unit'} comes from its own recipe.</p>
 
       <div className="ops-actions">
-        <button type="button" className="btn" onClick={onSave} disabled={!payload || incomplete > 0 || save.isPending}>
+        <button type="button" className="btn" onClick={onSave} disabled={!payload || incomplete > 0 || save.isPending || preview.isError}>
           {save.isPending ? 'Saving…' : 'Save recipe'}
         </button>
         {incomplete > 0 && <span className="muted">Some rows need an amount first.</span>}
+        {preview.isError && <span className="err">Can&apos;t cost this yet: {describeApiError(preview.error)}</span>}
         {!payload && <span className="muted">Say how many portions a batch makes.</span>}
       </div>
     </div>
