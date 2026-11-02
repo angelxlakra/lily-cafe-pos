@@ -380,3 +380,32 @@
 @media (prefers-reduced-motion: reduce) {
   .count-fold-box, .count-bar > div, .count-row { transition: none; }
 }
+
+/* Order page */
+.ops-order > p { margin: 4px 0 0; }
+.ops-order .ops-approve h2 { font-size: 17px; margin: 0; }
+.ops-order .ops-approve .top p { margin: 0; }
+.ops-order .linkish { min-height: 44px; padding: 0 4px; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
+.ops-order-lines { list-style: none; margin: 8px 0 0; padding: 0; }
+.ops-order-lines li { display: flex; align-items: center; gap: 10px; min-height: 52px; border-bottom: 1px solid var(--ops-rule); flex-wrap: wrap; }
+.ops-order-lines input[type='checkbox'] { width: 24px; min-height: 24px; height: 24px; margin: 0 4px; padding: 0; accent-color: var(--ops-fg); }
+.ops-order-lines label { flex: 1; min-width: 140px; display: block; }
+.ops-order-lines label .nm { display: block; font-weight: 600; }
+.ops-order-lines label.left-out .nm { text-decoration: line-through; color: var(--ops-muted); }
+.ops-order-lines .qty { display: inline-flex; align-items: center; gap: 6px; }
+.ops-order-lines .qty input { width: 76px; min-height: 44px; text-align: right; font-variant-numeric: tabular-nums; }
+.ops-order-lines .qty input:disabled { opacity: 0.5; }
+.ops-order-lines .qty .muted { width: 48px; }
+.ops-msg { position: relative; margin-top: 12px; }
+.ops-msg pre {
+  margin: 0; padding: 12px 84px 12px 12px; white-space: pre-wrap; overflow-wrap: anywhere;
+  font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--ops-bg); border: 1px solid var(--ops-rule); border-radius: 6px;
+}
+.ops-msg .btn { position: absolute; top: 4px; right: 4px; min-width: 72px; padding: 0 12px; }
+
+/* Stock log */
+.ops-log td.item, .ops-log td.note { white-space: normal; min-width: 140px; }
+.ops-log td .src { white-space: nowrap; }
+.ops-form.full { max-width: none; }
+.count-sheet .ops-form label { color: var(--ops-fg); }

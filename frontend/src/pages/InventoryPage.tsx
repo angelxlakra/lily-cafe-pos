@@ -5,10 +5,10 @@ import { useSidebar } from '../context/SidebarContext';
 import { useAuth } from '../hooks/useAuth';
 import DailyCountTab from '../components/inventory/DailyCountTab';
 import PurchaseSheetTab from '../components/inventory/PurchaseSheetTab';
-import OrderTab from '../components/inventory/OrderTab';
+import OrderTab from '../ops/OrderPage';
 import InventoryItemsTab from '../components/inventory/InventoryItemsTab';
 import InventoryCategoriesTab from '../components/inventory/InventoryCategoriesTab';
-import InventoryTransactionsTab from '../components/inventory/InventoryTransactionsTab';
+import InventoryTransactionsTab from '../ops/StockLogPage';
 
 type Tab = 'daily-count' | 'order' | 'purchases' | 'items' | 'categories' | 'transactions';
 
