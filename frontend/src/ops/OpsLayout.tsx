@@ -17,6 +17,7 @@ export default function OpsLayout() {
           <NavLink to="/admin/ops/sheet" className={link}>Daily sheet</NavLink>
           <NavLink to="/admin/ops/order" className={link}>Order</NavLink>
           <NavLink to="/admin/ops/log" className={link}>Stock log</NavLink>
+          {isOwner && <NavLink to="/admin/ops/setup" className={link}>Setup</NavLink>}
           {isOwner && <NavLink to="/admin/ops/recipes" className={link}>Recipes</NavLink>}
         </div>
         <button type="button" onClick={toggleTheme}>

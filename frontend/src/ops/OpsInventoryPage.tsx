@@ -132,7 +132,7 @@ export default function OpsInventoryPage() {
                 </button>
               ))}
             </div>
-            {isOwner && <Link to="/admin/inventory?tab=items&edit=all" className="btn ghost ops-link-btn">Edit all</Link>}
+            {isOwner && <Link to="/admin/ops/setup" className="btn ghost ops-link-btn">Edit all</Link>}
           </div>
           <div className="ops-wrap">
             <table className="ops-t ops-inv-t">

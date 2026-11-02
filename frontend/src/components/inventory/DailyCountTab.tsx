@@ -11,7 +11,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ClipboardText, Upload } from '@phosphor-icons/react';
 import { inventoryApi } from '../../api/inventory';
-import TemplateImportModal from './TemplateImportModal';
+import TemplateImportModal from '../../ops/TemplateImportModal';
 import ConfirmDialog from '../ConfirmDialog';
 import LoadingSpinner from '../LoadingSpinner';
 import { useAuth } from '../../hooks/useAuth';

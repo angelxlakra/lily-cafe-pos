@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, PencilSimple, Trash, ListNumbers } from '@phosphor-icons/react';
-import CountOrderEditor from './CountOrderEditor';
+import CountOrderEditor from '../../ops/CountOrderEditor';
 import ConfirmDialog from '../ConfirmDialog';
 import LoadingSpinner from '../LoadingSpinner';
 import { inventoryApi } from '../../api/inventory';

@@ -28,6 +28,7 @@ import OpsInventoryPage from './ops/OpsInventoryPage.tsx'
 import DailySheetPage from './ops/DailySheetPage.tsx'
 import OpsOrderPage from './ops/OrderPage.tsx'
 import StockLogPage from './ops/StockLogPage.tsx'
+import SetupPage from './ops/SetupPage.tsx'
 import RecipePage from './ops/RecipePage.tsx'
 import RecipesListPage from './ops/RecipesListPage.tsx'
 import NewMadeItemPage from './ops/NewMadeItemPage.tsx'
@@ -156,6 +157,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route path="sheet" element={<DailySheetPage />} />
               <Route path="order" element={<OpsOrderPage />} />
               <Route path="log" element={<StockLogPage />} />
+              <Route path="setup" element={<ProtectedRoute requiredRole="owner"><SetupPage /></ProtectedRoute>} />
               <Route path="recipes" element={<ProtectedRoute requiredRole="owner"><RecipesListPage /></ProtectedRoute>} />
               <Route path="recipes/dish/:menuItemId" element={<ProtectedRoute requiredRole="owner"><RecipePage kind="dish" /></ProtectedRoute>} />
               <Route path="recipes/made/new" element={<ProtectedRoute requiredRole="owner"><NewMadeItemPage /></ProtectedRoute>} />

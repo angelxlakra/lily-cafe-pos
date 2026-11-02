@@ -7,6 +7,7 @@
  */
 
 import { useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useAuth } from '../hooks/useAuth';
@@ -21,6 +22,7 @@ import type { InventoryItem, Vendor } from '../types/inventory';
 
 export default function OrderPage({ onSetUpVendors }: { onSetUpVendors?: () => void }) {
   const { isOwner } = useAuth();
+  const navigate = useNavigate();
   const { data: itemsResponse, isLoading, error } = useQuery({
     queryKey: ['inventory', 'items', { is_active: true }],
     queryFn: () => inventoryApi.getItems({ is_active: true }),
@@ -66,7 +68,7 @@ export default function OrderPage({ onSetUpVendors }: { onSetUpVendors?: () => v
             if (next.has(id)) next.delete(id); else next.add(id);
             return next;
           })}
-          onSetUpVendors={onSetUpVendors}
+          onSetUpVendors={onSetUpVendors ?? (() => navigate('/admin/ops/setup'))}
         />
       ))}
     </div>
@@ -132,7 +134,7 @@ function VendorOrder({ group, isOwner, quantities, left, onQuantity, onToggle, o
               <p className="muted">
                 No usual vendor set.{' '}
                 {isOwner && onSetUpVendors && (
-                  <button type="button" onClick={onSetUpVendors} className="linkish">Set vendors in Items</button>
+                  <button type="button" onClick={onSetUpVendors} className="linkish">Set vendors in Setup</button>
                 )}
               </p>
             )}
