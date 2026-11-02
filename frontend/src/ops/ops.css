@@ -196,3 +196,41 @@
 
 .ops-similar { list-style: none; margin: 0; padding: 0; }
 .ops-similar a { display: flex; align-items: center; min-height: 44px; }
+
+/* Daily sheet */
+.ops .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ops-day { margin: 10px 0; }
+.ops-day .btn { min-width: 44px; padding: 0 12px; }
+.ops-sheet { min-width: 56rem; }
+.ops-sheet td span.src, .ops-sheet td span.err { display: block; }
+.ops .sheet-cell { width: 76px; text-align: right; font-variant-numeric: tabular-nums; }
+.ops-sheet td.up { color: var(--ops-bad); font-weight: 600; }
+.ops-line {
+  display: grid; grid-template-columns: minmax(200px, 2fr) repeat(3, minmax(80px, 1fr)) minmax(120px, 1.2fr) auto auto;
+  gap: 8px; align-items: end; margin: 12px 0; position: relative;
+}
+.ops-line label { display: grid; gap: 2px; font-size: 11px; color: var(--ops-muted); }
+.ops-line label input { font-size: 14px; color: var(--ops-fg); width: 100%; }
+.ops-line .wide { grid-column: 1 / -1; margin: 0; }
+.ops-line .item { position: relative; }
+.ops-line .item ul { position: absolute; left: 0; right: 0; top: 100%; z-index: 15; max-width: none; }
+.ops-line .item li button[aria-selected='true'] { background: var(--ops-pill); }
+.ops-in { text-align: right; min-width: 70px; }
+.ops-in span { display: block; font-size: 11px; color: var(--ops-muted); }
+.ops-in b { font-variant-numeric: tabular-nums; }
+.ops-line .btn.add { min-width: 100px; }
+.ops-jump { border: 1px solid var(--ops-bad); border-radius: 6px; padding: 8px 12px; background: var(--ops-warn-bg); }
+.ops-approve { margin: 16px 0; }
+.ops-approve h2 { font-size: 15px; margin: 0 0 8px; }
+.ops-approve .chg { border: 1px solid var(--ops-rule); border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; background: var(--ops-bar); }
+.ops-approve .top { display: flex; gap: 8px 16px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.ops-approve .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.ops-approve ul { margin: 6px 0 0; padding-left: 18px; }
+
+@media (max-width: 640px) {
+  .ops-line { grid-template-columns: 1fr 1fr; }
+  .ops-line .item, .ops-line .btn.add { grid-column: 1 / -1; }
+  .ops-line label input { font-size: 16px; }
+  .ops-line .item ul { position: static; }
+  .ops-approve .acts, .ops-approve .acts .btn { width: 100%; }
+}
