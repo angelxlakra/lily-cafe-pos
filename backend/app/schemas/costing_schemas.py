@@ -192,6 +192,7 @@ class OverviewRow(BaseModel):
     selling_price: Optional[Decimal] = None
     margin_percent: Optional[Decimal] = None
     target_margin_percent: Optional[Decimal] = None
+    margin_ceiling: Optional[Decimal] = None   # best margin possible while prices are missing
     missing_count: int = 0
     cost_last_week: Optional[Decimal] = None
     status: Literal["below_target", "missing_prices", "no_recipe", "on_target", "costed"]

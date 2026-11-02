@@ -75,7 +75,7 @@ def _build_ingredient_inputs(ingredients: list[DishCostingIngredient], price_ove
             continue
         price = overrides.get(item.id, current.price if current else item.cost_per_unit)
         source = None if overridden or current is None else current.source
-        as_of = None if overridden or current is None else current.as_of
+        price_as_of = None if overridden or current is None else current.as_of
         inputs.append(costing_utils.IngredientInput(
             item_id=item.id, name=item.name, quantity=Decimal(row.quantity), unit=row.unit, stock_unit=item.unit, 
             cost_per_unit=(
@@ -85,7 +85,7 @@ def _build_ingredient_inputs(ingredients: list[DishCostingIngredient], price_ove
                 ),
                 is_active=item.is_active,
                 pack_size=item.pack_size, pack_unit=item.pack_unit, is_presence=item.is_presence,
-                price_source=source, price_as_of=as_of,
+                price_source=source, price_as_of=price_as_of,
         ))
     return inputs
 
@@ -286,6 +286,7 @@ def get_overview(db: Session = Depends(get_db), current_user: TokenData = _OWNER
             category=(menu_item.category.name if menu_item.category else None) if menu_item else (made.category.name if made.category else None),
             cost_per_unit=b.cost_per_unit, unit=made.unit if made else None,
             selling_price=b.selling_price, margin_percent=b.margin_percent if b.is_complete else None, target_margin_percent=b.target_margin_percent,
+            margin_ceiling=(((b.selling_price - b.cost_per_unit) / b.selling_price * 100).quantize(Decimal("0.01")) if not b.is_complete and b.selling_price else None),
             missing_count=missing, cost_last_week=last_week(costing, menu_item), status=state,
         ))
 
@@ -567,7 +568,7 @@ def _get_reprice_impacts(db: Session, price_overrides: dict[int, Decimal]):
     made_impacts = []
     for costing in db.query(DishCosting).filter(DishCosting.inventory_item_id.isnot(None)).all():
         item = costing.made_item
-        if item.id in price_overrides or _passes_through(item, price_overrides, reach) is None:
+        if not item.is_active or item.id in price_overrides or _passes_through(item, price_overrides, reach) is None:
             continue
         made_impacts.append(costing_schemas.MadeImpact(
             item_id=item.id, name=item.name, unit=item.unit,

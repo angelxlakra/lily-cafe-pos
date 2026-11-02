@@ -138,3 +138,35 @@ def test_overview_survives_retired_made_item_and_deleted_menu_item(client, test_
 
     body = _overview(client, owner_headers)
     assert [r["name"] for r in body["rows"]] == ["Bao plate"]
+
+
+def test_last_week_prices_made_item_after_purchase_priced_line(client, test_db, owner_headers, sample_categories):
+    onion = _item(test_db, "Onion", "kg")
+    flour = _item(test_db, "Flour", "kg")
+    bao = _item(test_db, "Bao buns", "pcs")
+    _recipe(client, owner_headers, bao, [(flour, 1, "kg")], yield_units="1")
+    dish = _menu(test_db, sample_categories, "Onion bao")
+    _recipe(client, owner_headers, dish, [(onion, 1, "kg"), (bao, 1, "pcs")], **NO_OVERHEADS)
+    for item, totals in ((onion, ("10", "10")), (flour, ("20", "50"))):
+        for total in totals:
+            r = client.post(f"{API}/inventory/transactions/purchase", headers=owner_headers, json={
+                "items": [{"item_id": item.id, "quantity": "1", "total_amount": total}]})
+            assert r.status_code == 201, r.text
+    for item in (onion, flour):
+        first = test_db.query(InventoryTransaction).filter_by(item_id=item.id).order_by(InventoryTransaction.id).first()
+        first.price_reviewed_at = utcnow() - timedelta(days=8)
+    test_db.commit()
+
+    row = next(r for r in _overview(client, owner_headers)["rows"] if r["name"] == "Onion bao")
+    assert _d(row["cost_per_unit"]) == 60 and _d(row["cost_last_week"]) == 30
+
+
+def test_incomplete_row_shows_partial_cost_and_margin_ceiling(client, test_db, owner_headers, sample_categories):
+    flour = _item(test_db, "Flour", "kg", Decimal("100"))
+    saffron = _item(test_db, "Saffron", "g")
+    dish = _menu(test_db, sample_categories, "Saffron bowl", price=20000)
+    _recipe(client, owner_headers, dish, [(flour, 1, "kg"), (saffron, 1, "g")], **NO_OVERHEADS)
+
+    (row,) = _overview(client, owner_headers)["rows"]
+    assert row["status"] == "missing_prices" and row["margin_percent"] is None
+    assert _d(row["cost_per_unit"]) == 100 and _d(row["margin_ceiling"]) == 50
