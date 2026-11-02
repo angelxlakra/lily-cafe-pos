@@ -25,6 +25,8 @@ import SettingsPage from './pages/SettingsPage.tsx'
 import ProtectedRoute from './components/ProtectedRoute.tsx'
 import OpsLayout, { OpsPlaceholder } from './ops/OpsLayout.tsx'
 import RecipePage from './ops/RecipePage.tsx'
+import RecipesListPage from './ops/RecipesListPage.tsx'
+import NewMadeItemPage from './ops/NewMadeItemPage.tsx'
 import './index.css'
 
 // Configure TanStack Query client
@@ -148,9 +150,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route index element={<Navigate to="/admin/ops/inventory" replace />} />
               <Route path="inventory" element={<OpsPlaceholder title="Inventory" />} />
               <Route path="sheet" element={<OpsPlaceholder title="Daily sheet" />} />
-              <Route path="recipes" element={<ProtectedRoute requiredRole="owner"><OpsPlaceholder title="Recipes" /></ProtectedRoute>} />
+              <Route path="recipes" element={<ProtectedRoute requiredRole="owner"><RecipesListPage /></ProtectedRoute>} />
               <Route path="recipes/dish/:menuItemId" element={<ProtectedRoute requiredRole="owner"><RecipePage kind="dish" /></ProtectedRoute>} />
-              <Route path="recipes/made/new" element={<ProtectedRoute requiredRole="owner"><OpsPlaceholder title="New made item" /></ProtectedRoute>} />
+              <Route path="recipes/made/new" element={<ProtectedRoute requiredRole="owner"><NewMadeItemPage /></ProtectedRoute>} />
               <Route path="recipes/made/:itemId" element={<ProtectedRoute requiredRole="owner"><RecipePage kind="made" /></ProtectedRoute>} />
             </Route>
 

@@ -139,3 +139,57 @@
   .ops-stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .ops-stat input { width: 100%; max-width: 140px; }
 }
+
+/* Recipes list */
+.ops-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; position: relative; }
+.ops-filters .grow { flex: 1; min-width: 180px; }
+.ops .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.ops .chip {
+  min-height: 36px; padding: 0 12px; border-radius: 18px; border: 1px solid var(--ops-rule);
+  background: var(--ops-pill); color: inherit; font: inherit; cursor: pointer;
+}
+.ops .chip.on { background: var(--ops-fg); color: var(--ops-bg); border-color: var(--ops-fg); }
+.ops .pill.ok { background: rgba(39, 134, 74, 0.18); }
+.ops .pill.made { background: rgba(80, 140, 255, 0.2); }
+.ops-t td.up { color: var(--ops-bad); }
+.ops-t td.down { color: #1e7a45; }
+.dark .ops-t td.down { color: #7ddc9b; }
+.ops-list tr.click { cursor: pointer; }
+.ops-list tr.click:hover td { background: var(--ops-pill); }
+.ops-list td.name a { text-decoration: none; font-weight: 600; }
+.ops-new { position: relative; }
+.ops-menu {
+  position: absolute; right: 0; top: 100%; margin-top: 4px; z-index: 10; min-width: 240px; padding: 4px;
+  list-style: none; background: var(--ops-bar); border: 1px solid var(--ops-rule); border-radius: 6px;
+}
+.ops-menu ul { margin: 4px 0 0; padding: 0; list-style: none; max-height: 280px; overflow-y: auto; }
+.ops-menu input { width: 100%; }
+.ops-menu li button {
+  display: flex; width: 100%; justify-content: space-between; gap: 8px; align-items: center; min-height: 44px;
+  padding: 0 10px; text-align: left; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; border-radius: 4px;
+}
+.ops-menu li button:hover, .ops-menu li button:focus-visible { background: var(--ops-pill); }
+.ops-menu .pad { padding: 10px; }
+.ops-form { max-width: 360px; display: grid; gap: 12px; }
+.ops-form label { display: grid; gap: 4px; font-size: 12px; color: var(--ops-muted); }
+.ops-form input, .ops-form select { min-height: 44px; color: var(--ops-fg); font-size: 16px; }
+.ops .ops-link-btn { display: inline-flex; align-items: center; text-decoration: none; }
+
+@media (max-width: 640px) {
+  .ops .chip { min-height: 44px; }
+  .ops-new, .ops-new .btn { width: 100%; }
+  .ops-menu { left: 0; right: 0; }
+  .ops-list thead { display: none; }
+  .ops-list, .ops-list tbody { display: block; }
+  .ops-list tr.click {
+    display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0 8px;
+    padding: 6px 0; border-bottom: 1px solid var(--ops-rule);
+  }
+  .ops-list td { display: block; padding: 0 8px; border: 0; white-space: normal; position: static; background: none; text-align: left; }
+  .ops-list td.name { grid-column: 1 / 4; grid-row: 1; font-size: 15px; }
+  .ops-list td.name a { display: flex; align-items: center; min-height: 44px; }
+  .ops-list td.status { grid-column: 4; grid-row: 1; align-self: center; }
+  .ops-list td.type { display: none; }
+  .ops-list td[data-l]::before { content: attr(data-l); display: block; font-size: 10px; text-transform: uppercase; color: var(--ops-muted); }
+  .ops-list td.cost, .ops-list td.price, .ops-list td.margin, .ops-list td.week { grid-row: 2; }
+}
