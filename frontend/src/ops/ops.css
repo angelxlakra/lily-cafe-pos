@@ -48,7 +48,8 @@
 }
 .ops-bar a:hover, .ops-bar button:hover { color: var(--ops-fg); }
 .ops-bar a.active { color: var(--ops-fg); border-bottom-color: var(--ops-fg); font-weight: 600; }
-.ops-bar .spacer { flex: 1; }
+.ops-links { display: flex; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.ops-links a { white-space: nowrap; }
 .ops-main { padding: 16px; max-width: 1100px; margin: 0 auto; }
 .ops h1 { font-size: 20px; margin: 0 0 4px; }
 .ops .muted { color: var(--ops-muted); font-size: 12px; }
@@ -129,5 +130,9 @@
   .ops .mode { min-width: 44px; }
   .ops-t td { padding: 2px 8px; }
   .ops-main { padding: 12px; }
-  .ops-stats { gap: 10px 20px; }
+  .ops-bar { flex-wrap: nowrap; padding: 0 8px; }
+  .ops-bar button, .ops-bar a { padding: 0 10px; }
+  .ops-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; align-items: start; }
+  .ops-stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .ops-stat input { width: 100%; max-width: 140px; }
 }

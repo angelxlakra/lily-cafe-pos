@@ -11,12 +11,15 @@ export default function OpsLayout() {
   return (
     <div className="ops">
       <nav className="ops-bar" aria-label="Ops">
-        <NavLink to="/admin/ops/inventory" className={link}>Inventory</NavLink>
-        <NavLink to="/admin/ops/sheet" className={link}>Daily sheet</NavLink>
-        {isOwner && <NavLink to="/admin/ops/recipes" className={link}>Recipes</NavLink>}
-        <span className="spacer" />
-        <button type="button" onClick={toggleTheme}>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</button>
-        <NavLink to="/admin/active-orders">Back to admin</NavLink>
+        <div className="ops-links">
+          <NavLink to="/admin/ops/inventory" className={link}>Inventory</NavLink>
+          <NavLink to="/admin/ops/sheet" className={link}>Daily sheet</NavLink>
+          {isOwner && <NavLink to="/admin/ops/recipes" className={link}>Recipes</NavLink>}
+        </div>
+        <button type="button" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+          {theme === 'dark' ? 'Light' : 'Dark'}
+        </button>
+        <NavLink to="/admin/active-orders" aria-label="Back to admin">Admin</NavLink>
       </nav>
       <main className="ops-main">
         <Outlet />

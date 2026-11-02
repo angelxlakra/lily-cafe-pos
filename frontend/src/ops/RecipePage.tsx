@@ -121,17 +121,18 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
   });
   const [savedId, setSavedId] = useState<number | null>(recipe?.id ?? null);
   const [priceInput, setPriceInput] = useState(sellingPrice == null ? '' : String(Number(sellingPrice)));
+  const [priceDirty, setPriceDirty] = useState(false);
   const typedPrice = parseAmount(priceInput);
   const updateMenu = useUpdateMenuItem();
   const queryClient = useQueryClient();
   const commitPrice = () => {
     if (typedPrice === null || typedPrice <= 0) return;
     const paise = Math.round(typedPrice * 100);
-    if (paise === Math.round(Number(sellingPrice ?? 0) * 100)) return;
+    if (paise === Math.round(Number(sellingPrice ?? breakdown?.selling_price ?? 0) * 100)) return;
     updateMenu.mutate(
       { id: subjectId, data: { price: paise } },
       {
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: costingKeys.all }),
+        onSuccess: () => { setPriceDirty(false); queryClient.invalidateQueries({ queryKey: costingKeys.all }); },
         onError: error => toast.error(describeApiError(error)),
       },
     );
@@ -206,13 +207,19 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
   // Matched by item, not position: the preview can be a debounce behind the rows.
   const costed = (itemId: number): IngredientLine | undefined => breakdown?.ingredients.find(l => l.inventory_item_id === itemId);
 
+  // The saved price can arrive after first render; follow it until the user types their own.
+  const savedPrice = sellingPrice ?? breakdown?.selling_price ?? null;
+  useEffect(() => {
+    if (!priceDirty) setPriceInput(savedPrice == null ? '' : String(Number(savedPrice)));
+  }, [savedPrice, priceDirty]);
+
   const lower = breakdown ? !breakdown.is_complete : false;
   const money = (value: number | string | null | undefined) => (value == null ? '—' : `${lower ? '≥ ' : ''}${rupees(value)}`);
   const unitLabel = isMade ? (recipe?.unit ?? ownItem?.unit ?? '') : 'portion';
   // The typed menu price counts at once; the server's margin catches up once it is saved.
   const price = isMade ? null : typedPrice !== null && typedPrice > 0 ? typedPrice : breakdown?.selling_price == null ? null : Number(breakdown.selling_price);
   const perUnit = breakdown ? Number(breakdown.cost_per_unit) : 0;
-  const margin = price ? ((price - perUnit) / price) * 100 : null;
+  const margin = price && Number(breakdown?.raw_material_cost ?? 0) > 0 ? ((price - perUnit) / price) * 100 : null;
   const foodCost = price && breakdown ? (Number(breakdown.raw_cost_per_unit) / price) * 100 : null;
   const target = breakdown?.target_margin_percent == null ? null : Number(breakdown.target_margin_percent);
   const usedIn = recipe?.used_in ?? [];
@@ -243,7 +250,7 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
                 aria-label="Menu price in rupees"
                 placeholder="₹"
                 value={priceInput}
-                onChange={event => setPriceInput(event.target.value)}
+                onChange={event => { setPriceInput(event.target.value); setPriceDirty(true); }}
                 onBlur={commitPrice}
                 onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); }}
               /></div>
