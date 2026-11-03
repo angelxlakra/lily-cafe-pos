@@ -89,11 +89,6 @@ export const inventoryApi = {
     return response.data;
   },
 
-  deleteItem: async (id: number): Promise<{ message: string }> => {
-    const response = await apiClient.delete<{ message: string }>(`/inventory/items/${id}`);
-    return response.data;
-  },
-
   // Transactions
   recordPurchase: async (data: PurchaseCreate): Promise<any> => {
     const response = await apiClient.post('/inventory/transactions/purchase', data);

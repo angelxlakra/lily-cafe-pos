@@ -9,7 +9,7 @@ import {
   WaiterViewIcon,
   LogoutIcon,
 } from "./icons/NavigationIcons";
-import { Package, Table, CurrencyInr, ChartLine, Gear, CaretLeft, CaretRight } from "@phosphor-icons/react";
+import { Package, CurrencyInr, ChartLine, Gear, CaretLeft, CaretRight } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 
 export default function Sidebar() {
@@ -129,16 +129,9 @@ export default function Sidebar() {
             isCollapsed={isCollapsed}
           />
           <NavItem
-            to="/admin/inventory"
+            to="/admin/ops/inventory"
             icon={<Package size={24} />}
             label="Inventory"
-            onClick={handleCloseMobile}
-            isCollapsed={isCollapsed}
-          />
-          <NavItem
-            to="/admin/ops/inventory"
-            icon={<Table size={24} />}
-            label="Ops"
             onClick={handleCloseMobile}
             isCollapsed={isCollapsed}
           />

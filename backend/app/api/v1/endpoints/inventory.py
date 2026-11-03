@@ -37,6 +37,8 @@ router = APIRouter()
 #   - Categories and items are master data — they carry cost prices and
 #     reorder levels and shape every future report — so, like the menu,
 #     only the owner login may create, change or remove them.
+# _READ and _STAFF are the same check today (any signed-in user); they're named apart
+# so a read-only role, if one is ever added, only needs _STAFF tightened.
 _READ = Depends(get_current_user)
 _STAFF = Depends(get_current_user)
 _OWNER = Depends(get_current_owner)
@@ -435,7 +437,9 @@ def set_pack_price(
         raise HTTPException(status_code=400, detail=f"Unknown unit: {data.pack_unit}")
     if compatible(item.unit, data.pack_unit):
         # kg priced by a 500 g pack: the price is per the item's own unit, kept to the 4 places the column holds.
-        item.cost_per_unit = (data.price / convert(data.pack_quantity, data.pack_unit, item.unit)).quantize(_PRICE_PLACES, rounding=ROUND_HALF_UP)
+        per_unit = (data.price / convert(data.pack_quantity, data.pack_unit, item.unit)).quantize(_PRICE_PLACES, rounding=ROUND_HALF_UP)
+        # A real price never rounds to 0, which would read as free.
+        item.cost_per_unit = max(per_unit, _PRICE_PLACES)
         item.pack_size = item.pack_unit = None
     elif is_measure(item.unit) and is_measure(data.pack_unit):
         raise HTTPException(status_code=400, detail=f"{item.name} is counted in {item.unit}; give the pack in {'ml or L' if family(item.unit) == 'volume' else 'g or kg'}, or change its unit first")
@@ -835,6 +839,7 @@ def get_pending_prices(db: Session = Depends(get_db), current_user: TokenData = 
     """Purchases whose price waits for the owner, oldest first, against the price now."""
     rows = (
         db.query(InventoryTransaction)
+        .options(selectinload(InventoryTransaction.item))
         .filter(
             InventoryTransaction.transaction_type == TransactionType.PURCHASE,
             InventoryTransaction.price_status == pricing.PRICE_PENDING,
@@ -872,17 +877,16 @@ def get_pending_prices(db: Session = Depends(get_db), current_user: TokenData = 
 
 @router.post("/purchases/price-review/approve-all", response_model=dict)
 def approve_all_prices(
-    body: Optional[inventory_schemas.ApproveAllPrices] = None,
+    body: inventory_schemas.ApproveAllPrices,
     db: Session = Depends(get_db),
     current_user: TokenData = _OWNER,
 ):
-    """Approve the purchase prices waiting for review: the listed ones, or all with no list. Owner only."""
+    """Approve the listed purchase prices that are still waiting for review. Owner only."""
     query = db.query(InventoryTransaction).filter(
         InventoryTransaction.transaction_type == TransactionType.PURCHASE,
         InventoryTransaction.price_status == pricing.PRICE_PENDING,
+        InventoryTransaction.id.in_(body.purchase_ids),
     )
-    if body is not None and body.purchase_ids is not None:
-        query = query.filter(InventoryTransaction.id.in_(body.purchase_ids))
     approved = (
         query
         .update({"price_status": pricing.PRICE_APPROVED, "price_reviewed_at": utcnow()}, synchronize_session=False)

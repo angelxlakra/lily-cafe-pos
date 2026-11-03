@@ -57,6 +57,18 @@ class TestCompute:
         assert breakdown.is_complete is True
         assert breakdown.warnings == []
 
+    def test_packaging_each_is_per_portion(self):
+        """₹5 each on a batch of 4 is ₹20 for the batch, not ₹5."""
+        overheads = _no_overheads()
+        overheads["packaging"] = OverheadInput(mode="each", value=Decimal("5"), inherited=False)
+        breakdown = compute(
+            ingredients=[_ingredient(1, "Paneer", "250", "g", "kg", "400")],
+            overheads=overheads,
+            yield_units=Decimal("4"),
+        )
+        assert breakdown.overhead_cost == Decimal("20.00")
+        assert breakdown.cost_per_unit == Decimal("30.00")
+
     def test_missing_price_is_flagged_not_free(self):
         """None and a 0.00 placeholder both count as missing and make the dish incomplete."""
         breakdown = compute(

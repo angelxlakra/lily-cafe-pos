@@ -151,6 +151,9 @@ def ensure_cash_columns(bind=None) -> list[str]:
     return added
 
 
+_FK_CHECK = "PRAGMA foreign_key_check(dish_costing_ingredients)"
+
+
 def ensure_costing_made_items(bind=None) -> bool:
     """Let a costing belong to a kitchen-made inventory item instead of a menu item.
 
@@ -164,7 +167,8 @@ def ensure_costing_made_items(bind=None) -> bool:
     from app.models.costing_models import DishCosting
 
     bind = bind or engine
-    if "dish_costings" not in inspect(bind).get_table_names():
+    # SQLite only: the PRAGMAs and the rebuild exist because SQLite can't ALTER a column.
+    if bind.dialect.name != "sqlite" or "dish_costings" not in inspect(bind).get_table_names():
         return False
     old = {r[1]: r[3] for r in _table_info(bind, "dish_costings")}
     if "inventory_item_id" in old and not old["menu_item_id"]:
@@ -177,9 +181,13 @@ def ensure_costing_made_items(bind=None) -> bool:
     shared = ", ".join(c.name for c in table.columns if c.name in old)
     conn = bind.connect()
     fk_before = conn.exec_driver_sql("PRAGMA foreign_keys").scalar()
+    broken_before = len(conn.exec_driver_sql(_FK_CHECK).fetchall())
     try:
         # A no-op inside a transaction, so it goes first.
         conn.exec_driver_sql("PRAGMA foreign_keys=OFF")
+        # pysqlite only opens a transaction before DML, so the DDL would commit
+        # one statement at a time; open it ourselves so a failure undoes it all.
+        conn.exec_driver_sql("BEGIN")
         conn.exec_driver_sql("DROP TABLE IF EXISTS dish_costings_new")
         conn.exec_driver_sql(ddl)
         conn.exec_driver_sql(f"INSERT INTO dish_costings_new ({shared}) SELECT {shared} FROM dish_costings")
@@ -187,6 +195,11 @@ def ensure_costing_made_items(bind=None) -> bool:
         conn.exec_driver_sql("ALTER TABLE dish_costings_new RENAME TO dish_costings")
         for index in table.indexes:
             index.create(conn)
+        # Foreign keys are off for the copy, so check the rows that point here before keeping it.
+        # Only new breakage counts: orphans from before must not stop the app starting.
+        broken = len(conn.exec_driver_sql(_FK_CHECK).fetchall())
+        if broken > broken_before:
+            raise RuntimeError(f"dish_costings rebuild broke {broken - broken_before} ingredient links")
         conn.commit()
     except Exception:
         conn.rollback()

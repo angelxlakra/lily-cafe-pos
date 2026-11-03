@@ -2,7 +2,8 @@
 
 from decimal import Decimal
 
-from sqlalchemy import create_engine, text
+import pytest
+from sqlalchemy import Index, create_engine, text
 from sqlalchemy.pool import StaticPool
 
 from app.db.session import ensure_costing_made_items
@@ -134,6 +135,17 @@ def test_cycle_refused(client, test_db, owner_headers):
     assert r.status_code == 400
     assert r.json()["detail"] == "A recipe can't use itself: Spice mix → Cajun masala → Spice mix"
 
+    # The same loop made by editing a saved recipe.
+    r = client.post(f"{API}/costing", headers=owner_headers, json={
+        "inventory_item_id": b.id, "yield_units": "100", "ingredients": _lines((pepper, 10, "g")),
+    })
+    assert r.status_code == 201, r.text
+    r = client.patch(f"{API}/costing/{r.json()['id']}", headers=owner_headers, json={
+        "inventory_item_id": b.id, "yield_units": "100", "ingredients": _lines((a, 10, "g")),
+    })
+    assert r.status_code == 400
+    assert r.json()["detail"] == "A recipe can't use itself: Spice mix → Cajun masala → Spice mix"
+
 
 def test_made_recipe_needs_yield_when_units_differ(client, test_db, owner_headers):
     flour = _item(test_db, "Maida")
@@ -175,7 +187,7 @@ def test_pack_price_same_family_and_presence(client, test_db, owner_headers):
     assert r.status_code == 400
 
 
-def test_migration_rebuilds_old_table():
+def _old_schema_engine():
     engine = create_engine("sqlite:///:memory:", poolclass=StaticPool, connect_args={"check_same_thread": False})
     with engine.begin() as c:
         for ddl in (
@@ -198,7 +210,11 @@ def test_migration_rebuilds_old_table():
             "INSERT INTO dish_costing_ingredients VALUES (1, 1, 3, 100, 'g', 0)",
         ):
             c.execute(text(ddl))
+    return engine
 
+
+def test_migration_rebuilds_old_table():
+    engine = _old_schema_engine()
     ensure_costing_made_items(engine)
     ensure_costing_made_items(engine)  # idempotent
 
@@ -215,6 +231,47 @@ def test_migration_rebuilds_old_table():
         c.execute(text("INSERT INTO dish_costings (menu_item_id, inventory_item_id, yield_units) VALUES (NULL, 4, 1)"))
         c.execute(text("INSERT INTO dish_costings (menu_item_id, inventory_item_id, yield_units) VALUES (NULL, 5, 1)"))
 
+
+
+def test_migration_tolerates_an_orphan_from_before():
+    # An old ingredient row whose costing is long gone must not stop the app starting.
+    engine = _old_schema_engine()
+    with engine.begin() as c:
+        c.execute(text("INSERT INTO dish_costing_ingredients VALUES (2, 99, 3, 5, 'g', 0)"))
+
+    assert ensure_costing_made_items(engine) is True
+    with engine.begin() as c:
+        assert c.execute(text("SELECT count(*) FROM dish_costing_ingredients")).scalar() == 2
+
+
+def test_migration_refuses_a_copy_that_loses_costings(monkeypatch):
+    engine = _old_schema_engine()
+
+    def lose_rows(self, conn, **kwargs):
+        conn.exec_driver_sql("DELETE FROM dish_costings")  # the copy came out short
+
+    monkeypatch.setattr(Index, "create", lose_rows)
+    with pytest.raises(RuntimeError, match="broke 1 ingredient link"):
+        ensure_costing_made_items(engine)
+    with engine.begin() as c:
+        assert c.execute(text("SELECT notes FROM dish_costings")).scalar() == "keep"
+
+
+def test_migration_failure_leaves_old_table(monkeypatch):
+    engine = _old_schema_engine()
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("died mid-rebuild")
+
+    monkeypatch.setattr(Index, "create", boom)  # fails after the drop and rename
+    with pytest.raises(RuntimeError):
+        ensure_costing_made_items(engine)
+
+    with engine.begin() as c:
+        cols = {r[1]: r[3] for r in c.exec_driver_sql("PRAGMA table_info(dish_costings)")}
+        assert cols["menu_item_id"] == 1 and "inventory_item_id" not in cols
+        assert c.execute(text("SELECT menu_item_id, notes FROM dish_costings")).one() == (7, "keep")
+        assert "dish_costings_new" not in {r[0] for r in c.exec_driver_sql("SELECT name FROM sqlite_master")}
 
 def test_small_unit_pack_price_is_exact(client, test_db, owner_headers, sample_menu_items):
     paprika = _item(test_db, "Paprika", "g")
@@ -300,3 +357,10 @@ def test_preview_works_for_a_saved_recipe(client, test_db, owner_headers, sample
     assert Decimal(r.json()["raw_material_cost"]) == 20
     # A second recipe for the same dish is still refused.
     assert client.post(f"{API}/costing", headers=owner_headers, json=body).status_code == 409
+
+
+def test_tiny_pack_price_never_rounds_to_free(client, test_db, owner_headers):
+    # ₹1 for 50 kg is ₹0.00002 a gram; four places would make it ₹0.
+    salt = _item(test_db, "Salt", "g")
+    out = _pack_price(client, owner_headers, salt, 1, 50, "kg")
+    assert Decimal(out["current_price"]) == Decimal("0.0001")

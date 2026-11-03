@@ -135,6 +135,18 @@ export function useSaveRecipe() {
   });
 }
 
+/** Deletes a recipe. The dish or item stays; only how it's made goes. */
+export function useDeleteRecipe() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => apiClient.delete(`/costing/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: costingKeys.all });
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+    },
+  });
+}
+
 // ---------- Items: brand and pack price ----------
 
 export interface PackPriceIn {

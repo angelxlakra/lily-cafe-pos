@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { inventoryKeys, useInventoryItems, useUpdateItem } from '../hooks/useInventory';
 import { inventoryApi } from '../api/inventory';
@@ -11,8 +11,9 @@ import { baseUnitOf, describeSource, isMeasure, parseQuantity, percent, perUnitC
 import type { CostBreakdown, DishCostingIn, IngredientLine, OverheadKind, OverheadMode, OverheadOverride } from '../types/costing';
 import type { InventoryItem } from '../types/inventory';
 import {
-  useCostingDefaults, useDishRecipe, useMadeRecipe, useOverview, useRecipePreview, useSaveRecipe, useSetBrand, useSetPackPrice,
+  useCostingDefaults, useDeleteRecipe, useDishRecipe, useMadeRecipe, useOverview, useRecipePreview, useSaveRecipe, useSetBrand, useSetPackPrice,
 } from './api';
+import OpsConfirm from './OpsConfirm';
 import type { OverviewRow, Recipe } from './api';
 import { formatPackPrice, parsePackPrice, usesPackForm } from './packPrice';
 
@@ -25,6 +26,7 @@ const OVERHEADS: { kind: OverheadKind; label: string }[] = [
 
 interface Line { key: string; itemId: number; quantity: string; unit: string }
 interface OverheadDraft { mode: OverheadMode; value: string }
+const MODE_LABEL: Record<OverheadMode, string> = { percent: 'percent of raw material', amount: 'rupees for the batch', each: 'rupees per portion' };
 
 let keyCounter = 0;
 const newKey = () => `l${++keyCounter}`;
@@ -248,6 +250,17 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
     );
   };
 
+  const remove = useDeleteRecipe();
+  const navigate = useNavigate();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const onDelete = () => {
+    if (savedId === null) return;
+    remove.mutate(savedId, {
+      onSuccess: () => { toast.success('Recipe deleted'); navigate('/admin/ops/recipes'); },
+      onError: error => { setConfirmDelete(false); toast.error(describeApiError(error)); },
+    });
+  };
+
   // Matched by item, not position: the preview can be a debounce behind the rows.
   const costed = (itemId: number): IngredientLine | undefined => breakdown?.ingredients.find(l => l.inventory_item_id === itemId);
 
@@ -268,15 +281,18 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
   const costLabel = isMade ? `Cost per ${shown?.unit ?? unitLabel}` : 'Cost per portion';
   const costText = !breakdown ? '—' : shown ? `${lower ? '≥ ' : ''}${rupees(shown.cost)}` : money(breakdown.cost_per_unit);
   const margin = price && Number(breakdown?.raw_material_cost ?? 0) > 0 ? ((price - perUnit) / price) * 100 : null;
-  const foodCost = price && breakdown ? (Number(breakdown.raw_cost_per_unit) / price) * 100 : null;
   const target = breakdown?.target_margin_percent == null ? null : Number(breakdown.target_margin_percent);
   const usedIn = recipe?.used_in ?? [];
 
   return (
     <div>
       <p className="muted"><Link to="/admin/ops/recipes">← Recipes</Link></p>
-      <h1>{name} {isMade && <span className="pill">made here</span>}</h1>
+      <h1>{name} {isMade && <span className="pill made">made here</span>}</h1>
 
+      {/* Wide screens: ingredients on the left, summary and charges on the right. Narrow: summary, ingredients, charges. */}
+      <div className="recipe-grid">
+      <section className="r-sum" aria-labelledby="sum-h">
+      <h2 id="sum-h">Summary</h2>
       <div className="ops-stats">
         <div className="ops-stat">
           <span><label htmlFor="yield">Batch makes{unitLabel && ` (${unitLabel})`}</label></span>
@@ -289,7 +305,7 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
           />
         </div>
         <div className="ops-stat"><span>Raw material / batch</span><b>{breakdown ? money(breakdown.raw_material_cost) : '—'}</b></div>
-        <div className="ops-stat"><span>{costLabel}</span><b>{costText}</b></div>
+        <div className="ops-stat key"><span>{costLabel}</span><b>{costText}</b></div>
         {!isMade && (
           <>
             <div className="ops-stat"><span>Menu price</span><input
@@ -323,13 +339,15 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
           })}
         </p>
       )}
+      </section>
 
+      <div className="r-table">
       <div className="ops-wrap">
         <table className="ops-t">
           <thead>
             <tr>
-              <th>Ingredient</th><th>Brand</th><th className="n">Amount used</th><th className="n">Price per pack</th>
-              <th className="n">Cost in recipe</th><th className="n">% of food cost</th><th><span className="sr-only">Remove</span></th>
+              <th>Ingredient</th><th className="grow">Brand</th><th className="n">Amount used</th><th className="n">Price per pack</th>
+              <th className="n">Cost in recipe</th><th className="n">% of food cost</th><th className="x"><span className="sr-only">Remove</span></th>
             </tr>
           </thead>
           <tbody>
@@ -345,9 +363,9 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
               const source = bl?.price_source ?? item?.price_source ?? null;
               return (
                 <tr key={line.key}>
-                  <td className="typed">
+                  <td>
                     {item?.name ?? bl?.name ?? 'Unknown item'}
-                    {lineIsMade && <> <span className="pill">made</span></>}
+                    {lineIsMade && <> <span className="pill made">made</span></>}
                     {item && !item.is_active && <> <span className="pill bad">retired</span></>}
                   </td>
                   <td>
@@ -402,7 +420,7 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
                     {presence ? '—' : !bl ? (ok ? '…' : '') : bl.price_missing || bl.reason ? <span className="gap">no price yet</span> : rupees(bl.line_cost)}
                   </td>
                   <td className="n">{bl?.share_percent != null ? `${Number(bl.share_percent).toFixed(1)}%` : ''}</td>
-                  <td>
+                  <td className="x">
                     <button type="button" className="icon-btn" aria-label={`Remove ${item?.name ?? 'ingredient'}`} onClick={() => setLines(c => c.filter(l => l.key !== line.key))}>×</button>
                   </td>
                 </tr>
@@ -420,58 +438,83 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
               <td className="n">{breakdown && Number(breakdown.raw_material_cost) > 0 ? '100%' : ''}</td>
               <td />
             </tr>
-            {!isMade && breakdown && (
-              <>
-                <tr className="sub">
-                  <td colSpan={4}>Per portion</td>
-                  <td className="n">{money(breakdown.raw_cost_per_unit)}</td>
-                  <td className="n">{foodCost !== null && price ? `${foodCost.toFixed(1)}% of ${rupees(price)}` : ''}</td>
-                  <td />
-                </tr>
-                {OVERHEADS.map(({ kind: k, label }) => {
-                  const inherited = breakdown.overheads.find(o => o.kind === k);
-                  const draft = overheads[k];
-                  const fallback = defaults[k];
-                  const placeholder = fallback.value != null ? String(Number(fallback.value)) : '0';
-                  const flip = draft.mode === 'percent' ? 'amount' : 'percent';
-                  return (
-                    <tr key={k}>
-                      <td>{label}</td>
-                      <td colSpan={2} />
-                      <td className="n">
-                        <span className="amount">
-                          <input
-                            inputMode="decimal"
-                            aria-label={`${label} (${draft.mode === 'percent' ? 'percent of raw material' : 'rupees'})`}
-                            value={draft.value}
-                            placeholder={placeholder}
-                            onChange={event => setOverheads(c => ({ ...c, [k]: { ...c[k], value: event.target.value } }))}
-                          />
-                          <button
-                            type="button"
-                            className="mode"
-                            aria-label={`${label}: switch to ${flip === 'percent' ? 'percent of raw material' : 'rupees'}`}
-                            onClick={() => setOverheads(c => ({ ...c, [k]: { ...c[k], mode: flip } }))}
-                          >{draft.mode === 'percent' ? '%' : '₹'}</button>
-                        </span>
-                      </td>
-                      <td className="n">{inherited ? rupees(inherited.amount) : '—'}</td>
-                      <td />
-                      <td />
-                    </tr>
-                  );
-                })}
-              </>
+            {isMade && (
+              <tr className="tot">
+                <td colSpan={4}>{costLabel}</td>
+                <td className="n">{costText}</td>
+                <td colSpan={2} />
+              </tr>
             )}
-            <tr className="tot">
-              <td colSpan={4}>{costLabel}</td>
-              <td className="n">{costText}</td>
-              <td colSpan={2} />
-            </tr>
           </tbody>
         </table>
       </div>
-      <p className="muted">Blue cells are typed. Everything else is worked out. A made item&apos;s cost per {isMade ? unitLabel : 'unit'} comes from its own recipe.</p>
+      <p className="muted">Boxes with a blue outline are typed. Everything else is worked out. A made item&apos;s cost per {isMade ? unitLabel : 'unit'} comes from its own recipe.</p>
+      </div>
+
+      <div className="r-side">
+      {!isMade && breakdown && (
+        <section className="r-charges" aria-labelledby="charges-h">
+          <h2 id="charges-h">Additional charges</h2>
+          {/* Charges are for the whole batch (a % is of the batch's raw material), so the sum is shown per batch, then split. */}
+          <p className="muted r-note">Added on top of raw material, for the whole batch.</p>
+          <table className="ops-t">
+            <tbody>
+              <tr>
+                <td>Raw material</td>
+                <td />
+                <td className="n">{money(breakdown.raw_material_cost)}</td>
+              </tr>
+              {OVERHEADS.map(({ kind: k, label }) => {
+                const inherited = breakdown.overheads.find(o => o.kind === k);
+                const draft = overheads[k];
+                const fallback = defaults[k];
+                const placeholder = fallback.value != null ? String(Number(fallback.value)) : '0';
+                const setMode = (kind: OverheadKind, mode: OverheadMode) => setOverheads(c => ({ ...c, [kind]: { ...c[kind], mode } }));
+                return (
+                  <tr key={k}>
+                    <td>+ {label}</td>
+                    <td className="n">
+                      <span className="amount">
+                        <input
+                          inputMode="decimal"
+                          aria-label={`${label} (${MODE_LABEL[draft.mode]})`}
+                          value={draft.value}
+                          placeholder={placeholder}
+                          onChange={event => setOverheads(c => ({ ...c, [k]: { ...c[k], value: event.target.value } }))}
+                        />
+                        <button
+                          type="button"
+                          className="mode"
+                          aria-label={`${label}: switch to ${draft.mode === 'percent' ? 'rupees' : 'percent of raw material'}`}
+                          onClick={() => setMode(k, draft.mode === 'percent' ? 'amount' : 'percent')}
+                        >{draft.mode === 'percent' ? '%' : '₹'}</button>
+                      </span>
+                      {draft.mode !== 'percent' && (
+                        <span className="per" role="group" aria-label={`${label} rupees are`}>
+                          <button type="button" aria-pressed={draft.mode === 'amount'} onClick={() => setMode(k, 'amount')}>per batch</button>
+                          <button type="button" aria-pressed={draft.mode === 'each'} onClick={() => setMode(k, 'each')}>per {unitLabel}</button>
+                        </span>
+                      )}
+                    </td>
+                    <td className="n">{inherited ? rupees(inherited.amount) : '—'}</td>
+                  </tr>
+                );
+              })}
+              <tr className="tot">
+                <td colSpan={2}>Batch total</td>
+                <td className="n">{money(breakdown.total_cost)}</td>
+              </tr>
+              <tr className="key">
+                <td colSpan={2}>
+                  {costLabel}
+                  <span className="src">{money(breakdown.total_cost)} ÷ {Number(breakdown.yield_units)}</span>
+                </td>
+                <td className="n">{costText}</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      )}
 
       <div className="ops-actions">
         <button type="button" className="btn" onClick={onSave} disabled={!payload || incomplete > 0 || save.isPending || preview.isError}>
@@ -480,7 +523,25 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
         {incomplete > 0 && <span className="muted">Some rows need an amount first.</span>}
         {preview.isError && lines.length > 0 && <span className="err">Can&apos;t cost this yet: {describeApiError(preview.error)}</span>}
         {!payload && <span className="muted">Say how many portions a batch makes.</span>}
+        {savedId !== null && (
+          <button type="button" className="text-btn bad push-end" onClick={() => setConfirmDelete(true)} disabled={remove.isPending}>
+            Delete recipe
+          </button>
+        )}
       </div>
+      </div>
+      </div>
+      <OpsConfirm
+        open={confirmDelete}
+        title={`Delete the recipe for ${name}?`}
+        message={isMade && usedIn.length > 0
+          ? `${name} stays in stock. The ${usedIn.length === 1 ? 'recipe that uses it' : `${usedIn.length} recipes that use it`} will need a price for it instead.`
+          : isMade ? `${name} stays in stock; only how it's made goes.` : `${name} stays on the menu; only its costing goes.`}
+        confirmText="Delete recipe"
+        cancelText="Keep it"
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={onDelete}
+      />
     </div>
   );
 }
@@ -574,7 +635,7 @@ function Picker({ items, madeIds, inputRef, onPick, onAddNew, note }: {
             <li key={item.id} role="presentation">
               <button type="button" role="option" aria-selected="false" onMouseDown={event => event.preventDefault()} onClick={() => pick(item)}>
                 <span>{item.name}{item.brand ? ` · ${item.brand}` : ''}</span>
-                {madeIds.has(item.id) ? <span className="pill">made</span> : <span className="muted">{item.unit}</span>}
+                {madeIds.has(item.id) ? <span className="pill made">made</span> : <span className="muted">{item.unit}</span>}
               </button>
             </li>
           ))}

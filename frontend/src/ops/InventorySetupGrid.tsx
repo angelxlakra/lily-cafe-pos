@@ -1,5 +1,5 @@
 /**
- * InventorySetupGrid (owner only)
+ * InventorySetupGrid (owner only, ops look)
  *
  * Every active item as one editable table: kind, unit, pack size, alert
  * level and price, plus retiring dead items. Nothing is written until Save,
@@ -13,15 +13,14 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowCounterClockwise, ArrowsIn, ArrowsOut, Copy, Lock, LockOpen, MagnifyingGlass } from '@phosphor-icons/react';
-import { inventoryApi } from '../../api/inventory';
-import { useInventoryCategories, useInventoryItems } from '../../hooks/useInventory';
-import ConfirmDialog from '../ConfirmDialog';
-import LoadingSpinner from '../LoadingSpinner';
-import { costingKeys } from '../../hooks/useCosting';
-import { describeApiError } from '../../utils/apiError';
-import { formatQty, parseQty } from '../../utils/countQuantity';
-import type { BulkItemUpdate, InventoryCategory, InventoryItem, Vendor } from '../../types/inventory';
+import { Lock, LockOpen } from '@phosphor-icons/react';
+import { inventoryApi } from '../api/inventory';
+import { useInventoryCategories, useInventoryItems } from '../hooks/useInventory';
+import OpsConfirm from './OpsConfirm';
+import { costingKeys } from '../hooks/useCosting';
+import { describeApiError } from '../utils/apiError';
+import { formatQty, parseQty } from '../utils/countQuantity';
+import type { BulkItemUpdate, InventoryCategory, InventoryItem, Vendor } from '../types/inventory';
 
 type Field =
   | 'category_id' | 'name' | 'brand' | 'count_mode' | 'current_quantity' | 'unit'
@@ -61,7 +60,9 @@ function loadLocks(): Set<Field> {
   try {
     const saved = localStorage.getItem(LOCKS_KEY);
     // Stock starts locked every time: unlocking it once must not stick.
-    if (saved) return new Set([...(JSON.parse(saved) as Field[]), 'current_quantity']);
+    const parsed: unknown = saved ? JSON.parse(saved) : null;
+    // Keep only columns the grid still has; an old or hand-edited value can't add strays.
+    if (Array.isArray(parsed)) return new Set([...parsed.filter((f): f is Field => COLUMNS.some(c => c.field === f)), 'current_quantity']);
   } catch { /* private window or bad value: fall back to defaults */ }
   return new Set(DEFAULT_LOCKS);
 }
@@ -191,6 +192,21 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     if (!base && itemsData) load(itemsData.items);
   }, [base, itemsData, load]);
+
+  // Items added after the snapshot (the Add item form, the import) join it as new rows.
+  // Rows already in it are left alone, so a refetch still never wipes edits.
+  useEffect(() => {
+    if (!base || !itemsData) return;
+    const known = new Set(base.map(item => item.id));
+    const fresh = itemsData.items.filter(item => !known.has(item.id));
+    if (fresh.length === 0) return;
+    setBase([...base, ...fresh]);
+    setRows(prev => {
+      const next = new Map(prev);
+      fresh.forEach(item => next.set(item.id, { cells: toCells(item), retired: false }));
+      return next;
+    });
+  }, [base, itemsData]);
 
   useEffect(() => {
     try { localStorage.setItem(LOCKS_KEY, JSON.stringify([...locked])); } catch { /* not critical */ }
@@ -408,21 +424,21 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
   };
 
   if (isLoading || !base) {
-    return <div className="py-12 flex justify-center gap-3 text-neutral-text-muted"><LoadingSpinner /> Loading items…</div>;
+    return <p className="muted">Loading items…</p>;
   }
 
   const allShownSelected = visibleIds.length > 0 && visibleIds.every(id => selected.has(id));
 
   const saveActions = (
     <>
-      <button type="button" onClick={revertAll} disabled={!dirty || save.isPending} className="btn-secondary inline-flex items-center gap-2 whitespace-nowrap">
-        <ArrowCounterClockwise size={18} aria-hidden /> Revert all
+      <button type="button" onClick={revertAll} disabled={!dirty || save.isPending} className="btn ghost">
+        Revert all
       </button>
       <button
         type="button"
         onClick={() => save.mutate()}
         disabled={!dirty || summary.errors > 0 || save.isPending}
-        className="btn-primary"
+        className="btn"
       >
         {save.isPending ? 'Saving…' : 'Save'}
       </button>
@@ -430,113 +446,92 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
   );
 
   const grid = (
-    // Full screen covers the sidebar and page header and keeps only the table's own controls.
+    // Full screen covers the page and keeps only the table's own controls.
     <div
       role={fullScreen ? 'dialog' : undefined}
       aria-modal={fullScreen || undefined}
       aria-label={fullScreen ? 'Edit all items, full screen' : undefined}
-      className={fullScreen ? 'fixed inset-0 z-50 flex flex-col gap-3 p-3 md:p-4 bg-neutral-background' : 'space-y-3'}
+      className={fullScreen ? 'su-full' : undefined}
     >
       {!fullScreen && (
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="font-heading text-2xl! text-neutral-text-dark">Edit all items</h2>
-            <p className="mt-1 text-sm text-neutral-text-muted max-w-prose">
-              Nothing is saved until you press Save. Paste from Google Sheets into any cell to fill from there.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <button type="button" onClick={() => (dirty ? setConfirmLeave(true) : onDone())} className="btn-ghost">Done</button>
+        <>
+          <p className="muted">Nothing is saved until you press Save. Paste from Google Sheets into any cell to fill from there.</p>
+          <div className="ops-actions">
+            <button type="button" onClick={() => (dirty ? setConfirmLeave(true) : onDone())} className="btn ghost">Done</button>
             {saveActions}
           </div>
-        </div>
+        </>
       )}
 
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-        <label className="relative flex-1 min-w-0">
-          <span className="sr-only">Search items</span>
-          <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-text-muted" size={18} aria-hidden />
-          <input type="search" placeholder="Search items" value={search} onChange={e => setSearch(e.target.value)} className="input-field pl-10 min-h-12" />
-        </label>
-        <button
-          type="button"
-          onClick={() => setAtZeroOnly(!atZeroOnly)}
-          aria-pressed={atZeroOnly}
-          className={`btn-secondary whitespace-nowrap ${atZeroOnly ? 'border-warning text-warning' : ''}`}
-        >
+      <div className="su-tools">
+        <input type="search" aria-label="Search items" placeholder="Search items" value={search} onChange={e => setSearch(e.target.value)} />
+        <button type="button" onClick={() => setAtZeroOnly(!atZeroOnly)} aria-pressed={atZeroOnly} className={`chip${atZeroOnly ? ' on' : ''}`}>
           Only items at zero
         </button>
-        <button type="button" onClick={copyTable} className="btn-secondary inline-flex items-center gap-2 whitespace-nowrap">
-          <Copy size={18} aria-hidden /> Copy as table
-        </button>
-        <button
-          type="button"
-          onClick={() => setFullScreen(!fullScreen)}
-          aria-pressed={fullScreen}
-          className="btn-secondary inline-flex items-center gap-2 whitespace-nowrap"
-        >
-          {fullScreen ? <ArrowsIn size={18} aria-hidden /> : <ArrowsOut size={18} aria-hidden />}
+        <button type="button" onClick={copyTable} className="btn ghost">Copy as table</button>
+        <button type="button" onClick={() => setFullScreen(!fullScreen)} aria-pressed={fullScreen} className="btn ghost">
           {fullScreen ? 'Exit full screen' : 'Full screen'}
         </button>
         {fullScreen && saveActions}
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm min-h-10" aria-live="polite">
-        <span className="tabular-nums text-neutral-text-body">
+      <div className="su-status" aria-live="polite">
+        <span>
           {dirty
             ? `${summary.cells} cell${summary.cells === 1 ? '' : 's'} changed across ${summary.items} item${summary.items === 1 ? '' : 's'}${summary.retired ? ` · ${summary.retired} to retire` : ''}`
             : `${visibleIds.length} of ${base.length} items · no changes`}
         </span>
         {summary.errors > 0 && (
-          <span className="font-medium text-error">{summary.errors} cell{summary.errors === 1 ? '' : 's'} need fixing before Save</span>
+          <span className="bad">{summary.errors} cell{summary.errors === 1 ? '' : 's'} need fixing before Save</span>
         )}
         {summary.smallUnitPrices > 0 && (
-          <span className="font-medium text-warning">
+          <span className="warn">
             {summary.smallUnitPrices} price{summary.smallUnitPrices === 1 ? ' is' : 's are'} per g or ml; switch those to kg or L
           </span>
         )}
         {summary.conversions > 0 && (
-          <span className="text-neutral-text-body">
+          <span>
             {summary.conversions === 1 ? '1 unit change converts' : `${summary.conversions} unit changes convert`} stock, alert level and price on Save (2000 g becomes 2 kg)
           </span>
         )}
-        {save.isError && <span role="alert" className="font-medium text-error">Not saved. {describeApiError(save.error)}</span>}
-        {notice && <span className="text-neutral-text-muted">{notice}</span>}
+        {save.isError && <span role="alert" className="bad">Not saved. {describeApiError(save.error)}</span>}
+        {notice && <span className="muted">{notice}</span>}
       </div>
 
       {selected.size > 0 && (
-        <div className="card flex flex-wrap items-center gap-3 px-3 py-2 text-sm">
-          <strong className="text-neutral-text-dark tabular-nums">{selected.size} ticked</strong>
-          <label className="inline-flex items-center gap-2">
+        <div className="su-bulk">
+          <strong>{selected.size} ticked</strong>
+          <label>
             Set counted as
-            <select value="" onChange={e => e.target.value && setModeForSelected(e.target.value)} className="input-field h-10 w-auto py-0">
+            <select value="" onChange={e => e.target.value && setModeForSelected(e.target.value)}>
               <option value="">Choose…</option>
               <option value="number">Number</option>
               <option value="presence">Yes / no</option>
             </select>
           </label>
-          <button type="button" onClick={() => setRetired(selected, true)} className="btn-secondary h-10 py-0">Retire ticked</button>
-          <button type="button" onClick={() => setRetired(selected, false)} className="btn-ghost h-10 py-0">Keep ticked</button>
-          <button type="button" onClick={() => setSelected(new Set())} className="btn-ghost h-10 py-0">Clear ticks</button>
+          <button type="button" onClick={() => setRetired(selected, true)} className="text-btn">Retire ticked</button>
+          <button type="button" onClick={() => setRetired(selected, false)} className="text-btn">Keep ticked</button>
+          <button type="button" onClick={() => setSelected(new Set())} className="text-btn">Clear ticks</button>
         </div>
       )}
 
       <datalist id="grid-units">{UNITS.map(unit => <option key={unit} value={unit} />)}</datalist>
 
-      <div className={`card overflow-auto ${fullScreen ? 'flex-1 min-h-0' : 'max-h-[calc(100dvh-18rem)]'}`}>
+      <div className="su-wrap">
         {/* Fixed layout: the frozen columns' left offsets only line up if widths are exact.
             On a wide screen the table fills it and Name, whose width is left open, takes the extra. */}
-        <table className="table-fixed w-full border-separate border-spacing-0 text-sm" style={{ minWidth: TICK_WIDTH + COLUMNS.reduce((sum, c) => sum + c.width, 0) + RETIRE_WIDTH }} onPaste={onPaste} onKeyDown={onKeyDown}>
+        <table className="su-t" style={{ minWidth: TICK_WIDTH + COLUMNS.reduce((sum, c) => sum + c.width, 0) + RETIRE_WIDTH }} onPaste={onPaste} onKeyDown={onKeyDown}>
           <thead>
             <tr>
-              <th style={{ width: TICK_WIDTH }} className="sticky top-0 left-0 z-30 bg-off-white border-b border-r border-neutral-border">
-                <input
-                  type="checkbox"
-                  aria-label="Tick all shown"
-                  checked={allShownSelected}
-                  onChange={() => setSelected(allShownSelected ? new Set() : new Set(visibleIds))}
-                  className="size-4"
-                />
+              <th style={{ width: TICK_WIDTH, left: 0, padding: 0 }} className="stick">
+                <label className="su-tick">
+                  <input
+                    type="checkbox"
+                    aria-label="Tick all shown"
+                    checked={allShownSelected}
+                    onChange={() => setSelected(allShownSelected ? new Set() : new Set(visibleIds))}
+                  />
+                </label>
               </th>
               {COLUMNS.map(column => {
                 const isLocked = locked.has(column.field);
@@ -544,22 +539,22 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
                   <th
                     key={column.field}
                     style={{ width: column.field === 'name' ? undefined : column.width, left: column.left }}
-                    className={`sticky top-0 ${column.left !== undefined ? 'z-30' : 'z-20'} bg-off-white border-b border-r border-neutral-border px-2 py-1 text-left font-medium text-neutral-text-body whitespace-nowrap`}
+                    className={column.left !== undefined ? 'stick' : undefined}
                   >
                     <button
                       type="button"
                       onClick={() => toggleLock(column.field)}
                       aria-pressed={isLocked}
                       aria-label={`${column.label}: ${isLocked ? 'locked, press to unlock' : 'unlocked, press to lock'}`}
-                      className={`inline-flex items-center gap-1.5 h-9 px-1 -mx-1 rounded hover:bg-cream/60 ${column.numeric ? 'w-full justify-end' : ''}`}
+                      className={`su-lock${column.numeric ? ' num' : ''}`}
                     >
                       {column.label}
-                      {isLocked ? <Lock size={14} weight="fill" className="text-coffee-brown" aria-hidden /> : <LockOpen size={14} className="text-neutral-text-light" aria-hidden />}
+                      {isLocked ? <Lock size={14} weight="fill" className="on" aria-hidden /> : <LockOpen size={14} aria-hidden />}
                     </button>
                   </th>
                 );
               })}
-              <th style={{ width: RETIRE_WIDTH }} className="sticky top-0 z-20 bg-off-white border-b border-neutral-border" aria-label="Retire" />
+              <th style={{ width: RETIRE_WIDTH }} className="last"><span className="sr-only">Retire</span></th>
             </tr>
           </thead>
           <tbody>
@@ -583,24 +578,24 @@ export default function InventorySetupGrid({ onDone }: { onDone: () => void }) {
             ))}
           </tbody>
         </table>
-        {visibleIds.length === 0 && <p className="p-8 text-center text-neutral-text-muted">No items match.</p>}
+        {visibleIds.length === 0 && <p className="muted" style={{ padding: 24, textAlign: 'center' }}>No items match.</p>}
       </div>
 
-      <ConfirmDialog
-        isOpen={confirmLeave}
+      <OpsConfirm
+        open={confirmLeave}
         onClose={() => setConfirmLeave(false)}
         onConfirm={onDone}
         title="Leave without saving?"
         message={`${summary.updates.length} changed item${summary.updates.length === 1 ? '' : 's'} will be lost.`}
         confirmText="Discard changes"
         cancelText="Keep editing"
-        variant="danger"
       />
     </div>
   );
 
-  // A portal, because an ancestor of the page makes `fixed` relative to the content column.
-  return fullScreen ? createPortal(grid, document.body) : grid;
+  // A portal, because an ancestor of the page can make `fixed` relative to the content column.
+  // Into .ops, not body: the ops styles are scoped under it.
+  return fullScreen ? createPortal(grid, document.querySelector('.ops') ?? document.body) : grid;
 }
 
 const GridRow = memo(function GridRow({ id, index, original, row, selected, locked, categories, vendors, onNewVendor, onCell, onSelect, onRetire, isNew }: {
@@ -624,9 +619,11 @@ const GridRow = memo(function GridRow({ id, index, original, row, selected, lock
   const vendorName = (value: string) => vendors.find(v => String(v.id) === value)?.name ?? '—';
 
   return (
-    <tr className={retired ? 'text-neutral-text-light' : ''}>
-      <td className="sticky left-0 z-10 bg-off-white border-b border-r border-neutral-border text-center">
-        <input type="checkbox" aria-label={`Tick ${cells.name}`} checked={selected} onChange={() => onSelect(id)} className="size-4" />
+    <tr className={retired ? 'gone' : undefined}>
+      <td className="stick" style={{ left: 0, padding: 0 }}>
+        <label className="su-tick">
+          <input type="checkbox" aria-label={`Tick ${cells.name}`} checked={selected} onChange={() => onSelect(id)} />
+        </label>
       </td>
       {COLUMNS.map(column => {
         const { field } = column;
@@ -634,8 +631,6 @@ const GridRow = memo(function GridRow({ id, index, original, row, selected, lock
         const error = !retired && cellError(field, cells);
         const warning = !retired && field === 'cost_per_unit' && priceWarning(cells);
         const sticky = column.left !== undefined;
-        // Opaque tints: frozen cells must hide what scrolls beneath them.
-        const tint = retired ? 'bg-[color-mix(in_oklab,var(--color-neutral-border)_45%,var(--color-off-white))]' : changed ? 'bg-cream' : sticky ? 'bg-off-white' : '';
         const label = `${cells.name} ${column.label}`;
         const common = {
           'data-row': index,
@@ -643,13 +638,13 @@ const GridRow = memo(function GridRow({ id, index, original, row, selected, lock
           'aria-label': label,
           'aria-invalid': error ? true : undefined,
           title: error || warning || undefined,
-          className: `w-full h-10 px-2 rounded bg-transparent outline-none focus:ring-2 focus:ring-coffee-brown ${error ? 'ring-2 ring-error' : warning ? 'ring-2 ring-warning' : ''} ${retired ? 'line-through' : ''} ${column.numeric ? 'text-right tabular-nums' : ''}`,
+          className: `${warning && !error ? 'su-warn' : ''}${column.numeric ? ' num' : ''}`.trim() || undefined,
           onKeyDown: (event: React.KeyboardEvent) => event.key === 'Escape' && onCell(id, field, original[field]),
         };
 
         let content: React.ReactNode;
         if (!applies(field, cells)) {
-          content = <span className="block px-2 text-neutral-text-light">—</span>;
+          content = <span className="na">—</span>;
         } else if (locked.has(field)) {
           const text = field === 'category_id' ? categoryName(cells[field])
             : field === 'default_vendor_id' ? vendorName(cells[field])
@@ -657,7 +652,7 @@ const GridRow = memo(function GridRow({ id, index, original, row, selected, lock
             : field === 'cost_per_unit' && cells[field] !== '' ? `${cells[field]} /${cells.unit.trim() || 'unit'}`
             : column.numeric && cells[field] !== '' ? formatQty(cells[field]) : cells[field];
           // Focusable so a paste can start here; locked columns are skipped, not written.
-          content = <span data-row={index} data-field={field} tabIndex={-1} className={`block h-10 leading-10 px-2 truncate rounded outline-none focus:ring-2 focus:ring-coffee-brown ${retired ? 'line-through' : ''} ${column.numeric ? 'text-right tabular-nums' : ''}`}>{text}</span>;
+          content = <span data-row={index} data-field={field} tabIndex={-1} className={`ro${column.numeric ? ' num' : ''}`}>{text}</span>;
         } else if (field === 'category_id') {
           content = (
             <select {...common} value={cells[field]} onChange={e => onCell(id, field, e.target.value)}>
@@ -698,11 +693,9 @@ const GridRow = memo(function GridRow({ id, index, original, row, selected, lock
           // The price is per the item's own unit; say which, beside every price.
           if (field === 'cost_per_unit') {
             content = (
-              <div className="flex items-center gap-1">
+              <div className="withunit">
                 {content}
-                <span className={`w-12 shrink-0 truncate text-xs ${warning ? 'font-medium text-warning' : 'text-neutral-text-light'}`}>
-                  /{cells.unit.trim() || 'unit'}
-                </span>
+                <span className={`unit${warning ? ' warn' : ''}`}>/{cells.unit.trim() || 'unit'}</span>
               </div>
             );
           }
@@ -712,24 +705,19 @@ const GridRow = memo(function GridRow({ id, index, original, row, selected, lock
           <td
             key={field}
             style={{ left: column.left }}
-            className={`${sticky ? 'sticky z-10' : ''} ${tint} border-b border-r border-neutral-border px-0.5 py-0.5 transition-colors`}
+            className={`${sticky ? 'stick ' : ''}${changed && !retired ? 'chg' : ''}`.trim() || undefined}
           >
             {field === 'name' && isNew ? (
-              <div className="flex items-center gap-1">
+              <div className="withpill">
                 {content}
-                <span title="Added from the purchase sheet — set it up" className="shrink-0 mr-1 px-1.5 rounded text-[0.6875rem] font-semibold bg-warning/15 text-warning">New</span>
+                <span title="Added from the purchase sheet — set it up" className="pill warn">New</span>
               </div>
             ) : content}
           </td>
         );
       })}
-      <td className="border-b border-neutral-border px-1 text-right">
-        <button
-          type="button"
-          onClick={() => onRetire(id)}
-          aria-pressed={retired}
-          className={`h-9 px-3 rounded-lg font-medium ${retired ? 'text-coffee-brown hover:bg-cream/60' : 'text-neutral-text-light hover:text-error hover:bg-error/10'}`}
-        >
+      <td className="last" style={{ textAlign: 'right', padding: '0 4px' }}>
+        <button type="button" onClick={() => onRetire(id)} aria-pressed={retired} className="su-retire">
           {retired ? 'Undo' : 'Retire'}
         </button>
       </td>

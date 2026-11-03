@@ -136,7 +136,7 @@ Value · Counted*, grouped by category, with made items in their own group tagge
 All, Low, Made here, plus search. A side box has "Start tonight's count" and the last 7 nights (who,
 and how many of all items were counted; tap for that night's changes). Phone: the count box on top,
 then one row per item (name, brand · price; stock and alert on the right), touch-sized. "Start
-tonight's count" opens the existing count screen (`/admin/inventory/count`): number boxes, one
+tonight's count" opens the existing count screen (`/admin/ops/count`): number boxes, one
 answer per row, Out / Have it for yes/no items. Staff accepted it, so it stays. "Edit all" opens the
 existing setup grid (`InventorySetupGrid`) with a Brand column added.
 
@@ -201,6 +201,8 @@ Check these when reading. All are cheap to change.
 - AI insights and alerts (second pass).
 
 ## Next up
+
+**New (2026-11-03):** inventory is one place now, under `/admin/ops`; the old page redirects.
 
 **New (2026-11-02):** the ops redesign above is built (see "What shipped"), with its PR to
 `pre-release`. Next for it: the owners enter real recipes on `/admin/ops/recipes`. Then come the
@@ -314,6 +316,19 @@ the nightly count (2): the Out / Have it row, the model-level clamp, review shee
 the purchase sheet (3), pack size in costing (4), the dish costing screen (5), and vendors with
 the order messages (7).
 
+**Inventory in one place (2026-11-03).** The old Inventory page is gone; everything it did now
+lives under `/admin/ops`.
+- **Moved:** the daily count tab became the Inventory page's count box (with "Continue" when a
+  draft exists), the count itself is `/admin/ops/count`, the purchase tab is the Daily sheet, and
+  Order and Stock log moved as they were. Items and categories (with count order) are sections
+  of Setup, owner only.
+- **Four calls:** no separate count landing page; no single-item edit form (the Setup grid edits
+  everything, a small Add item form stays); categories and count order sit on Setup; the Stock
+  log keeps usage and correction but drops "record a delivery", since the Daily sheet does that.
+- **Old URLs redirect:** `/admin/inventory` goes to `/admin/ops/inventory`, `?tab=` goes to that
+  tab's ops page (an unknown tab goes to Inventory), `/admin/inventory/count` goes to
+  `/admin/ops/count`. The sidebar has one Inventory entry; the Ops entry is gone.
+
 **Ops redesign (2026-11-02)**, on branch `claude/ops-redesign`, with its PR to `pre-release`.
 - **Pages** under `/admin/ops`, in their own light/dark look and built for phone and laptop:
   - the recipe page for dishes and made items, with pack-price entry ("58/100g") and adding a new
@@ -331,7 +346,7 @@ the order messages (7).
 - **Checked on the production copy:** the WhatsApp cookie comes to ₹150.21 a batch and ₹48.82 a
   portion (62%). A +21% butter purchase showed "1 dish costs more, ₹3.9 a portion" and, once
   approved, moved the cookie to ₹52.72 (59%).
-- The old Inventory tabs and Menu costing still work. The owners switch when ready.
+- Menu costing still works. The old Inventory tabs are gone (see "Inventory in one place").
 
 Purchase sheet (3), backend only: `total_amount` and `vendor_id` on purchase rows, a minimal
 `vendors` table, `POST /transactions/purchase/check` (the >30% jump warning, dry run) and

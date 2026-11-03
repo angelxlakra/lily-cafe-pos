@@ -4,7 +4,8 @@
 type Num = number | string;
 
 export type OverheadKind = 'packaging' | 'labour' | 'fixed' | 'wastage';
-export type OverheadMode = 'amount' | 'percent';
+/** amount: ₹ for the whole batch; each: ₹ per portion; percent: of the batch's raw material. */
+export type OverheadMode = 'amount' | 'each' | 'percent';
 
 /** Why an ingredient line isn't costed. Absent when it is. */
 export type GapReason = 'retired' | 'needs_pack_size' | 'unknown_unit' | 'no_price';

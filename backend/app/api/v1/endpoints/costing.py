@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import List
@@ -21,6 +22,7 @@ from app.utils import pricing
 from app.utils.units import IncompatibleUnitError, to_item_unit
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # Costs and margins are the owner's: staff never see them, here or on screen.
 _OWNER = Depends(get_current_owner)
@@ -35,11 +37,14 @@ def _menu_price_rupees(menu_item) -> Decimal | None:
 
 def _made_unit_price(item: InventoryItem, price_overrides, memo: dict, stack: tuple[int, ...], as_of: datetime | None = None) -> tuple[Decimal | None, bool]:
     # What one unit of a kitchen-made item costs (its batch's raw cost / yield, no
-    # overheads), and whether every ingredient inside it is priced. Memoised per request.
+    # overheads), and whether every ingredient inside it is priced. The memo is keyed
+    # by item id alone, so share one only across calls with the same overrides and as_of.
     if item.id in memo:
         return memo[item.id]
     if item.id in stack:
-        return None, False  # a loop that got past the save-time check: a gap, not a crash
+        # A loop that got past the save-time check: a gap, not a crash, but say where.
+        logger.warning("Recipe loop through inventory items %s -> %s", stack, item.id)
+        return None, False
     breakdown = _compute_breakdown(item.recipe, None, price_overrides, memo, stack + (item.id,), as_of)
     result = (breakdown.raw_material_cost / breakdown.yield_units, breakdown.is_complete)
     memo[item.id] = result
@@ -270,16 +275,18 @@ def get_overview(db: Session = Depends(get_db), current_user: TokenData = _OWNER
     # kitchen-made items, with this week's cost against last week's.
     week_ago = utcnow() - timedelta(days=7)
     rows = []
+    # One memo per point in time, so a made item used by many dishes is costed once.
+    memo_now, memo_week_ago = {}, {}
 
     def last_week(costing, menu_item):
-        past = _compute_breakdown(costing, menu_item, as_of=week_ago)
+        past = _compute_breakdown(costing, menu_item, memo=memo_week_ago, as_of=week_ago)
         return past.cost_per_unit if past.is_complete else None
 
     for costing in db.query(DishCosting).all():
         menu_item, made = costing.menu_item, costing.made_item
         if menu_item is None and (made is None or not made.is_active):
             continue
-        b = _compute_breakdown(costing, menu_item)
+        b = _compute_breakdown(costing, menu_item, memo=memo_now)
         missing = sum(1 for line in b.ingredients if line.reason)
         if not b.is_complete:
             state = "missing_prices"
@@ -291,7 +298,7 @@ def get_overview(db: Session = Depends(get_db), current_user: TokenData = _OWNER
             kind="dish" if menu_item else "made", costing_id=costing.id,
             menu_item_id=costing.menu_item_id, inventory_item_id=costing.inventory_item_id,
             name=(menu_item or made).name,
-            category=(menu_item.category.name if menu_item.category else None) if menu_item else (made.category.name if made.category else None),
+            category=getattr((menu_item or made).category, "name", None),
             cost_per_unit=b.cost_per_unit, unit=made.unit if made else None,
             selling_price=b.selling_price, margin_percent=b.margin_percent if b.is_complete else None, target_margin_percent=b.target_margin_percent,
             margin_ceiling=(((b.selling_price - b.cost_per_unit) / b.selling_price * 100).quantize(Decimal("0.01")) if not b.is_complete and b.selling_price else None),

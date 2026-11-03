@@ -217,7 +217,7 @@
 }
 
 /* Dark mode: Fix input fields in cart */
-.dark input[type="text"]::placeholder {
+.dark input[type="text"]:not(.ops *)::placeholder {
   color: #9B8977 !important;
 }
 
@@ -261,27 +261,27 @@
 }
 
 /* Dark mode: Fix search bar and input fields - warmer, lighter background */
-.dark input.input-field,
-.dark input[type="text"],
-.dark input[type="email"],
-.dark input[type="password"] {
+.dark input.input-field:not(.ops *),
+.dark input[type="text"]:not(.ops *),
+.dark input[type="email"]:not(.ops *),
+.dark input[type="password"]:not(.ops *) {
   background-color: #3A3128 !important;
   color: #F5F0E8 !important;
   border-color: #4A4034 !important;
 }
 
-.dark input::placeholder {
+.dark input:not(.ops *)::placeholder {
   color: #9B8977 !important;
 }
 
 /* Dark mode: Fix chip backgrounds */
-.dark .chip {
+.dark .chip:not(.ops *) {
   background-color: #3A3128 !important;
   color: #F5F0E8 !important;
   border-color: #4A4034 !important;
 }
 
-.dark .chip.active {
+.dark .chip.active:not(.ops *) {
   background-color: #B8916A !important;
   color: #1C1812 !important;
   border-color: #B8916A !important;

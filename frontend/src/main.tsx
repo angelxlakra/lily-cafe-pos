@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { ThemeProvider } from './contexts/ThemeContext.tsx'
 import { SidebarProvider } from './context/SidebarContext.tsx'
@@ -15,8 +15,7 @@ import LoginPage from './pages/LoginPage.tsx'
 import AdminActiveOrdersPage from './pages/AdminActiveOrdersPage.tsx'
 import MenuManagementPage from './pages/MenuManagementPage.tsx'
 import OrderHistoryPage from './pages/OrderHistoryPage.tsx'
-import InventoryPage from './pages/InventoryPage.tsx'
-import InventoryCountPage from './pages/InventoryCountPage.tsx'
+import CountPage from './ops/CountPage.tsx'
 import CashCounterPage from './pages/CashCounterPage.tsx'
 import AnalyticsPage from './pages/AnalyticsPage.tsx'
 import ToolsPage from './pages/ToolsPage.tsx'
@@ -26,9 +25,14 @@ import ProtectedRoute from './components/ProtectedRoute.tsx'
 import OpsLayout from './ops/OpsLayout.tsx'
 import OpsInventoryPage from './ops/OpsInventoryPage.tsx'
 import DailySheetPage from './ops/DailySheetPage.tsx'
+import OpsOrderPage from './ops/OrderPage.tsx'
+import StockLogPage from './ops/StockLogPage.tsx'
+import SetupPage from './ops/SetupPage.tsx'
 import RecipePage from './ops/RecipePage.tsx'
 import RecipesListPage from './ops/RecipesListPage.tsx'
 import NewMadeItemPage from './ops/NewMadeItemPage.tsx'
+import { legacyInventoryPath } from './utils/legacyInventory.ts'
+import { useAuth } from './hooks/useAuth'
 import './index.css'
 
 // Configure TanStack Query client
@@ -45,8 +49,9 @@ const queryClient = new QueryClient({
       gcTime: 10 * 60 * 1000,
       // Refetch on window focus for active orders and menu
       refetchOnWindowFocus: true,
-      // Don't refetch on mount if data is fresh
-      refetchOnMount: false,
+      // Refetch on mount only if the data is stale or was invalidated (false
+      // never refetched, so a recipe opened after a purchase showed the old price)
+      refetchOnMount: true,
     },
     mutations: {
       // Retry mutations once on failure
@@ -56,6 +61,13 @@ const queryClient = new QueryClient({
     },
   },
 })
+
+function LegacyInventoryRedirect() {
+  const [params] = useSearchParams()
+  const { isOwner, isCheckingAuth } = useAuth()
+  if (isCheckingAuth) return null // the role isn't known yet
+  return <Navigate to={legacyInventoryPath(params.get('tab'), isOwner)} replace />
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -114,14 +126,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                 }
               />
               <Route
-                path="/admin/inventory"
-                element={
-                  <ProtectedRoute>
-                    <InventoryPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
                 path="/admin/cash-counter"
                 element={
                   <ProtectedRoute>
@@ -152,6 +156,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Route index element={<Navigate to="/admin/ops/inventory" replace />} />
               <Route path="inventory" element={<OpsInventoryPage />} />
               <Route path="sheet" element={<DailySheetPage />} />
+              <Route path="order" element={<OpsOrderPage />} />
+              <Route path="log" element={<StockLogPage />} />
+              <Route path="setup" element={<ProtectedRoute requiredRole="owner"><SetupPage /></ProtectedRoute>} />
               <Route path="recipes" element={<ProtectedRoute requiredRole="owner"><RecipesListPage /></ProtectedRoute>} />
               <Route path="recipes/dish/:menuItemId" element={<ProtectedRoute requiredRole="owner"><RecipePage kind="dish" /></ProtectedRoute>} />
               <Route path="recipes/made/new" element={<ProtectedRoute requiredRole="owner"><NewMadeItemPage /></ProtectedRoute>} />
@@ -168,15 +175,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               }
             />
 
-            {/* Tonight's count — full screen, no sidebar or bottom nav */}
-            <Route
-              path="/admin/inventory/count"
-              element={
-                <ProtectedRoute>
-                  <InventoryCountPage />
-                </ProtectedRoute>
-              }
-            />
+            {/* Tonight's count — full screen, no sidebar or bottom nav. Kept outside the
+                /admin/ops layout route on purpose so it doesn't get the ops tab bar. */}
+            <Route path="/admin/ops/count" element={<ProtectedRoute><CountPage /></ProtectedRoute>} />
+            {/* Old inventory URLs */}
+            <Route path="/admin/inventory" element={<ProtectedRoute><LegacyInventoryRedirect /></ProtectedRoute>} />
+            <Route path="/admin/inventory/count" element={<ProtectedRoute><Navigate to="/admin/ops/count" replace /></ProtectedRoute>} />
 
             {/* Standalone unlisted page — cash counter details for a chosen day */}
             <Route

@@ -126,3 +126,13 @@ def test_unit_change_across_families_converts_nothing(client, owner_headers, ite
     client.patch(URL, headers=owner_headers, json={"items": [{"id": items["syrup"].id, "unit": "kg"}]})
     test_db.expire_all()
     assert test_db.get(InventoryItem, items["syrup"].id).current_quantity == Decimal("2")
+
+
+def test_setup_order_and_pack_price_are_owner_only(client, auth_headers, items):
+    # Item, category and grid writes are covered elsewhere; these are the rest of Setup.
+    for method, path, body in (
+        ("put", f"{URL}/order", {"ids": [items["oil"].id]}),
+        ("put", "/api/v1/inventory/categories/order", {"ids": [items["sauces"].id]}),
+        ("post", f"{URL}/{items['oil'].id}/pack-price", {"price": "10", "pack_quantity": "1", "pack_unit": "bottle"}),
+    ):
+        assert getattr(client, method)(path, headers=auth_headers, json=body).status_code == 403, path

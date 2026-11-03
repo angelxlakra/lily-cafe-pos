@@ -170,3 +170,14 @@ def test_incomplete_row_shows_partial_cost_and_margin_ceiling(client, test_db, o
     (row,) = _overview(client, owner_headers)["rows"]
     assert row["status"] == "missing_prices" and row["margin_percent"] is None
     assert _d(row["cost_per_unit"]) == 100 and _d(row["margin_ceiling"]) == 50
+
+
+def test_overview_two_dishes_share_a_made_item(client, test_db, owner_headers, sample_categories):
+    flour = _item(test_db, "Flour", "kg", Decimal("40"))
+    dough = _item(test_db, "Dough", "kg")
+    _recipe(client, owner_headers, dough, [(flour, 1, "kg")])
+    for name, kg in (("Pizza", 1), ("Bread", 2)):
+        _recipe(client, owner_headers, _menu(test_db, sample_categories, name), [(dough, kg, "kg")], **NO_OVERHEADS)
+    rows = {r["name"]: r for r in _overview(client, owner_headers)["rows"]}
+    assert _d(rows["Pizza"]["cost_per_unit"]) == 40 and _d(rows["Bread"]["cost_per_unit"]) == 80
+    assert rows["Dough"]["category"] is None and rows["Pizza"]["category"] is not None

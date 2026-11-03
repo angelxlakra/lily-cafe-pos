@@ -9,9 +9,11 @@ import { useInventoryItems } from '../hooks/useInventory';
 import { describeApiError } from '../utils/apiError';
 import { rupees } from '../utils/costing';
 import { formatQty, haveIt, isPresence } from '../utils/countQuantity';
+import { clearCountDraft, loadCountDraft } from '../utils/countDraft';
 import { localDate } from '../utils/formatDateTime';
 import type { CountSummary, InventoryItem } from '../types/inventory';
 import { usePurchaseDay } from './api';
+import OpsConfirm from './OpsConfirm';
 import { formatPackPrice, usesPackForm } from './packPrice';
 
 type Filter = 'all' | 'low' | 'made';
@@ -64,6 +66,11 @@ export default function OpsInventoryPage() {
   const counts = useQuery({ queryKey: ['inventory', 'counts', 'recent', 'ops'], queryFn: () => inventoryApi.getCounts(20) });
   // The server's business date (the count night runs to 04:00); local while it loads.
   const today = usePurchaseDay(undefined).data?.business_date ?? localDate();
+  const [draft, setDraft] = useState(() => {
+    const d = loadCountDraft();
+    return d && Object.keys(d.counts).length > 0 ? d : null;
+  });
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
 
@@ -101,7 +108,27 @@ export default function OpsInventoryPage() {
       <div className="ops-inv">
         <aside className="ops-inv-side">
           <h2>Daily count</h2>
-          <Link to="/admin/inventory/count" className="btn ops-link-btn">Start tonight's count</Link>
+          <Link to="/admin/ops/count" className="btn ops-link-btn">{draft ? "Continue tonight's count" : "Start tonight's count"}</Link>
+          {draft && (
+            <>
+              <p className="muted">
+                {Object.keys(draft.counts).length} counted on this phone · started{' '}
+                {new Date(draft.startedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+              </p>
+              <button type="button" className="text-btn" onClick={() => setConfirmDiscard(true)}>Discard</button>
+              <OpsConfirm
+                open={confirmDiscard}
+                title="Discard tonight's count?"
+                message={Object.keys(draft.counts).length === 1
+                  ? 'The 1 entry on this phone will be lost. Nothing saved changes.'
+                  : `The ${Object.keys(draft.counts).length} entries on this phone will be lost. Nothing saved changes.`}
+                confirmText="Discard count"
+                cancelText="Keep it"
+                onClose={() => setConfirmDiscard(false)}
+                onConfirm={() => { clearCountDraft(); setDraft(null); setConfirmDiscard(false); }}
+              />
+            </>
+          )}
           <table className="ops-nights">
             <caption className="sr-only">Last {NIGHTS} nights</caption>
             <tbody>
@@ -130,7 +157,7 @@ export default function OpsInventoryPage() {
                 </button>
               ))}
             </div>
-            {isOwner && <Link to="/admin/inventory?tab=items&edit=all" className="btn ghost ops-link-btn">Edit all</Link>}
+            {isOwner && <Link to="/admin/ops/setup" className="btn ghost ops-link-btn">Edit all</Link>}
           </div>
           <div className="ops-wrap">
             <table className="ops-t ops-inv-t">

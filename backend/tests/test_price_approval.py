@@ -122,10 +122,12 @@ def test_review_drops_it_from_the_pending_list(client, auth_headers, owner_heade
 
 
 def test_approve_all(client, auth_headers, owner_headers, onion):
-    _buy(client, auth_headers, onion, total="160")
-    _buy(client, auth_headers, onion, total="176")
+    ids = [_buy(client, auth_headers, onion, total=t)["id"] for t in ("160", "176")]
 
-    assert client.post(f"{PURCHASES}/price-review/approve-all", headers=owner_headers).json() == {"approved": 2}
+    # Only what the owner was shown: no list, no approval.
+    assert client.post(f"{PURCHASES}/price-review/approve-all", headers=owner_headers).status_code == 422
+    r = client.post(f"{PURCHASES}/price-review/approve-all", headers=owner_headers, json={"purchase_ids": ids})
+    assert r.json() == {"approved": 2}
     assert _n(_item(client, owner_headers, onion)["current_price"]) == _n(44)
 
 
@@ -237,3 +239,15 @@ def test_approve_all_only_the_listed_ids(client, auth_headers, owner_headers, on
     assert r.json() == {"approved": 1}
     left = client.get(f"{PURCHASES}/pending-prices", headers=owner_headers).json()
     assert [row["purchase_id"] for row in left] == [second["id"]]
+
+
+def test_approve_all_skips_lines_already_decided(client, auth_headers, owner_headers, onion):
+    approved = _buy(client, auth_headers, onion, total="160")
+    rejected = _buy(client, auth_headers, onion, total="176")
+    _review(client, owner_headers, approved["id"], "approve")
+    _review(client, owner_headers, rejected["id"], "reject")
+
+    r = client.post(f"{PURCHASES}/price-review/approve-all", headers=owner_headers,
+                    json={"purchase_ids": [approved["id"], rejected["id"]]})
+
+    assert r.json() == {"approved": 0}  # a rejected price stays rejected
