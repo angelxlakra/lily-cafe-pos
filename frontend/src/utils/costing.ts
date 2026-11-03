@@ -1,5 +1,6 @@
 // Pure helpers for the dish costing screen. No React, no API: tested in tests/costing.test.ts.
 
+import { entryUnit } from './purchaseSheet.ts';
 import type { DishCostingSummary, GapReason, IngredientLine } from '../types/costing';
 
 interface UnitItem {
@@ -27,6 +28,30 @@ function familyOf(unit: string | null | undefined): string[] | null {
   return known ? Object.values(FAMILIES).find(units => units.includes(known))! : null;
 }
 
+/** Whether two units convert into each other (g and kg yes, g and ml no). Unknown units never do. */
+export function sameFamily(a: string | null | undefined, b: string | null | undefined): boolean {
+  const family = familyOf(a);
+  return family !== null && family === familyOf(b);
+}
+
+/** g, kg, ml, L: a quantity of stuff, as opposed to a count of things. */
+export function isMeasure(unit: string | null | undefined): boolean {
+  const family = familyOf(unit);
+  return family === FAMILIES.mass || family === FAMILIES.volume;
+}
+
+/** The measure family's small unit: ml for ml/L, g for g/kg, otherwise null. */
+export function baseUnitOf(unit: string | null | undefined): 'g' | 'ml' | null {
+  const family = familyOf(unit);
+  return family === FAMILIES.mass ? 'g' : family === FAMILIES.volume ? 'ml' : null;
+}
+
+/** A cost per g or ml as it reads in a kitchen: per kg or L. Other units are left alone. */
+export function perUnitCost(cost: number, unit: string | null | undefined): { cost: number; unit: string | null } {
+  const { label, factor } = entryUnit(unit ?? '');
+  return { cost: cost * factor, unit: unit ? label : null };
+}
+
 /**
  * The units a recipe line can use for an item, the likeliest first. An item with
  * a pack size has one because recipes use it in that other unit, so the pack's
@@ -52,6 +77,7 @@ export function unitOptions(item: UnitItem): string[] {
 /** Where a price came from and when, for the line under its rate. */
 export function describeSource(line: Pick<IngredientLine, 'price_source' | 'price_as_of'>): string | null {
   if (line.price_source === 'typed') return 'typed price';
+  if (line.price_source === 'recipe') return 'from its recipe';
   if (line.price_source === 'purchase' && line.price_as_of) {
     const date = new Date(line.price_as_of);
     return `bought ${date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;

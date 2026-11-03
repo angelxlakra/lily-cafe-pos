@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  attentionRank, clearCostingDrafts, costStatus, describeGap, describeSource, isStalePrice, parseQuantity, percent, rupees, unitOptions,
+  attentionRank, clearCostingDrafts, costStatus, describeGap, describeSource, isMeasure, isStalePrice, parseQuantity, percent, perUnitCost, rupees, sameFamily, baseUnitOf, unitOptions,
 } from '../src/utils/costing.ts';
 
 const summary = (over: Record<string, unknown> = {}) => ({
@@ -94,4 +94,19 @@ test('signing out forgets unsaved recipes and nothing else', () => {
   } as unknown as Storage;
   clearCostingDrafts(storage);
   assert.deepEqual([...data.keys()], ['lily-cafe-theme']);
+});
+
+test('a made item cost reads per kg or L, and unit families are told apart', () => {
+  assert.deepEqual(perUnitCost(1.5406, 'g'), { cost: 1540.6, unit: 'kg' });
+  assert.deepEqual(perUnitCost(0.9, 'ml'), { cost: 900, unit: 'L' });
+  assert.deepEqual(perUnitCost(12, 'pcs'), { cost: 12, unit: 'pcs' });
+  assert.equal(rupees(perUnitCost(1.5406, 'g').cost), '₹1,540.60');
+  assert.equal(sameFamily('g', 'kg'), true);
+  assert.equal(sameFamily('g', 'ml'), false);
+  assert.equal(sameFamily('pkt', 'g'), false);
+  assert.equal(isMeasure('L'), true);
+  assert.equal(isMeasure('pcs'), false);
+  assert.equal(baseUnitOf('L'), 'ml');
+  assert.equal(baseUnitOf('kg'), 'g');
+  assert.equal(baseUnitOf('pcs'), null);
 });

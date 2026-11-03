@@ -16,6 +16,7 @@ from app.utils import pricing
 
 PURCHASE = "/api/v1/inventory/transactions/purchase"
 ITEMS = "/api/v1/inventory/items"
+PURCHASES = "/api/v1/inventory/purchases"
 
 
 @pytest.fixture
@@ -114,7 +115,7 @@ def test_price_jump_threshold():
 
 # --- the endpoint ----------------------------------------------------------------
 
-def test_purchase_records_total_vendor_and_raises_stock(client, auth_headers, test_db, chicken):
+def test_purchase_records_total_vendor_and_raises_stock(client, auth_headers, owner_headers, test_db, chicken):
     vendor = Vendor(name="Raju Chicken Centre")
     test_db.add(vendor)
     test_db.commit()
@@ -135,6 +136,9 @@ def test_purchase_records_total_vendor_and_raises_stock(client, auth_headers, te
     t = test_db.query(InventoryTransaction).one()
     assert (t.total_amount, t.vendor_id) == (Decimal("1280"), vendor.id)
 
+    # Staff logged ₹320/kg against a typed ₹300: it is the price once the owner approves it.
+    assert line["price_status"] == "pending"
+    client.post(f"{PURCHASES}/{line['id']}/price-review", headers=owner_headers, json={"action": "approve"})
     item = client.get(f"{ITEMS}/{chicken.id}", headers=auth_headers).json()
     assert Decimal(str(item["current_price"])) == Decimal("320")
     assert item["price_source"] == "purchase"

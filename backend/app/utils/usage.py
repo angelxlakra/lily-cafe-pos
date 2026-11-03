@@ -52,7 +52,7 @@ def used_on(db: Session, day: date, items: Iterable[InventoryItem]) -> dict[int,
     rows = (
         db.query(DishCostingIngredient, DishCosting.menu_item_id, DishCosting.yield_units)
         .join(DishCosting, DishCosting.id == DishCostingIngredient.costing_id)
-        .filter(DishCostingIngredient.inventory_item_id.in_(items))
+        .filter(DishCostingIngredient.inventory_item_id.in_(items), DishCosting.menu_item_id.isnot(None))
         .all()
     )
     for ingredient, menu_item_id, yield_units in rows:

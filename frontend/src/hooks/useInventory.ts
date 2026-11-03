@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { inventoryApi } from '../api/inventory';
+import { costingKeys } from './useCosting';
 import type {
   InventoryCategoryCreate,
   InventoryCategoryUpdate,
@@ -141,8 +142,9 @@ export function useUpdateItem() {
     },
     onSettled: () => {
       // Always refetch after error or success; renames and category moves
-      // also show up in the count sheet.
+      // also show up in the count sheet. A unit or price change moves recipe costs.
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: costingKeys.all });
     },
   });
 }
@@ -166,6 +168,7 @@ export function useRecordPurchase() {
     onSuccess: () => {
       // Stock and master data feed the count sheet, status card and lists alike.
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: costingKeys.all });
     },
   });
 }

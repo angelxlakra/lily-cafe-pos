@@ -34,6 +34,7 @@ class InventoryItemBase(BaseModel):
     pack_size: Optional[Decimal] = Field(None, gt=0)
     pack_unit: Optional[str] = Field(None, min_length=1, max_length=20)
     default_vendor_id: Optional[int] = None
+    brand: Optional[str] = Field(None, min_length=1, max_length=100)
 
 class InventoryItemCreate(InventoryItemBase):
     current_quantity: Decimal = Field(default=0, ge=0)
@@ -49,6 +50,7 @@ class InventoryItemUpdate(BaseModel):
     pack_size: Optional[Decimal] = Field(None, gt=0)
     pack_unit: Optional[str] = Field(None, min_length=1, max_length=20)
     default_vendor_id: Optional[int] = None
+    brand: Optional[str] = Field(None, min_length=1, max_length=100)
 
 class BulkItemUpdate(InventoryItemUpdate):
     """One changed row from the setup grid. Only the fields sent are changed."""
@@ -69,6 +71,8 @@ class InventoryItem(InventoryItemBase):
     category_name: Optional[str] = None # Computed in API
     is_low_stock: bool # Computed property
     needs_setup: bool = False
+    last_counted: Optional[date] = None  # latest night it was checked or changed in a count
+    has_recipe: bool = False  # made in the kitchen: it has its own recipe
     # Resolved price (app/utils/pricing.py): latest paid purchase, else the
     # typed cost_per_unit (> 0), else None. Per the item's own unit.
     current_price: Optional[Decimal] = None
@@ -114,6 +118,31 @@ class PurchaseEdit(BaseModel):
     vendor_id: Optional[int] = None
     notes: Optional[str] = Field(None, max_length=500)
     pack_count: Optional[Decimal] = Field(None, gt=0)
+
+class PriceReview(BaseModel):
+    action: Literal["approve", "reject"]
+
+class ApproveAllPrices(BaseModel):
+    purchase_ids: Optional[List[int]] = None   # None: everything pending
+
+class PendingPrice(BaseModel):
+    """A purchase whose price waits for the owner: what it would change, and for whom."""
+    purchase_id: int
+    item_id: int
+    item_name: str
+    brand: Optional[str] = None
+    unit: str
+    recorded_by: str
+    created_at: datetime
+    quantity: Decimal
+    total_amount: Decimal
+    pack_count: Optional[Decimal] = None
+    old_price: Optional[Decimal] = None   # the price now; None for an item with none yet
+    new_price: Optional[Decimal] = None
+    change: Optional[Decimal] = None      # fraction: 0.25 = 25% up
+    is_new_item: bool
+    superseded: bool = False              # a newer approved price is in use; approving changes nothing
+    ripple: Optional[dict] = None         # filled in by the dish-cost ripple
 
 class DayEndCount(BaseModel):
     counted_quantity: Decimal = Field(..., ge=0)
@@ -248,3 +277,10 @@ class CountResult(CountSummary):
     changes: List[CountChange]
     skipped_item_names: List[str]
     emailed: bool
+
+
+class PackPriceIn(BaseModel):
+    """"₹58 for a 100 g pack": what the owner knows, rather than a price per unit."""
+    price: Decimal = Field(..., gt=0)
+    pack_quantity: Decimal = Field(..., gt=0)
+    pack_unit: str = Field(..., min_length=1, max_length=20)

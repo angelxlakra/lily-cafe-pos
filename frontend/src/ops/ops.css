@@ -1,0 +1,275 @@
+/* The ops pages: a plain spreadsheet look, deliberately unlike the POS app. All scoped under .ops. */
+.ops {
+  --ops-bg: #fbfaf7;
+  --ops-fg: #1d1b18;
+  --ops-muted: #6b665e;
+  --ops-rule: #dcd7cd;
+  --ops-strong: #1d1b18;
+  --ops-typed: rgba(60, 120, 230, 0.1);
+  --ops-typed-line: rgba(60, 120, 230, 0.45);
+  --ops-bad: #b3261e;
+  --ops-bad-bg: rgba(179, 38, 30, 0.12);
+  --ops-warn-bg: rgba(214, 120, 20, 0.18);
+  --ops-pill: rgba(120, 115, 105, 0.16);
+  --ops-bar: #fff;
+  background: var(--ops-bg);
+  color: var(--ops-fg);
+  min-height: 100vh;
+  font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+.dark .ops {
+  --ops-bg: #16150f;
+  --ops-fg: #ece8de;
+  --ops-muted: #9c968a;
+  --ops-rule: #34312a;
+  --ops-strong: #ece8de;
+  --ops-typed: rgba(110, 160, 255, 0.14);
+  --ops-typed-line: rgba(110, 160, 255, 0.5);
+  --ops-bad: #ff8a80;
+  --ops-bad-bg: rgba(255, 138, 128, 0.16);
+  --ops-warn-bg: rgba(255, 170, 70, 0.2);
+  --ops-pill: rgba(200, 195, 180, 0.16);
+  --ops-bar: #1e1d16;
+}
+
+.ops *, .ops *::before, .ops *::after { box-sizing: border-box; }
+.ops a { color: inherit; }
+
+/* Top bar */
+.ops-bar {
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  padding: 0 16px; background: var(--ops-bar); border-bottom: 1px solid var(--ops-rule);
+  position: sticky; top: 0; z-index: 20;
+}
+.ops-bar a, .ops-bar button {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px;
+  text-decoration: none; color: var(--ops-muted); font: inherit; background: none; border: 0;
+  border-bottom: 2px solid transparent; cursor: pointer;
+}
+.ops-bar a:hover, .ops-bar button:hover { color: var(--ops-fg); }
+.ops-bar a.active { color: var(--ops-fg); border-bottom-color: var(--ops-fg); font-weight: 600; }
+.ops-links { display: flex; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.ops-bar .short { display: none; }
+.ops-links a { white-space: nowrap; }
+.ops-main { padding: 16px; max-width: 1100px; margin: 0 auto; }
+.ops h1, .ops h2, .ops h3 { font-family: inherit; letter-spacing: normal; }
+.ops h1 { font-size: 22px; margin: 0 0 4px; }
+.ops .muted { color: var(--ops-muted); font-size: 14px; }
+
+/* Stat strip */
+.ops-stats { display: flex; gap: 12px 28px; flex-wrap: wrap; margin: 14px 0; align-items: flex-end; }
+.ops-stat > span { display: block; font-size: 13px; color: var(--ops-muted); }
+.ops-stat > b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+.ops-stat input { width: 90px; font-size: 16px; font-weight: 700; text-align: right; }
+
+/* Tables */
+.ops-wrap { overflow-x: auto; border-top: 1px solid var(--ops-rule); -webkit-overflow-scrolling: touch; }
+.ops-t { width: 100%; border-collapse: collapse; font-size: 15px; }
+.ops-t th {
+  font-size: 13px; color: var(--ops-muted);
+  text-align: left; padding: 8px; border-bottom: 2px solid var(--ops-strong); white-space: nowrap; font-weight: 600;
+}
+.ops-t td { padding: 4px 8px; border-bottom: 1px solid var(--ops-rule); white-space: nowrap; vertical-align: middle; }
+.ops-t .n { text-align: right; font-variant-numeric: tabular-nums; }
+.ops-t th:first-child, .ops-t td:first-child { position: sticky; left: 0; background: var(--ops-bg); z-index: 1; }
+.ops-t tr.tot td { font-weight: 600; border-top: 2px solid var(--ops-strong); }
+.ops-t tr.sub td { color: var(--ops-muted); }
+.ops-t td.typed { background: linear-gradient(var(--ops-typed), var(--ops-typed)), var(--ops-bg); }
+.ops-t .gap { color: var(--ops-bad); font-style: italic; }
+.ops-t .src { display: block; font-size: 13px; color: var(--ops-muted); }
+
+/* Inputs: typed cells look typed */
+.ops input, .ops select {
+  font: inherit; color: inherit; min-height: 36px; padding: 0 8px;
+  border: 1px solid var(--ops-typed-line); border-radius: 4px; background: var(--ops-typed);
+}
+.ops input:focus-visible, .ops select:focus-visible, .ops button:focus-visible, .ops a:focus-visible {
+  outline: 2px solid var(--ops-fg); outline-offset: 1px;
+}
+.ops .cell-in { width: 100%; min-width: 110px; }
+.ops .cell-in.num { text-align: right; font-variant-numeric: tabular-nums; }
+.ops .amount { display: inline-flex; gap: 4px; }
+.ops .amount input { width: 72px; text-align: right; }
+.ops .err { color: var(--ops-bad); font-size: 13px; display: block; white-space: normal; }
+
+/* Buttons and pills */
+.ops .btn {
+  min-height: 44px; padding: 0 16px; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--ops-fg); background: var(--ops-fg); color: var(--ops-bg);
+}
+.ops .btn:disabled { opacity: 0.45; cursor: default; }
+.ops .btn.ghost { background: none; color: var(--ops-fg); }
+.ops .icon-btn {
+  min-height: 44px; min-width: 44px; border: 0; background: none; color: var(--ops-muted); cursor: pointer; font-size: 16px;
+}
+.ops .icon-btn:hover { color: var(--ops-bad); }
+.ops .mode {
+  min-height: 36px; min-width: 36px; border-radius: 4px; border: 1px solid var(--ops-typed-line);
+  background: var(--ops-typed); color: inherit; font: inherit; cursor: pointer;
+}
+.ops .pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 13px; background: var(--ops-pill); }
+.ops .pill.warn { background: var(--ops-warn-bg); }
+.ops .pill.bad { background: var(--ops-bad-bg); }
+
+/* Ingredient picker */
+.ops-pick ul {
+  /* In the flow, not floating: the table wrapper clips overflow and the sticky cells would paint over a popup. */
+  margin: 2px 0 0; padding: 4px; list-style: none; max-width: 360px;
+  max-height: 280px; overflow-y: auto; background: var(--ops-bar);
+  border: 1px solid var(--ops-rule); border-radius: 6px;
+}
+.ops-pick li button {
+  display: flex; width: 100%; justify-content: space-between; gap: 8px; align-items: center;
+  min-height: 44px; padding: 0 10px; text-align: left; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; border-radius: 4px;
+}
+.ops-pick li button:hover, .ops-pick li button:focus-visible { background: var(--ops-pill); }
+
+.ops-actions { display: flex; gap: 8px; align-items: center; margin: 16px 0; flex-wrap: wrap; }
+.ops-used a { margin-right: 10px; }
+
+@media (max-width: 640px) {
+  .ops input, .ops select, .ops .mode { min-height: 44px; }
+  .ops .mode { min-width: 44px; }
+  .ops-t td { padding: 2px 8px; }
+  .ops-main { padding: 12px; }
+  .ops-bar .long { display: none; }
+  .ops-bar .short { display: inline; }
+  .ops-bar { flex-wrap: nowrap; padding: 0 8px; }
+  .ops-bar button, .ops-bar a { padding: 0 10px; }
+  .ops-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; align-items: start; }
+  .ops-stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .ops-stat input { width: 100%; max-width: 140px; }
+}
+
+/* Recipes list */
+.ops-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; position: relative; }
+.ops-filters .grow { flex: 1; min-width: 180px; }
+.ops .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.ops .chip {
+  min-height: 36px; padding: 0 12px; border-radius: 18px; border: 1px solid var(--ops-rule);
+  background: var(--ops-pill); color: inherit; font: inherit; cursor: pointer;
+}
+.ops .chip.on { background: var(--ops-fg); color: var(--ops-bg); border-color: var(--ops-fg); }
+.ops .pill.ok { background: rgba(39, 134, 74, 0.18); }
+.ops .pill.made { background: rgba(80, 140, 255, 0.2); }
+.ops-t td.up { color: var(--ops-bad); }
+.ops-t td.down { color: #1e7a45; }
+.dark .ops-t td.down { color: #7ddc9b; }
+.ops-list tr.click { cursor: pointer; }
+.ops-list tr.click:hover td { background: var(--ops-pill); }
+.ops-list td.name a { text-decoration: none; font-weight: 600; }
+.ops-new { position: relative; }
+.ops-menu {
+  position: absolute; right: 0; top: 100%; margin-top: 4px; z-index: 10; min-width: 240px; padding: 4px;
+  list-style: none; background: var(--ops-bar); border: 1px solid var(--ops-rule); border-radius: 6px;
+}
+.ops-menu ul { margin: 4px 0 0; padding: 0; list-style: none; max-height: 280px; overflow-y: auto; }
+.ops-menu input { width: 100%; }
+.ops-menu li button {
+  display: flex; width: 100%; justify-content: space-between; gap: 8px; align-items: center; min-height: 44px;
+  padding: 0 10px; text-align: left; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; border-radius: 4px;
+}
+.ops-menu li button:hover, .ops-menu li button:focus-visible { background: var(--ops-pill); }
+.ops-menu .pad { padding: 10px; }
+.ops-form { max-width: 360px; display: grid; gap: 12px; }
+.ops-form label { display: grid; gap: 4px; font-size: 14px; color: var(--ops-muted); }
+.ops-form input, .ops-form select { min-height: 44px; color: var(--ops-fg); font-size: 16px; }
+.ops .ops-link-btn { display: inline-flex; align-items: center; text-decoration: none; }
+
+@media (max-width: 640px) {
+  .ops .chip { min-height: 44px; }
+  .ops-new, .ops-new .btn { width: 100%; }
+  .ops-menu { left: 0; right: 0; }
+  .ops-list thead { display: none; }
+  .ops-list, .ops-list tbody { display: block; }
+  .ops-list tr.click {
+    display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0 8px;
+    padding: 6px 0; border-bottom: 1px solid var(--ops-rule);
+  }
+  .ops-list td { display: block; padding: 0 8px; border: 0; white-space: normal; position: static; background: none; text-align: left; }
+  .ops-list td.name { grid-column: 1 / 4; grid-row: 1; font-size: 15px; }
+  .ops-list td.name a { display: flex; align-items: center; min-height: 44px; }
+  .ops-list td.status { grid-column: 4; grid-row: 1; align-self: center; }
+  .ops-list td.type { display: none; }
+  .ops-list td[data-l]::before { content: attr(data-l); display: block; font-size: 13px; color: var(--ops-muted); }
+  .ops-list td.cost, .ops-list td.price, .ops-list td.margin, .ops-list td.week { grid-row: 2; }
+}
+
+.ops-similar { list-style: none; margin: 0; padding: 0; }
+.ops-similar a { display: flex; align-items: center; min-height: 44px; }
+
+/* Daily sheet */
+.ops .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ops-day { margin: 10px 0; }
+.ops-day .btn { min-width: 44px; padding: 0 12px; }
+.ops-sheet { min-width: 56rem; }
+.ops-sheet td span.src, .ops-sheet td span.err { display: block; }
+.ops .sheet-cell { width: 76px; text-align: right; font-variant-numeric: tabular-nums; }
+.ops-sheet td.up { color: var(--ops-bad); font-weight: 600; }
+.ops-line {
+  display: grid; grid-template-columns: minmax(200px, 2fr) repeat(3, minmax(80px, 1fr)) minmax(120px, 1.2fr) auto auto;
+  gap: 8px; align-items: end; margin: 12px 0; position: relative;
+}
+.ops-line label { display: grid; gap: 2px; font-size: 13px; color: var(--ops-muted); }
+.ops-line label input { font-size: 14px; color: var(--ops-fg); width: 100%; }
+.ops-line .wide { grid-column: 1 / -1; margin: 0; }
+.ops-line .item { position: relative; }
+.ops-line .item ul { position: absolute; left: 0; right: 0; top: 100%; z-index: 15; max-width: none; }
+.ops-line .item li button[aria-selected='true'] { background: var(--ops-pill); }
+.ops-in { text-align: right; min-width: 70px; }
+.ops-in span { display: block; font-size: 13px; color: var(--ops-muted); }
+.ops-in b { font-variant-numeric: tabular-nums; }
+.ops-line .btn.add { min-width: 100px; }
+.ops-jump { border: 1px solid var(--ops-bad); border-radius: 6px; padding: 8px 12px; background: var(--ops-warn-bg); }
+.ops-approve { margin: 16px 0; }
+.ops-approve h2 { font-size: 17px; margin: 0 0 8px; }
+.ops-approve .chg { border: 1px solid var(--ops-rule); border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; background: var(--ops-bar); }
+.ops-approve .top { display: flex; gap: 8px 16px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.ops-approve .acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.ops-spent { margin: 8px 0; }
+.ops-spent b { font-variant-numeric: tabular-nums; }
+.ops-approve ul { margin: 6px 0 0; padding-left: 18px; }
+
+@media (max-width: 640px) {
+  .ops-line { grid-template-columns: 1fr 1fr; }
+  .ops-line .item, .ops-line .btn.add { grid-column: 1 / -1; }
+  .ops-line label input { font-size: 16px; }
+  .ops-line .item ul { position: static; }
+  .ops-approve .acts { flex-wrap: nowrap; }
+  .ops-approve .acts .btn { flex: 1 1 0; min-height: 44px; padding: 0 8px; }
+  .ops .sheet-cell { font-size: 16px; }
+  .ops-in { grid-column: 1 / -1; text-align: left; }
+  .ops-in span { display: inline; margin-right: 6px; }
+}
+
+/* Inventory */
+.ops-inv { display: flex; gap: 18px; align-items: flex-start; flex-direction: row-reverse; }
+.ops-inv-main { flex: 1 1 0; min-width: 0; }
+.ops-inv-side { flex: 0 0 260px; border: 1px solid var(--ops-rule); border-radius: 8px; padding: 12px; }
+.ops-inv-side h2 { font-size: 17px; margin: 0 0 8px; }
+.ops-inv-side .btn { display: flex; align-items: center; justify-content: center; width: 100%; margin-bottom: 10px; }
+.ops-nights { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ops-nights td { padding: 4px 2px; border-bottom: 1px solid var(--ops-rule); }
+.ops-nights td.n { text-align: right; font-variant-numeric: tabular-nums; }
+.ops-inv-t tr.cat th { padding-top: 14px; font-size: 14px; border-bottom: 1px solid var(--ops-rule); }
+.ops-inv-t td.brand { color: var(--ops-muted); }
+.ops-inv-t .sub { display: none; }
+
+@media (max-width: 767px) {
+  /* The count box sits above the table. */
+  .ops-inv { flex-direction: column; align-items: stretch; }
+  .ops-inv-side { flex: none; }
+  .ops-inv-t thead, .ops-inv-t td.brand, .ops-inv-t td.price, .ops-inv-t td.val, .ops-inv-t td.counted { display: none; }
+  .ops-inv-t, .ops-inv-t tbody { display: block; }
+  .ops-inv-t tr.row {
+    display: grid; grid-template-columns: 1fr auto; column-gap: 8px; align-items: center;
+    min-height: 52px; padding: 4px 0; border-bottom: 1px solid var(--ops-rule);
+  }
+  .ops-inv-t tr.cat, .ops-inv-t tr.cat th { display: block; position: static; }
+  .ops-inv-t td { display: block; border: 0; padding: 0 8px; white-space: normal; position: static; background: none; }
+  .ops-inv-t td.name { grid-row: 1 / span 2; font-size: 15px; }
+  .ops-inv-t .sub { display: block; font-size: 14px; color: var(--ops-muted); }
+  .ops-inv-t td.stock { font-weight: 600; }
+  .ops-inv-t td.alert { grid-column: 2; font-size: 14px; color: var(--ops-muted); }
+  .ops-inv-t td.alert::before { content: 'alert '; }
+}

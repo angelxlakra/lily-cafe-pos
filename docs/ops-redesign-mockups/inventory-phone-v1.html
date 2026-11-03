@@ -1,0 +1,64 @@
+<style>
+  .phones{display:flex;gap:28px;flex-wrap:wrap;justify-content:center}
+  .phone{width:340px;border:2px solid rgba(127,127,127,.5);border-radius:28px;padding:14px 12px 18px;font-size:14px}
+  .phone .cap{text-align:center;font-size:12px;opacity:.6;margin-bottom:8px}
+  .hdr{display:flex;justify-content:space-between;align-items:baseline;margin:4px 4px 10px}
+  .hdr b{font-size:17px}
+  .muted{opacity:.6;font-size:12px}
+  .box{border:1px solid rgba(127,127,127,.35);border-radius:10px;padding:10px;margin-bottom:10px}
+  .bigbtn{display:block;width:100%;min-height:48px;border-radius:10px;border:0;font-size:15px;font-weight:600;background:#2d6cdf;color:#fff}
+  .chips{display:flex;gap:6px;margin:8px 0}
+  .pill{display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;background:rgba(127,127,127,.18)}
+  .low{background:rgba(192,57,43,.2)}
+  .made{background:rgba(80,140,255,.18)}
+  .it{display:flex;justify-content:space-between;align-items:center;min-height:52px;border-bottom:1px solid rgba(127,127,127,.2);padding:0 4px}
+  .it .r{text-align:right;font-variant-numeric:tabular-nums}
+  .cat{font-size:11px;text-transform:uppercase;letter-spacing:.05em;opacity:.6;margin:12px 4px 2px}
+  .cr{display:flex;justify-content:space-between;align-items:center;min-height:60px;border-bottom:1px solid rgba(127,127,127,.2);padding:0 4px;gap:8px}
+  .num{display:flex;align-items:center;gap:6px}
+  .num input{width:84px;height:44px;font-size:18px;text-align:right;border-radius:8px;border:1px solid rgba(127,127,127,.5);padding:0 8px;background:transparent;color:inherit}
+  .seg{display:flex;border:1px solid rgba(127,127,127,.5);border-radius:8px;overflow:hidden}
+  .seg span{min-width:64px;height:44px;display:flex;align-items:center;justify-content:center;font-size:13px}
+  .seg .on{background:rgba(127,127,127,.25);font-weight:600}
+  .done{opacity:.55}
+  .foot{margin-top:12px}
+</style>
+
+<h2>Phone: inventory and tonight's count</h2>
+<p class="subtitle">Same data as the laptop page. The count keeps number boxes, one answer per row. "Edit all" (the spreadsheet grid) stays for bulk changes on a laptop.</p>
+
+<div class="phones">
+
+<div class="phone">
+<div class="cap">Inventory</div>
+<div class="hdr"><b>Inventory</b><span class="muted">173 items</span></div>
+<div class="box">
+  <button class="bigbtn">Start tonight's count</button>
+  <div class="muted" style="margin-top:8px">Last count: Sun 1 Nov · Ravi · 66 / 173 &nbsp;›</div>
+</div>
+<input class="mock-input" placeholder="Search items" style="width:100%;height:44px;box-sizing:border-box">
+<div class="chips"><span class="pill">All</span><span class="pill low">Low 14</span><span class="pill made">Made 9</span></div>
+<div class="cat">Dairy</div>
+<div class="it"><div>Butter<div class="muted">Amul · ₹58 / 100 g</div></div><div class="r">1.2 kg<div class="muted">alert 1 kg</div></div></div>
+<div class="it"><div>Fresh cream<div class="muted">Amul · ₹60 / 250 g</div></div><div class="r"><span class="pill low">0.3 kg</span><div class="muted">alert 1 kg</div></div></div>
+<div class="cat">Made in the kitchen</div>
+<div class="it"><div>Cajun masala <span class="pill made">made</span><div class="muted">₹1,541 / kg</div></div><div class="r">640 g<div class="muted">alert 300 g</div></div></div>
+<div class="it"><div>Bao buns <span class="pill made">made</span><div class="muted">from recipe</div></div><div class="r">36 pcs<div class="muted">alert 20</div></div></div>
+</div>
+
+<div class="phone">
+<div class="cap">Tonight's count</div>
+<div class="hdr"><b>Count · Mon 2 Nov</b><span class="muted">24 / 173</span></div>
+<input class="mock-input" placeholder="Jump to item" style="width:100%;height:44px;box-sizing:border-box">
+<div class="cat">Dairy</div>
+<div class="cr done"><div>Butter<div class="muted">was 1.2 kg</div></div><div class="num"><input value="1.1">kg</div></div>
+<div class="cr"><div>Fresh cream<div class="muted">was 0.3 kg</div></div><div class="num"><input placeholder="">kg</div></div>
+<div class="cr"><div>Condensed milk<div class="muted">was 3 tins</div></div><div class="num"><input placeholder="">tins</div></div>
+<div class="cat">Sauces (yes / no)</div>
+<div class="cr"><div>Keema chilli oil</div><div class="seg"><span>Out</span><span class="on">Have it</span></div></div>
+<div class="cat">Made in the kitchen</div>
+<div class="cr"><div>Cajun masala<div class="muted">was 640 g</div></div><div class="num"><input placeholder="">g</div></div>
+<div class="foot"><button class="bigbtn">Review & save</button></div>
+</div>
+
+</div>

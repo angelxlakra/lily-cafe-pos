@@ -36,7 +36,7 @@ class InventoryItem(Base):
     unit = Column(String(20), nullable=False)  # "L", "kg", "pcs", "g", "ml"
     current_quantity = Column(Numeric(10, 2), nullable=False, default=0)
     min_threshold = Column(Numeric(10, 2), nullable=False, default=0)
-    cost_per_unit = Column(Numeric(10, 2), nullable=True)
+    cost_per_unit = Column(Numeric(12, 4), nullable=True)
     category_id = Column(Integer, ForeignKey("inventory_categories.id"), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     sort_order = Column(Integer, nullable=False, default=0, server_default="0")
@@ -51,6 +51,8 @@ class InventoryItem(Base):
     # Who this is usually ordered from; groups the end-of-count order message.
     # Optional: an item with none still alerts, under "Unassigned".
     default_vendor_id = Column(Integer, ForeignKey("vendors.id"), nullable=True)
+    # "Amul", "Nashik": which make of the item this is. Free text, shown beside the name.
+    brand = Column(String(100), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
@@ -59,6 +61,8 @@ class InventoryItem(Base):
     default_vendor = relationship("Vendor")
     transactions = relationship("InventoryTransaction", back_populates="item")
     costing_ingredients = relationship("DishCostingIngredient", back_populates="inventory_item")
+    # How this is made, when it is made in the kitchen rather than bought.
+    recipe = relationship("DishCosting", back_populates="made_item", uselist=False, cascade="all, delete-orphan")
 
     @validates("current_quantity", "count_mode")
     def _clamp_presence(self, key, value):
@@ -126,6 +130,11 @@ class InventoryTransaction(Base):
     # Filled in on insert (below); rows from before it existed were backfilled
     # with their item's unit at the time.
     unit = Column(String(20), nullable=True)
+    # PURCHASE rows only: "pending" until the owner approves the price, then
+    # "approved" or "rejected". NULL is a legacy row and counts as approved.
+    # Only approved rows can become the item's price; stock moves regardless.
+    price_status = Column(String(10), nullable=True)
+    price_reviewed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     item = relationship("InventoryItem", back_populates="transactions")

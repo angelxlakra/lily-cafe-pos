@@ -21,8 +21,11 @@ export interface CostingIngredientIn {
 }
 
 export interface DishCostingIn {
-  menu_item_id: number;
-  yield_units: Num;
+  /** A dish (menu_item_id) or a kitchen-made item (inventory_item_id): exactly one. */
+  menu_item_id?: number;
+  inventory_item_id?: number;
+  /** Required for a dish; a made item may leave it out and the batch makes the sum of its lines. */
+  yield_units?: Num | null;
   target_margin_percent?: Num | null;
   notes?: string | null;
   ingredients: CostingIngredientIn[];
@@ -45,7 +48,7 @@ export interface IngredientLine {
   is_active: boolean;
   unit_error: boolean;
   needs_pack_size: boolean;
-  price_source: 'purchase' | 'typed' | null;
+  price_source: 'purchase' | 'typed' | 'recipe' | null;
   price_as_of: string | null;
   reason: GapReason | null;
   /** A yes/no item: on the recipe, covered by overheads, never a gap. */

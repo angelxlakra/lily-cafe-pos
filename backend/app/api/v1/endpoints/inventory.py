@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import case, func, desc
 from decimal import ROUND_HALF_UP, Decimal
 
@@ -25,7 +25,8 @@ from app.core import settings_store
 from app.api.deps import get_current_user, get_current_owner
 from app.schemas import TokenData, UserRole
 from app.utils.email_sender import send_inventory_report
-from app.utils.units import compatible, convert
+from app.utils.units import IncompatibleUnitError, compatible, convert, family, is_measure, normalize
+from app.api.v1.endpoints import costing as costing_endpoints
 from app.utils import pricing, usage
 
 router = APIRouter()
@@ -154,7 +155,7 @@ def get_items(
     current_user: TokenData = _READ
 ):
     """Get all inventory items with filtering."""
-    query = db.query(InventoryItem)
+    query = db.query(InventoryItem).options(selectinload(InventoryItem.recipe))
     
     if is_active:
         query = query.filter(InventoryItem.is_active == True)
@@ -172,10 +173,17 @@ def get_items(
         items = [item for item in items if item.is_low_stock]
         
     prices = pricing.resolve_many(db, items)
+    # One grouped query for the whole list: the latest night each item was actually counted.
+    last_counted = dict(
+        db.query(InventoryCountLine.item_id, func.max(InventoryCount.business_date))
+        .join(InventoryCount, InventoryCount.id == InventoryCountLine.count_id)
+        .filter(InventoryCountLine.status != CountLineStatus.SKIPPED.value)
+        .group_by(InventoryCountLine.item_id).all()
+    )
     result_items = []
     low_stock_count = 0
     for item in items:
-        result_items.append(_item_dict(item, prices[item.id]))
+        result_items.append(_item_dict(item, prices[item.id], last_counted=last_counted.get(item.id)))
         if item.is_low_stock:
             low_stock_count += 1
 
@@ -221,12 +229,14 @@ def reorder_items(
     """Set the order items appear in within their category. Owner only."""
     _apply_sort_order(db, InventoryItem, order.ids)
 
-def _item_dict(item: InventoryItem, price: pricing.ResolvedPrice, schema=inventory_schemas.InventoryItem) -> dict:
+def _item_dict(item: InventoryItem, price: pricing.ResolvedPrice, schema=inventory_schemas.InventoryItem, last_counted=None) -> dict:
     """An item as the API returns it, with its category and resolved price."""
     item_dict = schema.model_validate(item, from_attributes=True).model_dump()
     if item.category:
         item_dict['category_name'] = item.category.name
     item_dict['is_low_stock'] = item.is_low_stock
+    item_dict['has_recipe'] = item.recipe is not None
+    item_dict['last_counted'] = last_counted
     item_dict.update(price.as_dict())
     return item_dict
 
@@ -240,6 +250,7 @@ def _check_vendors(db: Session, vendor_ids: set) -> None:
 # Columns that can't hold NULL; sending null for one is a client error, not a 500.
 _REQUIRED_ITEM_FIELDS = ("name", "unit", "min_threshold", "count_mode", "is_active")
 _CENT = Decimal("0.01")
+_PRICE_PLACES = Decimal("0.0001")
 
 def _to_cents(value: Decimal) -> Decimal:
     """Round to what the column holds, but never a positive amount down to 0:
@@ -405,6 +416,36 @@ def update_item(
     db.refresh(item)
     return _item_dict(item, pricing.resolve_one(db, item))
 
+@router.post("/items/{item_id}/pack-price", response_model=inventory_schemas.InventoryItem)
+def set_pack_price(
+    item_id: int,
+    data: inventory_schemas.PackPriceIn,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _OWNER,
+):
+    """Price an item by the pack it is bought in ("₹58 for a 100 g pack"). Owner login only."""
+    item = db.query(InventoryItem).filter(InventoryItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    if item.is_presence:
+        raise HTTPException(status_code=400, detail="A yes/no item has no price")
+    try:
+        normalize(data.pack_unit)
+    except IncompatibleUnitError:
+        raise HTTPException(status_code=400, detail=f"Unknown unit: {data.pack_unit}")
+    if compatible(item.unit, data.pack_unit):
+        # kg priced by a 500 g pack: the price is per the item's own unit, kept to the 4 places the column holds.
+        item.cost_per_unit = (data.price / convert(data.pack_quantity, data.pack_unit, item.unit)).quantize(_PRICE_PLACES, rounding=ROUND_HALF_UP)
+        item.pack_size = item.pack_unit = None
+    elif is_measure(item.unit) and is_measure(data.pack_unit):
+        raise HTTPException(status_code=400, detail=f"{item.name} is counted in {item.unit}; give the pack in {'ml or L' if family(item.unit) == 'volume' else 'g or kg'}, or change its unit first")
+    else:
+        # A packet priced by its weight: one packet costs the price, and the pack size bridges the units.
+        item.pack_size, item.pack_unit, item.cost_per_unit = data.pack_quantity, data.pack_unit, data.price
+    db.commit()
+    db.refresh(item)
+    return _item_dict(item, pricing.resolve_one(db, item))
+
 @router.delete("/items/{item_id}")
 def delete_item(
     item_id: int,
@@ -455,6 +496,16 @@ def _price_check(item: InventoryItem, quantity, total_amount, current: pricing.R
         "is_jump": not is_gift and pricing.is_price_jump(current.price, new_price),
     }
 
+def _needs_price_review(user: TokenData, item: InventoryItem, total_amount, new_price, current: pricing.ResolvedPrice) -> bool:
+    """Whether a purchase line's price must wait for the owner.
+
+    Not for the owner, a yes/no item (it has no price), a line with no positive total (a gift or no amount
+    says nothing about the price), or one at the price already in force.
+    """
+    if user.role == UserRole.OWNER or item.is_presence or total_amount is None or total_amount <= 0:
+        return False
+    return new_price != current.price
+
 def _purchase_dict(t: InventoryTransaction) -> dict:
     # Shown in the item's unit as it is now, so a line bought before a g -> kg
     # change reads 4 kg at ₹120, not 4000 kg at ₹0.12. A line in a unit the
@@ -479,6 +530,7 @@ def _purchase_dict(t: InventoryTransaction) -> dict:
         "new_quantity": t.new_quantity,
         "recorded_by": t.recorded_by,
         "created_at": t.created_at,
+        "price_status": t.price_status,
     }
 
 @router.post("/transactions/purchase/check", response_model=List[inventory_schemas.PriceCheckResult])
@@ -528,7 +580,11 @@ def record_purchase(
     transactions = []
     for line in purchase.items:
         item = items[line.item_id]
-        checks.append(_price_check(item, line.quantity, line.total_amount, prices[item.id]))
+        check = _price_check(item, line.quantity, line.total_amount, prices[item.id])
+        checks.append(check)
+        # Staff can't move a price on their own: a line at a new price waits
+        # for the owner. Stock is not held back, only the price.
+        approved = not _needs_price_review(current_user, item, line.total_amount, check["unit_price"], prices[item.id])
 
         previous_qty = item.current_quantity
         item.current_quantity += line.quantity
@@ -544,7 +600,9 @@ def record_purchase(
             pack_count=line.pack_count,
             recorded_by=current_user.username,
             previous_quantity=previous_qty,
-            new_quantity=new_qty
+            new_quantity=new_qty,
+            price_status=pricing.PRICE_APPROVED if approved else pricing.PRICE_PENDING,
+            price_reviewed_at=utcnow() if approved else None,
         )
         db.add(transaction)
         transactions.append(transaction)
@@ -761,6 +819,100 @@ def _move_purchase_stock(t: InventoryTransaction, quantity: Decimal) -> None:
     t.quantity += item.current_quantity - before
     t.new_quantity = t.previous_quantity + t.quantity
 
+def _ripple(db: Session, item_id: int, new_price: Optional[Decimal]) -> Optional[dict]:
+    """What the dishes (and kitchen-made items) would cost if this price were approved."""
+    if new_price is None:
+        return None
+    dishes, unaffected, made = costing_endpoints._get_reprice_impacts(db, {item_id: new_price})
+    return {
+        "affected_dishes": [d.model_dump() for d in dishes],
+        "unaffected_count": unaffected,
+        "made_items": [m.model_dump() for m in made],
+    }
+
+@router.get("/purchases/pending-prices", response_model=List[inventory_schemas.PendingPrice])
+def get_pending_prices(db: Session = Depends(get_db), current_user: TokenData = _OWNER):
+    """Purchases whose price waits for the owner, oldest first, against the price now."""
+    rows = (
+        db.query(InventoryTransaction)
+        .filter(
+            InventoryTransaction.transaction_type == TransactionType.PURCHASE,
+            InventoryTransaction.price_status == pricing.PRICE_PENDING,
+        )
+        .order_by(InventoryTransaction.id)
+        .all()
+    )
+    items = {t.item_id: t.item for t in rows}
+    latest = pricing.latest_priced_purchases(db, items)
+    current = {i: pricing.resolve(item, latest.get(i)) for i, item in items.items()}
+    result = []
+    for t in rows:
+        line = _purchase_dict(t)
+        old, new = current[t.item_id].price, line["unit_price"]
+        result.append({
+            "purchase_id": t.id,
+            "item_id": t.item_id,
+            "item_name": line["item_name"],
+            "brand": t.item.brand,
+            "unit": line["unit"],
+            "recorded_by": t.recorded_by,
+            "created_at": t.created_at,
+            "quantity": line["quantity"],
+            "total_amount": t.total_amount,
+            "pack_count": t.pack_count,
+            "old_price": old,
+            "new_price": new,
+            "change": pricing.price_change(old, new),
+            "is_new_item": old is None,
+            # A newer approved purchase is the price, so approving this one changes nothing.
+            "superseded": t.item_id in latest and latest[t.item_id].id > t.id,
+            "ripple": _ripple(db, t.item_id, new),
+        })
+    return result
+
+@router.post("/purchases/price-review/approve-all", response_model=dict)
+def approve_all_prices(
+    body: Optional[inventory_schemas.ApproveAllPrices] = None,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _OWNER,
+):
+    """Approve the purchase prices waiting for review: the listed ones, or all with no list. Owner only."""
+    query = db.query(InventoryTransaction).filter(
+        InventoryTransaction.transaction_type == TransactionType.PURCHASE,
+        InventoryTransaction.price_status == pricing.PRICE_PENDING,
+    )
+    if body is not None and body.purchase_ids is not None:
+        query = query.filter(InventoryTransaction.id.in_(body.purchase_ids))
+    approved = (
+        query
+        .update({"price_status": pricing.PRICE_APPROVED, "price_reviewed_at": utcnow()}, synchronize_session=False)
+    )
+    db.commit()
+    return {"approved": approved}
+
+@router.post("/purchases/{purchase_id}/price-review", response_model=dict)
+def review_purchase_price(
+    purchase_id: int,
+    review: inventory_schemas.PriceReview,
+    db: Session = Depends(get_db),
+    current_user: TokenData = _OWNER,
+):
+    """Approve a purchase's price (it becomes the item's price) or reject it (stock stays, price doesn't).
+
+    The price is the highest-id approved purchase, so approving out of order
+    can't leave an older price in charge. Owner only.
+    """
+    t = db.get(InventoryTransaction, purchase_id)
+    if not t or t.transaction_type != TransactionType.PURCHASE:
+        raise HTTPException(status_code=404, detail="Purchase not found")
+    if t.price_status != pricing.PRICE_PENDING:
+        raise HTTPException(status_code=400, detail="This purchase's price isn't waiting for review")
+    t.price_status = pricing.PRICE_APPROVED if review.action == "approve" else pricing.PRICE_REJECTED
+    t.price_reviewed_at = utcnow()
+    db.commit()
+    db.refresh(t)
+    return _purchase_dict(t)
+
 @router.patch("/purchases/{purchase_id}", response_model=dict)
 def edit_purchase(
     purchase_id: int,
@@ -773,10 +925,20 @@ def edit_purchase(
     changes = edit.model_dump(exclude_unset=True)
     if changes.get("vendor_id") is not None and not db.get(Vendor, changes["vendor_id"]):
         raise HTTPException(status_code=400, detail="Vendor not found")
+    # Taken before anything moves: the line may itself be the price in force.
+    current = pricing.resolve_one(db, t.item)
+    was_priced_at = pricing.unit_price(t.total_amount, pricing.quantity_in(t, t.item.unit))
     if changes.get("quantity") is not None:
         _move_purchase_stock(t, changes.pop("quantity"))
     for key, value in changes.items():
         setattr(t, key, value)
+    now_priced_at = pricing.unit_price(t.total_amount, pricing.quantity_in(t, t.item.unit))
+    if now_priced_at != was_priced_at and current_user.role != UserRole.OWNER:
+        # A changed total or quantity is a new rate; same rules as a new line.
+        if _needs_price_review(current_user, t.item, t.total_amount, now_priced_at, current):
+            t.price_status, t.price_reviewed_at = pricing.PRICE_PENDING, None
+        else:
+            t.price_status, t.price_reviewed_at = pricing.PRICE_APPROVED, utcnow()
     if t.total_amount is not None and t.total_amount == 0 and not (t.notes or "").strip():
         raise HTTPException(status_code=422, detail="A purchase of ₹0 needs a note saying why (e.g. free from the vendor)")
     db.commit()

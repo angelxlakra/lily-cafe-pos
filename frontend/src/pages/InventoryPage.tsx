@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Package, Tag, ClockCounterClockwise, ClipboardText, ShoppingCart, PaperPlaneTilt } from '@phosphor-icons/react';
 import { useSidebar } from '../context/SidebarContext';
@@ -24,12 +24,16 @@ const TABS: { id: Tab; label: string; icon: JSX.Element; ownerOnly?: boolean }[]
 export default function InventoryPage() {
   // ?tab=order opens straight onto tonight's orders, from the end of the count.
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<Tab>(() =>
-    TABS.some(tab => tab.id === searchParams.get('tab') && !tab.ownerOnly) ? (searchParams.get('tab') as Tab) : 'daily-count'
-  );
-  const { setMobileOpen } = useSidebar();
   // Items and categories are owner-only master data: admins don't see them.
   const { isOwner } = useAuth();
+  const wanted = (owner: boolean) => TABS.find(tab => tab.id === searchParams.get('tab') && (owner || !tab.ownerOnly))?.id;
+  const [activeTab, setActiveTab] = useState<Tab>(() => wanted(isOwner) ?? 'daily-count');
+  // The role arrives after /auth/verify: an owner-only ?tab= is honoured once it is known.
+  useEffect(() => {
+    if (isOwner) setActiveTab(current => wanted(true) ?? current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOwner]);
+  const { setMobileOpen } = useSidebar();
   const tabs = TABS.filter(tab => isOwner || !tab.ownerOnly);
 
   // One underline that slides to the selected tab, so the eye follows the

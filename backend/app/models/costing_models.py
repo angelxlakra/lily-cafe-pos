@@ -10,12 +10,14 @@ OVERHEAD_KINDS = ("packaging", "labour", "fixed", "wastage")
 
 
 class DishCosting(Base):
-    """One costing sheet attached to one menu item."""
+    """One costing sheet: a menu item's recipe, or the recipe of a kitchen-made inventory item."""
 
     __tablename__ = "dish_costings"
 
     id = Column(Integer, primary_key=True, index=True)
-    menu_item_id = Column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id", ondelete="CASCADE"), nullable=True, unique=True, index=True)
+    # Set instead of menu_item_id when this is how a kitchen-made item (a spice mix) is made.
+    inventory_item_id = Column(Integer, ForeignKey("inventory_items.id"), nullable=True, unique=True, index=True)
     yield_units = Column(Numeric(12, 3), nullable=False, default=1)
     target_margin_percent = Column(Numeric(5, 2), nullable=True)
     notes = Column(String(500), nullable=True)
@@ -34,6 +36,7 @@ class DishCosting(Base):
 
     # Relationships
     menu_item = relationship("MenuItem", back_populates="costing")
+    made_item = relationship("InventoryItem", back_populates="recipe")
     ingredients = relationship("DishCostingIngredient",back_populates="costing",cascade="all, delete-orphan",order_by="DishCostingIngredient.sort_order",)
 
  

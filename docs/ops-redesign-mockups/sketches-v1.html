@@ -1,0 +1,102 @@
+<style>
+  .t{width:100%;border-collapse:collapse;font-size:13px}
+  .t th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;opacity:.65;text-align:left;padding:6px 8px;border-bottom:2px solid currentColor}
+  .t td{padding:6px 8px;border-bottom:1px solid rgba(127,127,127,.25);white-space:nowrap}
+  .t td.n,.t th.n{text-align:right;font-variant-numeric:tabular-nums}
+  .typed{background:rgba(80,140,255,.10)}
+  .calc{opacity:.85}
+  .gap{color:#c0392b;font-style:italic}
+  .tot td{font-weight:600;border-top:2px solid currentColor}
+  .key{display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;margin-right:6px}
+  .wrap{overflow-x:auto}
+  .pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:rgba(127,127,127,.18)}
+  .warn{background:rgba(230,126,34,.2)}
+  .bad{background:rgba(192,57,43,.2)}
+  .row{display:flex;gap:24px;flex-wrap:wrap;margin:10px 0}
+  .stat b{display:block;font-size:20px}
+  .stat span{font-size:11px;opacity:.65;text-transform:uppercase}
+  .chg{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px solid rgba(127,127,127,.3);border-radius:6px;margin:6px 0;gap:10px;flex-wrap:wrap}
+</style>
+
+<h2>First look: two pages built from the owners' sketches</h2>
+<p class="subtitle">Real numbers from the WhatsApp thread. <span class="key typed">blue = typed by a person</span><span class="key">plain = worked out by the app</span></p>
+
+<div class="section">
+<div class="mockup">
+<div class="mockup-header">Recipe page · Choco chunk cookie (sketch 2: dish costing)</div>
+<div class="mockup-body">
+<div class="row">
+  <div class="stat"><span>Batch makes</span><b class="typed">4 cookies</b></div>
+  <div class="stat"><span>Raw material / batch</span><b>₹150.21</b></div>
+  <div class="stat"><span>Cost per cookie</span><b>₹48.82</b></div>
+  <div class="stat"><span>Menu price</span><b class="typed">₹130</b></div>
+  <div class="stat"><span>Margin</span><b>62% <span class="pill warn">below 65%</span></b></div>
+</div>
+<div class="wrap"><table class="t">
+<tr><th>Ingredient</th><th>Brand</th><th class="n">Amount used</th><th class="n">Price per pack</th><th class="n">Cost in recipe</th><th class="n">% of food cost</th></tr>
+<tr><td class="typed">Butter</td><td class="typed">Amul</td><td class="n typed">100 g</td><td class="n">₹58 / 100 g</td><td class="n">₹58.00</td><td class="n">38.6%</td></tr>
+<tr><td class="typed">Powder sugar</td><td class="typed">—</td><td class="n typed">25 g</td><td class="n">₹75 / kg</td><td class="n">₹1.88</td><td class="n">1.2%</td></tr>
+<tr><td class="typed">Brown sugar</td><td class="typed">—</td><td class="n typed">25 g</td><td class="n">₹180 / kg</td><td class="n">₹4.50</td><td class="n">3.0%</td></tr>
+<tr><td class="typed">Fresh cream</td><td class="typed">Amul</td><td class="n typed">50 g</td><td class="n">₹60 / 250 g</td><td class="n">₹12.00</td><td class="n">8.0%</td></tr>
+<tr><td class="typed">Vanilla</td><td class="typed">—</td><td class="n typed">5 ml</td><td class="n">₹439 / 500 ml</td><td class="n">₹4.39</td><td class="n">2.9%</td></tr>
+<tr><td class="typed">Maida</td><td class="typed">Ganesh</td><td class="n typed">190 g</td><td class="n">₹35 / 500 g</td><td class="n">₹13.30</td><td class="n">8.9%</td></tr>
+<tr><td class="typed">Baking powder</td><td class="typed">—</td><td class="n typed">3 g</td><td class="n">₹38 / 100 g</td><td class="n">₹1.14</td><td class="n">0.8%</td></tr>
+<tr><td class="typed">Choco chunks</td><td class="typed">—</td><td class="n typed">100 g</td><td class="n">₹220 / 400 g</td><td class="n">₹55.00</td><td class="n">36.6%</td></tr>
+<tr class="tot"><td colspan="4">Raw material (batch of 4)</td><td class="n">₹150.21</td><td class="n">100%</td></tr>
+<tr><td colspan="4">Per cookie</td><td class="n">₹37.55</td><td class="n">28.9% of ₹130</td></tr>
+<tr><td>Packaging</td><td colspan="2"></td><td class="n typed">₹0</td><td class="n">₹0.00</td><td class="n"></td></tr>
+<tr><td>Labour</td><td colspan="2"></td><td class="n typed">15% of raw</td><td class="n">₹5.63</td><td class="n"></td></tr>
+<tr><td>Fixed cost</td><td colspan="2"></td><td class="n typed">10% of raw</td><td class="n">₹3.76</td><td class="n"></td></tr>
+<tr><td>Wastage</td><td colspan="2"></td><td class="n typed">5% of raw</td><td class="n">₹1.88</td><td class="n"></td></tr>
+<tr class="tot"><td colspan="4">Cost per cookie</td><td class="n">₹48.82</td><td class="n"></td></tr>
+</table></div>
+<p style="font-size:12px;opacity:.7">"Price per pack" comes from the last approved purchase of that brand. Overheads use today's defaults (15 / 10 / 5%) and can be changed per dish.</p>
+</div></div>
+</div>
+
+<div class="section">
+<div class="mockup">
+<div class="mockup-header">Recipe page · Cajun masala (made in the kitchen, kept in stock)</div>
+<div class="mockup-body">
+<div class="row">
+  <div class="stat"><span>Batch makes</span><b>1,012 g</b></div>
+  <div class="stat"><span>Batch cost</span><b>≥ ₹1,559</b></div>
+  <div class="stat"><span>Cost per kg</span><b>≥ ₹1,541</b></div>
+  <div class="stat"><span>Used in</span><b>Cajun fries, Cajun wings…</b></div>
+</div>
+<div class="wrap"><table class="t">
+<tr><th>Ingredient</th><th>Brand</th><th class="n">Amount used</th><th class="n">Price per pack</th><th class="n">Cost in recipe</th><th class="n">% of food cost</th></tr>
+<tr><td class="typed">Salt</td><td class="typed">—</td><td class="n typed">200 g</td><td class="n gap">no price yet</td><td class="n gap">?</td><td class="n"></td></tr>
+<tr><td class="typed">Oregano</td><td class="typed">—</td><td class="n typed">20 g</td><td class="n">₹99 / 10 g</td><td class="n">₹198.00</td><td class="n">12.7%</td></tr>
+<tr><td class="typed">Thyme</td><td class="typed">—</td><td class="n typed">40 g</td><td class="n">₹99 / 18 g</td><td class="n">₹220.00</td><td class="n">14.1%</td></tr>
+<tr><td class="typed">Kashmiri lal mirch</td><td class="typed">—</td><td class="n typed">80 g</td><td class="n">₹140 / 100 g</td><td class="n">₹112.00</td><td class="n">7.2%</td></tr>
+<tr><td class="typed">Paprika</td><td class="typed">—</td><td class="n typed">266 g</td><td class="n">₹99 / 52 g</td><td class="n">₹506.42</td><td class="n">32.5%</td></tr>
+<tr><td class="typed">Garlic powder</td><td class="typed">—</td><td class="n typed">206 g</td><td class="n">₹99 / 100 g</td><td class="n">₹203.94</td><td class="n">13.1%</td></tr>
+<tr><td class="typed">Onion powder</td><td class="typed">—</td><td class="n typed">100 g</td><td class="n">₹99 / 80 g</td><td class="n">₹123.75</td><td class="n">7.9%</td></tr>
+<tr><td class="typed">Pepper</td><td class="typed">—</td><td class="n typed">100 g</td><td class="n">₹195 / 100 g</td><td class="n">₹195.00</td><td class="n">12.5%</td></tr>
+<tr class="tot"><td colspan="4">Batch (1 price missing)</td><td class="n">≥ ₹1,559.11</td><td class="n"></td></tr>
+</table></div>
+<p style="font-size:12px;opacity:.7">On a dish's page it's one line: <b>Cajun masala · 10 g · ₹1,541 / kg · ₹15.41</b>. No overheads or menu price, since it's never sold on its own.</p>
+</div></div>
+</div>
+
+<div class="section">
+<div class="mockup">
+<div class="mockup-header">Daily sheet · Mon 2 Nov (sketch 1: ingredient / inventory calculator)</div>
+<div class="mockup-body">
+<div class="wrap"><table class="t">
+<tr><th>Item</th><th>Brand</th><th class="n">Unit qty</th><th class="n">Rate</th><th class="n">Purchased</th><th class="n">In (₹)</th><th class="n">Out (used)</th><th class="n">Remaining</th><th class="n">Day-end</th><th class="n">Wastage</th></tr>
+<tr><td class="typed">Sugar</td><td class="typed">Madhur</td><td class="n typed">1 kg</td><td class="n typed">65</td><td class="n typed">2</td><td class="n">130</td><td class="n">0.5 kg</td><td class="n">1.5 kg</td><td class="n typed">1.4 kg</td><td class="n">100 g</td></tr>
+<tr><td class="typed">Condensed milk</td><td class="typed">Amul</td><td class="n typed">210 g</td><td class="n typed">76</td><td class="n typed">3</td><td class="n">228</td><td class="n">—</td><td class="n">—</td><td class="n typed"></td><td class="n"></td></tr>
+<tr><td class="typed">Onion</td><td class="typed">—</td><td class="n typed">1 kg</td><td class="n typed">40</td><td class="n typed">4</td><td class="n">160</td><td class="n">3.6 kg</td><td class="n">400 g</td><td class="n typed">150 g</td><td class="n">250 g</td></tr>
+<tr><td class="typed">Paprika</td><td class="typed">Keya</td><td class="n typed">52 g</td><td class="n typed">99</td><td class="n typed">2</td><td class="n">198</td><td class="n">—</td><td class="n">—</td><td class="n typed"></td><td class="n"></td></tr>
+<tr class="tot"><td colspan="5">Spent today</td><td class="n">₹716</td><td colspan="4"></td></tr>
+</table></div>
+<p style="font-size:12px;opacity:.7">Manager types the blue columns. Out comes from today's sales × recipes; Wastage = Remaining − Day-end.</p>
+
+<h3 style="margin-top:16px">Owner only · price changes to approve</h3>
+<div class="chg"><span><b>Onion</b> ₹32 → ₹40 / kg <span class="pill bad">+25%</span></span><span>9 dishes cost more · 1 now below target</span><button class="mock-button">Approve</button></div>
+<div class="chg"><span><b>Sugar (Madhur)</b> ₹60 → ₹65 / kg <span class="pill warn">+8%</span></span><span>4 dishes cost more · none below target</span><button class="mock-button">Approve</button></div>
+<div class="chg"><span><b>Condensed milk (Amul)</b> new item, ₹76 / 210 g</span><span>not in any recipe yet</span><button class="mock-button">Approve</button></div>
+</div></div>
+</div>

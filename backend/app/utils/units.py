@@ -54,6 +54,14 @@ def family(unit: str) -> str:
     return _UNITS[normalize(unit)][0]
 
 
+def is_measure(unit: str) -> bool:
+    """g, kg, ml, l: a quantity of stuff, as opposed to a count of things."""
+    try:
+        return family(unit) in ("mass", "volume")
+    except IncompatibleUnitError:
+        return False
+
+
 def compatible(from_unit: str, to_unit: str) -> bool:
     try:
         return family(from_unit) == family(to_unit)
