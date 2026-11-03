@@ -1,6 +1,4 @@
 /* Setup (owner): items grid, add item, categories, count order, import. Scoped under .ops like ops.css. */
-.ops { --ops-warn-line: #d67814; }
-.dark .ops { --ops-warn-line: #ffaa46; }
 .count-sheet.wide textarea {
   width: 100%; min-height: 220px; padding: 8px; font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: inherit;
   border: 1px solid var(--ops-typed-line); border-radius: 4px; background: var(--ops-typed);

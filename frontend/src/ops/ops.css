@@ -10,6 +10,7 @@
   --ops-bad: #b3261e;
   --ops-bad-bg: rgba(179, 38, 30, 0.12);
   --ops-warn-bg: rgba(214, 120, 20, 0.18);
+  --ops-warn-line: #d67814;
   --ops-pill: rgba(120, 115, 105, 0.16);
   --ops-bar: #fff;
   background: var(--ops-bg);
@@ -28,6 +29,7 @@
   --ops-bad: #ff8a80;
   --ops-bad-bg: rgba(255, 138, 128, 0.16);
   --ops-warn-bg: rgba(255, 170, 70, 0.2);
+  --ops-warn-line: #ffaa46;
   --ops-pill: rgba(200, 195, 180, 0.16);
   --ops-bar: #1e1d16;
 }
@@ -328,7 +330,7 @@
   border: 1px solid var(--ops-rule); background: var(--ops-bar); color: var(--ops-muted); touch-action: manipulation;
 }
 .ops .count-choice.on { background: var(--ops-fg); color: var(--ops-bg); border-color: var(--ops-fg); }
-.ops .count-choice.on.changed { border-color: var(--ops-warn-line, #d67814); background: var(--ops-warn-bg); color: var(--ops-fg); }
+.ops .count-choice.on.changed { border-color: var(--ops-warn-line); background: var(--ops-warn-bg); color: var(--ops-fg); }
 
 .count-foot { position: fixed; bottom: 0; left: 0; right: 0; z-index: 20; background: var(--ops-bar); border-top: 1px solid var(--ops-rule); }
 .count-foot-row { max-width: 720px; margin: 0 auto; display: flex; gap: 8px; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); }

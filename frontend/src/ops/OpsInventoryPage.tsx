@@ -119,7 +119,9 @@ export default function OpsInventoryPage() {
               <OpsConfirm
                 open={confirmDiscard}
                 title="Discard tonight's count?"
-                message={`The ${Object.keys(draft.counts).length} entries on this phone will be lost. Nothing saved changes.`}
+                message={Object.keys(draft.counts).length === 1
+                  ? 'The 1 entry on this phone will be lost. Nothing saved changes.'
+                  : `The ${Object.keys(draft.counts).length} entries on this phone will be lost. Nothing saved changes.`}
                 confirmText="Discard count"
                 cancelText="Keep it"
                 onClose={() => setConfirmDiscard(false)}
