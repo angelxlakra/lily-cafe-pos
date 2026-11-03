@@ -26,6 +26,7 @@ const OVERHEADS: { kind: OverheadKind; label: string }[] = [
 
 interface Line { key: string; itemId: number; quantity: string; unit: string }
 interface OverheadDraft { mode: OverheadMode; value: string }
+const MODE_LABEL: Record<OverheadMode, string> = { percent: 'percent of raw material', amount: 'rupees for the batch', each: 'rupees per portion' };
 
 let keyCounter = 0;
 const newKey = () => `l${++keyCounter}`;
@@ -468,7 +469,7 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
                 const draft = overheads[k];
                 const fallback = defaults[k];
                 const placeholder = fallback.value != null ? String(Number(fallback.value)) : '0';
-                const flip = draft.mode === 'percent' ? 'amount' : 'percent';
+                const setMode = (kind: OverheadKind, mode: OverheadMode) => setOverheads(c => ({ ...c, [kind]: { ...c[kind], mode } }));
                 return (
                   <tr key={k}>
                     <td>+ {label}</td>
@@ -476,7 +477,7 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
                       <span className="amount">
                         <input
                           inputMode="decimal"
-                          aria-label={`${label} (${draft.mode === 'percent' ? 'percent of raw material' : 'rupees per batch'})`}
+                          aria-label={`${label} (${MODE_LABEL[draft.mode]})`}
                           value={draft.value}
                           placeholder={placeholder}
                           onChange={event => setOverheads(c => ({ ...c, [k]: { ...c[k], value: event.target.value } }))}
@@ -484,10 +485,16 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
                         <button
                           type="button"
                           className="mode"
-                          aria-label={`${label}: switch to ${flip === 'percent' ? 'percent of raw material' : 'rupees'}`}
-                          onClick={() => setOverheads(c => ({ ...c, [k]: { ...c[k], mode: flip } }))}
+                          aria-label={`${label}: switch to ${draft.mode === 'percent' ? 'rupees' : 'percent of raw material'}`}
+                          onClick={() => setMode(k, draft.mode === 'percent' ? 'amount' : 'percent')}
                         >{draft.mode === 'percent' ? '%' : '₹'}</button>
                       </span>
+                      {draft.mode !== 'percent' && (
+                        <span className="per" role="group" aria-label={`${label} rupees are`}>
+                          <button type="button" aria-pressed={draft.mode === 'amount'} onClick={() => setMode(k, 'amount')}>per batch</button>
+                          <button type="button" aria-pressed={draft.mode === 'each'} onClick={() => setMode(k, 'each')}>per {unitLabel}</button>
+                        </span>
+                      )}
                     </td>
                     <td className="n">{inherited ? rupees(inherited.amount) : '—'}</td>
                   </tr>

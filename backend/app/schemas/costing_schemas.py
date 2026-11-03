@@ -6,7 +6,8 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
-OverheadMode = Literal["amount", "percent"]
+# amount: ₹ for the whole batch; each: ₹ per portion (a box per cookie); percent: of the batch's raw material.
+OverheadMode = Literal["amount", "each", "percent"]
 OverheadKind = Literal["packaging", "labour", "fixed", "wastage"]
 
 

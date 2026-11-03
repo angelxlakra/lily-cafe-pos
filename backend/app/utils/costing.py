@@ -229,8 +229,8 @@ def compute(
         if cfg.mode == "percent":
             amount = money(raw * Decimal(cfg.value) / 100)
             percent = pct(cfg.value)
-        elif cfg.mode == "amount":
-            amount = money(cfg.value)
+        elif cfg.mode in ("amount", "each"):
+            amount = money(Decimal(cfg.value) * (Decimal(yield_units) if cfg.mode == "each" else 1))
             percent = pct(amount / raw * 100) if raw > 0 else None
         else:
             raise ValueError(f"Unknown overhead mode: {cfg.mode!r}")

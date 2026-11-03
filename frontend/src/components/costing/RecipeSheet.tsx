@@ -618,7 +618,7 @@ function Readout({ breakdown, gapCount, pending, menuPrice, updating }: {
   const food = breakdown.food_cost_percent == null || nothingCosted ? null : Math.round(Number(breakdown.food_cost_percent));
   const overheads = breakdown.overheads
     .filter(o => Number(o.amount) > 0)
-    .map(o => `${KIND_LABEL[o.kind].toLowerCase()} ${o.mode === 'percent' ? `${Number(o.value)}%` : rupees(o.value)}`)
+    .map(o => `${KIND_LABEL[o.kind].toLowerCase()} ${o.mode === 'percent' ? `${Number(o.value)}%` : `${rupees(o.value)}${o.mode === 'each' ? ' each' : ''}`}`)
     .join(' · ');
   const row = 'flex items-baseline justify-between gap-4';
   const below = !hasGaps && margin != null && target != null && margin < target;
@@ -681,7 +681,7 @@ function OverheadEditor({ draft, defaults, onChange, onTargetChange }: {
   onTargetChange: (value: string) => void;
 }) {
   const describeDefault = (o: OverheadOverride | undefined) =>
-    !o || o.value == null ? '' : o.mode === 'percent' ? `${Number(o.value)}% of ingredients` : rupees(o.value);
+    !o || o.value == null ? '' : o.mode === 'percent' ? `${Number(o.value)}% of ingredients` : `${rupees(o.value)}${o.mode === 'each' ? ' per portion' : ''}`;
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-neutral-border px-4 py-4">
@@ -711,6 +711,7 @@ function OverheadEditor({ draft, defaults, onChange, onTargetChange }: {
                 >
                   <option value="percent">% of ingredients</option>
                   <option value="amount">₹ per batch</option>
+                  <option value="each">₹ per portion</option>
                 </select>
                 <button type="button" onClick={() => onChange(kind, null)} className="text-sm text-coffee-brown underline underline-offset-2">
                   Use default

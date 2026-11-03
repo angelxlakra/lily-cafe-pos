@@ -115,7 +115,11 @@
 .r-charges p.r-note { margin: 0 0 6px; font-size: 13px; }
 .r-charges tr.key td { font-size: 17px; font-weight: 700; background: var(--ops-pill); }
 .r-charges .ops-t { border-top: 1px solid var(--ops-rule); }
-.r-charges .ops-t td:first-child { white-space: normal; }
+/* ₹ charges: for the whole batch, or for each portion it makes. */
+.r-charges .per { display: flex; width: max-content; margin: 4px 0 0 auto; border: 1px solid var(--ops-rule); border-radius: 4px; overflow: hidden; }
+.r-charges .per button { min-height: 28px; padding: 0 8px; border: 0; background: none; color: var(--ops-muted); font: inherit; font-size: 13px; cursor: pointer; }
+.r-charges .per button + button { border-left: 1px solid var(--ops-rule); }
+.r-charges .per button[aria-pressed="true"] { background: var(--ops-strong); color: var(--ops-bg); font-weight: 600; }
 @media (min-width: 1400px) {
   .recipe-grid {
     grid-template-columns: minmax(0, 1fr) 340px;
