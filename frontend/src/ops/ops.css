@@ -81,6 +81,9 @@
 .ops-t td { padding: 4px 8px; border-bottom: 1px solid var(--ops-rule); white-space: nowrap; vertical-align: middle; }
 /* Column lines, as in the Setup grid. The stacked phone layouts set border: 0 on their cells. */
 .ops-t th + th, .ops-t td + td { border-left: 1px solid var(--ops-rule); }
+/* Outer edges too, so a table reads as a box and not as loose rows. */
+.ops-t th:first-child, .ops-t td:first-child { border-left: 1px solid var(--ops-rule); }
+.ops-t th:last-child, .ops-t td:last-child { border-right: 1px solid var(--ops-rule); }
 .ops-t .n { text-align: right; font-variant-numeric: tabular-nums; }
 .ops-t th:first-child, .ops-t td:first-child { position: sticky; left: 0; background: var(--ops-bg); z-index: 1; }
 .ops-t tr.tot td { font-weight: 600; border-top: 2px solid var(--ops-strong); }
@@ -104,7 +107,8 @@
 /* minmax(0, …) lets the column shrink so the table scrolls in its box, not the page. */
 .recipe-grid { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 32px; }
 .r-side { max-width: 560px; }
-.r-charges h2 { font-size: 16px; margin: 20px 0 6px; }
+.r-sum h2, .r-charges h2 { font-size: 16px; margin: 20px 0 6px; }
+.r-sum h2 { margin-top: 12px; }
 .r-charges .ops-t { border-top: 1px solid var(--ops-rule); }
 .r-charges .ops-t td:first-child { white-space: normal; }
 @media (min-width: 1400px) {
@@ -115,13 +119,14 @@
     align-items: start;
   }
   .r-sum { grid-area: sum; }
+  .r-sum h2 { margin-top: 0; } /* level with the table's top */
   .r-table { grid-area: table; }
   .r-side { grid-area: side; }
   .r-sum .ops-stats { display: block; margin: 0; border-top: 1px solid var(--ops-rule); }
   /* Label | value, with a column line like the tables (drawn as a 1px background so inputs keep their own border). */
   .r-sum .ops-stat {
     display: grid; grid-template-columns: minmax(0, 1fr) 148px; align-items: center;
-    min-height: 52px; border-bottom: 1px solid var(--ops-rule);
+    min-height: 52px; border: 1px solid var(--ops-rule); border-top: 0;
     background: linear-gradient(var(--ops-rule), var(--ops-rule)) no-repeat right 148px top / 1px 100%;
   }
   .r-sum .ops-stat > span { font-size: 14px; padding: 6px 8px; } /* 8px: lines up with the table cells */

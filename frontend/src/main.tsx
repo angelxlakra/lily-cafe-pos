@@ -175,7 +175,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               }
             />
 
-            {/* Tonight's count — full screen, no sidebar or bottom nav */}
+            {/* Tonight's count — full screen, no sidebar or bottom nav. Kept outside the
+                /admin/ops layout route on purpose so it doesn't get the ops tab bar. */}
             <Route path="/admin/ops/count" element={<ProtectedRoute><CountPage /></ProtectedRoute>} />
             {/* Old inventory URLs */}
             <Route path="/admin/inventory" element={<ProtectedRoute><LegacyInventoryRedirect /></ProtectedRoute>} />

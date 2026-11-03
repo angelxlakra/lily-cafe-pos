@@ -291,7 +291,8 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
 
       {/* Wide screens: ingredients on the left, summary and charges on the right. Narrow: summary, ingredients, charges. */}
       <div className="recipe-grid">
-      <section className="r-sum" aria-label="Summary">
+      <section className="r-sum" aria-labelledby="sum-h">
+      <h2 id="sum-h">Summary</h2>
       <div className="ops-stats">
         <div className="ops-stat">
           <span><label htmlFor="yield">Batch makes{unitLabel && ` (${unitLabel})`}</label></span>
