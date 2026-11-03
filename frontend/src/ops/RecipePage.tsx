@@ -347,7 +347,7 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
           <thead>
             <tr>
               <th>Ingredient</th><th className="grow">Brand</th><th className="n">Amount used</th><th className="n">Price per pack</th>
-              <th className="n">Cost in recipe</th><th className="n">% of food cost</th><th><span className="sr-only">Remove</span></th>
+              <th className="n">Cost in recipe</th><th className="n">% of food cost</th><th className="x"><span className="sr-only">Remove</span></th>
             </tr>
           </thead>
           <tbody>
@@ -420,7 +420,7 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
                     {presence ? '—' : !bl ? (ok ? '…' : '') : bl.price_missing || bl.reason ? <span className="gap">no price yet</span> : rupees(bl.line_cost)}
                   </td>
                   <td className="n">{bl?.share_percent != null ? `${Number(bl.share_percent).toFixed(1)}%` : ''}</td>
-                  <td>
+                  <td className="x">
                     <button type="button" className="icon-btn" aria-label={`Remove ${item?.name ?? 'ingredient'}`} onClick={() => setLines(c => c.filter(l => l.key !== line.key))}>×</button>
                   </td>
                 </tr>

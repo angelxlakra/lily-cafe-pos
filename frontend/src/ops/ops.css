@@ -100,6 +100,7 @@
   outline: 2px solid var(--ops-fg); outline-offset: 1px;
 }
 .ops .cell-in { width: 100%; min-width: 110px; }
+.ops-t th.x, .ops-t td.x { width: 1%; padding: 0; text-align: center; } /* just the 44px button */
 .ops-t th.grow { width: 30%; } /* a wide screen's spare room goes to this column, not to gaps */
 
 /* Recipe page: summary, ingredients, then charges; side by side once the table has room. */
