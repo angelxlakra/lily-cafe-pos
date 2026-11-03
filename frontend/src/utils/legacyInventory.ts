@@ -7,6 +7,8 @@ const TAB_PATHS: Record<string, string> = {
   transactions: '/admin/ops/log',
 };
 
-export function legacyInventoryPath(tab: string | null): string {
-  return (tab && Object.prototype.hasOwnProperty.call(TAB_PATHS, tab) && TAB_PATHS[tab]) || '/admin/ops/inventory';
+// Setup is owner-only, so a manager's old Items or Categories link lands on Inventory instead.
+export function legacyInventoryPath(tab: string | null, isOwner = true): string {
+  const path = tab && Object.prototype.hasOwnProperty.call(TAB_PATHS, tab) && TAB_PATHS[tab];
+  return path && (isOwner || path !== '/admin/ops/setup') ? path : '/admin/ops/inventory';
 }

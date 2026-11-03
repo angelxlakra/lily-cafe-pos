@@ -32,6 +32,7 @@ import RecipePage from './ops/RecipePage.tsx'
 import RecipesListPage from './ops/RecipesListPage.tsx'
 import NewMadeItemPage from './ops/NewMadeItemPage.tsx'
 import { legacyInventoryPath } from './utils/legacyInventory.ts'
+import { useAuth } from './hooks/useAuth'
 import './index.css'
 
 // Configure TanStack Query client
@@ -62,7 +63,9 @@ const queryClient = new QueryClient({
 
 function LegacyInventoryRedirect() {
   const [params] = useSearchParams()
-  return <Navigate to={legacyInventoryPath(params.get('tab'))} replace />
+  const { isOwner, isCheckingAuth } = useAuth()
+  if (isCheckingAuth) return null // the role isn't known yet
+  return <Navigate to={legacyInventoryPath(params.get('tab'), isOwner)} replace />
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
