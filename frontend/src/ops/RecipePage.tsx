@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { inventoryKeys, useInventoryItems, useUpdateItem } from '../hooks/useInventory';
 import { inventoryApi } from '../api/inventory';
@@ -11,8 +11,9 @@ import { baseUnitOf, describeSource, isMeasure, parseQuantity, percent, perUnitC
 import type { CostBreakdown, DishCostingIn, IngredientLine, OverheadKind, OverheadMode, OverheadOverride } from '../types/costing';
 import type { InventoryItem } from '../types/inventory';
 import {
-  useCostingDefaults, useDishRecipe, useMadeRecipe, useOverview, useRecipePreview, useSaveRecipe, useSetBrand, useSetPackPrice,
+  useCostingDefaults, useDeleteRecipe, useDishRecipe, useMadeRecipe, useOverview, useRecipePreview, useSaveRecipe, useSetBrand, useSetPackPrice,
 } from './api';
+import OpsConfirm from './OpsConfirm';
 import type { OverviewRow, Recipe } from './api';
 import { formatPackPrice, parsePackPrice, usesPackForm } from './packPrice';
 
@@ -248,6 +249,17 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
     );
   };
 
+  const remove = useDeleteRecipe();
+  const navigate = useNavigate();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const onDelete = () => {
+    if (savedId === null) return;
+    remove.mutate(savedId, {
+      onSuccess: () => { toast.success('Recipe deleted'); navigate('/admin/ops/recipes'); },
+      onError: error => { setConfirmDelete(false); toast.error(describeApiError(error)); },
+    });
+  };
+
   // Matched by item, not position: the preview can be a debounce behind the rows.
   const costed = (itemId: number): IngredientLine | undefined => breakdown?.ingredients.find(l => l.inventory_item_id === itemId);
 
@@ -275,7 +287,7 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
   return (
     <div>
       <p className="muted"><Link to="/admin/ops/recipes">← Recipes</Link></p>
-      <h1>{name} {isMade && <span className="pill">made here</span>}</h1>
+      <h1>{name} {isMade && <span className="pill made">made here</span>}</h1>
 
       <div className="ops-stats">
         <div className="ops-stat">
@@ -347,7 +359,7 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
                 <tr key={line.key}>
                   <td className="typed">
                     {item?.name ?? bl?.name ?? 'Unknown item'}
-                    {lineIsMade && <> <span className="pill">made</span></>}
+                    {lineIsMade && <> <span className="pill made">made</span></>}
                     {item && !item.is_active && <> <span className="pill bad">retired</span></>}
                   </td>
                   <td>
@@ -480,7 +492,23 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
         {incomplete > 0 && <span className="muted">Some rows need an amount first.</span>}
         {preview.isError && lines.length > 0 && <span className="err">Can&apos;t cost this yet: {describeApiError(preview.error)}</span>}
         {!payload && <span className="muted">Say how many portions a batch makes.</span>}
+        {savedId !== null && (
+          <button type="button" className="text-btn bad push-end" onClick={() => setConfirmDelete(true)} disabled={remove.isPending}>
+            Delete recipe
+          </button>
+        )}
       </div>
+      <OpsConfirm
+        open={confirmDelete}
+        title={`Delete the recipe for ${name}?`}
+        message={isMade && usedIn.length > 0
+          ? `${name} stays in stock. The ${usedIn.length === 1 ? 'recipe that uses it' : `${usedIn.length} recipes that use it`} will need a price for it instead.`
+          : isMade ? `${name} stays in stock; only how it's made goes.` : `${name} stays on the menu; only its costing goes.`}
+        confirmText="Delete recipe"
+        cancelText="Keep it"
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={onDelete}
+      />
     </div>
   );
 }
@@ -574,7 +602,7 @@ function Picker({ items, madeIds, inputRef, onPick, onAddNew, note }: {
             <li key={item.id} role="presentation">
               <button type="button" role="option" aria-selected="false" onMouseDown={event => event.preventDefault()} onClick={() => pick(item)}>
                 <span>{item.name}{item.brand ? ` · ${item.brand}` : ''}</span>
-                {madeIds.has(item.id) ? <span className="pill">made</span> : <span className="muted">{item.unit}</span>}
+                {madeIds.has(item.id) ? <span className="pill made">made</span> : <span className="muted">{item.unit}</span>}
               </button>
             </li>
           ))}

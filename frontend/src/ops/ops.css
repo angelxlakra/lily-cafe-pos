@@ -11,6 +11,9 @@
   --ops-bad-bg: rgba(179, 38, 30, 0.12);
   --ops-warn-bg: rgba(214, 120, 20, 0.18);
   --ops-warn-line: #d67814;
+  --ops-tone-warn: #9a5200;
+  --ops-tone-ok: #1e7a45;
+  --ops-tone-made: #2f5fb3;
   --ops-pill: rgba(120, 115, 105, 0.16);
   --ops-bar: #fff;
   background: var(--ops-bg);
@@ -30,6 +33,9 @@
   --ops-bad-bg: rgba(255, 138, 128, 0.16);
   --ops-warn-bg: rgba(255, 170, 70, 0.2);
   --ops-warn-line: #ffaa46;
+  --ops-tone-warn: #ffb764;
+  --ops-tone-ok: #7ddc9b;
+  --ops-tone-made: #8fb5ff;
   --ops-pill: rgba(200, 195, 180, 0.16);
   --ops-bar: #1e1d16;
 }
@@ -109,9 +115,20 @@
   min-height: 36px; min-width: 36px; border-radius: 4px; border: 1px solid var(--ops-typed-line);
   background: var(--ops-typed); color: inherit; font: inherit; cursor: pointer;
 }
-.ops .pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 13px; background: var(--ops-pill); }
-.ops .pill.warn { background: var(--ops-warn-bg); }
-.ops .pill.bad { background: var(--ops-bad-bg); }
+/* A status tag: the tone sets the text, and the tint and border are mixed from it. */
+.ops .pill {
+  --tone: var(--ops-muted);
+  display: inline-block; vertical-align: middle; padding: 0 7px; border-radius: 4px;
+  font-size: 12.5px; font-weight: 600; line-height: 20px; white-space: nowrap;
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tone) 28%, transparent);
+}
+.ops .pill.warn { --tone: var(--ops-tone-warn); }
+.ops .pill.bad { --tone: var(--ops-bad); }
+.ops .pill.ok { --tone: var(--ops-tone-ok); }
+.ops .pill.made { --tone: var(--ops-tone-made); }
+.ops h1 .pill { margin-left: 6px; position: relative; top: -2px; }
 
 /* Ingredient picker */
 .ops-pick ul {
@@ -127,6 +144,7 @@
 .ops-pick li button:hover, .ops-pick li button:focus-visible { background: var(--ops-pill); }
 
 .ops-actions { display: flex; gap: 8px; align-items: center; margin: 16px 0; flex-wrap: wrap; }
+.ops-actions .push-end { margin-left: auto; min-height: 44px; }
 .ops-used a { margin-right: 10px; }
 
 @media (max-width: 640px) {
@@ -153,8 +171,6 @@
   background: var(--ops-pill); color: inherit; font: inherit; cursor: pointer;
 }
 .ops .chip.on { background: var(--ops-fg); color: var(--ops-bg); border-color: var(--ops-fg); }
-.ops .pill.ok { background: rgba(39, 134, 74, 0.18); }
-.ops .pill.made { background: rgba(80, 140, 255, 0.2); }
 .ops-t td.up { color: var(--ops-bad); }
 .ops-t td.down { color: #1e7a45; }
 .dark .ops-t td.down { color: #7ddc9b; }
