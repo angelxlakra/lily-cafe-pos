@@ -14,6 +14,7 @@ import {
   useCostingDefaults, useDeleteRecipe, useDishRecipe, useMadeRecipe, useOverview, useRecipePreview, useSaveRecipe, useSetBrand, useSetPackPrice,
 } from './api';
 import OpsConfirm from './OpsConfirm';
+import PriceHistory from './PriceHistory';
 import type { OverviewRow, Recipe } from './api';
 import { formatPackPrice, parsePackPrice, usesPackForm } from './packPrice';
 
@@ -194,6 +195,7 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
   const breakdown: CostBreakdown | undefined = preview.data ?? recipe?.breakdown;
 
   const save = useSaveRecipe();
+  const [historyNote, setHistoryNote] = useState('');
   const setBrand = useSetBrand();
   const setPackPrice = useSetPackPrice();
   const updateItem = useUpdateItem();
@@ -245,8 +247,8 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
   const onSave = () => {
     if (!payload) return;
     save.mutate(
-      { id: savedId, data: payload },
-      { onSuccess: saved => { setSavedId(saved.id); toast.success('Saved'); }, onError: error => toast.error(describeApiError(error)) },
+      { id: savedId, data: { ...payload, history_note: historyNote.trim() || null } },
+      { onSuccess: saved => { setSavedId(saved.id); setHistoryNote(''); toast.success('Saved'); }, onError: error => toast.error(describeApiError(error)) },
     );
   };
 
@@ -517,6 +519,10 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
       )}
 
       <div className="ops-actions">
+        <input
+          className="r-note-input" type="text" maxLength={300} value={historyNote} onChange={e => setHistoryNote(e.target.value)}
+          placeholder="Why? (optional, shown in the price history)" aria-label="Note for the price history"
+        />
         <button type="button" className="btn" onClick={onSave} disabled={!payload || incomplete > 0 || save.isPending || preview.isError}>
           {save.isPending ? 'Saving…' : 'Save recipe'}
         </button>
@@ -531,6 +537,7 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
       </div>
       </div>
       </div>
+      {savedId !== null && <PriceHistory kind={kind} subjectId={subjectId} />}
       <OpsConfirm
         open={confirmDelete}
         title={`Delete the recipe for ${name}?`}

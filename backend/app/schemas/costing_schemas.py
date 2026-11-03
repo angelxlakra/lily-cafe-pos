@@ -30,6 +30,8 @@ class DishCostingIn(BaseModel):
     yield_units: Optional[Decimal] = Field(None, gt=0)
     target_margin_percent: Optional[Decimal] = Field(None, ge=0, lt=100)
     notes: Optional[str] = Field(None, max_length=500)
+    # Why this change, for the price history. Not kept on the recipe itself.
+    history_note: Optional[str] = Field(None, max_length=300)
     ingredients: List[CostingIngredientIn] = Field(default_factory=list)
     packaging: OverheadOverride = Field(default_factory=OverheadOverride)
     labour: OverheadOverride = Field(default_factory=OverheadOverride)
@@ -181,6 +183,7 @@ class DefaultsOut(BaseModel):
 
 class ApplyPriceIn(BaseModel):
     price: Decimal = Field(..., gt=0)
+    history_note: Optional[str] = Field(None, max_length=300)
 
 
 class OverviewRow(BaseModel):
@@ -211,3 +214,30 @@ class OverviewTotals(BaseModel):
 class Overview(BaseModel):
     rows: List[OverviewRow]
     totals: OverviewTotals
+
+
+class HistoryEntry(BaseModel):
+    id: int
+    created_at: datetime
+    cause: str
+    detail: Optional[str] = None
+    note: Optional[str] = None
+    actor: Optional[str] = None
+    menu_price: Optional[Decimal] = None
+    cost_per_unit: Decimal
+    raw_cost: Decimal
+    margin_percent: Optional[Decimal] = None
+    yield_units: Decimal
+    target_margin_percent: Optional[Decimal] = None
+    is_complete: bool
+    # The row before this one, so the screen can say "₹48.82 → ₹49.30".
+    prev_cost_per_unit: Optional[Decimal] = None
+    prev_menu_price: Optional[Decimal] = None
+    moves: List[str]
+    charges: List[dict]
+    recipe: List[dict]
+
+
+class HistoryOut(BaseModel):
+    name: Optional[str] = None
+    entries: List[HistoryEntry]  # newest first

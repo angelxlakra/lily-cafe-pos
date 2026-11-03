@@ -210,6 +210,24 @@ def ensure_costing_made_items(bind=None) -> bool:
     return True
 
 
+def ensure_price_history_guard(bind=None) -> bool:
+    """Make dish_price_history append-only: the database itself refuses UPDATE and DELETE.
+
+    SQLite only. Idempotent; returns whether it ran.
+    """
+    bind = bind or engine
+    if bind.dialect.name != "sqlite" or "dish_price_history" not in inspect(bind).get_table_names():
+        return False
+    with bind.begin() as conn:
+        for verb in ("UPDATE", "DELETE"):
+            conn.exec_driver_sql(
+                f"CREATE TRIGGER IF NOT EXISTS dish_price_history_no_{verb.lower()} "
+                f"BEFORE {verb} ON dish_price_history "
+                "BEGIN SELECT RAISE(ABORT, 'dish_price_history is append-only'); END"
+            )
+    return True
+
+
 def _table_info(bind, table: str):
     with bind.connect() as conn:
         return conn.exec_driver_sql(f"PRAGMA table_info({table})").fetchall()
@@ -223,7 +241,7 @@ def init_db():
     from app.models import models  # noqa
     from app.models.settings_model import AppSetting  # noqa - ensures app_settings table is created
     from app.models.digest_models import DailyDigest  # noqa - ensures daily_digests table is created
-    from app.models.costing_models import DishCosting, DishCostingIngredient  # noqa - ensures dish costing tables are created
+    from app.models.costing_models import DishCosting, DishCostingIngredient, DishPriceHistory  # noqa - ensures dish costing tables are created
 
     Base.metadata.create_all(bind=engine)
 
@@ -232,4 +250,5 @@ def init_db():
     ensure_order_columns(engine)
     ensure_inventory_columns(engine)
     ensure_costing_made_items(engine)
+    ensure_price_history_guard(engine)
     ensure_cash_columns(engine)
