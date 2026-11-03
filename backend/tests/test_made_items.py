@@ -2,7 +2,8 @@
 
 from decimal import Decimal
 
-from sqlalchemy import create_engine, text
+import pytest
+from sqlalchemy import Index, create_engine, text
 from sqlalchemy.pool import StaticPool
 
 from app.db.session import ensure_costing_made_items
@@ -175,7 +176,7 @@ def test_pack_price_same_family_and_presence(client, test_db, owner_headers):
     assert r.status_code == 400
 
 
-def test_migration_rebuilds_old_table():
+def _old_schema_engine():
     engine = create_engine("sqlite:///:memory:", poolclass=StaticPool, connect_args={"check_same_thread": False})
     with engine.begin() as c:
         for ddl in (
@@ -198,7 +199,11 @@ def test_migration_rebuilds_old_table():
             "INSERT INTO dish_costing_ingredients VALUES (1, 1, 3, 100, 'g', 0)",
         ):
             c.execute(text(ddl))
+    return engine
 
+
+def test_migration_rebuilds_old_table():
+    engine = _old_schema_engine()
     ensure_costing_made_items(engine)
     ensure_costing_made_items(engine)  # idempotent
 
@@ -215,6 +220,23 @@ def test_migration_rebuilds_old_table():
         c.execute(text("INSERT INTO dish_costings (menu_item_id, inventory_item_id, yield_units) VALUES (NULL, 4, 1)"))
         c.execute(text("INSERT INTO dish_costings (menu_item_id, inventory_item_id, yield_units) VALUES (NULL, 5, 1)"))
 
+
+
+def test_migration_failure_leaves_old_table(monkeypatch):
+    engine = _old_schema_engine()
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("died mid-rebuild")
+
+    monkeypatch.setattr(Index, "create", boom)  # fails after the drop and rename
+    with pytest.raises(RuntimeError):
+        ensure_costing_made_items(engine)
+
+    with engine.begin() as c:
+        cols = {r[1]: r[3] for r in c.exec_driver_sql("PRAGMA table_info(dish_costings)")}
+        assert cols["menu_item_id"] == 1 and "inventory_item_id" not in cols
+        assert c.execute(text("SELECT menu_item_id, notes FROM dish_costings")).one() == (7, "keep")
+        assert "dish_costings_new" not in {r[0] for r in c.exec_driver_sql("SELECT name FROM sqlite_master")}
 
 def test_small_unit_pack_price_is_exact(client, test_db, owner_headers, sample_menu_items):
     paprika = _item(test_db, "Paprika", "g")

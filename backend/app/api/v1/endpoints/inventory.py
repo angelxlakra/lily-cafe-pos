@@ -835,6 +835,7 @@ def get_pending_prices(db: Session = Depends(get_db), current_user: TokenData = 
     """Purchases whose price waits for the owner, oldest first, against the price now."""
     rows = (
         db.query(InventoryTransaction)
+        .options(selectinload(InventoryTransaction.item))
         .filter(
             InventoryTransaction.transaction_type == TransactionType.PURCHASE,
             InventoryTransaction.price_status == pricing.PRICE_PENDING,

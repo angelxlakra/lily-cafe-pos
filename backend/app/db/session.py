@@ -180,6 +180,9 @@ def ensure_costing_made_items(bind=None) -> bool:
     try:
         # A no-op inside a transaction, so it goes first.
         conn.exec_driver_sql("PRAGMA foreign_keys=OFF")
+        # pysqlite only opens a transaction before DML, so the DDL would commit
+        # one statement at a time; open it ourselves so a failure undoes it all.
+        conn.exec_driver_sql("BEGIN")
         conn.exec_driver_sql("DROP TABLE IF EXISTS dish_costings_new")
         conn.exec_driver_sql(ddl)
         conn.exec_driver_sql(f"INSERT INTO dish_costings_new ({shared}) SELECT {shared} FROM dish_costings")
