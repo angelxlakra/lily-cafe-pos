@@ -271,3 +271,37 @@ export function useApproveAllPrices() {
 }
 
 export type { CostBreakdown };
+
+// ---------- Price history ----------
+
+export interface HistoryEntry {
+  id: number;
+  created_at: string;
+  cause: 'recipe' | 'menu_price' | 'purchase' | 'typed_price' | 'default_charges' | 'baseline';
+  detail: string | null;
+  note: string | null;
+  actor: string | null;
+  menu_price: Num | null;
+  cost_per_unit: Num;
+  raw_cost: Num;
+  margin_percent: Num | null;
+  yield_units: Num;
+  target_margin_percent: Num | null;
+  is_complete: boolean;
+  prev_cost_per_unit: Num | null;
+  prev_menu_price: Num | null;
+  /** What moved since the row before, in words: "Butter ₹580.00 → ₹620.00/kg". */
+  moves: string[];
+  charges: { kind: string; mode: string; value: string; amount: string }[];
+  recipe: { item_id: number; name: string; quantity: string; unit: string; unit_price: string; stock_unit: string; line_cost: string }[];
+}
+
+/** How a dish's (or a made item's) numbers changed over time, newest first. Owner only. */
+export function useDishHistory(kind: 'dish' | 'made', id: number) {
+  return useQuery({
+    // Under costingKeys.all, so saving a recipe or a price refreshes it.
+    queryKey: [...costingKeys.all, 'history', kind, id],
+    queryFn: () =>
+      apiClient.get<{ name: string | null; entries: HistoryEntry[] }>(`/costing/${kind === 'dish' ? 'menu' : 'item'}/${id}/history`).then(r => r.data),
+  });
+}
