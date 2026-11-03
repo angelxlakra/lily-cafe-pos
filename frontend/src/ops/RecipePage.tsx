@@ -305,7 +305,7 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
           />
         </div>
         <div className="ops-stat"><span>Raw material / batch</span><b>{breakdown ? money(breakdown.raw_material_cost) : '—'}</b></div>
-        <div className="ops-stat"><span>{costLabel}</span><b>{costText}</b></div>
+        <div className="ops-stat key"><span>{costLabel}</span><b>{costText}</b></div>
         {!isMade && (
           <>
             <div className="ops-stat"><span>Menu price</span><input
