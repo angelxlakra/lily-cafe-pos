@@ -49,8 +49,9 @@ const queryClient = new QueryClient({
       gcTime: 10 * 60 * 1000,
       // Refetch on window focus for active orders and menu
       refetchOnWindowFocus: true,
-      // Don't refetch on mount if data is fresh
-      refetchOnMount: false,
+      // Refetch on mount only if the data is stale or was invalidated (false
+      // never refetched, so a recipe opened after a purchase showed the old price)
+      refetchOnMount: true,
     },
     mutations: {
       // Retry mutations once on failure
