@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import List
@@ -21,6 +22,7 @@ from app.utils import pricing
 from app.utils.units import IncompatibleUnitError, to_item_unit
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # Costs and margins are the owner's: staff never see them, here or on screen.
 _OWNER = Depends(get_current_owner)
@@ -40,7 +42,9 @@ def _made_unit_price(item: InventoryItem, price_overrides, memo: dict, stack: tu
     if item.id in memo:
         return memo[item.id]
     if item.id in stack:
-        return None, False  # a loop that got past the save-time check: a gap, not a crash
+        # A loop that got past the save-time check: a gap, not a crash, but say where.
+        logger.warning("Recipe loop through inventory items %s -> %s", stack, item.id)
+        return None, False
     breakdown = _compute_breakdown(item.recipe, None, price_overrides, memo, stack + (item.id,), as_of)
     result = (breakdown.raw_material_cost / breakdown.yield_units, breakdown.is_complete)
     memo[item.id] = result
