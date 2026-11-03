@@ -197,10 +197,53 @@ Check these when reading. All are cheap to change.
   takes the spices out when a batch is made. Until a "Made 1 batch" button exists on the made item's
   page (spices out, masala in), the daily sheet's Out and Wastage for spices used only inside made
   items read low or empty.
-- **Typed prices have no history**, so "vs last week" sees only purchase-driven changes.
+- **Typed prices have no history of their own.** A dish's history shows their effect, but an
+  item's own price over time is not kept; "vs last week" sees only purchase-driven changes.
 - AI insights and alerts (second pass).
 
 ## Next up
+
+**New (2026-11-03): dish price history (built; PR stacked on #77).** The owners want to see how each
+dish's numbers moved over time, and why. Today the menu price, typed prices, recipes and the
+café-wide charges are all overwritten in place.
+
+- **One table, `dish_price_history`, only ever added to.** Each row is keyed by `menu_item_id` or
+  `inventory_item_id`, a made item's id. The keys have no foreign keys, so deleting a recipe or a
+  dish keeps its history. SQLite triggers refuse any UPDATE or DELETE.
+- **Each row holds:**
+  - when the change happened, who made it, the cause and an optional note;
+  - the menu price, cost per portion, raw material cost, margin, target margin, suggested price
+    and batch size;
+  - a JSON copy of each charge (mode, value, amount);
+  - a JSON copy of the recipe, with each ingredient's amount, unit and unit price at that moment.
+- **Rows are written only when something changed.** One helper, `price_history.record(db, cause,
+  actor, note)`, re-costs every recipe and compares each one to its latest row. It adds a row only
+  where the numbers differ, or where a note was typed.
+  - A made item's change (Cajun masala) reaches every dish that uses it, with no extra code.
+  - The before and after ("Butter ₹0.58 → ₹0.62/g: cost per portion ₹48.82 → ₹49.30") come from
+    comparing two rows when the history is read.
+- **Hooks.** Each hook is a single call after the change is saved. If recording fails, the
+  owner's change still goes through. These are the causes:
+  - recipe saved
+  - menu price changed: Menu page edit or "apply suggested price"
+  - typed price changed: reprice, item edit, setup grid, pack price, item removed
+  - purchase price approved: one at a time, approve-all, or an owner's own purchase
+  - purchase edited or deleted
+  - café-wide charges or target margin changed
+
+  A path left unhooked would have its change blamed on the next hooked action, so all of them
+  are hooked.
+- **Baseline.** On first start, every existing recipe gets one "history starts here" row.
+- **Owner-only reads:** `GET /costing/menu/{id}/history` and `/costing/item/{id}/history`.
+- **Screen.** The recipe page (dishes and made items) gets a "Price history" section:
+  - a small line of cost per portion against menu price, over time;
+  - below it, the rows newest first. Each row has what moved, why, who and when, plus the note.
+- The note is typed next to Save on the recipe page and next to "Apply suggested price".
+- This closes the "typed prices have no history" gap at the level of the dish. Item-level
+  history of typed prices is still a gap.
+- Built as `backend/app/utils/price_history.py` (`record()` and `moves()`), the
+  `DishPriceHistory` model, `ensure_price_history_guard` in `session.py`, and
+  `frontend/src/ops/PriceHistory.tsx`. Tests: `backend/tests/test_price_history.py`.
 
 **New (2026-11-03):** inventory is one place now, under `/admin/ops`; the old page redirects.
 

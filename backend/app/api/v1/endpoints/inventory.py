@@ -27,9 +27,12 @@ from app.schemas import TokenData, UserRole
 from app.utils.email_sender import send_inventory_report
 from app.utils.units import IncompatibleUnitError, compatible, convert, family, is_measure, normalize
 from app.api.v1.endpoints import costing as costing_endpoints
-from app.utils import pricing, usage
+from app.utils import price_history, pricing, usage
 
 router = APIRouter()
+
+def _typed_price_moved(db: Session, user: TokenData, *items: InventoryItem, why: str = "price edited"):
+    price_history.record(db, "typed_price", user.username, ", ".join(i.name for i in items)[:200] + f": {why}")
 
 # Access model for inventory:
 #   - Reads and day-to-day stock movements (purchases, usage, counts) are
@@ -253,6 +256,8 @@ def _check_vendors(db: Session, vendor_ids: set) -> None:
 _REQUIRED_ITEM_FIELDS = ("name", "unit", "min_threshold", "count_mode", "is_active")
 _CENT = Decimal("0.01")
 _PRICE_PLACES = Decimal("0.0001")
+# Item fields that can move what a dish costs.
+_PRICE_KEYS = {"cost_per_unit", "unit", "pack_size", "pack_unit", "is_active", "is_presence"}
 
 def _to_cents(value: Decimal) -> Decimal:
     """Round to what the column holds, but never a positive amount down to 0:
@@ -344,6 +349,9 @@ def bulk_update_items(
             adjusted += 1
 
     db.commit()
+    moved = [items[row.id] for row in payload.items if _PRICE_KEYS & row.model_dump(exclude_unset=True).keys()]
+    if moved:
+        _typed_price_moved(db, current_user, *moved, why="setup grid")
     return {"updated": len(items), "adjusted": adjusted}
 
 @router.get("/items/{item_id}", response_model=inventory_schemas.InventoryItem)
@@ -416,6 +424,8 @@ def update_item(
 
     db.commit()
     db.refresh(item)
+    if _PRICE_KEYS & update_data.keys():
+        _typed_price_moved(db, current_user, item)
     return _item_dict(item, pricing.resolve_one(db, item))
 
 @router.post("/items/{item_id}/pack-price", response_model=inventory_schemas.InventoryItem)
@@ -448,6 +458,7 @@ def set_pack_price(
         item.pack_size, item.pack_unit, item.cost_per_unit = data.pack_quantity, data.pack_unit, data.price
     db.commit()
     db.refresh(item)
+    _typed_price_moved(db, current_user, item, why="pack price")
     return _item_dict(item, pricing.resolve_one(db, item))
 
 @router.delete("/items/{item_id}")
@@ -463,6 +474,7 @@ def delete_item(
         
     item.is_active = False
     db.commit()
+    _typed_price_moved(db, current_user, item, why="item removed")
     return {"message": "Item deactivated successfully"}
 
 # ============================================================================
@@ -556,6 +568,10 @@ def check_purchase_prices(
         for line in check.items
     ]
 
+def _purchase_moved(db: Session, user: TokenData, items: list[InventoryItem], why: str):
+    names = ", ".join(sorted({i.name for i in items}))[:200]
+    price_history.record(db, "purchase", user.username, f"{names}: {why}")
+
 @router.post("/transactions/purchase", status_code=status.HTTP_201_CREATED)
 def record_purchase(
     purchase: inventory_schemas.PurchaseCreate,
@@ -616,6 +632,9 @@ def record_purchase(
     # Refresh to get IDs
     for t in transactions:
         db.refresh(t)
+    # Staff prices wait for approval, so only an owner's own entry can move a cost here.
+    if current_user.role == UserRole.OWNER:
+        _purchase_moved(db, current_user, [t.item for t in transactions], "purchase logged")
 
     return {
         "message": "Purchase recorded successfully",
@@ -887,11 +906,14 @@ def approve_all_prices(
         InventoryTransaction.price_status == pricing.PRICE_PENDING,
         InventoryTransaction.id.in_(body.purchase_ids),
     )
+    items = [t.item for t in query.all()]
     approved = (
         query
         .update({"price_status": pricing.PRICE_APPROVED, "price_reviewed_at": utcnow()}, synchronize_session=False)
     )
     db.commit()
+    if approved:
+        _purchase_moved(db, current_user, items, "price approved")
     return {"approved": approved}
 
 @router.post("/purchases/{purchase_id}/price-review", response_model=dict)
@@ -915,6 +937,7 @@ def review_purchase_price(
     t.price_reviewed_at = utcnow()
     db.commit()
     db.refresh(t)
+    _purchase_moved(db, current_user, [t.item], "price approved" if review.action == "approve" else "price rejected")
     return _purchase_dict(t)
 
 @router.patch("/purchases/{purchase_id}", response_model=dict)
@@ -947,6 +970,7 @@ def edit_purchase(
         raise HTTPException(status_code=422, detail="A purchase of ₹0 needs a note saying why (e.g. free from the vendor)")
     db.commit()
     db.refresh(t)
+    _purchase_moved(db, current_user, [t.item], "purchase edited")
     return _purchase_dict(t)
 
 @router.delete("/purchases/{purchase_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -954,8 +978,10 @@ def delete_purchase(purchase_id: int, db: Session = Depends(get_db), current_use
     """Remove a line logged by mistake today, taking its stock back out."""
     t = _editable_purchase(db, purchase_id)
     _move_purchase_stock(t, Decimal(0))
+    item = t.item
     db.delete(t)
     db.commit()
+    _purchase_moved(db, current_user, [item], "purchase deleted")
 
 @router.post("/items/quick", response_model=inventory_schemas.InventoryItem, status_code=status.HTTP_201_CREATED)
 def quick_create_item(

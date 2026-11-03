@@ -29,6 +29,8 @@ export interface DishCostingIn {
   yield_units?: Num | null;
   target_margin_percent?: Num | null;
   notes?: string | null;
+  /** Why this change, for the price history. */
+  history_note?: string | null;
   ingredients: CostingIngredientIn[];
   packaging?: OverheadOverride;
   labour?: OverheadOverride;

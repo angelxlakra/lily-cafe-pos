@@ -11,6 +11,8 @@ from fastapi.exceptions import ResponseValidationError
 from app import schemas, crud
 from app.api.deps import get_db, get_current_owner
 
+from app.utils import price_history
+
 router = APIRouter()
 
 
@@ -78,6 +80,8 @@ def update_menu_item(
     updated_item = crud.update_menu_item(db, item_id, item)
     if not updated_item:
         raise HTTPException(status_code=404, detail="Menu item not found")
+    if "price" in item.model_dump(exclude_unset=True):
+        price_history.record(db, "menu_price", current_user.username, "Menu price edited")
     return updated_item
 
 

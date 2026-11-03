@@ -18,7 +18,7 @@ from app.schemas import TokenData
 from app.crud import costing_crud
 
 from app.utils import costing as costing_utils
-from app.utils import pricing
+from app.utils import pricing, price_history
 from app.utils.units import IncompatibleUnitError, to_item_unit
 
 router = APIRouter()
@@ -335,6 +335,36 @@ def get_costing_defaults(current_user: TokenData = _OWNER):
         target_margin_percent=costing_utils.resolve_target_margin(),
     )
 
+def _history(db: Session, **subject) -> costing_schemas.HistoryOut:
+    import json
+    from app.models.costing_models import DishPriceHistory
+    rows = db.query(DishPriceHistory).filter_by(**subject).order_by(DishPriceHistory.id).all()
+    entries, before = [], None
+    for row in rows:
+        snap = json.loads(row.data)
+        entries.append(costing_schemas.HistoryEntry(
+            id=row.id, created_at=row.created_at, cause=row.cause, detail=row.detail, note=row.note, actor=row.actor,
+            menu_price=row.menu_price, cost_per_unit=row.cost_per_unit, raw_cost=row.raw_cost,
+            margin_percent=row.margin_percent, yield_units=row.yield_units,
+            target_margin_percent=row.target_margin_percent, is_complete=row.is_complete,
+            prev_cost_per_unit=before.cost_per_unit if before else None,
+            prev_menu_price=before.menu_price if before else None,
+            moves=price_history.moves(json.loads(before.data) if before else None, snap),
+            charges=snap["charges"], recipe=snap["recipe"],
+        ))
+        before = row
+    return costing_schemas.HistoryOut(name=rows[-1].name if rows else None, entries=entries[::-1])
+
+@router.get("/menu/{menu_item_id}/history", response_model=costing_schemas.HistoryOut)
+def get_dish_history(menu_item_id: int, db: Session = Depends(get_db), current_user: TokenData = _OWNER):
+    # How a dish's numbers changed over time, newest first. Owner only.
+    return _history(db, menu_item_id=menu_item_id)
+
+@router.get("/item/{inventory_item_id}/history", response_model=costing_schemas.HistoryOut)
+def get_made_item_history(inventory_item_id: int, db: Session = Depends(get_db), current_user: TokenData = _OWNER):
+    # The same for a kitchen-made item.
+    return _history(db, inventory_item_id=inventory_item_id)
+
 @router.get("/{costing_id}", response_model=costing_schemas.DishCostingOut)
 def get_costing(costing_id: int, db: Session = Depends(get_db), current_user: TokenData = _OWNER):
     # Get single dish costing
@@ -417,6 +447,12 @@ def preview_costing(data: costing_schemas.DishCostingIn, db: Session = Depends(g
     return _breakdown_to_schema(_compute_breakdown(costing, menu_item))
 
 
+def _subject_key(costing: DishCosting) -> tuple[str, int]:
+    return ("menu", costing.menu_item_id) if costing.menu_item_id else ("made", costing.inventory_item_id)
+
+def _record_recipe(db: Session, costing: DishCosting, data, user: TokenData, detail: str):
+    price_history.record(db, "recipe", user.username, detail, data.history_note, _subject_key(costing))
+
 # CREATE
 
 @router.post("", response_model=costing_schemas.DishCostingOut, status_code=status.HTTP_201_CREATED)
@@ -428,6 +464,7 @@ def create_costing(data: costing_schemas.DishCostingIn, db: Session = Depends(ge
     _compute_breakdown(costing, menu_item)
 
     costing = costing_crud.create_costing(db, costing, ingredient_rows)
+    _record_recipe(db, costing, data, current_user, "Recipe created")
 
     return _costing_to_schema(costing)
 
@@ -465,6 +502,7 @@ def update_costing(costing_id: int, data: costing_schemas.DishCostingIn, db: Ses
     }
 
     costing = costing_crud.update_costing(db, costing, update_data, ingredient_rows)
+    _record_recipe(db, costing, data, current_user, "Recipe saved")
     return _costing_to_schema(costing)
 
 # DELETE
@@ -518,6 +556,7 @@ def apply_suggested_price(costing_id: int, data: costing_schemas.ApplyPriceIn, d
 
     db.commit()
     db.refresh(menu_item)
+    price_history.record(db, "menu_price", current_user.username, "Applied the suggested price", data.history_note, _subject_key(costing))
 
     return _costing_to_schema(costing)
 
@@ -640,6 +679,7 @@ def reprice(data: costing_schemas.RepriceRequest, db: Session = Depends(get_db),
         item_map[item_id].cost_per_unit = new_price
 
     db.commit()
+    price_history.record(db, "typed_price", current_user.username, "Prices updated: " + ", ".join(i.name for i in item_map.values())[:250])
 
     return {
         "message": "Inventory prices updated successfully", "affected_dishes": [impact.model_dump() for impact in affected], "unaffected_count": unaffected_count

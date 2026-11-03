@@ -500,3 +500,17 @@
 .ops .text-btn:hover:not(:disabled) { color: var(--ops-fg); }
 .ops .text-btn.bad:hover:not(:disabled) { color: var(--ops-bad); }
 .ops .text-btn:disabled { opacity: 0.35; cursor: default; }
+
+.r-history { margin-top: 28px; }
+.r-history h2 { font-size: 17px; font-weight: 700; margin: 0 0 8px; }
+.r-hist-chart { margin: 0 0 12px; }
+.r-hist-list { list-style: none; margin: 0; padding: 0; }
+.r-hist-list > li { padding: 10px 0; border-top: 1px solid var(--ops-rule); font-size: 15px; }
+.r-hist-head { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: space-between; }
+.r-hist-moves { margin: 4px 0; padding-left: 18px; }
+.r-hist-cost { font-weight: 600; }
+.r-hist-note { margin-top: 4px; font-style: italic; }
+.r-hist-recipe { margin-top: 4px; font-size: 14px; color: var(--ops-muted); }
+.r-hist-recipe summary { cursor: pointer; }
+.r-hist-recipe ul { margin: 4px 0 0; padding-left: 18px; }
+.r-note-input { flex: 1 1 220px; min-width: 0; max-width: 360px; }

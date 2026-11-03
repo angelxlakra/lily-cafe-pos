@@ -25,6 +25,9 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         settings_store.load(db)
+        # Give every recipe a first history row, so its first real change has a before.
+        from app.utils import price_history
+        price_history.record(db, "baseline", None)
     finally:
         db.close()
 
