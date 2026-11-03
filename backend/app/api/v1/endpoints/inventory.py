@@ -435,7 +435,9 @@ def set_pack_price(
         raise HTTPException(status_code=400, detail=f"Unknown unit: {data.pack_unit}")
     if compatible(item.unit, data.pack_unit):
         # kg priced by a 500 g pack: the price is per the item's own unit, kept to the 4 places the column holds.
-        item.cost_per_unit = (data.price / convert(data.pack_quantity, data.pack_unit, item.unit)).quantize(_PRICE_PLACES, rounding=ROUND_HALF_UP)
+        per_unit = (data.price / convert(data.pack_quantity, data.pack_unit, item.unit)).quantize(_PRICE_PLACES, rounding=ROUND_HALF_UP)
+        # A real price never rounds to 0, which would read as free.
+        item.cost_per_unit = max(per_unit, _PRICE_PLACES)
         item.pack_size = item.pack_unit = None
     elif is_measure(item.unit) and is_measure(data.pack_unit):
         raise HTTPException(status_code=400, detail=f"{item.name} is counted in {item.unit}; give the pack in {'ml or L' if family(item.unit) == 'volume' else 'g or kg'}, or change its unit first")

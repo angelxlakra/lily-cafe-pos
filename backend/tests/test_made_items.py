@@ -333,3 +333,10 @@ def test_preview_works_for_a_saved_recipe(client, test_db, owner_headers, sample
     assert Decimal(r.json()["raw_material_cost"]) == 20
     # A second recipe for the same dish is still refused.
     assert client.post(f"{API}/costing", headers=owner_headers, json=body).status_code == 409
+
+
+def test_tiny_pack_price_never_rounds_to_free(client, test_db, owner_headers):
+    # ₹1 for 50 kg is ₹0.00002 a gram; four places would make it ₹0.
+    salt = _item(test_db, "Salt", "g")
+    out = _pack_price(client, owner_headers, salt, 1, 50, "kg")
+    assert Decimal(out["current_price"]) == Decimal("0.0001")
