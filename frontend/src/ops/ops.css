@@ -79,6 +79,8 @@
   text-align: left; padding: 8px; border-bottom: 2px solid var(--ops-strong); white-space: nowrap; font-weight: 600;
 }
 .ops-t td { padding: 4px 8px; border-bottom: 1px solid var(--ops-rule); white-space: nowrap; vertical-align: middle; }
+/* Column lines, as in the Setup grid. The stacked phone layouts set border: 0 on their cells. */
+.ops-t th + th, .ops-t td + td { border-left: 1px solid var(--ops-rule); }
 .ops-t .n { text-align: right; font-variant-numeric: tabular-nums; }
 .ops-t th:first-child, .ops-t td:first-child { position: sticky; left: 0; background: var(--ops-bg); z-index: 1; }
 .ops-t tr.tot td { font-weight: 600; border-top: 2px solid var(--ops-strong); }
@@ -116,11 +118,14 @@
   .r-table { grid-area: table; }
   .r-side { grid-area: side; }
   .r-sum .ops-stats { display: block; margin: 0; border-top: 1px solid var(--ops-rule); }
+  /* Label | value, with a column line like the tables (drawn as a 1px background so inputs keep their own border). */
   .r-sum .ops-stat {
-    display: flex; justify-content: space-between; align-items: center; gap: 12px;
-    min-height: 52px; padding: 6px 0; border-bottom: 1px solid var(--ops-rule);
+    display: grid; grid-template-columns: minmax(0, 1fr) 148px; align-items: center;
+    min-height: 52px; border-bottom: 1px solid var(--ops-rule);
+    background: linear-gradient(var(--ops-rule), var(--ops-rule)) no-repeat right 148px top / 1px 100%;
   }
-  .r-sum .ops-stat > span { font-size: 14px; }
+  .r-sum .ops-stat > span { font-size: 14px; padding: 6px 8px; } /* 8px: lines up with the table cells */
+  .r-sum .ops-stat > :last-child { justify-self: end; margin-right: 8px; }
   .r-sum .ops-stat > b { font-size: 18px; text-align: right; }
   .r-sum .ops-used { margin: 10px 0 0; }
 }
