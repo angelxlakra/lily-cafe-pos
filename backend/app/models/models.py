@@ -121,6 +121,47 @@ class OrderItem(Base):
     menu_item = relationship("MenuItem", back_populates="order_items")
 
 
+class OrderItemChange(Base):
+    """
+    Append-only log of line items removed or reduced by an order correction.
+
+    order_items always holds the CURRENT order (the bill, receipt, analytics
+    and inventory all read it), so what was taken out is kept here instead.
+    Owner-only: never exposed through the Order schema.
+    """
+
+    __tablename__ = "order_item_changes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=False, index=True)
+    menu_item_id = Column(Integer, nullable=False)
+    menu_item_name = Column(String(200), nullable=False)
+    unit_price = Column(Integer, nullable=False)  # Price in paise
+    old_quantity = Column(Integer, nullable=False)
+    new_quantity = Column(Integer, nullable=False)  # 0 = line removed entirely
+    quantity_served_at_change = Column(Integer, nullable=False, default=0)
+    order_status_at_change = Column(String(20), nullable=False)
+    changed_by = Column(String(50), nullable=True)
+    changed_at = Column(DateTime, default=lambda: business_day.utcnow(), nullable=False)
+
+
+class OrderAuditEvent(Base):
+    """
+    Append-only owner-facing log of corrections to an order: item edits,
+    payment-split changes and status changes. Keeps every editor, where
+    Order.last_edited_by only keeps the latest. Never exposed via Order.
+    """
+
+    __tablename__ = "order_audit_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=False, index=True)
+    kind = Column(String(30), nullable=False)  # items_edited | payments_changed | status_changed
+    detail = Column(String(500), nullable=False)  # human-readable, e.g. "cash ₹100 → upi ₹100"
+    changed_by = Column(String(50), nullable=True)
+    changed_at = Column(DateTime, default=lambda: business_day.utcnow(), nullable=False)
+
+
 class Payment(Base):
     """Payment records for orders (supports split payments)."""
 
