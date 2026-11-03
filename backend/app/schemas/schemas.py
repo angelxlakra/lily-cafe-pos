@@ -228,6 +228,36 @@ class Order(BaseModel):
         from_attributes = True
 
 
+class OrderItemChange(BaseModel):
+    """An item removed or reduced by an order correction (owner-only view)."""
+
+    id: int
+    menu_item_name: str
+    unit_price: int  # In paise
+    old_quantity: int
+    new_quantity: int  # 0 = line removed entirely
+    quantity_served_at_change: int
+    order_status_at_change: str
+    changed_by: Optional[str] = None
+    changed_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class OrderAuditEvent(BaseModel):
+    """A correction made to an order (owner-only view)."""
+
+    id: int
+    kind: str
+    detail: str
+    changed_by: Optional[str] = None
+    changed_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class OrderSummary(BaseModel):
     """Lightweight order schema for listings."""
 

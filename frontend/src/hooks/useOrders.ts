@@ -63,6 +63,24 @@ export const useOrder = (id: number) => {
   });
 };
 
+/** Every correction made to an order, by whom. Owner only. */
+export const useOrderAuditEvents = (id: number | undefined, enabled: boolean) => {
+  return useQuery({
+    queryKey: ['orders', 'audit', id] as const,
+    queryFn: () => ordersApi.getAuditEvents(id as number),
+    enabled: enabled && !!id,
+  });
+};
+
+/** Items removed or reduced on an order after it was placed. Owner only. */
+export const useOrderItemChanges = (id: number | undefined, enabled: boolean) => {
+  return useQuery({
+    queryKey: ['orders', 'item-changes', id] as const,
+    queryFn: () => ordersApi.getItemChanges(id as number),
+    enabled: enabled && !!id,
+  });
+};
+
 /**
  * Hook to fetch order history with optional filters
  *

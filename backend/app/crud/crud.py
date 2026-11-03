@@ -521,7 +521,10 @@ def create_order(db: Session, order: schemas.OrderCreate) -> tuple[models.Order,
 
 
 def update_order(
-    db: Session, order_id: int, order: schemas.OrderUpdate
+    db: Session,
+    order_id: int,
+    order: schemas.OrderUpdate,
+    edited_by: Optional[str] = None,
 ) -> Optional[models.Order]:
     """Update an existing order (status/metadata only)."""
     db_order = get_order(db, order_id)
@@ -529,6 +532,13 @@ def update_order(
         return None
 
     update_data = order.model_dump(exclude_unset=True)
+    new_status = update_data.get("status")
+    if new_status is not None and new_status != db_order.status:
+        log_order_event(
+            db, order_id, "status_changed",
+            f"{db_order.status.value} \u2192 {getattr(new_status, 'value', new_status)}",
+            edited_by,
+        )
     for field, value in update_data.items():
         setattr(db_order, field, value)
 
@@ -585,6 +595,33 @@ def admin_edit_order(
         item.menu_item_id: item.quantity_served
         for item in db_order.order_items
     }
+
+    # Log what this correction takes out before the old lines are deleted.
+    # Quantities are summed per menu item because dine-in and parcel lines of
+    # the same dish are separate rows.
+    old_qty, old_served, old_line = {}, {}, {}
+    for item in db_order.order_items:
+        old_qty[item.menu_item_id] = old_qty.get(item.menu_item_id, 0) + item.quantity
+        old_served[item.menu_item_id] = old_served.get(item.menu_item_id, 0) + item.quantity_served
+        old_line[item.menu_item_id] = item
+    new_qty = {}
+    for item in order_update.items:
+        new_qty[item.menu_item_id] = new_qty.get(item.menu_item_id, 0) + item.quantity
+    for menu_item_id, before in old_qty.items():
+        after = new_qty.get(menu_item_id, 0)
+        if after < before:
+            line = old_line[menu_item_id]
+            db.add(models.OrderItemChange(
+                order_id=db_order.id,
+                menu_item_id=menu_item_id,
+                menu_item_name=line.menu_item_name,
+                unit_price=line.unit_price,
+                old_quantity=before,
+                new_quantity=after,
+                quantity_served_at_change=old_served[menu_item_id],
+                order_status_at_change=db_order.status.value,
+                changed_by=edited_by,
+            ))
 
     # Delete existing order items
     for old_item in db_order.order_items:
@@ -645,6 +682,8 @@ def admin_edit_order(
     if order_update.customer_name:
         db_order.customer_name = order_update.customer_name
 
+    log_order_event(db, db_order.id, "items_edited", "Order items edited", edited_by)
+
     # Audit trail - record who corrected the order and how often it has changed
     db_order.last_edited_at = business_day.utcnow()
     db_order.last_edited_by = edited_by
@@ -653,6 +692,41 @@ def admin_edit_order(
     db.commit()
     db.refresh(db_order)
     return db_order
+
+
+def log_order_event(
+    db: Session, order_id: int, kind: str, detail: str, changed_by: Optional[str]
+) -> None:
+    """Add an audit event; committed with the caller's transaction."""
+    db.add(models.OrderAuditEvent(
+        order_id=order_id, kind=kind, detail=detail, changed_by=changed_by
+    ))
+
+
+def get_order_audit_events(db: Session, order_id: int) -> List[models.OrderAuditEvent]:
+    """Corrections made to an order, oldest first."""
+    return (
+        db.query(models.OrderAuditEvent)
+        .filter(models.OrderAuditEvent.order_id == order_id)
+        .order_by(models.OrderAuditEvent.changed_at, models.OrderAuditEvent.id)
+        .all()
+    )
+
+
+def _payment_summary(payments) -> str:
+    return ", ".join(
+        f"{p.payment_method.value} \u20b9{p.amount / 100:g}" for p in payments
+    ) or "none"
+
+
+def get_order_item_changes(db: Session, order_id: int) -> List[models.OrderItemChange]:
+    """Items removed or reduced by corrections to an order, oldest first."""
+    return (
+        db.query(models.OrderItemChange)
+        .filter(models.OrderItemChange.order_id == order_id)
+        .order_by(models.OrderItemChange.changed_at, models.OrderItemChange.id)
+        .all()
+    )
 
 
 def cancel_order(
@@ -980,6 +1054,12 @@ def replace_order_payments(
         raise ValueError(
             f"Payment total {new_payments_total} does not match order total {order.total_amount}"
         )
+
+    log_order_event(
+        db, order_id, "payments_changed",
+        f"{_payment_summary(order.payments)} \u2192 {_payment_summary(payments)}",
+        edited_by,
+    )
 
     # Delete existing payments
     db.query(models.Payment).filter(models.Payment.order_id == order_id).delete()
