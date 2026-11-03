@@ -5,8 +5,8 @@
   --ops-muted: #6b665e;
   --ops-rule: #dcd7cd;
   --ops-strong: #1d1b18;
-  --ops-typed: rgba(60, 120, 230, 0.1);
-  --ops-typed-line: rgba(60, 120, 230, 0.45);
+  --ops-typed: #fff; /* solid, so a field looks the same on any row or cell behind it */
+  --ops-typed-line: #7ba1e4;
   --ops-bad: #b3261e;
   --ops-bad-bg: rgba(179, 38, 30, 0.12);
   --ops-warn-bg: rgba(214, 120, 20, 0.18);
@@ -27,8 +27,8 @@
   --ops-muted: #9c968a;
   --ops-rule: #34312a;
   --ops-strong: #ece8de;
-  --ops-typed: rgba(110, 160, 255, 0.14);
-  --ops-typed-line: rgba(110, 160, 255, 0.5);
+  --ops-typed: #222019;
+  --ops-typed-line: #5a7bbd;
   --ops-bad: #ff8a80;
   --ops-bad-bg: rgba(255, 138, 128, 0.16);
   --ops-warn-bg: rgba(255, 170, 70, 0.2);
@@ -88,7 +88,6 @@
 .ops-t th:first-child, .ops-t td:first-child { position: sticky; left: 0; background: var(--ops-bg); z-index: 1; }
 .ops-t tr.tot td { font-weight: 600; border-top: 2px solid var(--ops-strong); }
 .ops-t tr.sub td { color: var(--ops-muted); }
-.ops-t td.typed { background: linear-gradient(var(--ops-typed), var(--ops-typed)), var(--ops-bg); }
 .ops-t .gap { color: var(--ops-bad); font-style: italic; }
 .ops-t .src { display: block; font-size: 13px; color: var(--ops-muted); }
 

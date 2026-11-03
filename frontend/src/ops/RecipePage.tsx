@@ -363,7 +363,7 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
               const source = bl?.price_source ?? item?.price_source ?? null;
               return (
                 <tr key={line.key}>
-                  <td className="typed">
+                  <td>
                     {item?.name ?? bl?.name ?? 'Unknown item'}
                     {lineIsMade && <> <span className="pill made">made</span></>}
                     {item && !item.is_active && <> <span className="pill bad">retired</span></>}
@@ -448,7 +448,7 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
           </tbody>
         </table>
       </div>
-      <p className="muted">Blue cells are typed. Everything else is worked out. A made item&apos;s cost per {isMade ? unitLabel : 'unit'} comes from its own recipe.</p>
+      <p className="muted">Boxes with a blue outline are typed. Everything else is worked out. A made item&apos;s cost per {isMade ? unitLabel : 'unit'} comes from its own recipe.</p>
       </div>
 
       <div className="r-side">
