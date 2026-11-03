@@ -37,6 +37,8 @@ router = APIRouter()
 #   - Categories and items are master data — they carry cost prices and
 #     reorder levels and shape every future report — so, like the menu,
 #     only the owner login may create, change or remove them.
+# _READ and _STAFF are the same check today (any signed-in user); they're named apart
+# so a read-only role, if one is ever added, only needs _STAFF tightened.
 _READ = Depends(get_current_user)
 _STAFF = Depends(get_current_user)
 _OWNER = Depends(get_current_owner)

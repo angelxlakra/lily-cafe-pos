@@ -233,6 +233,30 @@ def test_migration_rebuilds_old_table():
 
 
 
+def test_migration_tolerates_an_orphan_from_before():
+    # An old ingredient row whose costing is long gone must not stop the app starting.
+    engine = _old_schema_engine()
+    with engine.begin() as c:
+        c.execute(text("INSERT INTO dish_costing_ingredients VALUES (2, 99, 3, 5, 'g', 0)"))
+
+    assert ensure_costing_made_items(engine) is True
+    with engine.begin() as c:
+        assert c.execute(text("SELECT count(*) FROM dish_costing_ingredients")).scalar() == 2
+
+
+def test_migration_refuses_a_copy_that_loses_costings(monkeypatch):
+    engine = _old_schema_engine()
+
+    def lose_rows(self, conn, **kwargs):
+        conn.exec_driver_sql("DELETE FROM dish_costings")  # the copy came out short
+
+    monkeypatch.setattr(Index, "create", lose_rows)
+    with pytest.raises(RuntimeError, match="broke 1 ingredient link"):
+        ensure_costing_made_items(engine)
+    with engine.begin() as c:
+        assert c.execute(text("SELECT notes FROM dish_costings")).scalar() == "keep"
+
+
 def test_migration_failure_leaves_old_table(monkeypatch):
     engine = _old_schema_engine()
 

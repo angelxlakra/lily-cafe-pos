@@ -60,7 +60,9 @@ function loadLocks(): Set<Field> {
   try {
     const saved = localStorage.getItem(LOCKS_KEY);
     // Stock starts locked every time: unlocking it once must not stick.
-    if (saved) return new Set([...(JSON.parse(saved) as Field[]), 'current_quantity']);
+    const parsed: unknown = saved ? JSON.parse(saved) : null;
+    // Keep only columns the grid still has; an old or hand-edited value can't add strays.
+    if (Array.isArray(parsed)) return new Set([...parsed.filter((f): f is Field => COLUMNS.some(c => c.field === f)), 'current_quantity']);
   } catch { /* private window or bad value: fall back to defaults */ }
   return new Set(DEFAULT_LOCKS);
 }

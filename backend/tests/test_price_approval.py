@@ -239,3 +239,15 @@ def test_approve_all_only_the_listed_ids(client, auth_headers, owner_headers, on
     assert r.json() == {"approved": 1}
     left = client.get(f"{PURCHASES}/pending-prices", headers=owner_headers).json()
     assert [row["purchase_id"] for row in left] == [second["id"]]
+
+
+def test_approve_all_skips_lines_already_decided(client, auth_headers, owner_headers, onion):
+    approved = _buy(client, auth_headers, onion, total="160")
+    rejected = _buy(client, auth_headers, onion, total="176")
+    _review(client, owner_headers, approved["id"], "approve")
+    _review(client, owner_headers, rejected["id"], "reject")
+
+    r = client.post(f"{PURCHASES}/price-review/approve-all", headers=owner_headers,
+                    json={"purchase_ids": [approved["id"], rejected["id"]]})
+
+    assert r.json() == {"approved": 0}  # a rejected price stays rejected
