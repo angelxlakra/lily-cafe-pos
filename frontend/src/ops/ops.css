@@ -59,7 +59,8 @@
 .ops-links { display: flex; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .ops-bar .short { display: none; }
 .ops-links a { white-space: nowrap; }
-.ops-main { padding: 16px; max-width: 1100px; margin: 0 auto; }
+/* Spreadsheet pages use the screen; the cap only stops rows getting too long to follow. */
+.ops-main { padding: 16px 24px; max-width: 1680px; margin: 0 auto; }
 .ops h1, .ops h2, .ops h3 { font-family: inherit; letter-spacing: normal; }
 .ops h1 { font-size: 22px; margin: 0 0 4px; }
 .ops .muted { color: var(--ops-muted); font-size: 14px; }
@@ -95,6 +96,34 @@
   outline: 2px solid var(--ops-fg); outline-offset: 1px;
 }
 .ops .cell-in { width: 100%; min-width: 110px; }
+.ops-t th.grow { width: 30%; } /* a wide screen's spare room goes to this column, not to gaps */
+
+/* Recipe page: summary, ingredients, then charges; side by side once the table has room. */
+/* minmax(0, …) lets the column shrink so the table scrolls in its box, not the page. */
+.recipe-grid { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 32px; }
+.r-side { max-width: 560px; }
+.r-charges h2 { font-size: 16px; margin: 20px 0 6px; }
+.r-charges .ops-t { border-top: 1px solid var(--ops-rule); }
+.r-charges .ops-t td:first-child { white-space: normal; }
+@media (min-width: 1400px) {
+  .recipe-grid {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    grid-template-rows: auto 1fr;
+    grid-template-areas: "table sum" "table side";
+    align-items: start;
+  }
+  .r-sum { grid-area: sum; }
+  .r-table { grid-area: table; }
+  .r-side { grid-area: side; }
+  .r-sum .ops-stats { display: block; margin: 0; border-top: 1px solid var(--ops-rule); }
+  .r-sum .ops-stat {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    min-height: 52px; padding: 6px 0; border-bottom: 1px solid var(--ops-rule);
+  }
+  .r-sum .ops-stat > span { font-size: 14px; }
+  .r-sum .ops-stat > b { font-size: 18px; text-align: right; }
+  .r-sum .ops-used { margin: 10px 0 0; }
+}
 .ops .cell-in.num { text-align: right; font-variant-numeric: tabular-nums; }
 .ops .amount { display: inline-flex; gap: 4px; }
 .ops .amount input { width: 72px; text-align: right; }
