@@ -135,6 +135,17 @@ def test_cycle_refused(client, test_db, owner_headers):
     assert r.status_code == 400
     assert r.json()["detail"] == "A recipe can't use itself: Spice mix → Cajun masala → Spice mix"
 
+    # The same loop made by editing a saved recipe.
+    r = client.post(f"{API}/costing", headers=owner_headers, json={
+        "inventory_item_id": b.id, "yield_units": "100", "ingredients": _lines((pepper, 10, "g")),
+    })
+    assert r.status_code == 201, r.text
+    r = client.patch(f"{API}/costing/{r.json()['id']}", headers=owner_headers, json={
+        "inventory_item_id": b.id, "yield_units": "100", "ingredients": _lines((a, 10, "g")),
+    })
+    assert r.status_code == 400
+    assert r.json()["detail"] == "A recipe can't use itself: Spice mix → Cajun masala → Spice mix"
+
 
 def test_made_recipe_needs_yield_when_units_differ(client, test_db, owner_headers):
     flour = _item(test_db, "Maida")
