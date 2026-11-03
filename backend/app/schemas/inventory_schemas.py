@@ -123,7 +123,7 @@ class PriceReview(BaseModel):
     action: Literal["approve", "reject"]
 
 class ApproveAllPrices(BaseModel):
-    purchase_ids: Optional[List[int]] = None   # None: everything pending
+    purchase_ids: List[int]   # the lines the owner was shown; one added since stays pending
 
 class PendingPrice(BaseModel):
     """A purchase whose price waits for the owner: what it would change, and for whom."""

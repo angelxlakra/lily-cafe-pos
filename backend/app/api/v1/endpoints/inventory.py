@@ -873,17 +873,16 @@ def get_pending_prices(db: Session = Depends(get_db), current_user: TokenData = 
 
 @router.post("/purchases/price-review/approve-all", response_model=dict)
 def approve_all_prices(
-    body: Optional[inventory_schemas.ApproveAllPrices] = None,
+    body: inventory_schemas.ApproveAllPrices,
     db: Session = Depends(get_db),
     current_user: TokenData = _OWNER,
 ):
-    """Approve the purchase prices waiting for review: the listed ones, or all with no list. Owner only."""
+    """Approve the listed purchase prices that are still waiting for review. Owner only."""
     query = db.query(InventoryTransaction).filter(
         InventoryTransaction.transaction_type == TransactionType.PURCHASE,
         InventoryTransaction.price_status == pricing.PRICE_PENDING,
+        InventoryTransaction.id.in_(body.purchase_ids),
     )
-    if body is not None and body.purchase_ids is not None:
-        query = query.filter(InventoryTransaction.id.in_(body.purchase_ids))
     approved = (
         query
         .update({"price_status": pricing.PRICE_APPROVED, "price_reviewed_at": utcnow()}, synchronize_session=False)
