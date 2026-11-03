@@ -280,7 +280,6 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
   const costLabel = isMade ? `Cost per ${shown?.unit ?? unitLabel}` : 'Cost per portion';
   const costText = !breakdown ? '—' : shown ? `${lower ? '≥ ' : ''}${rupees(shown.cost)}` : money(breakdown.cost_per_unit);
   const margin = price && Number(breakdown?.raw_material_cost ?? 0) > 0 ? ((price - perUnit) / price) * 100 : null;
-  const foodCost = price && breakdown ? (Number(breakdown.raw_cost_per_unit) / price) * 100 : null;
   const target = breakdown?.target_margin_percent == null ? null : Number(breakdown.target_margin_percent);
   const usedIn = recipe?.used_in ?? [];
 
@@ -455,15 +454,14 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
       {!isMade && breakdown && (
         <section className="r-charges" aria-labelledby="charges-h">
           <h2 id="charges-h">Additional charges</h2>
+          {/* Charges are for the whole batch (a % is of the batch's raw material), so the sum is shown per batch, then split. */}
+          <p className="muted r-note">Added on top of raw material, for the whole batch.</p>
           <table className="ops-t">
             <tbody>
               <tr>
-                <td>
-                  Raw material
-                  {foodCost !== null && price ? <span className="src">{foodCost.toFixed(1)}% of {rupees(price)}</span> : null}
-                </td>
+                <td>Raw material</td>
                 <td />
-                <td className="n">{money(breakdown.raw_cost_per_unit)}</td>
+                <td className="n">{money(breakdown.raw_material_cost)}</td>
               </tr>
               {OVERHEADS.map(({ kind: k, label }) => {
                 const inherited = breakdown.overheads.find(o => o.kind === k);
@@ -473,12 +471,12 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
                 const flip = draft.mode === 'percent' ? 'amount' : 'percent';
                 return (
                   <tr key={k}>
-                    <td>{label}</td>
+                    <td>+ {label}</td>
                     <td className="n">
                       <span className="amount">
                         <input
                           inputMode="decimal"
-                          aria-label={`${label} (${draft.mode === 'percent' ? 'percent of raw material' : 'rupees'})`}
+                          aria-label={`${label} (${draft.mode === 'percent' ? 'percent of raw material' : 'rupees per batch'})`}
                           value={draft.value}
                           placeholder={placeholder}
                           onChange={event => setOverheads(c => ({ ...c, [k]: { ...c[k], value: event.target.value } }))}
@@ -496,7 +494,14 @@ function Editor({ kind, subjectId, name, recipe, sellingPrice, items, overviewRo
                 );
               })}
               <tr className="tot">
-                <td colSpan={2}>{costLabel}</td>
+                <td colSpan={2}>Batch total</td>
+                <td className="n">{money(breakdown.total_cost)}</td>
+              </tr>
+              <tr className="key">
+                <td colSpan={2}>
+                  {costLabel}
+                  <span className="src">{money(breakdown.total_cost)} ÷ {Number(breakdown.yield_units)}</span>
+                </td>
                 <td className="n">{costText}</td>
               </tr>
             </tbody>

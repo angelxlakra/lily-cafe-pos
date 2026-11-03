@@ -112,7 +112,8 @@
 /* Cost per portion is the answer the page works out: it reads first. */
 .ops-stat.key > span { font-weight: 700; }
 .ops-stat.key > b { font-size: 26px; }
-.r-charges tr.tot td { font-size: 17px; }
+.r-charges p.r-note { margin: 0 0 6px; font-size: 13px; }
+.r-charges tr.key td { font-size: 17px; font-weight: 700; background: var(--ops-pill); }
 .r-charges .ops-t { border-top: 1px solid var(--ops-rule); }
 .r-charges .ops-t td:first-child { white-space: normal; }
 @media (min-width: 1400px) {
