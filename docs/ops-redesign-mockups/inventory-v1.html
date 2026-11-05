@@ -1,0 +1,62 @@
+<style>
+  .t{width:100%;border-collapse:collapse;font-size:13px}
+  .t th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;opacity:.65;text-align:left;padding:6px 8px;border-bottom:2px solid currentColor}
+  .t td{padding:6px 8px;border-bottom:1px solid rgba(127,127,127,.25);white-space:nowrap}
+  .t td.n,.t th.n{text-align:right;font-variant-numeric:tabular-nums}
+  .cat td{font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;opacity:.7;padding-top:14px}
+  .pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:rgba(127,127,127,.18)}
+  .low{background:rgba(192,57,43,.2)}
+  .made{background:rgba(80,140,255,.18)}
+  .lay{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+  .main{flex:1 1 560px;min-width:0;overflow-x:auto}
+  .side{flex:0 0 260px;border:1px solid rgba(127,127,127,.35);border-radius:8px;padding:12px}
+  .side h4{margin:0 0 8px}
+  .log{font-size:12px;border-collapse:collapse;width:100%}
+  .log td{padding:4px 2px;border-bottom:1px solid rgba(127,127,127,.2)}
+  .log td.n{text-align:right}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .muted{opacity:.6;font-size:12px}
+</style>
+
+<h2>Inventory page: just the numbers, with the count on the side</h2>
+<p class="subtitle">Laptop layout. On a phone, the count box sits above the table.</p>
+
+<div class="mockup">
+<div class="mockup-header">Inventory · 173 items · stock value ₹48,210</div>
+<div class="mockup-body">
+<div class="lay">
+<div class="main">
+  <div class="bar">
+    <input class="mock-input" placeholder="Search items" style="flex:1;min-width:160px">
+    <span class="pill">All</span><span class="pill low">Low (14)</span><span class="pill made">Made here (9)</span>
+  </div>
+  <table class="t">
+    <tr><th>Item</th><th>Brand</th><th class="n">In stock</th><th class="n">Alert below</th><th class="n">Price</th><th class="n">Value</th><th>Counted</th></tr>
+    <tr class="cat"><td colspan="7">Dairy</td></tr>
+    <tr><td>Butter</td><td>Amul</td><td class="n">1.2 kg</td><td class="n">1 kg</td><td class="n">₹58 / 100 g</td><td class="n">₹696</td><td class="muted">last night</td></tr>
+    <tr><td>Fresh cream</td><td>Amul</td><td class="n"><span class="pill low">0.3 kg</span></td><td class="n">1 kg</td><td class="n">₹60 / 250 g</td><td class="n">₹72</td><td class="muted">last night</td></tr>
+    <tr><td>Condensed milk</td><td>Amul</td><td class="n">3 tins</td><td class="n">2 tins</td><td class="n">₹76 / 210 g</td><td class="n">₹228</td><td class="muted">4 days ago</td></tr>
+    <tr class="cat"><td colspan="7">Spices</td></tr>
+    <tr><td>Paprika</td><td>Keya</td><td class="n">180 g</td><td class="n">100 g</td><td class="n">₹99 / 52 g</td><td class="n">₹343</td><td class="muted">last night</td></tr>
+    <tr><td>Oregano</td><td>—</td><td class="n"><span class="pill low">5 g</span></td><td class="n">20 g</td><td class="n">₹99 / 10 g</td><td class="n">₹50</td><td class="muted">never</td></tr>
+    <tr class="cat"><td colspan="7">Made in the kitchen</td></tr>
+    <tr><td>Cajun masala <span class="pill made">made</span></td><td></td><td class="n">640 g</td><td class="n">300 g</td><td class="n">₹1,541 / kg</td><td class="n">₹986</td><td class="muted">last night</td></tr>
+    <tr><td>Bao buns <span class="pill made">made</span></td><td></td><td class="n">36 pcs</td><td class="n">20 pcs</td><td class="n">from recipe</td><td class="n">—</td><td class="muted">last night</td></tr>
+    <tr class="cat"><td colspan="7">Vegetables</td></tr>
+    <tr><td>Onion</td><td>—</td><td class="n">150 g</td><td class="n">2 kg</td><td class="n">₹40 / kg</td><td class="n">₹6</td><td class="muted">last night</td></tr>
+  </table>
+</div>
+<div class="side">
+  <h4>Daily count</h4>
+  <button class="mock-button" style="width:100%;margin-bottom:10px">Start tonight's count</button>
+  <table class="log">
+    <tr><td>Sun 1 Nov</td><td>Ravi</td><td class="n">66 / 173</td></tr>
+    <tr><td>Sat 31 Oct</td><td>Ravi</td><td class="n">58 / 173</td></tr>
+    <tr><td>Fri 30 Oct</td><td class="muted">no count</td><td></td></tr>
+    <tr><td>Thu 29 Oct</td><td>Ravi</td><td class="n">71 / 173</td></tr>
+    <tr><td>Wed 28 Oct</td><td>Ravi</td><td class="n">49 / 173</td></tr>
+  </table>
+  <p class="muted" style="margin-top:8px">Tap a night to see what changed.</p>
+</div>
+</div>
+</div></div>

@@ -218,10 +218,36 @@ def update_order(
             current_user, "change an order after the bill has been generated"
         )
 
-    updated_order = crud.update_order(db, order_id, order)
+    updated_order = crud.update_order(db, order_id, order, edited_by=current_user.username)
     if not updated_order:
         raise HTTPException(status_code=404, detail="Order not found")
     return updated_order
+
+
+@router.get("/{order_id}/item-changes", response_model=List[schemas.OrderItemChange])
+def get_order_item_changes(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_user),
+):
+    """Items removed or reduced after the order was taken. Owner only."""
+    access.require_owner(current_user, "see the items removed from an order")
+    if not crud.get_order(db, order_id):
+        raise HTTPException(status_code=404, detail="Order not found")
+    return crud.get_order_item_changes(db, order_id)
+
+
+@router.get("/{order_id}/audit", response_model=List[schemas.OrderAuditEvent])
+def get_order_audit(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: schemas.TokenData = Depends(get_current_user),
+):
+    """Every correction made to the order, by whom. Owner only."""
+    access.require_owner(current_user, "see the change history of an order")
+    if not crud.get_order(db, order_id):
+        raise HTTPException(status_code=404, detail="Order not found")
+    return crud.get_order_audit_events(db, order_id)
 
 
 @router.put("/{order_id}", response_model=schemas.Order)

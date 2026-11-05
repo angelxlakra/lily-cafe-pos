@@ -41,4 +41,7 @@ def update_settings(
             detail=f"Unknown settings keys: {sorted(unknown_keys)}",
         )
     settings_store.set_many(body.settings, db)
+    if any(key.startswith("costing.") for key in body.settings):
+        from app.utils import price_history
+        price_history.record(db, "default_charges", current_user.username, "Café-wide charges or target margin changed")
     return SettingsResponse(settings=dict(settings_store._cache))

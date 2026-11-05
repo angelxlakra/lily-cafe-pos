@@ -117,6 +117,29 @@ export interface Order {
   edit_count?: number;
 }
 
+/** An item taken out of (or reduced on) an order after it was placed. Owner-only. */
+export interface OrderItemChange {
+  id: number;
+  menu_item_name: string;
+  unit_price: number;
+  old_quantity: number;
+  /** 0 = the whole line was removed */
+  new_quantity: number;
+  quantity_served_at_change: number;
+  order_status_at_change: string;
+  changed_by?: string | null;
+  changed_at: string;
+}
+
+/** A correction made to an order (item edit, payment change, status change). Owner-only. */
+export interface OrderAuditEvent {
+  id: number;
+  kind: string;
+  detail: string;
+  changed_by?: string | null;
+  changed_at: string;
+}
+
 export interface CreateOrderRequest {
   table_number: number;
   customer_name?: string | null;

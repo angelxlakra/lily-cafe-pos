@@ -6,9 +6,8 @@
  */
 
 import { memo, useRef, useState } from 'react';
-import { Warning } from '@phosphor-icons/react';
-import type { InventoryItem } from '../../types/inventory';
-import { formatQty, hadIt, haveIt, isPresence, parseQty } from '../../utils/countQuantity';
+import type { InventoryItem } from '../types/inventory';
+import { formatQty, hadIt, haveIt, isPresence, parseQty } from '../utils/countQuantity';
 
 interface CountRowProps {
   item: InventoryItem;
@@ -27,8 +26,7 @@ function CountRow({ item, counted, big, onChange, onAnswer }: CountRowProps) {
     : <NumberRow item={item} counted={counted} big={big} onChange={onChange} />;
 }
 
-const rowTone = (status: 'untouched' | 'checked' | 'changed') =>
-  status === 'checked' ? 'bg-lily-green/10' : status === 'changed' ? 'bg-cream/50' : '';
+const rowTone = (status: 'untouched' | 'checked' | 'changed') => (status === 'untouched' ? '' : ` ${status}`);
 
 function NumberRow({ item, counted, big: flagged, onChange }: Omit<CountRowProps, 'onAnswer'>) {
   const system = Number(item.current_quantity);
@@ -66,20 +64,18 @@ function NumberRow({ item, counted, big: flagged, onChange }: Omit<CountRowProps
   return (
     <li
       id={`count-item-${item.id}`}
-      className={`scroll-mt-20 border-b border-neutral-border/70 transition-colors duration-200 ${rowTone(status)}`}
+      className={`count-row${rowTone(status)}`}
     >
-      <div className="flex items-center gap-2 px-2.5 py-2 min-h-16">
-        <div className="flex-1 min-w-0">
-          <div className="font-medium leading-snug text-neutral-text-dark line-clamp-3 break-words">
-            {item.name}
-          </div>
-          <div className="mt-0.5 text-[0.8125rem] leading-snug tabular-nums text-neutral-text-muted flex items-center gap-1">
+      <div className="count-line">
+        <div className="count-name">
+          <div className="nm">{item.name}</div>
+          <div className="sub">
             {status === 'untouched' && <>System {formatQty(system)} {item.unit}</>}
             {status === 'checked' && <>Matches · {formatQty(system)} {item.unit}</>}
             {status === 'changed' && (
               <>
-                {big && <Warning size={14} weight="fill" className="text-warning shrink-0" aria-hidden />}
-                <span className={big ? 'font-semibold text-warning' : undefined}>
+                <span className={big ? 'big' : undefined}>
+                  {big && <span aria-hidden>⚠ </span>}
                   Was {formatQty(system)} · {diff > 0 ? '+' : '−'}{formatQty(Math.abs(diff))} {item.unit}
                   {big && <span className="sr-only"> (big difference)</span>}
                 </span>
@@ -87,13 +83,13 @@ function NumberRow({ item, counted, big: flagged, onChange }: Omit<CountRowProps
             )}
           </div>
           {error && (
-            <div id={errorId} role="alert" className="mt-1 text-xs font-medium text-error">
+            <div id={errorId} role="alert" className="err">
               {error}
             </div>
           )}
         </div>
 
-        <div className="shrink-0 flex items-center gap-2">
+        <div className="count-ctl">
           <input
             data-count-control
             type="text"
@@ -121,9 +117,9 @@ function NumberRow({ item, counted, big: flagged, onChange }: Omit<CountRowProps
             aria-label={`Count for ${item.name}, in ${item.unit}`}
             aria-invalid={error !== null}
             aria-describedby={error ? errorId : undefined}
-            className="w-24 h-12 rounded-lg border border-neutral-border bg-off-white text-center text-lg font-semibold tabular-nums text-neutral-text-dark placeholder:text-neutral-text-muted placeholder:font-normal focus:outline-none focus:border-lily-ink focus:bg-white dark:focus:bg-neutral-background"
+            className="count-box"
           />
-          <span className="w-10 text-[0.8125rem] text-neutral-text-muted">{item.unit}</span>
+          <span className="unit">{item.unit}</span>
         </div>
       </div>
       {/* Says whether the typed number matches the system, which the box alone doesn't. */}
@@ -138,7 +134,7 @@ function NumberRow({ item, counted, big: flagged, onChange }: Omit<CountRowProps
 
 /**
  * A yes/no item: same height and left column as a number row, no unit, no
- * keyboard. Two 68×48 buttons fill the same 144px slot, Have it on the right
+ * keyboard. Two 44px buttons fill the same slot, Have it on the right
  * because it is the common answer. Tapping the filled one again un-answers,
  * so a stray double tap leaves the row visibly blank rather than answered.
  */
@@ -155,13 +151,7 @@ function PresenceRow({ item, counted, onAnswer }: Pick<CountRowProps, 'item' | '
         // "Next uncounted" lands here: the common answer.
         {...(value === 1 ? { 'data-count-control': '' } : {})}
         onClick={() => onAnswer(item.id, chosen ? null : value)}
-        className={`w-[68px] h-12 touch-manipulation rounded-lg border text-sm font-semibold leading-tight transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-lily-ink ${
-          !chosen
-            ? 'border-neutral-border bg-off-white text-neutral-text-body'
-            : status === 'checked'
-              ? 'border-lily-ink bg-lily-green/35 text-neutral-text-dark'
-              : 'border-coffee-brown bg-cream text-neutral-text-dark'
-        }`}
+        className={`count-choice${chosen ? ` on ${status}` : ''}`}
       >
         {label}
       </button>
@@ -171,21 +161,21 @@ function PresenceRow({ item, counted, onAnswer }: Pick<CountRowProps, 'item' | '
   return (
     <li
       id={`count-item-${item.id}`}
-      className={`scroll-mt-20 border-b border-neutral-border/70 transition-colors duration-200 ${rowTone(status)}`}
+      className={`count-row${rowTone(status)}`}
     >
-      <div className="flex items-center gap-2 px-2.5 py-2 min-h-16">
-        <div className="flex-1 min-w-0">
-          <div id={`count-name-${item.id}`} className="font-medium leading-snug text-neutral-text-dark line-clamp-3 break-words">
+      <div className="count-line">
+        <div className="count-name">
+          <div id={`count-name-${item.id}`} className="nm">
             {item.name}
           </div>
-          <div className="mt-0.5 text-[0.8125rem] leading-snug text-neutral-text-muted">
+          <div className="sub">
             {status === 'untouched' && <>Last count: {hadIt(system)}</>}
             {status === 'checked' && <>Same · {hadIt(system)}</>}
             {status === 'changed' && <>Was {hadIt(system)} · now {haveIt(counted!)}</>}
           </div>
         </div>
 
-        <div role="group" aria-labelledby={`count-name-${item.id}`} className="shrink-0 w-36 flex items-center gap-2">
+        <div role="group" aria-labelledby={`count-name-${item.id}`} className="count-ctl">
           {choice('Out', 0)}
           {choice('Have it', 1)}
         </div>

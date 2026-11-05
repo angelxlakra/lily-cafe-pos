@@ -9,6 +9,7 @@ source of truth. This file exists so anyone in the codebase can find them.
 | [The plan (spine)](https://claude.ai/code/artifact/30397532-3e3f-4f74-bb49-2ba053856314) | The ledger identity, shared vocabulary, order of work, decisions log |
 | [Hybrid stock count](https://claude.ai/code/artifact/118e2484-b467-4ef8-b622-096b050098db) | Item kinds, the count screen, the setup grid, pack size, migration |
 | [Purchases and reconciliation](https://claude.ai/code/artifact/fd94a0a3-5dde-43f6-b47c-865b73685002) | The daily purchase sheet, where price comes from, waste, variance |
+| [Dish costing screen](https://claude.ai/artifact/13qxuj8UoDnqMRZcrNik19) | Step 5's spec: the recipe sheet, named gaps, the backend it needs |
 
 Start at the spine. When a spec and the spine disagree, the spine is wrong — fix it there.
 
@@ -29,354 +30,508 @@ Kept here as well as in the spine, because decisions are worth having in git his
 | 2026-09-23 | Bulk editing is an in-app grid with paste, not a CSV round-trip. |
 | 2026-09-24 | No credit purchases — buying and paying are the same event. |
 | 2026-09-26 | One unit per item — the one on the bill. Count, price and alert in it; never price in g or ml. |
+| 2026-09-26 | The purchase sheet is the owners' table: Item · Unit qty · Rate · Purchased · In · Used · Remaining · Day-end · Wastage. Staff type rate × count (the owners' call, overriding "total only"); In is computed. |
+| 2026-09-26 | The sheet's rows are only what was bought that day. |
+| 2026-09-26 | Day-end on the sheet *is* tonight's count for that item — one number, one source. |
+| 2026-09-26 | Each day's sheet is kept; staff see today's, only the owner opens other days. The sheet's day is the count night (to 04:00). |
+| 2026-10-15 | Dish costing lives on the Menu page, owner only: a Cost column and a recipe sheet per dish. |
+| 2026-10-15 | Yes/no items on a recipe are covered by overheads — shown, never costed, never a gap. |
+| 2026-10-15 | No sub-recipes yet: a batch-made sauce is an inventory item with a typed price. |
+| 2026-10-15 | Overhead defaults confirmed: labour 15%, fixed 10%, wastage 5%, packaging ₹0, target margin 65%. |
+| 2026-10-15 | A suggested price rounds up to the next ₹10, and is offered only when every line is costed. |
+| 2026-10-16 | An order suggestion brings stock back to twice the alert level; there is no separate par level yet. |
+| 2026-11-02 | Inventory gets a fresh set of operational pages (see "Ops redesign"), with their own plain spreadsheet look, separate from the POS theme. Old tabs stay until the owners switch. |
+| 2026-11-02 | Dish costing moves to its own pages, one table per dish. Reverses 2026-10-15 "costing lives on the Menu page" (the Menu chip keeps working; it reads the same rows). |
+| 2026-11-02 | Sub-recipes are in: a kitchen-made item (Cajun masala, sauces, bao) is an inventory item with its own recipe, costed from it. Reverses 2026-10-15 "no sub-recipes yet". |
+| 2026-11-02 | A purchase becomes the price only once an owner approves it. Owners' own entries are approved as they're made. Amends 2026-09-23 "price comes from the purchase log". |
+| 2026-11-02 | Brand is a plain field on the item. Two brands stocked at once are two items; nothing enforces either way. |
+| 2026-11-02 | AI insights and alerts wait for a second pass, after a couple of weeks of real prices. |
 
-## Build queue
+## Ops redesign (2026-11-02)
 
-In dependency order.
+Agreed with the owner's developer on 2026-11-02, from the owners' two paper sketches (the daily
+"ingredient / inventory calculator" and the dish costing table) and their WhatsApp sample data.
+Mockups: [docs/ops-redesign-mockups/](ops-redesign-mockups/). This section is authoritative for the
+new pages. Where the spine artifact disagrees on costing, sub-recipes or price approval, this wins.
 
-0. **Merge dish costing's backend, fix its four bugs** (~½ day) — do this soon and
-   independently of everything else. See below.
-1. **Setup grid** (~2 days) — bulk-edit every item's kind, unit, pack size, threshold, price.
-   The only true prerequisite; nothing else can be configured without it.
-2. **Hybrid count** (~1½ days) — yes/no items and the two-button row.
-3. **Purchase sheet** (~1½ days) — daily log with amount and vendor. Runs alongside 2.
-4. **Pack size** (~½ day) — the two columns plus the prompt when an item joins a recipe.
-5. **Dish costing UI** (2–3 days, not yet specced) — recipe builder and cost readout.
-   Pointless before real prices exist, so it follows 3.
-6. **Reconciliation** (~1½ days) — weekly variance per item. Needs everything above.
-7. **Vendors and order messages** (~1 day) — independent once low stock is trustworthy.
+**Why.** The owners tried the recipe sheet on the Menu page and the inventory tabs and found them
+too hard to onboard. They do this by hand today on paper and in WhatsApp, and they picture a
+Google Sheet: a table where people type some columns and the rest is worked out.
 
-Shipped already: the typed-input count row (`6b8cbf6`), the setup grid (1), and yes/no items in
-the nightly count (2): the Out / Have it row, the model-level clamp, review sheet and stock log.
+**Who.**
+- The **manager** (admin login) buys chicken, vegetables and masalas and logs them on the daily
+  sheet, on a phone or laptop. Staff count stock nightly on a phone.
+- The **owners** (owner login) want the overview. They check every price change and approve it,
+  and they can log purchases too. Phone and laptop both.
 
-## State of `feature/dish-costing`
+**Goals.** Owners see what each dish costs per portion and its margin, what changed today and which
+dishes it hit, and stock as plain numbers. The manager logs a day's buying fast on a phone.
 
-Backend is done — models, CRUD, endpoints, schemas and strict unit conversion, ~1,250 lines.
-There is **no frontend**: the only frontend files on the branch are a stray `pnpm-lock.yaml`
-and `pnpm-workspace.yaml`, which should not be merged since this project uses npm.
+**Non-goals for this pass.** AI insights and alerts. A "made a batch" action (see Known gaps).
+Retiring the old Inventory tabs or the Menu recipe sheet.
 
-The branch is 49 commits behind `main` and 13 ahead, drifting further each day. Since it is
-backend-only it merges cheaply now and expensively later — merge it early and leave the API
-unused until prices exist.
+**Anti-goals.** Anything that needs the owners to understand pack-size bridging or units to get a
+cost. A count screen that asks more than one answer per row.
 
-Four confirmed bugs to fix on the way in:
+### Three kinds of thing
 
-- `details=` instead of `detail=` on `HTTPException` at `endpoints/costing.py:66,68,99`, and
-  `sataus_code=` at `:306`. All four are `TypeError`s that surface as 500s.
-- `utils/costing.py:99` calls `convert()` before checking the price, so one ingredient with an
-  unconvertible unit raises and kills the whole dish instead of one line.
-- `price_missing` tests only for `None`, so a price of `0` counts as free. With 98 live items
-  priced `0.00`, dishes would report confident ₹0 ingredient lines and still look complete.
+1. **Bought ingredients** (onion, Amul butter, Ganesh maida): an inventory item with a brand and a
+   price per pack, counted in inventory.
+2. **Kitchen-made items** (Cajun masala, house sauces, bao): an inventory item that is never bought.
+   It has its own recipe, and its cost per unit is the recipe's batch cost ÷ the batch yield. It's
+   counted in inventory, has no menu price, and gets no overheads.
+3. **Dishes**: a menu item with a recipe of ingredients and/or kitchen-made items. It has a cost per
+   portion, a menu price and a margin, with overheads (packaging, labour, fixed, wastage) as today.
+
+### Pages
+
+All under `/admin/ops/…`, in a standalone layout (no POS sidebar, like `/admin/tools`), with a small
+top bar linking the four pages. Light and dark, phone and laptop. The admin sidebar gets one entry.
+
+| Page | Route | Who |
+| --- | --- | --- |
+| Recipes list | `/admin/ops/recipes` | owner |
+| Recipe page (a dish or a made item) | `/admin/ops/recipes/dish/:menuItemId`, `/admin/ops/recipes/made/:itemId` | owner |
+| Daily sheet | `/admin/ops/sheet` (today) and `?date=` | admin: today only; owner: any day, plus approvals |
+| Inventory | `/admin/ops/inventory` | admin and owner |
+
+**Recipe page.** Sketch 2's columns plus brand: *Ingredient · Brand · Amount used · Price per pack ·
+Cost in recipe · % of food cost*. Under the lines: raw material for the batch, per portion and as %
+of menu price, then *Packaging · Labour · Fixed cost · Wastage* (each a % of raw material or a ₹
+amount, defaulting to 0 / 15 / 10 / 5%), then cost per portion, menu price, margin against target.
+Top of the page: *Batch makes* (e.g. 4 cookies; for a made item, e.g. 1,012 g), raw material per
+batch, cost per portion, menu price, margin.
+- Typed by a person: ingredient, amount used, batch size, menu price, overheads. Worked out: cost
+  in recipe, %, totals, margin. Typed and worked-out cells look different.
+- **Price per pack** shows the item's current price as "₹99 / 10 g" with its source. When the item
+  has no approved purchase, the owner can type it right in the cell, in that form: one entry sets
+  price and pack together. If the item's unit is kg/g/L/ml, the price converts to the item's unit.
+  Otherwise the pack size and pack unit are set from it (so "₹99 / 10 g" on a pkt item means
+  1 pkt = 10 g at ₹99). The cell then reads "typed" until a purchase replaces it.
+- A made item is a line like any other: *Cajun masala · 10 g · ₹1,541 / kg · ₹15.41*.
+- A line with no price reads "no price yet", and totals show as "≥ ₹…".
+- Overheads and menu price appear only on dishes. A made item's page shows batch cost, yield
+  and cost per unit, plus a list of the dishes that use it.
+- Brand is shown from the item and editable from this page.
+
+**Recipes list.** One table of every dish and made item: *Name · Type · Cost / portion (made: per kg
+or pc) · Menu price · Margin · vs last week · Status*. Status is below target / N prices missing /
+no recipe / on target / costed. Totals at the top: below target, missing a price, no recipe yet,
+average margin. Filters: All, Needs attention (worst first), Made here, No recipe. "+ New recipe"
+creates a dish recipe for a menu item, or a new made item with its recipe. "vs last week" is the
+change in cost per portion priced as of 7 days ago.
+
+**Daily sheet.** Sketch 1's columns plus brand: *Item · Brand · Unit qty · Rate · Purchased · In (₹) ·
+Out (used) · Remaining · Day-end · Wastage*, with "Spent today" at the bottom. The manager types item,
+unit qty, rate, purchased and day-end. In, Out, Remaining and Wastage are worked out, exactly as on
+today's Purchases tab (same endpoints, same rules). The new part, owner only: **price changes to
+approve**. Each pending purchase whose price differs from the current one, or which is a new item,
+shows: old → new per unit, % change, who bought it and how much, and its ripple. The ripple lists how
+many dishes cost more, the range per portion, which drop below target, and which made items it
+passes through ("Bao buns +₹0.40 → 3 dishes"). Buttons: Approve, Not this time, Approve all. A
+purchase at the same price as the current one is approved without asking.
+
+**Inventory.** Laptop: a table of plain numbers, *Item · Brand · In stock · Alert below · Price ·
+Value · Counted*, grouped by category, with made items in their own group tagged "made". Filters:
+All, Low, Made here, plus search. A side box has "Start tonight's count" and the last 7 nights (who,
+and how many of all items were counted; tap for that night's changes). Phone: the count box on top,
+then one row per item (name, brand · price; stock and alert on the right), touch-sized. "Start
+tonight's count" opens the existing count screen (`/admin/ops/count`): number boxes, one
+answer per row, Out / Have it for yes/no items. Staff accepted it, so it stays. "Edit all" opens the
+existing setup grid (`InventorySetupGrid`) with a Brand column added.
+
+### Backend
+
+- `inventory_items.brand` (VARCHAR, nullable), via `_INVENTORY_ADDED_COLUMNS`. Returned on items,
+  editable in the grid, the item form and the recipe page.
+- **Price approval.** `inventory_transactions.price_status` (`pending` / `approved` / `rejected`;
+  NULL means approved: rows from before the gate) and `price_reviewed_at`.
+  - A purchase is saved `pending` when logged by admin, and `approved` when logged by an owner or
+    when its unit price equals the current price.
+  - `latest_priced_purchases` and the >30% jump check read approved rows only.
+  - "Not this time" sets `rejected`: stock and the day's spend still count, it just never becomes
+    the price.
+  - Approving does **not** go through `/costing/reprice`, which writes `cost_per_unit` and would turn
+    a purchase price into a typed one.
+  - Endpoints: `GET /purchases/pending-prices` (with ripple), `POST /purchases/{id}/price-review`
+    (`approve` / `reject`), and an approve-all.
+  - Production has no purchases, so nothing to backfill.
+- **Made-item recipes.** `dish_costings` gets a nullable `inventory_item_id` (unique), and
+  `menu_item_id` becomes nullable. Exactly one of the two is set, checked in the API. SQLite can't
+  drop NOT NULL in place, so the startup migration rebuilds the table once (copy rows, swap) when
+  `menu_item_id` is still NOT NULL. Production has 0 rows. A made item's yield is stored as
+  `yield_units` in the made item's own unit. It defaults to the summed line quantities when every
+  line converts to that unit, and is typed otherwise (bao, a reduced sauce). Everything that walks
+  `dish_costings` assuming a menu item (the Menu chip list, `usage.py`, reprice) must skip
+  made-item recipes, or use them only through recursion.
+- **Costing recurses.** When an ingredient has its own recipe, its unit price is that recipe's raw
+  batch cost ÷ yield (no overheads), memoized per request. Saving a recipe that would use itself,
+  directly or through another made item, is refused with the chain named. A made item's missing
+  prices propagate as gaps.
+- **Ripple is transitive.** `_get_reprice_impacts` counts a dish as affected when any line uses the
+  changed item directly or through a made item, and reports the made items it passed through.
+- **As-of pricing** for "vs last week": the latest approved purchase reviewed before the date (typed
+  prices have no history, so they read as unchanged).
+- **Check left behind:** one test seeds the WhatsApp sample. It asserts cookie (makes 4, ₹130):
+  raw ₹150.21 a batch, ₹37.55 a cookie, ₹48.82 with default overheads, 62% margin. It asserts Cajun
+  masala's priced lines total ₹1,559.11, with salt as a gap. It also asserts that a dish using
+  10 g of masala picks up its cost, and that a self-referencing recipe is refused.
+
+### Calls made by the developer, not the owners
+
+Check these when reading. All are cheap to change.
+- Brand lives on the item, not on each purchase line. A one-off purchase of another brand shows
+  in the approval list (the price will differ) but doesn't change the item's brand.
+- An owner's own purchases skip approval. A purchase at an unchanged price skips it too.
+- Price and Value on the inventory page are visible to admin as well as owner. The manager types
+  rates anyway. The recipe pages stay owner-only, as costing is today.
+- The count screen and the setup grid are reused as they are (plus Brand), not redesigned this pass.
+- The daily sheet is rebuilt in the new look on the existing purchase endpoints, rather than
+  restyling `PurchaseSheetTab`.
+- One PR to `pre-release`, built in this order: backend → recipe page → recipes list → daily sheet
+  with approvals → inventory page.
+
+### Known gaps after this pass
+
+- **Nothing records "made a batch".** Sales × recipes take Cajun masala out of stock, but nothing
+  takes the spices out when a batch is made. Until a "Made 1 batch" button exists on the made item's
+  page (spices out, masala in), the daily sheet's Out and Wastage for spices used only inside made
+  items read low or empty.
+- **Typed prices have no history of their own.** A dish's history shows their effect, but an
+  item's own price over time is not kept; "vs last week" sees only purchase-driven changes.
+- AI insights and alerts (second pass).
+
+## Next up
+
+**New (2026-11-03): dish price history (built; PR stacked on #77).** The owners want to see how each
+dish's numbers moved over time, and why. Today the menu price, typed prices, recipes and the
+café-wide charges are all overwritten in place.
+
+- **One table, `dish_price_history`, only ever added to.** Each row is keyed by `menu_item_id` or
+  `inventory_item_id`, a made item's id. The keys have no foreign keys, so deleting a recipe or a
+  dish keeps its history. SQLite triggers refuse any UPDATE or DELETE.
+- **Each row holds:**
+  - when the change happened, who made it, the cause and an optional note;
+  - the menu price, cost per portion, raw material cost, margin, target margin, suggested price
+    and batch size;
+  - a JSON copy of each charge (mode, value, amount);
+  - a JSON copy of the recipe, with each ingredient's amount, unit and unit price at that moment.
+- **Rows are written only when something changed.** One helper, `price_history.record(db, cause,
+  actor, note)`, re-costs every recipe and compares each one to its latest row. It adds a row only
+  where the numbers differ, or where a note was typed.
+  - A made item's change (Cajun masala) reaches every dish that uses it, with no extra code.
+  - The before and after ("Butter ₹0.58 → ₹0.62/g: cost per portion ₹48.82 → ₹49.30") come from
+    comparing two rows when the history is read.
+- **Hooks.** Each hook is a single call after the change is saved. If recording fails, the
+  owner's change still goes through. These are the causes:
+  - recipe saved
+  - menu price changed: Menu page edit or "apply suggested price"
+  - typed price changed: reprice, item edit, setup grid, pack price, item removed
+  - purchase price approved: one at a time, approve-all, or an owner's own purchase
+  - purchase edited or deleted
+  - café-wide charges or target margin changed
+
+  A path left unhooked would have its change blamed on the next hooked action, so all of them
+  are hooked.
+- **Baseline.** On first start, every existing recipe gets one "history starts here" row.
+- **Owner-only reads:** `GET /costing/menu/{id}/history` and `/costing/item/{id}/history`.
+- **Screen.** The recipe page (dishes and made items) gets a "Price history" section:
+  - a small line of cost per portion against menu price, over time;
+  - below it, the rows newest first. Each row has what moved, why, who and when, plus the note.
+- The note is typed next to Save on the recipe page and next to "Apply suggested price".
+- This closes the "typed prices have no history" gap at the level of the dish. Item-level
+  history of typed prices is still a gap.
+- Built as `backend/app/utils/price_history.py` (`record()` and `moves()`), the
+  `DishPriceHistory` model, `ensure_price_history_guard` in `session.py`, and
+  `frontend/src/ops/PriceHistory.tsx`. Tests: `backend/tests/test_price_history.py`.
+
+**New (2026-11-03):** inventory is one place now, under `/admin/ops`; the old page redirects.
+
+**New (2026-11-02):** the ops redesign above is built (see "What shipped"), with its PR to
+`pre-release`. Next for it: the owners enter real recipes on `/admin/ops/recipes`. Then come the
+known gaps: a "Made a batch" action and a history for typed prices.
+
+Read this first in a new session. Last checked 2026-10-18 against `origin/pre-release`
+(`767cff3`) and `origin/main` (`6c75aa4`).
+
+**Where things stand.** Steps 1–5 and 7 are built. The first batch (setup grid, hybrid
+count) reached `main` in #59 and is live. Production's backend reports commit `c99044b`,
+which is that merge. The second batch is 26 commits on `pre-release` that have never been
+deployed: the purchase sheet, pack size in costing, the dish costing screen, vendors and order
+messages, and the unit fix. `main` has 4 commits `pre-release` lacks (the waiter order review
+and chit centring). A trial merge is clean.
+
+**The bottleneck is owner data entry, not code.** Reconciliation is the payoff, and it can't
+read true until purchases have been logged, recipes entered, and a clean week of counts and
+purchases has run on top of them. Code for step 6 can be written in parallel, but nobody
+should read its numbers before then.
+
+**Production data, from a read-only snapshot on 2026-10-18:**
+
+| What | Count | So |
+| --- | --- | --- |
+| Active inventory items | 173 (21 yes/no) | — |
+| Items with a price above ₹0 | **0** | Every dish cost reads as gaps until purchases are logged or prices typed |
+| Purchases ever logged | **0** | No price history exists. Nothing can misprice from the old g → kg unit changes, so that re-pricing step is dropped |
+| Recipes (`dish_costings`) | **0** of 112 menu items | Used / Remaining / Wastage on the sheet and all of reconciliation are empty until recipes exist |
+| Nightly counts | 5 of the last 7 days, last on 2026-10-16 | The count habit is in place |
+| `digest.enabled` / `smtp.enabled` | `false` / `false` | The digest is already off in production; no action needed before deploying |
+
+Starting `pre-release` against the snapshot applied its migrations cleanly: the four new
+transaction columns and the `vendors` table. That's a dry run of the production deploy.
+
+### Critical path
+
+1. **Land `pre-release` on `main` and deploy** (dev, then owner). See "Landing
+   `pre-release`" below.
+2. **Start logging purchases on the Purchases tab** (staff, daily from the deploy). That's
+   where prices come from, and production has none. Two weeks of logging prices the items
+   bought often. Type prices in the setup grid only for things bought rarely.
+3. **Enter real recipes on the Menu page** (owner). Start with the dishes that sell most and
+   the expensive middle of the list: chicken, cheese, bulk sauces. Reconciliation only covers
+   items that appear in a recipe.
+4. **Name the opening count** (owner). The first full count after recipes exist is the opening
+   balance. Reconciliation starts the week after it. Until then, every week's variance is
+   setup noise.
+5. **Build the waste log, then step 6, reconciliation** (dev). They can be built during 2–4, against a local copy of production (see "Testing locally on a
+   copy of production").
+   Prompts are under "Session prompts".
+6. **First week of variance = a recipe-accuracy test** (owner). Fix recipes where the gap is
+   a portioning difference, not a loss.
+
+### Pending work, not on the critical path
+
+| Work | Size | Blocked by | Notes |
+| --- | --- | --- | --- |
+| Waste log: `WASTE` type + `reason`, one button on the Purchases tab | ~½ day | — | Not built; `TransactionType` has only PURCHASE / USAGE / ADJUSTMENT. Reasons: spoiled, spilled, burnt / remade, staff meal, returned. Without it every variance is anonymous. |
+| Reconciliation (step 6) | ~1½ days | waste log; recipes for real numbers | Weekly, worst-first, in rupees. |
+| Cash link: day's purchase total as a named deduction on the cash counter | ~½ day | owner answer: paid from the till or separate cash? | Unbuilt. `expected_closing` deducts nothing for cash purchases today. |
+| Settings toggle for the morning digest | ~½ day | — | Low priority: production already has `digest.enabled = false`. The code default is still `true` and there's no UI, so turning it on is a DB edit plus a restart. |
+| Per-item stock target in order suggestions | small | — | Optional. Replaces "twice the alert level" (2026-10-16). |
+| Test isolation from the local `.env` | small | — | `load_dotenv()` lets `backend/.env` usernames and passwords leak into tests: 14 failures locally, 3 with `ADMIN_USERNAME=admin OWNER_USERNAME=owner` set. The code is fine; `main` fails the same way. Pin test credentials in `conftest.py`. |
+
+### Open questions for the owner
+
+From the Purchases doc. Each one changes what gets built.
+
+- **Where does purchase money come from: the till or separate cash?** This decides the cash
+  link. It also matters because across 194 closed days the drawer read about ₹3,000 *over*
+  expected. That deserves its own investigation.
+- **Staff meals: track them or ignore them?** If the kitchen feeds staff daily, that shows up
+  as unexplained variance every week unless it's logged under its own reason.
+- **Photograph bills?** Useful in disputes, but it costs storage and adds a step at entry.
+  Nothing is built for it.
+- **Who logged a purchase.** Every row already stores `recorded_by`. Check whether the sheet
+  should show it before calling this settled.
+
+### Walkthrough of the owner screens (2026-10-18)
+
+13 recipes and 22 item fixes were entered through the UI, on a local copy of production, to see where
+it fights a real kitchen. Everything found, plus the recipes and estimated prices used, is in
+[UI_WALKTHROUGH_NOTES.md](UI_WALKTHROUGH_NOTES.md). The ones that matter most:
+
+- **Recipe lines defaulted to the count unit**, so "200" of soda meant 200 bottles and a ₹100 cooler read
+  ₹16,909 a portion. Fixed in #73, along with offering g/ml for piece-counted items and pack size on the
+  item form.
+- **Nothing sanity-checks a number.** Not a ₹22,220 noodle packet in the grid, and not a line costing 40×
+  the dish's menu price.
+- **A unit change across families (pcs → kg) leaves stock untouched**, so 1202 g read as 1202 kg. Same-family
+  changes are converted correctly.
+- **Yes/no items on a recipe still ask for a quantity**, and every next ingredient needs the mouse.
+- **The data needs an owner pass before reconciliation:** duplicate items (COCOA POWDER, CARAMEL/CAREMAL,
+  KIT KAT, RAMEN/JAPANESE NOODLE, FRIES/FRENCH FRIES), CHEST BONELESS holding grams in `pcs`, and nightly
+  counts that cover about a third of the list.
+
+### Testing locally on a copy of production
+
+Enter test data here, never in production. Snapshot production read-only with SQLite's
+backup API into `backend/prodcopy.db` (gitignored, like every `*.db`). Use the same method as
+`scripts/refresh-dev-db-from-prod.sh`, but download the file instead of installing it on
+staging. Then start the `backend-prodcopy` and `frontend-local` configurations in
+`.claude/launch.json`. The backend serves the copy on :8000 with MCP off. The frontend pins
+`VITE_API_BASE_URL=http://localhost:8000`, so it can't reach production by accident. The copy
+holds customer data: delete it when you're done.
+
+## What shipped
+
+Shipped already: the typed-input count row (`6b8cbf6`), the setup grid (1), yes/no items in
+the nightly count (2): the Out / Have it row, the model-level clamp, review sheet and stock log;
+the purchase sheet (3), pack size in costing (4), the dish costing screen (5), and vendors with
+the order messages (7).
+
+**Inventory in one place (2026-11-03).** The old Inventory page is gone; everything it did now
+lives under `/admin/ops`.
+- **Moved:** the daily count tab became the Inventory page's count box (with "Continue" when a
+  draft exists), the count itself is `/admin/ops/count`, the purchase tab is the Daily sheet, and
+  Order and Stock log moved as they were. Items and categories (with count order) are sections
+  of Setup, owner only.
+- **Four calls:** no separate count landing page; no single-item edit form (the Setup grid edits
+  everything, a small Add item form stays); categories and count order sit on Setup; the Stock
+  log keeps usage and correction but drops "record a delivery", since the Daily sheet does that.
+- **Old URLs redirect:** `/admin/inventory` goes to `/admin/ops/inventory`, `?tab=` goes to that
+  tab's ops page (an unknown tab goes to Inventory), `/admin/inventory/count` goes to
+  `/admin/ops/count`. The sidebar has one Inventory entry; the Ops entry is gone.
+
+**Ops redesign (2026-11-02)**, on branch `claude/ops-redesign`, with its PR to `pre-release`.
+- **Pages** under `/admin/ops`, in their own light/dark look and built for phone and laptop:
+  - the recipe page for dishes and made items, with pack-price entry ("58/100g") and adding a new
+    ingredient from the picker;
+  - the Recipes list, with status, margin and "vs last week";
+  - the New made item page, which points to an item already in stock instead of duplicating it;
+  - the Daily sheet, where the owner approves prices, with the ripple per change;
+  - the Inventory page, with the count box, a Counted column and Edit all.
+- **Backend:**
+  - `price_status` on purchases (only approved prices count; owner and unchanged-price lines are
+    approved straight away, and yes/no items never wait);
+  - made items costed recursively, with a cycle guard and an automatic yield;
+  - the transitive ripple, `GET /costing/overview` and `POST /items/{id}/pack-price`;
+  - `brand`, `has_recipe` and `last_counted` on items.
+- **Checked on the production copy:** the WhatsApp cookie comes to ₹150.21 a batch and ₹48.82 a
+  portion (62%). A +21% butter purchase showed "1 dish costs more, ₹3.9 a portion" and, once
+  approved, moved the cookie to ₹52.72 (59%).
+- Menu costing still works. The old Inventory tabs are gone (see "Inventory in one place").
+
+Purchase sheet (3), backend only: `total_amount` and `vendor_id` on purchase rows, a minimal
+`vendors` table, `POST /transactions/purchase/check` (the >30% jump warning, dry run) and
+`GET /purchases?business_date=` (the day's lines and total). Price resolution lives in
+`backend/app/utils/pricing.py`; items return `current_price`, `price_source`, `price_as_of`,
+and dish costing now prices from it. Every stock movement records the unit it was entered in
+(`inventory_transactions.unit`), and a purchase is read in the item's unit as it is now: after a
+g → kg change, "4000 g for ₹480" still prices at ₹120/kg and shows as 4 kg on the day's sheet. A
+purchase in a unit the item can no longer convert from (pcs → kg) is passed over for the typed
+price. Rows from before the column existed were backfilled with their item's unit at the time.
+
+Purchase sheet screen (3), shipped as the **Purchases** tab in Inventory, built to the owners'
+paper sketch: an editable table per day plus a keyboard-first new line (item ⏎ rate ⏎ count ⏎;
+unit qty defaults to 1). Rows carry `pack_count`, so unit qty = quantity ÷ count and rate =
+total ÷ count — only totals are stored. Items still in g/ml are entered in kg/L. The picker ranks
+by what gets restocked (`GET /purchases/frequent`); an unknown item is added inline via
+`POST /items/quick` and flagged `needs_setup` ("New" in the setup grid until the owner saves it).
+Same-day corrections: `PATCH`/`DELETE /purchases/{id}`, refused once a count has taken the line in.
+Day-end writes one line into tonight's count (`PUT /counts/tonight/items/{id}`). Used / Remaining /
+Wastage come from sales × recipes (`app/utils/usage.py`) and read "needs recipe" until recipes
+exist — prod has none yet, so those columns fill in only after the dish costing UI (5).
+
+Pack size (4), backend: dish costing now bridges a recipe unit to the item's unit through its
+pack size (`to_item_unit` in `backend/app/utils/units.py`, shared with the sheet's Used column),
+so 30 ml of chilli oil counted in 700 ml bottles costs 30/700 of a bottle. A line that only a
+pack size would fix comes back with `needs_pack_size: true` and a warning naming the question
+("1 bottle = how many ml?"); yes/no items and unknown units (tbsp) never ask. The prompt itself
+is the dish costing UI's job (5): ask when that flag is set, save it through the setup grid's
+pack columns, and re-cost.
+
+Dish costing screen (5), shipped on the **Menu** page, owner only: a Margin chip per dish
+(`54% · below 65%`, `≤ 54% · 2 gaps`, `+ Recipe`) and a "Needs attention" filter that lists
+below-target dishes worst first, then dishes with gaps, then dishes with no recipe. The chip opens
+the recipe sheet (`frontend/src/components/costing/RecipeSheet.tsx`): ingredients with quantity
+and unit, a live cost from `POST /costing/preview`, each price's source and date, a named reason
+on every line that isn't costed, the pack-size question asked on the line itself, per-dish
+overheads and target, and "Use ₹X as the menu price" behind a confirmation. Unsaved changes are
+kept on the device. Every costing route is now owner-only, and a recipe in the item's own unit
+(1 packet of a packet item) always costs, even for units the converter doesn't know.
+
+Vendors and order messages (7): each item has an optional usual vendor (`default_vendor_id`), set
+in the setup grid's Vendor column, where "+ New vendor…" adds one. A new **Order** tab in Inventory
+groups what's below its alert level by vendor, A to Z, with Unassigned last, and renders one
+paste-ready message per vendor ("Good evening. Please send tomorrow: • Hot sauce — 3 bottles")
+with a Copy button. The count's "Count saved" screen leads there, and the Daily count tab says how
+many items are low. Quantities are suggestions back to twice the alert level, rounded up to whole
+units or hundreds of g/ml, and editable; a line can be left out; yes/no items go by name alone.
+The owner can add or change a vendor's phone on the same screen (`PATCH /vendors/{id}`).
+Copy-paste only: nothing is sent automatically.
 
 ## Session prompts
 
-One per module, each self-contained so a fresh session needs no other context. Two things
-are in every prompt on purpose: read `origin/pre-release` rather than `main` (it is more
-than twenty commits ahead), and read the spec before touching code.
+Self-contained, so a fresh session needs no other context. Prompts for shipped steps were
+removed. Their history is in git (`git log -p docs/INVENTORY_PLAN.md`). Branch from
+`pre-release` and target PRs there. The two prompts both touch inventory files, so run them
+one after the other, or in separate worktrees.
 
-**Running these:** prompts 1, 2 and 3 all touch inventory files. Run them one at a time,
-or give each its own git worktree — concurrent sessions in a single checkout will
-overwrite each other. Suggested order: 0 now, then 1, then 2 and 3 together, then
-4 → 5 → 6, with 7 whenever ordering help matters more than waste reporting.
-
-### 0 — Fix and merge dish costing's backend
-
-Fix on the branch first, then merge. A merge commit that also carries fixes is hard to
-review and hard to back out of, and if the merge goes badly you keep the fixes.
+### Waste log
 
 ```
-In /Users/angelxlakra/dev/lily-cafe-pos: get origin/feature/dish-costing ready and merge
-it into pre-release. Read docs/INVENTORY_PLAN.md first — its "State of
-feature/dish-costing" section lists what's wrong. Work ON that branch, don't merge first.
+In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Add a waste log.
 
-Step 1, fix these four bugs as their own commit on feature/dish-costing:
-- `details=` should be `detail=` at endpoints/costing.py:66,68,99, and `sataus_code=`
-  should be `status_code=` at :306. All four are TypeErrors that surface as 500s.
-- utils/costing.py calls convert() before checking the price, so one ingredient with an
-  unconvertible unit raises and kills the whole dish instead of costing one line at 0.
-- price_missing only tests for None, so a price of 0 counts as free. 98 live items are
-  priced 0.00, so dishes would report confident ₹0 lines and still look complete.
+Read docs/INVENTORY_PLAN.md, then "Waste, logged rather than inferred" and "Data model"
+in the linked Purchases and reconciliation doc.
 
-Step 2, add three tests — there are currently none for ~1,250 lines of money handling:
-a normal cost calculation, one with a missing price, one with an unconvertible unit.
+Add WASTE to TransactionType and a nullable `reason` column on inventory_transactions
+through the idempotent ADD COLUMN path in app/db/session.py. Reasons are a fixed list:
+spoiled, spilled, burnt / remade, staff meal, returned, plus an optional note. Waste lowers
+stock like any movement and must show in the stock log. Keep it in the one transactions
+table: the ledger is a sum over movements.
 
-Step 3, merge main into the branch, then the branch into pre-release. Do NOT bring its
-frontend/pnpm-lock.yaml or pnpm-workspace.yaml — this project uses npm.
+UI: one button on the Purchases tab, a few seconds per entry. It's for the tray that got
+thrown out, not a spilled spoonful. Staff can log, same as purchases. Show staff meal
+separately from waste wherever totals appear.
 
-Don't build any costing UI; the frontend doesn't exist yet and comes much later. Leave
-the API unused until real prices exist.
-
-Done = bugs fixed with tests proving it, merged into pre-release, full test suite passes.
+Done = staff log a thrown-out tray in seconds, stock drops, the stock log names the reason.
 ```
 
-### 1 — Setup grid
-
-```
-In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Build the inventory
-setup grid: one editable table where the owner sets every item's kind, unit, pack size,
-threshold and price, with ONE save.
-
-Read docs/INVENTORY_PLAN.md, then the "Setup grid" section of the linked Hybrid stock
-count doc. Check TemplateImportModal.tsx on pre-release before planning — it was rebuilt
-and differs from main.
-
-Key points from the spec: plain inputs in table cells (no grid library), paste from
-Google Sheets support, freeze Name/Category, per-column locks with Stock locked by
-default, dirty-cell highlighting and Revert, one bulk PATCH endpoint. ~196 rows means
-memoize per row.
-
-The grid also needs a way to retire an item. Run backend/scripts/inventory_review.py first
-for the candidate list — note that "sitting at zero" does NOT mean dead: 36 active items
-have never had a transaction and they include SALT, MAIDA and the garbage bags. Retire
-means deactivate, not delete: DELETE /items/{id} is already a soft delete that flips
-is_active, because transactions reference those rows.
-
-Done = the owner can edit every field for all items, retire dead ones, and save once.
-```
-
-### 2 — Hybrid count
-
-```
-In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Add yes/no items to
-the nightly stock count.
-
-Read docs/INVENTORY_PLAN.md and the Hybrid stock count doc it links.
-
-Items split two ways: counted with a number, or answered Out / Have it. Add count_mode
-to inventory_items, clamp presence quantities in a model validator — there are FIVE
-writers of current_quantity, not one. Replace the count row's control with two buttons
-for presence items.
-
-Do NOT reintroduce the ✓ / − / + cluster; it failed user testing. Keep the review sheet,
-the saved counts and the 1½ fraction idiom. Exclude presence items from the
-"big differences" list.
-
-Done = a yes/no item can be answered, saved, and reads correctly in the review sheet
-and stock log.
-```
-
-### 3 — Purchase sheet
-
-```
-In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Build the daily
-purchase sheet.
-
-Read docs/INVENTORY_PLAN.md, then the linked Purchases and reconciliation doc.
-
-POST /inventory/transactions/purchase already exists and raises stock — it just has no
-concept of money or vendors. Extend it: total_amount and vendor_id on the transaction.
-
-Capture the TOTAL paid, not a unit price — people know "4 kg for ₹480". Show a running
-day total. Entry must take ~90 seconds for 5–15 lines; this is an append log, not the
-setup grid. Allow adding an unknown item inline. No credit purchases — buying and paying
-are one event.
-
-Done = a day's purchases can be logged in under two minutes and stock goes up correctly.
-```
-
-### 4 — Pack size
-
-```
-In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Add pack size to
-inventory items.
-
-Read docs/INVENTORY_PLAN.md and the "Data model" section of the Hybrid stock count doc.
-
-Two optional columns meaning "1 bottle holds 700 ml" / "1 portion = 6 pcs". You count and
-price in the item's own unit; pack size bridges to the recipe's unit. Only needed when the
-recipe unit is in a different family from the count unit — backend/app/utils/units.py on
-the costing branch handles same-family conversion already.
-
-Prompt for it when an item joins a recipe and units don't bridge, not from everyone at setup.
-
-Done = a recipe in ml can cost against an item counted in bottles.
-```
-
-### 5 — Dish costing UI
-
-```
-In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Build the frontend for
-dish costing. The backend already exists (merged from feature/dish-costing) — read its
-endpoints and schemas before designing anything.
-
-Read docs/INVENTORY_PLAN.md for context. There is NO spec for this UI yet — propose one
-before building, and check it with me.
-
-A recipe builder per menu item (pick inventory items, quantity, unit) plus a cost readout
-with margin. Items that can't be costed — yes/no items, no price, unconvertible units —
-must show as incomplete with a named reason, never as ₹0. Show the price's as-of date.
-
-Done = a menu item's recipe can be built and its true cost read, with honest gaps.
-```
-
-### 6 — Reconciliation
+### Reconciliation (step 6)
 
 ```
 In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Build weekly stock
-reconciliation.
+reconciliation. The waste log should already be merged; check first.
 
 Read docs/INVENTORY_PLAN.md, then the "Reconciliation" section of the Purchases doc.
+Reuse app/utils/usage.py (sales × recipes, the sheet's Used column) and units.py's
+to_item_unit. Don't write a second expected-consumption path.
 
 opening + purchased − waste − counted = consumed; dishes sold × recipe = expected;
-the gap is unexplained. Add a WASTE transaction type with a reason code.
+the gap is unexplained. Count nights run to 04:00 (app/core/business_day.py).
 
-WEEKLY, not daily — daily variance at this scale is noise. Only for items where every term
-exists; don't list yes/no items. Present as "these five don't add up, worst first, in
-rupees" — not a ledger dump. Say in the UI that early variance reflects recipe accuracy,
-not theft.
+WEEKLY, not daily: daily variance at this scale is noise. Only list items where every term
+exists, and never yes/no items. A missed count breaks the chain, so mark that week
+incomplete rather than assuming the previous number. Present it as "these five don't add
+up, worst first, in rupees", not a ledger dump. Say in the UI that early variance reflects
+recipe accuracy, not theft. Owner only.
 
 Done = a weekly variance list the owner can act on.
 ```
 
-### 7 — Vendors and order messages
+## Landing `pre-release`
 
-```
-In /Users/angelxlakra/dev/lily-cafe-pos, branch from pre-release. Build vendors and the
-end-of-day order message.
+This lands the second batch. The first landed in #59. Checked 2026-10-18:
 
-Read docs/INVENTORY_PLAN.md, then "Vendors and the order message" in the Purchases doc.
+- The trial merge of `pre-release` into `main` is clean. Merge `main` into `pre-release`
+  first so the PR carries the 4 commits `main` has.
+- The frontend builds. The backend suite passes apart from the `.env` leak noted in
+  "Pending work".
+- Schema changes are additive: a `vendors` table; `total_amount`, `vendor_id`, `pack_count`
+  and `unit` on `inventory_transactions`; `default_vendor_id` and `needs_setup` on items.
+  The `unit` backfill only fills `WHERE unit IS NULL`, so running it twice is safe.
+- `orders`, `payments`, `print_jobs`, `cash_counter`, `auth` and `admin` aren't touched.
 
-A vendors table, an optional default vendor per item, and the low-stock list grouped by
-vendor rendered as paste-ready messages with a copy button each. Unmapped items go in an
-"Unassigned" group — vendor setup must never block the alert. Suggested quantities are
-editable suggestions, not calculations.
+Order:
 
-Copy-paste only for now. If automatic delivery comes up: Telegram is a bot token and a
-chat id; WhatsApp needs the Business API with approved templates and per-message fees.
+1. `scripts/refresh-dev-db-from-prod.sh`, then `scripts/deploy-backend.sh dev`. Click
+   through Purchases, Order and a dish's recipe sheet on staging.
+2. Merge to `main`. Vercel ships the frontend on push.
+3. `scripts/deploy-backend.sh prod`, outside service hours. The script refuses anything but
+   `origin/main` and confirms the live commit afterwards.
+4. Check: `curl -s https://lily-cafe-pos.fly.dev/ | jq -r .commit` equals
+   `git rev-parse origin/main`, and `GET /api/v1/inventory/purchases?business_date=…`
+   answers rather than 404s.
 
-Done = the owner finishes a count and can send each vendor an order in one tap each.
-```
+**Morning digest.** Already off: production's `app_settings` has `digest.enabled = false`
+(checked 2026-10-18), so this deploy starts nothing. To turn it on, set the row to `'true'`
+over `flyctl ssh console -a lily-cafe-pos`, then restart the app, because the boot check is
+what creates the task.
 
 ## Deploying, and knowing what's deployed
 
-The frontend auto-deploys from `main` on every push (Vercel). The backend does **not** —
-it needs someone to run `flyctl deploy` by hand. The two drift, silently.
+The frontend auto-deploys from `main` on Vercel. The backend deploys only by hand, through
+`scripts/deploy-backend.sh <prod|dev>`. Don't run `flyctl deploy` directly. It builds from
+the working directory rather than git, and the local `fly.toml` names the *dev* app. Both
+have already caused outages (2026-09-26: a "successful" release without the count routes,
+and the cafe lost a night's count to a 404).
 
-**Two gotchas, both of which have already caused an outage:**
+`GET /` returns the commit the image was built from. `"unknown"` means an unstamped build.
+After any backend change, hit the new endpoint rather than trusting the release status.
 
-1. **The local `fly.toml` says `app = "lily-cafe-pos-dev"`.** It is gitignored, so it
-   differs per machine. A plain `flyctl deploy` from the repo root deploys to the *dev*
-   app. Production needs the app named explicitly:
-
-   ```
-   flyctl deploy -a lily-cafe-pos --build-arg GIT_SHA=$(git rev-parse HEAD)
-   ```
-
-2. **A deploy can report success while shipping stale code.** On 2026-09-26 the backend
-   was found to have no `/inventory/counts` routes at all, five days after they landed on
-   `main` and four days after a "successful" release. The image built, the health check
-   passed and `fly releases` looked clean — while the endpoint the staff needed simply was
-   not there. The cafe counted 82 items that night and lost all of it to a 404.
-
-   The cause was never confirmed. The most likely explanation is that `flyctl deploy` was
-   run from a checkout that predated the merge — it builds from the working directory, not
-   from git, so a stale local tree ships stale code with no warning. (An earlier note here
-   blamed [#56](https://github.com/angelxlakra/lily-cafe-pos/pull/56); that PR fixed a
-   different problem, see below.)
-
-3. **Until #56, every image carried local files.** `fly.toml` builds from the repo root, so
-   `backend/.dockerignore` was never read and `COPY backend/ .` baked the developer's
-   `.venv`, `restaurant.db` and `.env` into the image — a 941 MB context, now about 2 MB.
-   Production itself was unaffected: Fly secrets are real environment variables and
-   `load_dotenv()` does not override those, so the baked `.env` was inert. But images v26
-   and earlier still hold a copy of whatever was in that local `.env`.
-
-**The underlying gap was that nothing reported what is actually deployed.** `GET /`
-returned `version: 0.2.0`, hardcoded and equally true of the stale image. It now also
-returns the commit the image was built from, so checking is one line rather than grepping
-inside a running container:
-
-```
-curl -s https://lily-cafe-pos.fly.dev/ | jq -r .commit    # vs: git rev-parse origin/main
-```
-
-An unstamped build reports `"unknown"` rather than claiming a version it cannot vouch for,
-so a forgotten `--build-arg` is visible instead of silent. Either way, after any backend
-change, verify the thing you shipped rather than the release status — hit the new endpoint
-and check it answers.
-
-## Follow-up: make a stale deploy impossible, not just visible
-
-On 2026-09-26, an hour after the section above was written, the same failure happened
-again. Local `main` was one commit behind `origin/main`; `flyctl deploy` built from the
-working directory, and v28 shipped without the change. Every signal said success — the
-release completed, the health check passed, the app served traffic — and it surfaced only
-by grepping inside the running container.
-
-That is the shape of the problem: **`flyctl deploy` takes its input from the filesystem,
-while everything else in this workflow reasons about git.** The two disagree silently, and
-only the filesystem gets shipped. A clean working tree is not a current one.
-
-The commit stamp added in [#57](https://github.com/angelxlakra/lily-cafe-pos/pull/57)
-reports the problem afterwards, and it cannot report on an image built before it existed —
-a stale image cannot tell you it is stale. So it needs a partner that refuses the deploy in
-the first place. Roughly five lines, as `scripts/deploy-backend.sh`:
-
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-git fetch -q origin main
-[ -z "$(git status --porcelain)" ] || { echo "working tree is dirty — refusing"; exit 1; }
-[ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || {
-  echo "HEAD is not origin/main — refusing"; exit 1; }
-flyctl deploy -a lily-cafe-pos --build-arg GIT_SHA="$(git rev-parse HEAD)"
-```
-
-It also removes the two things a human has to remember every time: naming the production
-app (the local `fly.toml` says `lily-cafe-pos-dev`) and passing the build stamp.
-
-Worth doing before the next feature that spans both halves of the stack — which is the
-setup grid, since it needs `PATCH /items` on the backend and the grid on the frontend.
-
-## Landing `pre-release`
-
-**Decision (2026-09-26): land it once the setup grid is usable.** Not before, not much
-after. At 61 commits the merge is still cheap; it gets dearer every week, and
-`TemplateImportModal.tsx` is edited on both sides.
-
-Checked on 2026-09-26 against `origin/main`:
-
-- Merge is clean, no conflicts.
-- Backend suite on the merged result: **557 passed**.
-- Frontend typechecks and builds.
-- Schema changes are **purely additive** — `dish_costings`, `dish_costing_ingredients` and
-  `daily_digests` via `create_all`, plus `count_mode` (NOT NULL with a default), `pack_size`
-  and `pack_unit` (nullable) on `inventory_items`, through the same idempotent
-  `ALTER TABLE ADD COLUMN` path that already added `sort_order`.
-- **The cafe's core paths are untouched**: `orders`, `payments`, `print_jobs`,
-  `cash_counter`, `menu`, `admin` and `auth` have zero changes.
-
-Landing means a **backend deploy as well as a Vercel push** — the grid needs `PATCH /items`.
-Use `scripts/deploy-backend.sh`, and do it outside service hours.
-
-### Turn the morning digest off first
-
-`pre-release` adds an in-process scheduler (`app/ask/scheduler.py`) that runs a daily digest
-and is **enabled by default**. Deploying without acting starts a daily email the owner never
-asked for, and its catch-up can fire within seconds of boot if the send time has passed.
-
-The implementation itself is sound — `run_for` is idempotent per date so restarts cannot
-re-send, `_tick` never raises, and it runs in a threadpool. This is a behaviour decision,
-not a stability risk.
-
-Set it **before deploying the merge**, so the loop is never created. Safe to run today: the
-currently deployed code does not know the key, and settings live in the database rather than
-the image, so the row survives every deploy.
-
-```bash
-flyctl ssh console -a lily-cafe-pos -C "python -c \"import sqlite3,datetime; d=sqlite3.connect('/data/restaurant.db'); d.execute('INSERT OR REPLACE INTO app_settings (key,value,updated_at) VALUES (?,?,?)',('digest.enabled','false',datetime.datetime.utcnow().isoformat())); d.commit(); print(list(d.execute('select key,value from app_settings')))\""
-```
-
-`settings_store.load()` overlays database rows on top of `DEFAULTS` and nothing re-seeds
-them, so the row wins permanently.
-
-**To re-enable:** same command with `'true'`, then `flyctl apps restart lily-cafe-pos` — the
-boot check is what creates the task, so a live switch to true does nothing until a restart.
-Disabling works live in either case, since `_tick` re-reads the setting on every run.
-
-**There is no UI for this.** If the owner ever wants the digest, it is a database edit or a
-new Settings toggle. Worth building the toggle when the grid lands, rather than leaving it
-to be rediscovered.
+Images v26 and earlier carry a copy of a developer's local `.env` (fixed in #56). It was
+inert in production, but those images still hold it.
 
 ## Not covered here
 

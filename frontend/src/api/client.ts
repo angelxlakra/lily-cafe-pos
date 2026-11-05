@@ -3,6 +3,7 @@
 // Lily Cafe POS System - Frontend
 // ========================================
 
+import { clearCostingDrafts } from '../utils/costing';
 import axios, {
   AxiosError,
   AxiosInstance,
@@ -18,6 +19,8 @@ import type {
   CreateCategoryRequest,
   Category,
   Order,
+  OrderItemChange,
+  OrderAuditEvent,
   CreateOrderRequest,
   UpdateOrderRequest,
   OrderItemsUpdateRequest,
@@ -156,6 +159,8 @@ export const authApi = {
    */
   logout: (): void => {
     removeAuthToken();
+    // Only on a real sign-out, not an expired token: the owner's unsaved recipe survives a re-login.
+    clearCostingDrafts();
   },
 
   /**
@@ -277,6 +282,19 @@ export const ordersApi = {
    */
   getOrderById: async (id: number): Promise<Order> => {
     const response = await apiClient.get<Order>(`/orders/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Items removed or reduced after the order was placed (owner only)
+   */
+  getAuditEvents: async (id: number): Promise<OrderAuditEvent[]> => {
+    const response = await apiClient.get<OrderAuditEvent[]>(`/orders/${id}/audit`);
+    return response.data;
+  },
+
+  getItemChanges: async (id: number): Promise<OrderItemChange[]> => {
+    const response = await apiClient.get<OrderItemChange[]>(`/orders/${id}/item-changes`);
     return response.data;
   },
 

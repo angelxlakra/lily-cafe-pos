@@ -54,6 +54,16 @@ def count_night() -> date:
     return (local_now - timedelta(hours=COUNT_NIGHT_CUTOFF_HOUR)).date()
 
 
+def night_utc_bounds(day: date) -> tuple[datetime, datetime]:
+    """Half-open UTC range of one count night: 04:00 local on ``day`` to 04:00 the next.
+
+    The purchase sheet lives on this day because it carries the night's count.
+    """
+    start, end = business_day_utc_bounds(day)
+    shift = timedelta(hours=COUNT_NIGHT_CUTOFF_HOUR)
+    return start + shift, end + shift
+
+
 def business_day_utc_bounds(day: date) -> tuple[datetime, datetime]:
     """
     Half-open UTC range ``[start, end)`` covering the given local business day.

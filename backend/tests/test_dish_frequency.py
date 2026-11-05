@@ -1,12 +1,23 @@
 """Tests for the /analytics/dish-frequency endpoint (Tools page)."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 import pytest
 
 from app.main import app
 from app.api.deps import get_current_user
+from app.core import business_day
 from app.models import models
+
+# 07:30 UTC is 13:00 IST: every "hours ago" below stays on the same business
+# day, which is all an admin may see. Off the real clock, "2 hours ago" fell
+# on yesterday whenever the suite ran between midnight and 02:00 IST.
+NOW = datetime(2026, 9, 20, 7, 30)
+
+
+@pytest.fixture(autouse=True)
+def midday_clock(monkeypatch):
+    monkeypatch.setattr(business_day, "utcnow", lambda: NOW)
 
 
 @pytest.fixture
@@ -50,7 +61,7 @@ def _make_order(db, order_number, items, created_at, status=models.OrderStatus.P
 
 def test_dish_frequency_sorted_desc(client, test_db, sample_menu_items, auth_override):
     dosa, coffee, samosa = sample_menu_items
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = NOW
 
     # Coffee: 5 units across 2 orders; Dosa: 3 units across 1 order
     _make_order(test_db, "O-1", [(dosa, 3), (coffee, 2)], now - timedelta(hours=1))
@@ -73,7 +84,7 @@ def test_dish_frequency_sorted_desc(client, test_db, sample_menu_items, auth_ove
 
 def test_dish_frequency_filter_includes_zero(client, test_db, sample_menu_items, auth_override):
     dosa, coffee, samosa = sample_menu_items
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = NOW
     _make_order(test_db, "O-1", [(dosa, 2)], now - timedelta(hours=1))
 
     # Filter to dosa + samosa; samosa never ordered -> appears with 0
@@ -88,7 +99,7 @@ def test_dish_frequency_filter_includes_zero(client, test_db, sample_menu_items,
 
 def test_dish_frequency_paid_only(client, test_db, sample_menu_items, auth_override):
     dosa, coffee, samosa = sample_menu_items
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = NOW
     _make_order(test_db, "O-1", [(dosa, 2)], now - timedelta(hours=1),
                 status=models.OrderStatus.PAID)
     _make_order(test_db, "O-2", [(dosa, 5)], now - timedelta(hours=1),

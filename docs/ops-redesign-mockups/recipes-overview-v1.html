@@ -1,0 +1,72 @@
+<style>
+  .t{width:100%;border-collapse:collapse;font-size:13px}
+  .t th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;opacity:.65;text-align:left;padding:6px 8px;border-bottom:2px solid currentColor}
+  .t td{padding:7px 8px;border-bottom:1px solid rgba(127,127,127,.25);white-space:nowrap}
+  .t td.n,.t th.n{text-align:right;font-variant-numeric:tabular-nums}
+  .pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:rgba(127,127,127,.18)}
+  .bad{background:rgba(192,57,43,.2)} .warn{background:rgba(230,126,34,.2)} .ok{background:rgba(39,174,96,.18)} .made{background:rgba(80,140,255,.18)}
+  .up{color:#c0392b} .muted{opacity:.6;font-size:12px}
+  .wrap{overflow-x:auto}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+  .stats{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:12px}
+  .stats b{display:block;font-size:20px} .stats span{font-size:11px;opacity:.65;text-transform:uppercase}
+  .chg{border:1px solid rgba(127,127,127,.3);border-radius:8px;margin:8px 0;padding:10px}
+  .chg .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .chg ul{margin:8px 0 0 18px;padding:0;font-size:13px}
+</style>
+
+<h2>Owners' overview: the Recipes list and today's price ripple</h2>
+<p class="subtitle">Two places. The list is the standing view; the ripple shows up with each day's purchases.</p>
+
+<div class="section">
+<div class="mockup">
+<div class="mockup-header">Recipes · 112 dishes · 9 made in the kitchen</div>
+<div class="mockup-body">
+<div class="stats">
+  <div><span>Below target</span><b>7</b></div>
+  <div><span>Missing a price</span><b>12</b></div>
+  <div><span>No recipe yet</span><b>84</b></div>
+  <div><span>Average margin</span><b>66%</b></div>
+</div>
+<div class="bar">
+  <input class="mock-input" placeholder="Search dishes and made items" style="flex:1;min-width:180px">
+  <span class="pill">All</span><span class="pill bad">Needs attention</span><span class="pill made">Made here</span><span class="pill">No recipe</span>
+  <button class="mock-button">+ New recipe</button>
+</div>
+<div class="wrap"><table class="t">
+<tr><th>Name</th><th>Type</th><th class="n">Cost / portion</th><th class="n">Menu price</th><th class="n">Margin</th><th class="n">vs last week</th><th>Status</th></tr>
+<tr><td>Cajun fries</td><td>Dish</td><td class="n">₹58.40</td><td class="n">₹150</td><td class="n">61%</td><td class="n up">+₹4.10</td><td><span class="pill bad">below 65%</span></td></tr>
+<tr><td>Choco chunk cookie</td><td>Dish</td><td class="n">₹48.82</td><td class="n">₹130</td><td class="n">62%</td><td class="n">—</td><td><span class="pill bad">below 65%</span></td></tr>
+<tr><td>Chicken bao</td><td>Dish</td><td class="n">≥ ₹71.00</td><td class="n">₹220</td><td class="n">≤ 68%</td><td class="n up">+₹2.30</td><td><span class="pill warn">1 price missing</span></td></tr>
+<tr><td>Cajun masala</td><td><span class="pill made">Made</span></td><td class="n">≥ ₹1,541 / kg</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td><span class="pill warn">salt has no price</span></td></tr>
+<tr><td>Bao buns</td><td><span class="pill made">Made</span></td><td class="n">₹6.20 / pc</td><td class="n">—</td><td class="n">—</td><td class="n up">+₹0.40</td><td><span class="pill ok">costed</span></td></tr>
+<tr><td>Lemon mint cooler</td><td>Dish</td><td class="n">₹24.10</td><td class="n">₹100</td><td class="n">76%</td><td class="n">—</td><td><span class="pill ok">on target</span></td></tr>
+<tr><td>Ramen</td><td>Dish</td><td class="n">—</td><td class="n">₹280</td><td class="n">—</td><td class="n">—</td><td><span class="pill">no recipe</span></td></tr>
+</table></div>
+<p class="muted">"vs last week" is the change in cost per portion from approved price changes. Made items show cost per kg or per piece and feed every dish that uses them.</p>
+</div></div>
+</div>
+
+<div class="section">
+<div class="mockup">
+<div class="mockup-header">Daily sheet · Mon 2 Nov · owner only: price changes to approve (3)</div>
+<div class="mockup-body">
+<div class="chg">
+  <div class="top"><span><b>Onion</b> ₹32 → ₹40 / kg <span class="pill bad">+25%</span></span><span class="muted">bought by Ravi · 4 kg</span><span><button class="mock-button">Approve</button> <button class="mock-button" style="opacity:.7">Not this time</button></span></div>
+  <ul>
+    <li>9 dishes cost more, ₹0.40 to ₹4.10 a portion</li>
+    <li><b>Cajun fries</b> drops to 61%, below the 65% target</li>
+    <li>Also through <b>Bao buns</b> (made item): +₹0.40 per bun → 3 bao dishes</li>
+  </ul>
+</div>
+<div class="chg">
+  <div class="top"><span><b>Sugar · Madhur</b> ₹60 → ₹65 / kg <span class="pill warn">+8%</span></span><span class="muted">2 kg</span><span><button class="mock-button">Approve</button> <button class="mock-button" style="opacity:.7">Not this time</button></span></div>
+  <ul><li>4 dishes cost more, under ₹0.20 a portion · none below target</li></ul>
+</div>
+<div class="chg">
+  <div class="top"><span><b>Condensed milk · Amul</b> new · ₹76 / 210 g</span><span class="muted">3 tins</span><span><button class="mock-button">Approve</button></span></div>
+  <ul><li>Not in any recipe yet</li></ul>
+</div>
+<button class="mock-button">Approve all 3</button>
+</div></div>
+</div>

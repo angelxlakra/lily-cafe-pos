@@ -129,7 +129,7 @@ export default function Sidebar() {
             isCollapsed={isCollapsed}
           />
           <NavItem
-            to="/admin/inventory"
+            to="/admin/ops/inventory"
             icon={<Package size={24} />}
             label="Inventory"
             onClick={handleCloseMobile}

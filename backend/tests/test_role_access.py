@@ -433,3 +433,60 @@ class TestDishFrequencyDateWindow:
             headers=owner_headers,
         )
         assert response.status_code == 200
+
+
+# ============================================================================
+# Item change log
+# ============================================================================
+
+
+class TestItemChangeLog:
+    """Reducing an order logs what was taken out; only the owner can read it."""
+
+    def _order_with_ramen(self, client, sample_menu_item, auth_headers):
+        resp = client.post(
+            "/api/v1/orders",
+            json={"table_number": 9, "items": [{"menu_item_id": sample_menu_item.id, "quantity": 3}]},
+        )
+        assert resp.status_code in (200, 201), resp.text
+        return resp.json()["order"]["id"] if "order" in resp.json() else resp.json()["id"]
+
+    def test_reduced_item_is_logged_for_owner_only(
+        self, client, sample_menu_item, auth_headers, owner_headers
+    ):
+        order_id = self._order_with_ramen(client, sample_menu_item, auth_headers)
+
+        edit = client.put(
+            f"/api/v1/orders/{order_id}",
+            json={"items": [{"menu_item_id": sample_menu_item.id, "quantity": 2}]},
+            headers=auth_headers,
+        )
+        assert edit.status_code == 200, edit.text
+        assert edit.json()["order_items"][0]["quantity"] == 2  # the bill shows 2
+
+        changes = client.get(f"/api/v1/orders/{order_id}/item-changes", headers=owner_headers)
+        assert changes.status_code == 200
+        (row,) = changes.json()
+        assert (row["old_quantity"], row["new_quantity"]) == (3, 2)
+        assert row["changed_by"]
+
+        assert client.get(f"/api/v1/orders/{order_id}/item-changes", headers=auth_headers).status_code == 403
+
+
+class TestOrderAuditEvents:
+    """Every payment-split change is kept, with who made it; owner-only."""
+
+    def test_payment_changes_are_all_kept(
+        self, client, todays_paid_order, auth_headers, owner_headers
+    ):
+        url = f"/api/v1/orders/{todays_paid_order.id}/payments"
+        total = todays_paid_order.total_amount
+        for method in ("cash", "upi"):
+            r = client.put(url, json={"payments": [{"payment_method": method, "amount": total}]}, headers=auth_headers)
+            assert r.status_code == 200, r.text
+
+        events = client.get(f"/api/v1/orders/{todays_paid_order.id}/audit", headers=owner_headers).json()
+        assert [e["kind"] for e in events] == ["payments_changed"] * 2
+        assert "upi" in events[1]["detail"] and "cash" in events[1]["detail"]
+        assert events[0]["changed_by"]
+        assert client.get(f"/api/v1/orders/{todays_paid_order.id}/audit", headers=auth_headers).status_code == 403

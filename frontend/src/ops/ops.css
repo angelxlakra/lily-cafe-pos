@@ -1,0 +1,516 @@
+/* The ops pages: a plain spreadsheet look, deliberately unlike the POS app. All scoped under .ops. */
+.ops {
+  --ops-bg: #fbfaf7;
+  --ops-fg: #1d1b18;
+  --ops-muted: #6b665e;
+  --ops-rule: #dcd7cd;
+  --ops-strong: #1d1b18;
+  --ops-typed: #fff; /* solid, so a field looks the same on any row or cell behind it */
+  --ops-typed-line: #7ba1e4;
+  --ops-bad: #b3261e;
+  --ops-bad-bg: rgba(179, 38, 30, 0.12);
+  --ops-warn-bg: rgba(214, 120, 20, 0.18);
+  --ops-warn-line: #d67814;
+  --ops-tone-warn: #9a5200;
+  --ops-tone-ok: #1e7a45;
+  --ops-tone-made: #2f5fb3;
+  --ops-pill: rgba(120, 115, 105, 0.16);
+  --ops-bar: #fff;
+  background: var(--ops-bg);
+  color: var(--ops-fg);
+  min-height: 100vh;
+  font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+.dark .ops {
+  --ops-bg: #16150f;
+  --ops-fg: #ece8de;
+  --ops-muted: #9c968a;
+  --ops-rule: #34312a;
+  --ops-strong: #ece8de;
+  --ops-typed: #222019;
+  --ops-typed-line: #5a7bbd;
+  --ops-bad: #ff8a80;
+  --ops-bad-bg: rgba(255, 138, 128, 0.16);
+  --ops-warn-bg: rgba(255, 170, 70, 0.2);
+  --ops-warn-line: #ffaa46;
+  --ops-tone-warn: #ffb764;
+  --ops-tone-ok: #7ddc9b;
+  --ops-tone-made: #8fb5ff;
+  --ops-pill: rgba(200, 195, 180, 0.16);
+  --ops-bar: #1e1d16;
+}
+
+.ops *, .ops *::before, .ops *::after { box-sizing: border-box; }
+.ops a { color: inherit; }
+
+/* Top bar */
+.ops-bar {
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  padding: 0 16px; background: var(--ops-bar); border-bottom: 1px solid var(--ops-rule);
+  position: sticky; top: 0; z-index: 20;
+}
+.ops-bar a, .ops-bar button {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px;
+  text-decoration: none; color: var(--ops-muted); font: inherit; background: none; border: 0;
+  border-bottom: 2px solid transparent; cursor: pointer;
+}
+.ops-bar a:hover, .ops-bar button:hover { color: var(--ops-fg); }
+.ops-bar a.active { color: var(--ops-fg); border-bottom-color: var(--ops-fg); font-weight: 600; }
+.ops-links { display: flex; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.ops-bar .short { display: none; }
+.ops-links a { white-space: nowrap; }
+/* Spreadsheet pages use the screen; the cap only stops rows getting too long to follow. */
+.ops-main { padding: 16px 24px; max-width: 1680px; margin: 0 auto; }
+.ops h1, .ops h2, .ops h3 { font-family: inherit; letter-spacing: normal; }
+.ops h1 { font-size: 26px; font-weight: 700; margin: 0 0 4px; } /* the page's subject: which dish or list you are changing */
+.ops .muted { color: var(--ops-muted); font-size: 14px; }
+
+/* Stat strip */
+.ops-stats { display: flex; gap: 12px 28px; flex-wrap: wrap; margin: 14px 0; align-items: flex-end; }
+.ops-stat > span { display: block; font-size: 13px; color: var(--ops-muted); }
+.ops-stat > b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+.ops-stat input { width: 90px; font-size: 16px; font-weight: 700; text-align: right; }
+
+/* Tables */
+.ops-wrap { overflow-x: auto; border-top: 1px solid var(--ops-rule); -webkit-overflow-scrolling: touch; }
+.ops-t { width: 100%; border-collapse: collapse; font-size: 15px; }
+.ops-t th {
+  font-size: 13px; color: var(--ops-fg);
+  text-align: left; padding: 8px; border-bottom: 2px solid var(--ops-strong); white-space: nowrap; font-weight: 600;
+}
+.ops-t td { padding: 4px 8px; border-bottom: 1px solid var(--ops-rule); white-space: nowrap; vertical-align: middle; }
+/* Column lines, as in the Setup grid. The stacked phone layouts set border: 0 on their cells. */
+.ops-t th + th, .ops-t td + td { border-left: 1px solid var(--ops-rule); }
+/* Outer edges too, so a table reads as a box and not as loose rows. */
+.ops-t th:first-child, .ops-t td:first-child { border-left: 1px solid var(--ops-rule); }
+.ops-t th:last-child, .ops-t td:last-child { border-right: 1px solid var(--ops-rule); }
+.ops-t .n { text-align: right; font-variant-numeric: tabular-nums; }
+.ops-t th:first-child, .ops-t td:first-child { position: sticky; left: 0; background: var(--ops-bg); z-index: 1; }
+.ops-t tr.tot td { font-weight: 600; border-top: 2px solid var(--ops-strong); }
+.ops-t tr.sub td { color: var(--ops-muted); }
+.ops-t .gap { color: var(--ops-bad); font-style: italic; }
+.ops-t .src { display: block; font-size: 13px; color: var(--ops-muted); }
+
+/* Inputs: typed cells look typed */
+.ops input, .ops select {
+  font: inherit; color: inherit; min-height: 36px; padding: 0 8px;
+  border: 1px solid var(--ops-typed-line); border-radius: 4px; background: var(--ops-typed);
+}
+.ops input:focus-visible, .ops select:focus-visible, .ops button:focus-visible, .ops a:focus-visible {
+  outline: 2px solid var(--ops-fg); outline-offset: 1px;
+}
+.ops .cell-in { width: 100%; min-width: 110px; }
+.ops-t th.x, .ops-t td.x { width: 1%; padding: 0; text-align: center; } /* just the 44px button */
+.ops-t th.grow { width: 30%; } /* a wide screen's spare room goes to this column, not to gaps */
+
+/* Recipe page: summary, ingredients, then charges; side by side once the table has room. */
+/* minmax(0, …) lets the column shrink so the table scrolls in its box, not the page. */
+.recipe-grid { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 32px; }
+.r-side { max-width: 560px; }
+.r-sum h2, .r-charges h2 { font-size: 17px; font-weight: 700; margin: 20px 0 6px; }
+.r-sum h2 { margin-top: 12px; }
+.r-sum .ops-stat > span { color: var(--ops-fg); }
+/* Cost per portion is the answer the page works out: it reads first. */
+.ops-stat.key > span { font-weight: 700; }
+.ops-stat.key > b { font-size: 26px; }
+.r-charges p.r-note { margin: 0 0 6px; font-size: 13px; }
+.r-charges tr.key td { font-size: 17px; font-weight: 700; background: var(--ops-pill); }
+.r-charges .ops-t { border-top: 1px solid var(--ops-rule); }
+/* ₹ charges: for the whole batch, or for each portion it makes. */
+.r-charges .per { display: flex; width: max-content; margin: 4px 0 0 auto; border: 1px solid var(--ops-rule); border-radius: 4px; overflow: hidden; }
+.r-charges .per button { min-height: 28px; padding: 0 8px; border: 0; background: none; color: var(--ops-muted); font: inherit; font-size: 13px; cursor: pointer; }
+.r-charges .per button + button { border-left: 1px solid var(--ops-rule); }
+.r-charges .per button[aria-pressed="true"] { background: var(--ops-strong); color: var(--ops-bg); font-weight: 600; }
+@media (min-width: 1400px) {
+  .recipe-grid {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    grid-template-rows: auto 1fr;
+    grid-template-areas: "table sum" "table side";
+    align-items: start;
+  }
+  .r-sum { grid-area: sum; }
+  .r-sum h2 { margin-top: 0; } /* level with the table's top */
+  .r-table { grid-area: table; }
+  .r-side { grid-area: side; }
+  .r-sum .ops-stats { display: block; margin: 0; border-top: 1px solid var(--ops-rule); }
+  /* Label | value, with a column line like the tables (drawn as a 1px background so inputs keep their own border). */
+  .r-sum .ops-stat {
+    display: grid; grid-template-columns: minmax(0, 1fr) 148px; align-items: center;
+    min-height: 52px; border: 1px solid var(--ops-rule); border-top: 0;
+    background: linear-gradient(var(--ops-rule), var(--ops-rule)) no-repeat right 148px top / 1px 100%;
+  }
+  .r-sum .ops-stat > span { font-size: 14px; padding: 6px 8px; } /* 8px: lines up with the table cells */
+  .r-sum .ops-stat > :last-child { justify-self: end; margin-right: 8px; }
+  .r-sum .ops-stat > b { font-size: 18px; text-align: right; }
+  .r-sum .ops-stat.key { min-height: 64px; background-color: var(--ops-pill); }
+  .r-sum .ops-stat.key > b { font-size: 26px; }
+  .r-sum .ops-used { margin: 10px 0 0; }
+}
+.ops .cell-in.num { text-align: right; font-variant-numeric: tabular-nums; }
+.ops .amount { display: inline-flex; gap: 4px; }
+.ops .amount input { width: 72px; text-align: right; }
+.ops .err { color: var(--ops-bad); font-size: 13px; display: block; white-space: normal; }
+
+/* Buttons and pills */
+.ops .btn {
+  min-height: 44px; padding: 0 16px; border-radius: 6px; font: inherit; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--ops-fg); background: var(--ops-fg); color: var(--ops-bg);
+}
+.ops .btn:disabled { opacity: 0.45; cursor: default; }
+.ops .btn.ghost { background: none; color: var(--ops-fg); }
+.ops .icon-btn {
+  min-height: 44px; min-width: 44px; border: 0; background: none; color: var(--ops-muted); cursor: pointer; font-size: 16px;
+}
+.ops .icon-btn:hover { color: var(--ops-bad); }
+.ops .mode {
+  min-height: 36px; min-width: 36px; border-radius: 4px; border: 1px solid var(--ops-typed-line);
+  background: var(--ops-typed); color: inherit; font: inherit; cursor: pointer;
+}
+/* A status tag: the tone sets the text, and the tint and border are mixed from it. */
+.ops .pill {
+  --tone: var(--ops-muted);
+  display: inline-block; vertical-align: middle; padding: 0 7px; border-radius: 4px;
+  font-size: 12.5px; font-weight: 600; line-height: 20px; white-space: nowrap;
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tone) 28%, transparent);
+}
+.ops .pill.warn { --tone: var(--ops-tone-warn); }
+.ops .pill.bad { --tone: var(--ops-bad); }
+.ops .pill.ok { --tone: var(--ops-tone-ok); }
+.ops .pill.made { --tone: var(--ops-tone-made); }
+.ops h1 .pill { margin-left: 6px; position: relative; top: -2px; }
+
+/* Ingredient picker */
+.ops-pick ul {
+  /* In the flow, not floating: the table wrapper clips overflow and the sticky cells would paint over a popup. */
+  margin: 2px 0 0; padding: 4px; list-style: none; max-width: 360px;
+  max-height: 280px; overflow-y: auto; background: var(--ops-bar);
+  border: 1px solid var(--ops-rule); border-radius: 6px;
+}
+.ops-pick li button {
+  display: flex; width: 100%; justify-content: space-between; gap: 8px; align-items: center;
+  min-height: 44px; padding: 0 10px; text-align: left; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; border-radius: 4px;
+}
+.ops-pick li button:hover, .ops-pick li button:focus-visible { background: var(--ops-pill); }
+
+.ops-actions { display: flex; gap: 8px; align-items: center; margin: 16px 0; flex-wrap: wrap; }
+.ops-actions .push-end { margin-left: auto; min-height: 44px; }
+.ops-used a { margin-right: 10px; }
+
+@media (max-width: 640px) {
+  .ops input, .ops select, .ops .mode { min-height: 44px; }
+  .ops .mode { min-width: 44px; }
+  .ops-t td { padding: 2px 8px; }
+  .ops-main { padding: 12px; }
+  .ops-bar .long { display: none; }
+  .ops-bar .short { display: inline; }
+  .ops-bar { flex-wrap: wrap; justify-content: flex-end; padding: 0 8px; }
+  .ops-links { order: 3; flex: 1 1 100%; flex-wrap: wrap; overflow: visible; }
+  .ops-bar button, .ops-bar a { padding: 0 10px; }
+  .ops-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; align-items: start; }
+  .ops-stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .ops-stat input { width: 100%; max-width: 140px; }
+}
+
+/* Recipes list */
+.ops-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; position: relative; }
+.ops-filters .grow { flex: 1; min-width: 180px; }
+.ops .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.ops .chip {
+  min-height: 36px; padding: 0 12px; border-radius: 18px; border: 1px solid var(--ops-rule);
+  background: var(--ops-pill); color: inherit; font: inherit; cursor: pointer;
+}
+.ops .chip.on { background: var(--ops-fg); color: var(--ops-bg); border-color: var(--ops-fg); }
+.ops-t td.up { color: var(--ops-bad); }
+.ops-t td.down { color: #1e7a45; }
+.dark .ops-t td.down { color: #7ddc9b; }
+.ops-list tr.click { cursor: pointer; }
+.ops-list tr.click:hover td { background: var(--ops-pill); }
+.ops-list td.name a { text-decoration: none; font-weight: 600; }
+.ops-new { position: relative; }
+.ops-menu {
+  position: absolute; right: 0; top: 100%; margin-top: 4px; z-index: 10; min-width: 240px; padding: 4px;
+  list-style: none; background: var(--ops-bar); border: 1px solid var(--ops-rule); border-radius: 6px;
+}
+.ops-menu ul { margin: 4px 0 0; padding: 0; list-style: none; max-height: 280px; overflow-y: auto; }
+.ops-menu input { width: 100%; }
+.ops-menu li button {
+  display: flex; width: 100%; justify-content: space-between; gap: 8px; align-items: center; min-height: 44px;
+  padding: 0 10px; text-align: left; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; border-radius: 4px;
+}
+.ops-menu li button:hover, .ops-menu li button:focus-visible { background: var(--ops-pill); }
+.ops-menu .pad { padding: 10px; }
+.ops-form { max-width: 360px; display: grid; gap: 12px; }
+.ops-form label { display: grid; gap: 4px; font-size: 14px; color: var(--ops-muted); }
+.ops-form input, .ops-form select { min-height: 44px; color: var(--ops-fg); font-size: 16px; }
+.ops .ops-link-btn { display: inline-flex; align-items: center; text-decoration: none; }
+
+@media (max-width: 640px) {
+  .ops .chip { min-height: 44px; }
+  .ops-new, .ops-new .btn { width: 100%; }
+  .ops-menu { left: 0; right: 0; }
+  .ops-list thead { display: none; }
+  .ops-list, .ops-list tbody { display: block; }
+  .ops-list tr.click {
+    display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0 8px;
+    padding: 6px 0; border-bottom: 1px solid var(--ops-rule);
+  }
+  .ops-list td { display: block; padding: 0 8px; border: 0; white-space: normal; position: static; background: none; text-align: left; }
+  .ops-list td.name { grid-column: 1 / 4; grid-row: 1; font-size: 15px; }
+  .ops-list td.name a { display: flex; align-items: center; min-height: 44px; }
+  .ops-list td.status { grid-column: 4; grid-row: 1; align-self: center; }
+  .ops-list td.type { display: none; }
+  .ops-list td[data-l]::before { content: attr(data-l); display: block; font-size: 13px; color: var(--ops-muted); }
+  .ops-list td.cost, .ops-list td.price, .ops-list td.margin, .ops-list td.week { grid-row: 2; }
+}
+
+.ops-similar { list-style: none; margin: 0; padding: 0; }
+.ops-similar a { display: flex; align-items: center; min-height: 44px; }
+
+/* Daily sheet */
+.ops .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ops-day { margin: 10px 0; }
+.ops-day .btn { min-width: 44px; padding: 0 12px; }
+.ops-sheet { min-width: 56rem; }
+.ops-sheet td span.src, .ops-sheet td span.err { display: block; }
+.ops .sheet-cell { width: 76px; text-align: right; font-variant-numeric: tabular-nums; }
+.ops-sheet td.up { color: var(--ops-bad); font-weight: 600; }
+.ops-line {
+  display: grid; grid-template-columns: minmax(200px, 2fr) repeat(3, minmax(80px, 1fr)) minmax(120px, 1.2fr) auto auto;
+  gap: 8px; align-items: end; margin: 12px 0; position: relative;
+}
+.ops-line label { display: grid; gap: 2px; font-size: 13px; color: var(--ops-muted); }
+.ops-line label input { font-size: 14px; color: var(--ops-fg); width: 100%; }
+.ops-line .wide { grid-column: 1 / -1; margin: 0; }
+.ops-line .item { position: relative; }
+.ops-line .item ul { position: absolute; left: 0; right: 0; top: 100%; z-index: 15; max-width: none; }
+.ops-line .item li button[aria-selected='true'] { background: var(--ops-pill); }
+.ops-in { text-align: right; min-width: 70px; }
+.ops-in span { display: block; font-size: 13px; color: var(--ops-muted); }
+.ops-in b { font-variant-numeric: tabular-nums; }
+.ops-line .btn.add { min-width: 100px; }
+.ops-jump { border: 1px solid var(--ops-bad); border-radius: 6px; padding: 8px 12px; background: var(--ops-warn-bg); }
+.ops-approve { margin: 16px 0; }
+.ops-approve h2 { font-size: 17px; margin: 0 0 8px; }
+.ops-approve .chg { border: 1px solid var(--ops-rule); border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; background: var(--ops-bar); }
+.ops-approve .top { display: flex; gap: 8px 16px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.ops-approve .acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.ops-spent { margin: 8px 0; }
+.ops-spent b { font-variant-numeric: tabular-nums; }
+.ops-approve ul { margin: 6px 0 0; padding-left: 18px; }
+
+@media (max-width: 640px) {
+  .ops-line { grid-template-columns: 1fr 1fr; }
+  .ops-line .item, .ops-line .btn.add { grid-column: 1 / -1; }
+  .ops-line label input { font-size: 16px; }
+  .ops-line .item ul { position: static; }
+  .ops-approve .acts { flex-wrap: nowrap; }
+  .ops-approve .acts .btn { flex: 1 1 0; min-height: 44px; padding: 0 8px; }
+  .ops .sheet-cell { font-size: 16px; }
+  .ops-in { grid-column: 1 / -1; text-align: left; }
+  .ops-in span { display: inline; margin-right: 6px; }
+}
+
+/* Inventory */
+.ops-inv { display: flex; gap: 18px; align-items: flex-start; flex-direction: row-reverse; }
+.ops-inv-main { flex: 1 1 0; min-width: 0; }
+.ops-inv-side { flex: 0 0 260px; border: 1px solid var(--ops-rule); border-radius: 8px; padding: 12px; }
+.ops-inv-side h2 { font-size: 17px; margin: 0 0 8px; }
+.ops-inv-side .btn { display: flex; align-items: center; justify-content: center; width: 100%; margin-bottom: 10px; }
+.ops-nights { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ops-nights td { padding: 4px 2px; border-bottom: 1px solid var(--ops-rule); }
+.ops-nights td.n { text-align: right; font-variant-numeric: tabular-nums; }
+.ops-inv-t tr.cat th { padding-top: 14px; font-size: 14px; border-bottom: 1px solid var(--ops-rule); }
+.ops-inv-t td.brand { color: var(--ops-muted); }
+.ops-inv-t .sub { display: none; }
+
+@media (max-width: 767px) {
+  /* The count box sits above the table. */
+  .ops-inv { flex-direction: column; align-items: stretch; }
+  .ops-inv-side { flex: none; }
+  .ops-inv-t thead, .ops-inv-t td.brand, .ops-inv-t td.price, .ops-inv-t td.val, .ops-inv-t td.counted { display: none; }
+  .ops-inv-t, .ops-inv-t tbody { display: block; }
+  .ops-inv-t tr.row {
+    display: grid; grid-template-columns: 1fr auto; column-gap: 8px; align-items: center;
+    min-height: 52px; padding: 4px 0; border-bottom: 1px solid var(--ops-rule);
+  }
+  .ops-inv-t tr.cat, .ops-inv-t tr.cat th { display: block; position: static; }
+  .ops-inv-t td { display: block; border: 0; padding: 0 8px; white-space: normal; position: static; background: none; }
+  .ops-inv-t td.name { grid-row: 1 / span 2; font-size: 15px; }
+  .ops-inv-t .sub { display: block; font-size: 14px; color: var(--ops-muted); }
+  .ops-inv-t td.stock { font-weight: 600; }
+  .ops-inv-t td.alert { grid-column: 2; font-size: 14px; color: var(--ops-muted); }
+  .ops-inv-t td.alert::before { content: 'alert '; }
+}
+
+/* Tonight's count: full screen, its own pinned bar */
+.ops-count { padding-bottom: 96px; }
+.ops-count .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.count-top { position: sticky; top: 0; z-index: 20; background: var(--ops-bar); border-bottom: 1px solid var(--ops-rule); }
+.count-top-row { max-width: 720px; margin: 0 auto; display: flex; align-items: center; gap: 4px; padding: 0 8px; }
+.count-top-row button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 52px; padding: 0 12px;
+  border: 0; background: none; color: inherit; font: inherit; cursor: pointer;
+}
+.count-top-row button:disabled { opacity: 0.45; cursor: default; }
+.count-top-row .count-exit { color: var(--ops-muted); }
+.count-jump { flex: 1; min-width: 0; font-weight: 600; }
+.count-prog { min-width: 64px; padding-right: 8px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ops-muted); }
+.count-bar { height: 4px; background: var(--ops-rule); }
+.count-bar > div { height: 100%; background: var(--ops-fg); transform-origin: left; transition: transform 0.3s ease; }
+.count-main { max-width: 720px; margin: 0 auto; }
+.count-pad { padding: 12px 16px; margin: 0; }
+.count-card { margin: 16px; padding: 14px 16px; border: 1px solid var(--ops-rule); border-radius: 8px; background: var(--ops-bar); }
+.count-card p { margin: 0 0 6px; }
+.count-head { scroll-margin-top: 64px; padding: 20px 16px 6px; }
+.count-head h2 { margin: 0; font-size: 18px; }
+.count-fold {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 44px;
+  padding: 0; border: 0; border-radius: 6px; background: none; color: inherit; font: inherit; font-weight: 600; text-align: left; cursor: pointer;
+}
+.count-fold.plain { cursor: default; }
+.count-fold.folded { background: var(--ops-pill); padding: 0 12px; }
+.count-fold .tally { font-size: 14px; font-weight: 400; color: var(--ops-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.count-fold-box { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 0.3s ease; }
+.count-fold-box.folded { grid-template-rows: 0fr; }
+.count-items { min-height: 0; overflow: hidden; margin: 0; padding: 0; list-style: none; background: var(--ops-bar); border-top: 1px solid var(--ops-rule); }
+.count-row { scroll-margin-top: 80px; border-bottom: 1px solid var(--ops-rule); transition: background-color 0.2s ease; }
+.count-row.checked { background: rgba(39, 134, 74, 0.1); }
+.count-row.changed { background: var(--ops-warn-bg); }
+.count-line { display: flex; align-items: center; gap: 8px; padding: 6px 12px; min-height: 64px; }
+.count-name { flex: 1; min-width: 0; }
+.count-name .nm { font-weight: 600; line-height: 1.3; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.count-name .sub { font-size: 14px; color: var(--ops-muted); font-variant-numeric: tabular-nums; }
+.count-name .sub .big { font-weight: 700; color: var(--ops-bad); }
+.count-name .err { color: var(--ops-bad); font-size: 14px; margin-top: 2px; }
+.count-ctl { flex: none; display: flex; align-items: center; gap: 8px; }
+.ops input.count-box {
+  width: 92px; min-height: 48px; text-align: center; font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums;
+  border-radius: 8px;
+}
+.ops input.count-box::placeholder { color: var(--ops-muted); font-weight: 400; }
+.ops input.count-box:focus { background: var(--ops-bar); }
+.count-ctl .unit { width: 40px; font-size: 14px; color: var(--ops-muted); }
+.ops .count-choice {
+  min-width: 68px; min-height: 48px; padding: 0 8px; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--ops-rule); background: var(--ops-bar); color: var(--ops-muted); touch-action: manipulation;
+}
+.ops .count-choice.on { background: var(--ops-fg); color: var(--ops-bg); border-color: var(--ops-fg); }
+.ops .count-choice.on.changed { border-color: var(--ops-warn-line); background: var(--ops-warn-bg); color: var(--ops-fg); }
+
+.count-foot { position: fixed; bottom: 0; left: 0; right: 0; z-index: 20; background: var(--ops-bar); border-top: 1px solid var(--ops-rule); }
+.count-foot-row { max-width: 720px; margin: 0 auto; display: flex; gap: 8px; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); }
+.ops .btn.grow { flex: 1; white-space: normal; text-align: center; line-height: 1.25; padding: 6px 10px; }
+
+.count-sheet-wrap { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
+.count-scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.5); }
+.count-sheet {
+  position: relative; width: 100%; max-width: 560px; max-height: 88dvh; display: flex; flex-direction: column;
+  background: var(--ops-bar); color: var(--ops-fg); border-radius: 14px 14px 0 0; border: 1px solid var(--ops-rule);
+}
+.count-sheet.jump { max-height: 80dvh; overflow-y: auto; padding-bottom: env(safe-area-inset-bottom); }
+.count-sheet-body { overflow-y: auto; padding: 18px 16px 12px; }
+.count-sheet h2 { margin: 0; font-size: 20px; }
+.count-sheet h3 { margin: 20px 0 0; font-size: 16px; }
+.count-sheet h3.warn, .count-sheet .count-note.warn { color: var(--ops-bad); }
+.count-totals { margin: 6px 0 0; font-variant-numeric: tabular-nums; }
+.count-sheet .muted { margin: 4px 0 0; }
+.count-list { margin: 8px 0 0; padding: 0; list-style: none; border: 1px solid var(--ops-rule); border-radius: 8px; overflow: hidden; }
+.count-list li + li { border-top: 1px solid var(--ops-rule); }
+.count-jump-list { margin: 0; padding: 4px 0; list-style: none; }
+.ops .count-pick {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 48px; padding: 6px 12px;
+  border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.count-pick:hover { background: var(--ops-pill); }
+.count-pick .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.count-pick .val { flex: none; font-size: 14px; color: var(--ops-muted); font-variant-numeric: tabular-nums; }
+.count-pick .val.go, .count-pick .val.done { font-weight: 600; color: var(--ops-fg); }
+.ops .count-more { min-height: 44px; margin-top: 4px; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.count-note { margin: 18px 0 0; font-weight: 600; }
+.count-fail { margin-top: 18px; padding: 10px 12px; border: 1px solid var(--ops-bad); border-radius: 8px; background: var(--ops-bad-bg); font-size: 14px; }
+.count-fail strong { display: block; }
+.count-actions { display: flex; gap: 8px; padding: 10px 16px max(10px, env(safe-area-inset-bottom)); border-top: 1px solid var(--ops-rule); }
+.count-actions .btn { flex: 1; white-space: normal; text-align: center; line-height: 1.25; padding: 6px 10px; }
+.count-actions .btn.grow { flex: 1.4; }
+
+.ops-count-done { display: grid; place-items: center; padding: 40px 24px; }
+.done-card { width: 100%; max-width: 360px; text-align: center; display: grid; gap: 8px; }
+.done-card h1 { font-size: 24px; margin: 8px 0 0; }
+.done-card p { margin: 0; }
+.done-card .btn { margin-top: 8px; }
+.done-card .btn:first-of-type { margin-top: 20px; }
+.done-mark { justify-self: center; width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; font-size: 36px; background: rgba(39, 134, 74, 0.18); }
+
+@media (max-width: 640px) {
+  .count-row .count-line { padding: 6px 10px; }
+  .count-exit { padding: 0 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .count-fold-box, .count-bar > div, .count-row { transition: none; }
+}
+
+/* Order page */
+.ops-order > p { margin: 4px 0 0; }
+.ops-order .ops-approve h2 { font-size: 17px; margin: 0; }
+.ops-order .ops-approve .top p { margin: 0; }
+.ops-order .linkish { min-height: 44px; padding: 0 4px; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
+.ops-order-lines { list-style: none; margin: 8px 0 0; padding: 0; }
+.ops-order-lines li { display: flex; align-items: center; gap: 10px; min-height: 52px; border-bottom: 1px solid var(--ops-rule); flex-wrap: wrap; }
+.ops-order-lines input[type='checkbox'] { width: 24px; min-height: 24px; height: 24px; margin: 0 4px; padding: 0; accent-color: var(--ops-fg); }
+.ops-order-lines label { flex: 1; min-width: 140px; display: block; }
+.ops-order-lines label .nm { display: block; font-weight: 600; }
+.ops-order-lines label.left-out .nm { text-decoration: line-through; color: var(--ops-muted); }
+.ops-order-lines .qty { display: inline-flex; align-items: center; gap: 6px; }
+.ops-order-lines .qty input { width: 76px; min-height: 44px; text-align: right; font-variant-numeric: tabular-nums; }
+.ops-order-lines .qty input:disabled { opacity: 0.5; }
+.ops-order-lines .qty .muted { width: 48px; }
+.ops-msg { position: relative; margin-top: 12px; }
+.ops-msg pre {
+  margin: 0; padding: 12px 84px 12px 12px; white-space: pre-wrap; overflow-wrap: anywhere;
+  font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--ops-bg); border: 1px solid var(--ops-rule); border-radius: 6px;
+}
+.ops-msg .btn { position: absolute; top: 4px; right: 4px; min-width: 72px; padding: 0 12px; }
+
+/* Stock log */
+.ops-log td.item, .ops-log td.note { white-space: normal; min-width: 140px; }
+.ops-log td .src { white-space: nowrap; }
+@media (max-width: 640px) {
+  .ops-log thead { display: none; }
+  .ops-log, .ops-log tbody { display: block; }
+  .ops-log tr {
+    display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 8px 0; border-bottom: 1px solid var(--ops-rule);
+  }
+  .ops-log td { display: block; padding: 0 8px; border: 0; white-space: normal; position: static; background: none; }
+  .ops-log td:first-child { grid-column: 1; grid-row: 1; }
+  .ops-log td.n { grid-column: 2; grid-row: 1; text-align: right; }
+  .ops-log td.item, .ops-log td.type, .ops-log td.note { grid-column: 1 / -1; min-width: 0; }
+  .ops-log td.note:empty { display: none; }
+  .ops-log td[data-l]::before { content: attr(data-l); display: block; font-size: 13px; color: var(--ops-muted); }
+}
+.ops-form.full { max-width: none; }
+.count-sheet .ops-form label { color: var(--ops-fg); }
+
+.ops .btn.danger { background: var(--ops-bad); border-color: var(--ops-bad); color: var(--ops-bg); }
+.ops .text-btn {
+  min-height: 44px; padding: 0 12px; border: 0; background: none; color: var(--ops-muted); font: inherit; cursor: pointer;
+}
+.ops .text-btn:hover:not(:disabled) { color: var(--ops-fg); }
+.ops .text-btn.bad:hover:not(:disabled) { color: var(--ops-bad); }
+.ops .text-btn:disabled { opacity: 0.35; cursor: default; }
+
+.r-history { margin-top: 28px; }
+.r-history h2 { font-size: 17px; font-weight: 700; margin: 0 0 8px; }
+.r-hist-chart { margin: 0 0 12px; }
+.r-hist-list { list-style: none; margin: 0; padding: 0; }
+.r-hist-list > li { padding: 10px 0; border-top: 1px solid var(--ops-rule); font-size: 15px; }
+.r-hist-head { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: space-between; }
+.r-hist-moves { margin: 4px 0; padding-left: 18px; }
+.r-hist-cost { font-weight: 600; }
+.r-hist-note { margin-top: 4px; font-style: italic; }
+.r-hist-recipe { margin-top: 4px; font-size: 14px; color: var(--ops-muted); }
+.r-hist-recipe summary { cursor: pointer; }
+.r-hist-recipe ul { margin: 4px 0 0; padding-left: 18px; }
+.r-note-input { flex: 1 1 220px; min-width: 0; max-width: 360px; }

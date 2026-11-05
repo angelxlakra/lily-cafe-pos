@@ -1,7 +1,7 @@
 from typing import Literal, Optional, List
 from datetime import date, datetime
 from decimal import Decimal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from app.models.inventory_models import TransactionType
 
 # Category Schemas
@@ -33,6 +33,8 @@ class InventoryItemBase(BaseModel):
     count_mode: Literal["number", "presence"] = "number"
     pack_size: Optional[Decimal] = Field(None, gt=0)
     pack_unit: Optional[str] = Field(None, min_length=1, max_length=20)
+    default_vendor_id: Optional[int] = None
+    brand: Optional[str] = Field(None, min_length=1, max_length=100)
 
 class InventoryItemCreate(InventoryItemBase):
     current_quantity: Decimal = Field(default=0, ge=0)
@@ -47,6 +49,8 @@ class InventoryItemUpdate(BaseModel):
     count_mode: Optional[Literal["number", "presence"]] = None
     pack_size: Optional[Decimal] = Field(None, gt=0)
     pack_unit: Optional[str] = Field(None, min_length=1, max_length=20)
+    default_vendor_id: Optional[int] = None
+    brand: Optional[str] = Field(None, min_length=1, max_length=100)
 
 class BulkItemUpdate(InventoryItemUpdate):
     """One changed row from the setup grid. Only the fields sent are changed."""
@@ -66,6 +70,14 @@ class InventoryItem(InventoryItemBase):
     updated_at: Optional[datetime] = None
     category_name: Optional[str] = None # Computed in API
     is_low_stock: bool # Computed property
+    needs_setup: bool = False
+    last_counted: Optional[date] = None  # latest night it was checked or changed in a count
+    has_recipe: bool = False  # made in the kitchen: it has its own recipe
+    # Resolved price (app/utils/pricing.py): latest paid purchase, else the
+    # typed cost_per_unit (> 0), else None. Per the item's own unit.
+    current_price: Optional[Decimal] = None
+    price_source: Optional[Literal["purchase", "typed"]] = None
+    price_as_of: Optional[datetime] = None  # purchase date; None for a typed price
 
     class Config:
         from_attributes = True
@@ -76,8 +88,107 @@ class InventoryTransactionBase(BaseModel):
     quantity: Decimal
     notes: Optional[str] = Field(None, max_length=500)
 
+class PurchaseLine(BaseModel):
+    """One row of the daily purchase sheet: item · how much · what it cost."""
+    item_id: int
+    quantity: Decimal  # in the item's own unit
+    # The TOTAL paid for the line ("4 kg for ₹480"), not a unit price.
+    # Optional so older clients still record stock; 0 is a gift and needs a note.
+    total_amount: Optional[Decimal] = Field(None, ge=0, max_digits=10, decimal_places=2)
+    vendor_id: Optional[int] = None
+    notes: Optional[str] = Field(None, max_length=500)
+    # The sheet's "Purchased" column: 2 packs of 1 kg. quantity is still the total.
+    pack_count: Optional[Decimal] = Field(None, gt=0)
+
+    @model_validator(mode="after")
+    def _gift_needs_note(self):
+        if self.total_amount is not None and self.total_amount == 0 and not (self.notes or "").strip():
+            raise ValueError("A purchase of ₹0 needs a note saying why (e.g. free from the vendor)")
+        return self
+
 class PurchaseCreate(BaseModel):
-    items: List[InventoryTransactionBase]
+    items: List[PurchaseLine] = Field(..., min_length=1)
+    # Default vendor for lines that don't name one — one bill, one vendor.
+    vendor_id: Optional[int] = None
+
+class PurchaseEdit(BaseModel):
+    """A same-day correction to one purchase line. Only the fields sent change."""
+    quantity: Optional[Decimal] = Field(None, gt=0)
+    total_amount: Optional[Decimal] = Field(None, ge=0, max_digits=10, decimal_places=2)
+    vendor_id: Optional[int] = None
+    notes: Optional[str] = Field(None, max_length=500)
+    pack_count: Optional[Decimal] = Field(None, gt=0)
+
+class PriceReview(BaseModel):
+    action: Literal["approve", "reject"]
+
+class ApproveAllPrices(BaseModel):
+    purchase_ids: List[int]   # the lines the owner was shown; one added since stays pending
+
+class PendingPrice(BaseModel):
+    """A purchase whose price waits for the owner: what it would change, and for whom."""
+    purchase_id: int
+    item_id: int
+    item_name: str
+    brand: Optional[str] = None
+    unit: str
+    recorded_by: str
+    created_at: datetime
+    quantity: Decimal
+    total_amount: Decimal
+    pack_count: Optional[Decimal] = None
+    old_price: Optional[Decimal] = None   # the price now; None for an item with none yet
+    new_price: Optional[Decimal] = None
+    change: Optional[Decimal] = None      # fraction: 0.25 = 25% up
+    is_new_item: bool
+    superseded: bool = False              # a newer approved price is in use; approving changes nothing
+    ripple: Optional[dict] = None         # filled in by the dish-cost ripple
+
+class DayEndCount(BaseModel):
+    counted_quantity: Decimal = Field(..., ge=0)
+
+class QuickItemCreate(BaseModel):
+    """An item bought but not in the list: just enough to log the purchase."""
+    name: str = Field(..., min_length=1, max_length=200)
+    unit: str = Field(..., min_length=1, max_length=20)
+
+class PurchaseCheckLine(BaseModel):
+    item_id: int
+    quantity: Decimal
+    total_amount: Optional[Decimal] = Field(None, ge=0)
+
+class PurchaseCheck(BaseModel):
+    items: List[PurchaseCheckLine] = Field(..., min_length=1)
+
+class PriceCheckResult(BaseModel):
+    """Enough for the sheet to ask "chicken was ₹320/kg, this is ₹520/kg — right?"."""
+    item_id: int
+    item_name: str
+    unit: str
+    unit_price: Optional[Decimal]         # this line: total ÷ quantity
+    previous_price: Optional[Decimal]     # the item's current resolved price
+    previous_source: Optional[Literal["purchase", "typed"]]
+    previous_as_of: Optional[datetime]
+    change: Optional[Decimal]             # 0.625 = 62.5% up
+    is_jump: bool
+
+# Vendors: who items are bought from, and who the order message goes to.
+class VendorCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    phone: Optional[str] = Field(None, max_length=30)
+    notes: Optional[str] = Field(None, max_length=500)
+
+class VendorUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    phone: Optional[str] = Field(None, max_length=30)
+    notes: Optional[str] = Field(None, max_length=500)
+
+class Vendor(VendorCreate):
+    id: int
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
 
 class UsageCreate(BaseModel):
     items: List[InventoryTransactionBase]
@@ -114,6 +225,8 @@ class InventoryTransaction(BaseModel):
     previous_quantity: Decimal
     new_quantity: Decimal
     created_at: datetime
+    total_amount: Optional[Decimal] = None
+    vendor_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -164,3 +277,10 @@ class CountResult(CountSummary):
     changes: List[CountChange]
     skipped_item_names: List[str]
     emailed: bool
+
+
+class PackPriceIn(BaseModel):
+    """"₹58 for a 100 g pack": what the owner knows, rather than a price per unit."""
+    price: Decimal = Field(..., gt=0)
+    pack_quantity: Decimal = Field(..., gt=0)
+    pack_unit: str = Field(..., min_length=1, max_length=20)

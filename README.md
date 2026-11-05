@@ -327,28 +327,54 @@ and [docs/ORDER_CHIT_GUIDE.md](docs/ORDER_CHIT_GUIDE.md).
 
 ## Deploying the backend
 
-Always deploy with the script, never with a bare `flyctl deploy`:
+There are two Fly apps, each fed by one branch:
+
+| Target | Branch | Fly app | URL | Frontend |
+|--------|--------|---------|-----|----------|
+| `dev` (staging) | `pre-release` | `lily-cafe-pos-dev` | https://lily-cafe-pos-dev.fly.dev | Vercel previews |
+| `prod` | `main` | `lily-cafe-pos` | https://lily-cafe-pos.fly.dev | Vercel production |
+
+Each has its own volume and data. Always deploy with the script, never with a bare
+`flyctl deploy`, and always name the target — there is no default:
 
 ```bash
-git checkout main && git pull
-./scripts/deploy-backend.sh
+git checkout pre-release && git pull --ff-only
+./scripts/deploy-backend.sh dev          # staging
+
+git checkout main && git pull --ff-only
+./scripts/deploy-backend.sh prod         # production
 ```
+
+Add `--dry-run` to run every guard and print the target, app, SHA and URL without
+calling `flyctl`.
+
+**The flow is `pre-release` → dev → `main` → production.** Land work on `pre-release`,
+deploy it to dev, test it end to end through a Vercel preview, then merge
+`pre-release` into `main` and deploy prod from `main`. Production can only ever
+receive a commit that is on `origin/main`.
 
 `flyctl deploy` builds whatever is on disk, not what is in git, so a checkout one
 commit behind ships a stale image while the release, health check, and traffic all
-report success. The script:
+report success. That is as true of dev as of prod, and "we tested it on dev" means
+nothing if dev was running something else. The script:
 
-1. **Refuses** unless the working tree is clean and `HEAD` equals `origin/main`
-   (it fetches first).
-2. **Supplies** what is easy to forget: `-a lily-cafe-pos` (a local `fly.toml` may
-   name the dev app) and `--build-arg GIT_SHA=$(git rev-parse HEAD)`.
-3. **Verifies** by polling `GET /` until its `commit` field equals the deployed SHA,
-   and exits non-zero with `DEPLOY NOT VERIFIED` if it never does. A deploy that
-   reports success without shipping is exactly the failure this exists to catch.
+1. **Refuses** unless `HEAD` equals the target's branch on origin (`origin/main` for
+   prod, `origin/pre-release` for dev; it fetches first) and no tracked file is
+   modified or staged. Untracked files don't block — outside `backend/` they never
+   reach the image — but untracked files under `backend/` are listed as a warning,
+   because they can ship.
+2. **Supplies** what is easy to forget: `-a <app>` for both targets (the committed
+   `fly.toml` names the dev app, so its app name is never trusted) and
+   `--build-arg GIT_SHA=$(git rev-parse HEAD)`.
+3. **Verifies** by polling the target's `GET /` until its `commit` field equals the
+   deployed SHA, and exits non-zero with `DEPLOY NOT VERIFIED` if it never does. A
+   deploy that reports success without shipping is exactly the failure this exists
+   to catch.
 
-To check by hand what production is running:
-`curl -s https://lily-cafe-pos.fly.dev/ | grep -o '"commit":"[^"]*"'`.
-First-time setup (app, volume, secrets) is in [DEPLOYMENT.md](DEPLOYMENT.md).
+To check by hand what each app is running:
+`curl -s https://lily-cafe-pos.fly.dev/ | grep -o '"commit": *"[^"]*"'` (swap in
+`lily-cafe-pos-dev` for staging). First-time setup (app, volume, secrets) is in
+[DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Documentation
 

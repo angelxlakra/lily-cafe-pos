@@ -8,16 +8,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, CaretDown, Check, CheckCircle } from '@phosphor-icons/react';
 import { inventoryApi } from '../api/inventory';
-import CountRow from '../components/inventory/CountRow';
-import CountReviewSheet from '../components/inventory/CountReviewSheet';
-import LoadingSpinner from '../components/LoadingSpinner';
+import CountRow from './CountRow';
+import CountReviewSheet from './CountReviewSheet';
 import { describeApiError } from '../utils/apiError';
 import { useDialogFocus } from '../hooks/useDialogFocus';
 import { bigDifferenceItems, isPresence } from '../utils/countQuantity';
 import { clearCountDraft, loadCountDraft, saveCountDraft, type CountEntries } from '../utils/countDraft';
 import type { CountResult, CountSheetGroup } from '../types/inventory';
+import './ops.css';
 
 const groupKey = (group: CountSheetGroup) => String(group.category?.id ?? 'none');
 const groupName = (group: CountSheetGroup) => group.category?.name ?? 'Uncategorized';
@@ -25,7 +24,7 @@ const groupName = (group: CountSheetGroup) => group.category?.name ?? 'Uncategor
 const ADVANCE_DELAY_MS = 350;
 const formatTime = (date: Date) => date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
-export default function InventoryCountPage() {
+export default function CountPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: groups, isLoading, isError, refetch } = useQuery({
@@ -177,29 +176,18 @@ export default function InventoryCountPage() {
   if (result) {
     const { count, at } = result;
     return (
-      <main className="min-h-dvh grid place-items-center bg-neutral-background px-6 py-10">
-        <div className="w-full max-w-sm text-center animate-fade-in">
-          <div className="mx-auto size-20 rounded-full bg-lily-green/20 grid place-items-center">
-            <svg className="size-10 text-lily-ink" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path
-                d="M5 12.5l4.5 4.5L19 7.5"
-                pathLength={1}
-                strokeDasharray={1}
-                stroke="currentColor"
-                strokeWidth={2.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="animate-draw"
-              />
-            </svg>
-          </div>
-          <h1 className="mt-5 font-heading text-neutral-text-dark">Count saved</h1>
-          <p className="mt-2 text-neutral-text-body">Saved at {formatTime(at)} by {count.counted_by}.</p>
-          <p className="mt-1 tabular-nums text-neutral-text-dark font-medium">
-            {count.items_checked} checked · {count.items_changed} changed · {count.items_skipped} not counted
-          </p>
-          {count.emailed && <p className="mt-1 text-sm text-neutral-text-muted">A report is on its way to the owner by email.</p>}
-          <button type="button" onClick={() => navigate('/admin/inventory')} className="btn-primary w-full mt-8">
+      <main className="ops ops-count ops-count-done">
+        <div className="done-card">
+          <div className="done-mark" aria-hidden>✓</div>
+          <h1>Count saved</h1>
+          <p>Saved at {formatTime(at)} by {count.counted_by}.</p>
+          <p><b>{count.items_checked} checked · {count.items_changed} changed · {count.items_skipped} not counted</b></p>
+          {count.emailed && <p className="muted">A report is on its way to the owner by email.</p>}
+          {/* Low stock exists to drive ordering: the count ends on the order messages. */}
+          <button type="button" onClick={() => navigate('/admin/ops/order')} className="btn">
+            Send tonight's order
+          </button>
+          <button type="button" onClick={() => navigate('/admin/ops/inventory')} className="btn ghost">
             Done
           </button>
         </div>
@@ -211,76 +199,70 @@ export default function InventoryCountPage() {
   const progress = items.length ? (countedTotal / items.length) * 100 : 0;
 
   return (
-    <div className="min-h-dvh bg-neutral-background">
+    <div className="ops ops-count">
       <h1 className="sr-only">Tonight's count</h1>
 
       {/* The one pinned layer: exit, where you are, progress */}
-      <header className="sticky top-0 z-20 bg-off-white border-b border-neutral-border">
-        <div className="max-w-2xl mx-auto flex items-center gap-1 h-14 px-1">
+      <header className="count-top">
+        <div className="count-top-row">
           <button
             type="button"
-            onClick={() => navigate('/admin/inventory')}
-            className="h-12 px-3 inline-flex items-center gap-1.5 rounded-lg text-coffee-brown font-medium hover:bg-cream/60"
+            onClick={() => navigate('/admin/ops/inventory')}
+            className="count-exit"
             aria-label={countedTotal > 0 ? 'Exit. Your count stays on this phone' : 'Exit'}
           >
-            <ArrowLeft size={20} weight="bold" aria-hidden />
-            Exit
+            <span aria-hidden>←</span> Exit
           </button>
           <button
             type="button"
             onClick={() => setJumpOpen(true)}
             disabled={!groups?.length}
             aria-haspopup="dialog"
-            className="flex-1 min-w-0 h-12 px-2 inline-flex items-center justify-center gap-1 rounded-lg text-neutral-text-dark font-semibold hover:bg-cream/60"
+            className="count-jump"
           >
             <span className="truncate">{currentGroup ? groupName(currentGroup) : "Tonight's count"}</span>
-            <CaretDown size={16} weight="bold" className="shrink-0" aria-hidden />
+            <span aria-hidden>▾</span>
             <span className="sr-only">. Jump to a category</span>
           </button>
-          <span className="w-20 pr-3 text-right text-sm font-semibold tabular-nums text-neutral-text-body">
+          <span className="count-prog">
             {countedTotal}/{items.length}
             <span className="sr-only"> counted</span>
           </span>
         </div>
         <div
-          className="h-1 bg-neutral-border/60"
+          className="count-bar"
           role="progressbar"
           aria-label="Items counted"
           aria-valuemin={0}
           aria-valuemax={items.length}
           aria-valuenow={countedTotal}
         >
-          <div
-            className="h-full origin-left bg-lily-green-deep transition-transform duration-300 ease-(--ease-settle)"
-            style={{ transform: `scaleX(${progress / 100})` }}
-          />
+          <div style={{ transform: `scaleX(${progress / 100})` }} />
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto pb-32">
+      <main className="count-main">
         {isLoading && (
-          <div className="py-16 flex justify-center text-neutral-text-muted gap-3">
-            <LoadingSpinner /> Loading items…
-          </div>
+          <p className="muted count-pad">Loading items…</p>
         )}
 
         {isError && (
-          <div role="alert" className="m-4 card p-4">
-            <p className="font-medium text-neutral-text-dark">Couldn't load the items to count.</p>
-            <p className="text-sm mt-1">Check the Wi-Fi and try again. Anything you already entered is kept on this phone.</p>
-            <button type="button" onClick={() => refetch()} className="btn-secondary mt-3">Try again</button>
+          <div role="alert" className="count-card">
+            <p><b>Couldn't load the items to count.</b></p>
+            <p className="muted">Check the Wi-Fi and try again. Anything you already entered is kept on this phone.</p>
+            <button type="button" onClick={() => refetch()} className="btn ghost">Try again</button>
           </div>
         )}
 
         {groups && groups.length === 0 && (
-          <div className="m-4 card p-6 text-center">
-            <p className="font-medium text-neutral-text-dark">No items to count yet.</p>
-            <p className="text-sm mt-1">The owner can add them from the Items tab or import the WhatsApp checklist.</p>
+          <div className="count-card">
+            <p><b>No items to count yet.</b></p>
+            <p className="muted">The owner can add them from Setup or import the WhatsApp checklist.</p>
           </div>
         )}
 
         {initialDraft && Object.keys(initialDraft.counts).length > 0 && countedTotal > 0 && (
-          <p className="mx-3 mt-3 text-sm text-neutral-text-muted" role="status">
+          <p className="muted count-pad" role="status">
             Picked up where you left off. Started at {formatTime(new Date(initialDraft.startedAt))}.
           </p>
         )}
@@ -306,30 +288,28 @@ export default function InventoryCountPage() {
                   if (element) headerRefs.current.set(key, element);
                   else headerRefs.current.delete(key);
                 }}
-                className="scroll-mt-16 px-3 pt-5 pb-2"
+                className="count-head"
               >
-                <h2 id={`count-group-${key}`} className="font-heading text-xl! leading-tight! text-neutral-text-dark">
+                <h2 id={`count-group-${key}`}>
                   {done ? (
                     <button
                       type="button"
                       onClick={toggle}
                       aria-expanded={!folded}
-                      className={`w-full min-h-12 flex items-center justify-between gap-3 text-left rounded-lg transition-colors duration-200 ${
-                        folded ? 'bg-lily-green/10 px-3 py-2' : ''
-                      }`}
+                      className={`count-fold${folded ? ' folded' : ''}`}
                     >
-                      <span className="flex items-center gap-2">
-                        <Check size={18} weight="bold" className="text-lily-ink shrink-0" aria-hidden />
+                      <span>
+                        <span aria-hidden>✓ </span>
                         {groupName(group)}
                       </span>
-                      <span className="shrink-0 font-sans text-sm tracking-normal tabular-nums text-neutral-text-muted">
+                      <span className="tally">
                         {counted.length - changed} checked · {changed} changed
                       </span>
                     </button>
                   ) : (
-                    <span className="flex items-center justify-between gap-3">
+                    <span className="count-fold plain">
                       {groupName(group)}
-                      <span className="shrink-0 font-sans text-sm tracking-normal tabular-nums text-neutral-text-muted">
+                      <span className="tally">
                         {counted.length}/{group.items.length}
                         <span className="sr-only"> counted</span>
                       </span>
@@ -340,10 +320,10 @@ export default function InventoryCountPage() {
 
               {/* Finished categories fold away; the grid-rows transition animates the height. */}
               <div
-                className={`grid transition-[grid-template-rows] duration-300 ease-(--ease-settle) ${folded ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'}`}
+                className={`count-fold-box${folded ? ' folded' : ''}`}
                 {...(folded ? { inert: '' } : {})}
               >
-                <ul className="min-h-0 overflow-hidden bg-off-white border-y border-neutral-border/70">
+                <ul className="count-items">
                   {group.items.map(item => (
                     <CountRow
                       key={item.id}
@@ -363,10 +343,10 @@ export default function InventoryCountPage() {
 
       {/* Actions in thumb reach */}
       {items.length > 0 && (
-        <div className="fixed bottom-0 inset-x-0 z-20 bg-off-white border-t border-neutral-border">
-          <div className="max-w-2xl mx-auto flex gap-2 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="count-foot">
+          <div className="count-foot-row">
             {!allCounted && (
-              <button type="button" onClick={goToNextUncounted} className="btn-secondary flex-1 whitespace-nowrap">
+              <button type="button" onClick={goToNextUncounted} className="btn ghost grow">
                 Next uncounted
               </button>
             )}
@@ -376,9 +356,8 @@ export default function InventoryCountPage() {
                 saveMutation.reset();
                 setReviewing(true);
               }}
-              className="btn-primary flex-1 whitespace-nowrap inline-flex items-center justify-center gap-2"
+              className="btn grow"
             >
-              {allCounted && <CheckCircle size={20} weight="fill" aria-hidden />}
               {allCounted ? 'Review & save' : `Review · ${countedTotal}/${items.length}`}
             </button>
           </div>
@@ -426,16 +405,16 @@ function CategoryJumpSheet({
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
-      <div className="absolute inset-0 bg-black/50 animate-fade-in" onClick={onClose} aria-hidden />
+    <div className="count-sheet-wrap">
+      <div className="count-scrim" onClick={onClose} aria-hidden />
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Jump to a category"
-        className="relative w-full max-w-lg max-h-[80dvh] overflow-y-auto bg-neutral-background rounded-t-2xl shadow-strong animate-slide-up pb-[env(safe-area-inset-bottom)]"
+        className="count-sheet jump"
       >
-        <ul ref={listRef} className="py-2">
+        <ul ref={listRef} className="count-jump-list">
           {groups.map(group => {
             const counted = group.items.filter(item => item.id in counts).length;
             const done = counted === group.items.length;
@@ -444,11 +423,11 @@ function CategoryJumpSheet({
                 <button
                   type="button"
                   onClick={() => onPick(groupKey(group))}
-                  className="w-full min-h-14 px-5 flex items-center justify-between gap-3 text-left hover:bg-cream/60"
+                  className="count-pick"
                 >
-                  <span className="font-medium text-neutral-text-dark truncate">{groupName(group)}</span>
-                  <span className={`shrink-0 text-sm tabular-nums inline-flex items-center gap-1 ${done ? 'text-lily-ink font-medium' : 'text-neutral-text-muted'}`}>
-                    {done && <Check size={14} weight="bold" aria-hidden />}
+                  <span className="nm">{groupName(group)}</span>
+                  <span className={`val${done ? ' done' : ''}`}>
+                    {done && <span aria-hidden>✓ </span>}
                     {counted}/{group.items.length}
                   </span>
                 </button>

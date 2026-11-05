@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Numeric, Boolean, ForeignKey, DateTime, Date, Enum
+from sqlalchemy import Column, Integer, String, Numeric, Boolean, ForeignKey, DateTime, Date, Enum, event, select
 from decimal import Decimal
 
 from sqlalchemy.orm import relationship, validates
@@ -36,7 +36,7 @@ class InventoryItem(Base):
     unit = Column(String(20), nullable=False)  # "L", "kg", "pcs", "g", "ml"
     current_quantity = Column(Numeric(10, 2), nullable=False, default=0)
     min_threshold = Column(Numeric(10, 2), nullable=False, default=0)
-    cost_per_unit = Column(Numeric(10, 2), nullable=True)
+    cost_per_unit = Column(Numeric(12, 4), nullable=True)
     category_id = Column(Integer, ForeignKey("inventory_categories.id"), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     sort_order = Column(Integer, nullable=False, default=0, server_default="0")
@@ -45,13 +45,24 @@ class InventoryItem(Base):
     # Optional bridge from the count unit to a recipe unit: 1 bottle holds 700 ml.
     pack_size = Column(Numeric(10, 3), nullable=True)
     pack_unit = Column(String(20), nullable=True)
+    # Added inline from the purchase sheet with just a name and unit; the owner
+    # still has to configure it. Cleared when the setup grid saves the row.
+    needs_setup = Column(Boolean, nullable=False, default=False, server_default="0")
+    # Who this is usually ordered from; groups the end-of-count order message.
+    # Optional: an item with none still alerts, under "Unassigned".
+    default_vendor_id = Column(Integer, ForeignKey("vendors.id"), nullable=True)
+    # "Amul", "Nashik": which make of the item this is. Free text, shown beside the name.
+    brand = Column(String(100), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     # Relationships
     category = relationship("InventoryCategory", back_populates="items")
+    default_vendor = relationship("Vendor")
     transactions = relationship("InventoryTransaction", back_populates="item")
     costing_ingredients = relationship("DishCostingIngredient", back_populates="inventory_item")
+    # How this is made, when it is made in the kitchen rather than bought.
+    recipe = relationship("DishCosting", back_populates="made_item", uselist=False, cascade="all, delete-orphan")
 
     @validates("current_quantity", "count_mode")
     def _clamp_presence(self, key, value):
@@ -79,6 +90,17 @@ class InventoryItem(Base):
     def is_low_stock(self) -> bool:
         return self.current_quantity < self.min_threshold
 
+class Vendor(Base):
+    """Who a purchase was bought from. Deliberately minimal: a purchase never
+    waits on vendor setup, so vendor_id on a transaction stays optional."""
+    __tablename__ = "vendors"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    phone = Column(String(30), nullable=True)
+    notes = Column(String(500), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
 class TransactionType(str, enum.Enum):
     PURCHASE = "PURCHASE"
     USAGE = "USAGE"
@@ -96,9 +118,40 @@ class InventoryTransaction(Base):
     previous_quantity = Column(Numeric(10, 2), nullable=False)
     new_quantity = Column(Numeric(10, 2), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
-    
+    # What was paid for this line, in rupees. PURCHASE rows only; NULL when not
+    # entered. 0 is a gift. Unit price is total_amount / quantity, never stored.
+    total_amount = Column(Numeric(10, 2), nullable=True)
+    vendor_id = Column(Integer, ForeignKey("vendors.id"), nullable=True, index=True)
+    # How many were bought ("2" × 1 kg at ₹65). quantity ÷ pack_count is the
+    # unit quantity and total_amount ÷ pack_count the rate; neither is stored.
+    pack_count = Column(Numeric(10, 3), nullable=True)
+    # The item's unit when this was recorded. quantity is in it, so a later
+    # g -> kg change can't turn "4000 g for ₹480" into a price of ₹0.12/kg.
+    # Filled in on insert (below); rows from before it existed were backfilled
+    # with their item's unit at the time.
+    unit = Column(String(20), nullable=True)
+    # PURCHASE rows only: "pending" until the owner approves the price, then
+    # "approved" or "rejected". NULL is a legacy row and counts as approved.
+    # Only approved rows can become the item's price; stock moves regardless.
+    price_status = Column(String(10), nullable=True)
+    price_reviewed_at = Column(DateTime(timezone=True), nullable=True)
+
     # Relationships
     item = relationship("InventoryItem", back_populates="transactions")
+    vendor = relationship("Vendor")
+
+
+@event.listens_for(InventoryTransaction, "before_insert")
+def _record_unit(mapper, connection, target):
+    """Every movement records its item's unit, whichever of the writers made it.
+
+    Read through the flush's connection: an item's own unit change in the same
+    flush is written first, since the transaction row depends on the item.
+    """
+    if target.unit is None and target.item_id is not None:
+        target.unit = connection.execute(
+            select(InventoryItem.unit).where(InventoryItem.id == target.item_id)
+        ).scalar()
 
 
 class CountLineStatus(str, enum.Enum):

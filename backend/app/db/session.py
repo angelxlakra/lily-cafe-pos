@@ -58,6 +58,29 @@ _INVENTORY_ADDED_COLUMNS = {
         "count_mode": "VARCHAR(10) DEFAULT 'number' NOT NULL",
         "pack_size": "NUMERIC(10, 3)",
         "pack_unit": "VARCHAR(20)",
+        "needs_setup": "BOOLEAN DEFAULT 0 NOT NULL",
+        # vendors is created by create_all() before this runs.
+        "default_vendor_id": "INTEGER REFERENCES vendors(id)",
+        "brand": "VARCHAR(100)",
+    },
+    "inventory_transactions": {
+        "total_amount": "NUMERIC(10, 2)",
+        # vendors is created by create_all() before this runs.
+        "vendor_id": "INTEGER REFERENCES vendors(id)",
+        "pack_count": "NUMERIC(10, 3)",
+        "unit": "VARCHAR(20)",
+        "price_status": "VARCHAR(10)",
+        "price_reviewed_at": "DATETIME",
+    },
+}
+
+
+# Coins, added after the cash counter shipped with notes only.
+_CASH_COINS = ("coin_20s", "coin_10s", "5s", "2s", "1s")
+_CASH_ADDED_COLUMNS = {
+    "daily_cash_counter": {
+        **{f"opening_{c}": "INTEGER DEFAULT 0 NOT NULL" for c in _CASH_COINS},
+        **{f"closing_{c}": "INTEGER" for c in _CASH_COINS},
     },
 }
 
@@ -99,7 +122,116 @@ def ensure_inventory_columns(bind=None) -> list[str]:
     added = []
     for table, columns in _INVENTORY_ADDED_COLUMNS.items():
         added += _ensure_columns(bind, table, columns)
+    _backfill_transaction_units(bind)
     return added
+
+
+def _backfill_transaction_units(bind) -> None:
+    """Give rows from before transactions recorded a unit their item's current one.
+
+    That is the unit everything already assumed they were in, so nothing that
+    worked before changes; from here on each new row records its own.
+    """
+    tables = set(inspect(bind).get_table_names())
+    if not {"inventory_transactions", "inventory_items"} <= tables:
+        return
+    with bind.begin() as conn:
+        conn.execute(text(
+            "UPDATE inventory_transactions SET unit = "
+            "(SELECT unit FROM inventory_items WHERE inventory_items.id = inventory_transactions.item_id) "
+            "WHERE unit IS NULL"
+        ))
+
+
+def ensure_cash_columns(bind=None) -> list[str]:
+    """Add the coin columns to older cash counters. Idempotent."""
+    bind = bind or engine
+    added = []
+    for table, columns in _CASH_ADDED_COLUMNS.items():
+        added += _ensure_columns(bind, table, columns)
+    return added
+
+
+_FK_CHECK = "PRAGMA foreign_key_check(dish_costing_ingredients)"
+
+
+def ensure_costing_made_items(bind=None) -> bool:
+    """Let a costing belong to a kitchen-made inventory item instead of a menu item.
+
+    SQLite can't drop NOT NULL, so an older dish_costings is rebuilt with the
+    documented procedure: build the new table beside it, copy, drop the old,
+    rename the new. The old table is never renamed, which would make SQLite
+    rewrite the foreign key in dish_costing_ingredients. Idempotent; returns
+    whether it rebuilt.
+    """
+    from sqlalchemy.schema import CreateTable
+    from app.models.costing_models import DishCosting
+
+    bind = bind or engine
+    # SQLite only: the PRAGMAs and the rebuild exist because SQLite can't ALTER a column.
+    if bind.dialect.name != "sqlite" or "dish_costings" not in inspect(bind).get_table_names():
+        return False
+    old = {r[1]: r[3] for r in _table_info(bind, "dish_costings")}
+    if "inventory_item_id" in old and not old["menu_item_id"]:
+        return False
+
+    table = DishCosting.__table__
+    ddl = str(CreateTable(table).compile(dialect=bind.dialect)).replace(
+        "CREATE TABLE dish_costings", "CREATE TABLE dish_costings_new", 1
+    )
+    shared = ", ".join(c.name for c in table.columns if c.name in old)
+    conn = bind.connect()
+    fk_before = conn.exec_driver_sql("PRAGMA foreign_keys").scalar()
+    broken_before = len(conn.exec_driver_sql(_FK_CHECK).fetchall())
+    try:
+        # A no-op inside a transaction, so it goes first.
+        conn.exec_driver_sql("PRAGMA foreign_keys=OFF")
+        # pysqlite only opens a transaction before DML, so the DDL would commit
+        # one statement at a time; open it ourselves so a failure undoes it all.
+        conn.exec_driver_sql("BEGIN")
+        conn.exec_driver_sql("DROP TABLE IF EXISTS dish_costings_new")
+        conn.exec_driver_sql(ddl)
+        conn.exec_driver_sql(f"INSERT INTO dish_costings_new ({shared}) SELECT {shared} FROM dish_costings")
+        conn.exec_driver_sql("DROP TABLE dish_costings")
+        conn.exec_driver_sql("ALTER TABLE dish_costings_new RENAME TO dish_costings")
+        for index in table.indexes:
+            index.create(conn)
+        # Foreign keys are off for the copy, so check the rows that point here before keeping it.
+        # Only new breakage counts: orphans from before must not stop the app starting.
+        broken = len(conn.exec_driver_sql(_FK_CHECK).fetchall())
+        if broken > broken_before:
+            raise RuntimeError(f"dish_costings rebuild broke {broken - broken_before} ingredient links")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.exec_driver_sql(f"PRAGMA foreign_keys={'ON' if fk_before else 'OFF'}")
+        conn.close()
+    return True
+
+
+def ensure_price_history_guard(bind=None) -> bool:
+    """Make dish_price_history append-only: the database itself refuses UPDATE and DELETE.
+
+    SQLite only. Idempotent; returns whether it ran.
+    """
+    bind = bind or engine
+    if bind.dialect.name != "sqlite" or "dish_price_history" not in inspect(bind).get_table_names():
+        return False
+    with bind.begin() as conn:
+        for verb in ("UPDATE", "DELETE"):
+            conn.exec_driver_sql(
+                f"CREATE TRIGGER IF NOT EXISTS dish_price_history_no_{verb.lower()} "
+                f"BEFORE {verb} ON dish_price_history "
+                "BEGIN SELECT RAISE(ABORT, 'dish_price_history is append-only'); END"
+            )
+    return True
+
+
+def _table_info(bind, table: str):
+    with bind.connect() as conn:
+        return conn.exec_driver_sql(f"PRAGMA table_info({table})").fetchall()
 
 
 def init_db():
@@ -110,7 +242,7 @@ def init_db():
     from app.models import models  # noqa
     from app.models.settings_model import AppSetting  # noqa - ensures app_settings table is created
     from app.models.digest_models import DailyDigest  # noqa - ensures daily_digests table is created
-    from app.models.costing_models import DishCosting, DishCostingIngredient  # noqa - ensures dish costing tables are created
+    from app.models.costing_models import DishCosting, DishCostingIngredient, DishPriceHistory  # noqa - ensures dish costing tables are created
 
     Base.metadata.create_all(bind=engine)
 
@@ -118,3 +250,6 @@ def init_db():
     # up to date with the columns added to `orders` since it shipped.
     ensure_order_columns(engine)
     ensure_inventory_columns(engine)
+    ensure_costing_made_items(engine)
+    ensure_price_history_guard(engine)
+    ensure_cash_columns(engine)

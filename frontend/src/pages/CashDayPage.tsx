@@ -8,10 +8,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { CaretLeft, CaretRight, Money } from '@phosphor-icons/react';
 import { cashApi } from '../api/cash';
+import { DENOMINATION_ROWS } from '../components/DenominationCounter';
 import { useAuth } from '../hooks/useAuth';
 import { formatTime } from '../utils/formatDateTime';
 
-const DENOMS = [500, 200, 100, 50, 20, 10] as const;
 
 // Local (not UTC) YYYY-MM-DD for today.
 function todayLocal(): string {
@@ -194,17 +194,19 @@ export default function CashDayPage() {
                 </Card>
 
                 {/* Denominations */}
-                <Card title="Notes counted">
+                <Card title="Cash counted">
                   <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 text-sm">
-                    <span className="pb-2 text-neutral-text-light">Note</span>
+                    <span className="pb-2 text-neutral-text-light">Note / coin</span>
                     <span className="pb-2 text-right text-neutral-text-light w-16">Open</span>
                     <span className="pb-2 text-right text-neutral-text-light w-16">Close</span>
-                    {DENOMS.map((d) => {
-                      const open = counter[`opening_${d}s` as const];
-                      const close = counter[`closing_${d}s` as const];
+                    {DENOMINATION_ROWS.map(({ key, value, coin }) => {
+                      const open = counter[`opening_${key}`];
+                      const close = counter[`closing_${key}`];
                       return (
-                        <div key={d} className="contents">
-                          <span className="py-2 border-t border-neutral-border font-medium text-neutral-text">₹{d}</span>
+                        <div key={key} className="contents">
+                          <span className="py-2 border-t border-neutral-border font-medium text-neutral-text">
+                            ₹{value}{coin && <span className="ml-1 text-xs text-neutral-text-light">coin</span>}
+                          </span>
                           <span className="py-2 border-t border-neutral-border text-right tabular-nums text-neutral-text">
                             {open}
                           </span>

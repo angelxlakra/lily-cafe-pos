@@ -8,10 +8,14 @@ import { useSidebar } from '../context/SidebarContext';
 import MenuItemForm from '../components/MenuItemForm';
 import EmptyState from '../components/EmptyState';
 import ConfirmDialog from '../components/ConfirmDialog';
+import CostChip from '../components/costing/CostChip';
+import RecipeSheet from '../components/costing/RecipeSheet';
 import SortableTableHeader from '../components/SortableTableHeader';
 import { useMenuItems, useDeleteMenuItem } from '../hooks/useMenu';
 import { useAuth } from '../hooks/useAuth';
 import { useSortableTable } from '../hooks/useSortableTable';
+import { useCostingList } from '../hooks/useCosting';
+import { attentionRank, costStatus, needsAttention } from '../utils/costing';
 import { formatCurrency } from '../utils/formatCurrency';
 import { toast } from '../utils/toast';
 import type { MenuItem } from '../types';
@@ -31,9 +35,26 @@ export default function MenuManagementPage() {
   const [deleteItemId, setDeleteItemId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const hasFilters = searchQuery !== '' || categoryFilter !== 'all';
+  // Owner only: dishes with no recipe, gaps in their cost, or a margin below target.
+  const [attentionOnly, setAttentionOnly] = useState(false);
+  const [costingForId, setCostingForId] = useState<number | null>(null);
+  const hasFilters = searchQuery !== '' || categoryFilter !== 'all' || attentionOnly;
 
   const items = menuItems || [];
+  // Looked up fresh each render, so a price changed from the sheet shows straight away.
+  const costingFor = items.find((item) => item.id === costingForId) ?? null;
+
+  // Costs and margins are the owner's; nobody else fetches them.
+  const { data: costings } = useCostingList(isOwner);
+  const costingByItem = useMemo(
+    () => new Map((costings ?? []).map((costing) => [costing.menu_item_id, costing])),
+    [costings]
+  );
+  const statusOf = (item: MenuItem) => costStatus(costingByItem.get(item.id));
+  const attentionCount = useMemo(
+    () => items.filter((item) => needsAttention(costStatus(costingByItem.get(item.id)))).length,
+    [items, costingByItem]
+  );
 
   const getCategoryName = (menuItem: MenuItem): string => {
     return menuItem.category?.name || 'Other';
@@ -56,16 +77,31 @@ export default function MenuManagementPage() {
       const matchesCategory =
         categoryFilter === 'all' || getCategoryName(item) === categoryFilter;
 
-      return matchesSearch && matchesCategory;
+      const matchesAttention =
+        !attentionOnly || needsAttention(costStatus(costingByItem.get(item.id)));
+
+      return matchesSearch && matchesCategory && matchesAttention;
     });
-  }, [items, searchQuery, categoryFilter]);
+  }, [items, searchQuery, categoryFilter, attentionOnly, costingByItem]);
 
   // Add sorting to filtered items
-  const { sortedData: sortedItems, sortConfig, requestSort } = useSortableTable(
+  const { sortedData: sortedByColumn, sortConfig, requestSort } = useSortableTable(
     filteredItems,
     'name' as keyof MenuItem,
     'asc'
   );
+
+  // "Needs attention" is a to-do list: worst margin first, then gaps, then no recipe.
+  const sortedItems = useMemo(() => {
+    if (!attentionOnly) return sortedByColumn;
+    const rank = (item: MenuItem) =>
+      attentionRank(costStatus(costingByItem.get(item.id)), costingByItem.get(item.id)?.gap_count ?? 0);
+    return [...sortedByColumn].sort((a, b) => {
+      const [ra, sa] = rank(a);
+      const [rb, sb] = rank(b);
+      return ra - rb || sa - sb;
+    });
+  }, [sortedByColumn, attentionOnly, costingByItem]);
 
   const handleAddNew = () => {
     setEditingItem(null);
@@ -100,6 +136,7 @@ export default function MenuManagementPage() {
   const handleResetFilters = () => {
     setSearchQuery('');
     setCategoryFilter('all');
+    setAttentionOnly(false);
   };
 
   return (
@@ -124,7 +161,7 @@ export default function MenuManagementPage() {
                 Menu Management
               </h1>
               <p className="text-sm text-muted mt-1">
-                {isOwner ? 'Add, edit, and manage menu items' : 'Cafe menu and prices'}
+                {isOwner ? 'Add, edit and cost menu items' : 'Cafe menu and prices'}
               </p>
             </div>
             {isOwner && (
@@ -168,6 +205,19 @@ export default function MenuManagementPage() {
                 ))}
               </select>
             </div>
+
+            {isOwner && (
+              <label className="flex min-h-11 items-center gap-2 whitespace-nowrap text-sm text-neutral-text-body">
+                <input
+                  id="menu-needs-attention"
+                  type="checkbox"
+                  checked={attentionOnly}
+                  onChange={(e) => setAttentionOnly(e.target.checked)}
+                  className="h-5 w-5 accent-coffee-brown"
+                />
+                Needs attention ({attentionCount})
+              </label>
+            )}
           </div>
         </div>
 
@@ -229,7 +279,8 @@ export default function MenuManagementPage() {
                         onSort={requestSort}
                         align="left"
                       />
-                      <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-light uppercase tracking-wider">
+                      {/* The owner's Margin column needs the room; the description is clipped anyway. */}
+                      <th className={`px-6 py-3 text-left text-sm font-semibold text-neutral-text-light uppercase tracking-wider ${isOwner ? 'hidden 2xl:table-cell' : ''}`}>
                         Description
                       </th>
                       <SortableTableHeader
@@ -248,6 +299,11 @@ export default function MenuManagementPage() {
                         onSort={requestSort}
                         align="right"
                       />
+                      {isOwner && (
+                        <th className="px-6 py-3 text-left text-sm font-semibold text-neutral-text-light uppercase tracking-wider">
+                          Margin
+                        </th>
+                      )}
                       <th className="px-6 py-3 text-center text-sm font-semibold text-neutral-text-light uppercase tracking-wider">
                         Station
                       </th>
@@ -277,7 +333,7 @@ export default function MenuManagementPage() {
                             {item.name}
                           </p>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className={`px-6 py-4 ${isOwner ? 'hidden 2xl:table-cell' : ''}`}>
                           <p className="text-sm text-neutral-text-light line-clamp-2">
                             {item.description || 'N/A'}
                           </p>
@@ -292,6 +348,11 @@ export default function MenuManagementPage() {
                             {formatCurrency(item.price)}
                           </p>
                         </td>
+                        {isOwner && (
+                          <td className="px-6 py-4">
+                            <CostChip status={statusOf(item)} dishName={item.name} onOpen={() => setCostingForId(item.id)} />
+                          </td>
+                        )}
                         <td className="px-6 py-4 text-center">
                           <span
                             className={`inline-block px-2 py-1 text-xs rounded-md font-medium ${
@@ -364,6 +425,13 @@ export default function MenuManagementPage() {
                       </div>
                     </div>
 
+                    {isOwner && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-neutral-text-light uppercase tracking-wide">Margin</span>
+                        <CostChip status={statusOf(item)} dishName={item.name} onOpen={() => setCostingForId(item.id)} />
+                      </div>
+                    )}
+
                     {item.description && (
                       <p className="text-sm text-neutral-text-light">
                         {item.description}
@@ -426,6 +494,15 @@ export default function MenuManagementPage() {
       {/* Menu Item Form Modal */}
       {isFormOpen && isOwner && (
         <MenuItemForm item={editingItem} onClose={handleFormClose} />
+      )}
+
+      {/* Recipe and cost, owner only */}
+      {costingFor && isOwner && (
+        <RecipeSheet
+          menuItem={costingFor}
+          hasRecipe={costingByItem.has(costingFor.id)}
+          onClose={() => setCostingForId(null)}
+        />
       )}
 
       {/* Delete Confirmation Dialog */}

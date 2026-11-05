@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { inventoryApi } from '../api/inventory';
+import { costingKeys } from './useCosting';
 import type {
   InventoryCategoryCreate,
   InventoryCategoryUpdate,
   InventoryItemCreate,
   InventoryItemUpdate,
-  PurchaseCreate,
   UsageCreate,
   AdjustmentCreate,
   TransactionType
@@ -141,35 +141,14 @@ export function useUpdateItem() {
     },
     onSettled: () => {
       // Always refetch after error or success; renames and category moves
-      // also show up in the count sheet.
+      // also show up in the count sheet. A unit or price change moves recipe costs.
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
-    },
-  });
-}
-
-export function useDeleteItem() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => inventoryApi.deleteItem(id),
-    onSuccess: () => {
-      // Stock and master data feed the count sheet, status card and lists alike.
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: costingKeys.all });
     },
   });
 }
 
 // Transactions Hooks
-export function useRecordPurchase() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: PurchaseCreate) => inventoryApi.recordPurchase(data),
-    onSuccess: () => {
-      // Stock and master data feed the count sheet, status card and lists alike.
-      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
-    },
-  });
-}
-
 export function useRecordUsage() {
   const queryClient = useQueryClient();
   return useMutation({

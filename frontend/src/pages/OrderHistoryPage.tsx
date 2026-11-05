@@ -8,12 +8,12 @@ import { useSidebar } from '../context/SidebarContext';
 import EmptyState from '../components/EmptyState';
 import DatePickerWithQuickFilters from '../components/DatePickerWithQuickFilters';
 import SortableTableHeader from '../components/SortableTableHeader';
-import { useOrderHistory, useOrder, useUpdatePayments, useCancelOrder } from '../hooks/useOrders';
+import { useOrderHistory, useOrder, useUpdatePayments, useCancelOrder, useOrderItemChanges, useOrderAuditEvents } from '../hooks/useOrders';
 import { useAuth } from '../hooks/useAuth';
 import { useAppConfig } from '../hooks/useConfig';
 import { useSortableTable } from '../hooks/useSortableTable';
 import { formatCurrency } from '../utils/formatCurrency';
-import { formatDateTime } from '../utils/formatDateTime';
+import { formatDateTime, localDate } from '../utils/formatDateTime';
 import { CalendarDots, Printer, PencilSimple, MagnifyingGlass, X, CaretLeft, CaretRight, Trash } from '@phosphor-icons/react';
 import { UpiIcon, CashIcon, CardIcon } from '../components/icons/PaymentIcons';
 import DailyRevenueModal from '../components/DailyRevenueModal';
@@ -23,7 +23,7 @@ import type { PaymentMethod, PaymentCreateRequest, Order } from '../types';
 
 export default function OrderHistoryPage() {
   // Get today's date for max date validation
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDate();
 
 
   const [dateRange, setDateRange] = useState({ start: today, end: today });
@@ -847,6 +847,9 @@ function OrderDetailsModal({
   onPrintReceipt,
   gstRatePercent,
 }: OrderDetailsModalProps) {
+  const { isOwner } = useAuth();
+  const { data: removedItems = [] } = useOrderItemChanges(order?.id, isOwner);
+  const { data: auditEvents = [] } = useOrderAuditEvents(order?.id, isOwner);
   const halfRate = gstRatePercent / 2;
   const halfRateLabel = Number.isInteger(halfRate) ? String(halfRate) : halfRate.toFixed(2);
   const computedGst = order ? Math.round(order.subtotal * gstRatePercent / 100) : 0;
@@ -948,6 +951,47 @@ function OrderDetailsModal({
                   ))}
                 </div>
               </div>
+
+              {/* Owner-only: items taken off the order after it was placed. Never printed on the bill. */}
+              {isOwner && removedItems.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-error mb-3">Removed after ordering</h3>
+                  <div className="space-y-2">
+                    {removedItems.map((c) => (
+                      <div key={c.id} className="bg-cream rounded-lg p-3 text-sm">
+                        <p className="font-medium text-neutral-text-dark">
+                          <span className="line-through">{c.menu_item_name}</span>
+                          {' '}
+                          {c.new_quantity === 0
+                            ? `×${c.old_quantity} removed`
+                            : `×${c.old_quantity} → ×${c.new_quantity}`}
+                        </p>
+                        <p className="text-neutral-text-light">
+                          {c.changed_by || 'unknown user'} on {formatDateTime(c.changed_at)}
+                          {' · '}
+                          {c.quantity_served_at_change > 0
+                            ? `${c.quantity_served_at_change} already served`
+                            : 'not served yet'}
+                          {c.order_status_at_change !== 'active' ? ' · after billing' : ''}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {isOwner && auditEvents.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-neutral-text-dark mb-3">Change history</h3>
+                  <ul className="space-y-1 text-sm text-neutral-text-light">
+                    {auditEvents.map((e) => (
+                      <li key={e.id}>
+                        {e.detail} · {e.changed_by || 'unknown user'} · {formatDateTime(e.changed_at)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               <div className="border-t border-neutral-border"></div>
 

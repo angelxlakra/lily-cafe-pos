@@ -1,14 +1,23 @@
 """Pure dish-costing math. No I/O, no DB."""
 
 from dataclasses import dataclass, field
-from decimal import Decimal, ROUND_HALF_UP
+from datetime import datetime
+from decimal import Decimal, ROUND_CEILING, ROUND_HALF_UP
 
 from app.core import settings_store
 from app.models.costing_models import OVERHEAD_KINDS
-from app.utils.units import convert, IncompatibleUnitError
+from app.utils.units import IncompatibleUnitError, normalize, to_item_unit
 
 MONEY = Decimal("0.01")
 PERCENT = Decimal("0.01")
+# Menu prices end in 0 (₹230, ₹280), so a suggested price rounds up to the next ₹10.
+PRICE_STEP = Decimal("10")
+
+# Why a line has no cost, in the order the screen should name them.
+REASON_RETIRED = "retired"
+REASON_PACK_SIZE = "needs_pack_size"
+REASON_UNIT = "unknown_unit"
+REASON_NO_PRICE = "no_price"
 
 
 def money(value) -> Decimal:
@@ -17,6 +26,11 @@ def money(value) -> Decimal:
 
 def pct(value) -> Decimal:
     return Decimal(value).quantize(PERCENT, rounding=ROUND_HALF_UP)
+
+
+def menu_price(value) -> Decimal:
+    """Round a price up to the next ₹10, the way the menu is priced."""
+    return (Decimal(value) / PRICE_STEP).quantize(Decimal("1"), rounding=ROUND_CEILING) * PRICE_STEP
 
 
 @dataclass
@@ -28,6 +42,17 @@ class IngredientInput:
     stock_unit: str
     cost_per_unit: Decimal | None
     is_active: bool = True
+    # "1 bottle holds 700 ml": bridges a recipe unit to a stock unit in
+    # another family. Yes/no items can't take one.
+    pack_size: Decimal | None = None
+    pack_unit: str | None = None
+    is_presence: bool = False
+    # Where the price came from ("purchase" or "typed") and, for a purchase, when.
+    price_source: str | None = None
+    price_as_of: datetime | None = None
+    # A kitchen-made item with an unpriced ingredient: its price is only partial,
+    # so the line reads as a gap rather than a cheap price.
+    incomplete: bool = False
 
 
 @dataclass
@@ -50,6 +75,15 @@ class IngredientLine:
     price_missing: bool
     is_active: bool
     unit_error: bool = False
+    # The recipe unit is fine but doesn't reach the stock unit: asking for the
+    # item's pack size ("1 bottle = ? ml") would let this line be costed.
+    needs_pack_size: bool = False
+    price_source: str | None = None
+    price_as_of: datetime | None = None
+    # None when the line is costed; otherwise the one reason to show for it.
+    reason: str | None = None
+    # A yes/no item: shown on the recipe, covered by overheads, never a gap.
+    is_presence: bool = False
 
 
 @dataclass
@@ -82,6 +116,14 @@ class CostBreakdown:
     warnings: list[str] = field(default_factory=list)
 
 
+def _known_unit(unit: str) -> bool:
+    try:
+        normalize(unit)
+        return True
+    except IncompatibleUnitError:
+        return False
+
+
 def compute(
     ingredients: list[IngredientInput],
     overheads: dict[str, OverheadInput],
@@ -97,27 +139,61 @@ def compute(
     raw = Decimal("0")
 
     for ing in ingredients:
+        if ing.is_presence:
+            # Coriander, salt, garnish: answered yes/no, never priced. They are
+            # covered by the overheads, so they are neither a cost nor a gap.
+            lines.append(IngredientLine(
+                item_id=ing.item_id, name=ing.name, quantity=Decimal(ing.quantity), unit=ing.unit,
+                stock_unit=ing.stock_unit, unit_price=Decimal("0.00"), line_cost=Decimal("0.00"),
+                share_percent=None, price_missing=False, is_active=ing.is_active,
+                reason=None if ing.is_active else REASON_RETIRED, is_presence=True,
+            ))
+            if not ing.is_active:
+                warnings.append(f"{ing.name} is no longer an active inventory item")
+            continue
+
         # A price of 0 is not a real price: many items were created with 0.00
         # as a placeholder, so treat it the same as no price at all.
-        price_missing = ing.cost_per_unit is None or Decimal(ing.cost_per_unit) <= 0
+        price_missing = ing.incomplete or ing.cost_per_unit is None or Decimal(ing.cost_per_unit) <= 0
         price = Decimal("0") if price_missing else Decimal(ing.cost_per_unit)
 
         # One bad unit costs its own line at 0 instead of failing the whole dish.
-        unit_error = False
+        unit_error = needs_pack_size = False
         try:
-            qty_in_stock_unit = convert(ing.quantity, ing.unit, ing.stock_unit)
+            qty_in_stock_unit = to_item_unit(ing.quantity, ing.unit, ing.stock_unit, ing.pack_size, ing.pack_unit)
         except IncompatibleUnitError as e:
             unit_error = True
             qty_in_stock_unit = Decimal("0")
-            warnings.append(f"{ing.name}: {e} - counted as 0")
+            # Yes/no items never get here, so a known recipe unit means a pack size would fix it.
+            needs_pack_size = _known_unit(ing.unit)
+            if needs_pack_size:
+                warnings.append(
+                    f"{ing.name}: set its pack size (1 {ing.stock_unit} = how many {ing.unit}?) - counted as 0"
+                )
+            else:
+                warnings.append(f"{ing.name}: {e} - counted as 0")
 
         line_cost = money(qty_in_stock_unit * price)
         raw += line_cost
 
         if price_missing:
-            warnings.append(f"No price on record for {ing.name} - counted as 0")
+            if ing.incomplete:
+                warnings.append(f"{ing.name} has ingredients with no price - counted as 0")
+            else:
+                warnings.append(f"No price on record for {ing.name} - counted as 0")
         if not ing.is_active:
             warnings.append(f"{ing.name} is no longer an active inventory item")
+
+        if not ing.is_active:
+            reason = REASON_RETIRED
+        elif needs_pack_size:
+            reason = REASON_PACK_SIZE
+        elif unit_error:
+            reason = REASON_UNIT
+        elif price_missing:
+            reason = REASON_NO_PRICE
+        else:
+            reason = None
 
         lines.append(
             IngredientLine(
@@ -132,6 +208,10 @@ def compute(
                 price_missing=price_missing,
                 is_active=ing.is_active,
                 unit_error=unit_error,
+                needs_pack_size=needs_pack_size,
+                price_source=ing.price_source if ing.incomplete or not price_missing else None,
+                price_as_of=None if price_missing else ing.price_as_of,
+                reason=reason,
             )
         )
 
@@ -149,8 +229,8 @@ def compute(
         if cfg.mode == "percent":
             amount = money(raw * Decimal(cfg.value) / 100)
             percent = pct(cfg.value)
-        elif cfg.mode == "amount":
-            amount = money(cfg.value)
+        elif cfg.mode in ("amount", "each"):
+            amount = money(Decimal(cfg.value) * (Decimal(yield_units) if cfg.mode == "each" else 1))
             percent = pct(amount / raw * 100) if raw > 0 else None
         else:
             raise ValueError(f"Unknown overhead mode: {cfg.mode!r}")
@@ -181,13 +261,18 @@ def compute(
         if margin_amount < 0:
             warnings.append("Selling price is below cost")
 
+    is_complete = not any(line.reason for line in lines)
+
     suggested_price = None
     target = None
     if target_margin_percent is not None:
         target = Decimal(target_margin_percent)
         if target >= 100:
             raise ValueError("Target margin must be below 100%")
-        suggested_price = money(cost_per_unit / (1 - target / 100))
+        # A price from a cost with gaps would be too low, so offer none until
+        # every line is costed; a dish that costs nothing has no price to suggest.
+        if is_complete and cost_per_unit > 0:
+            suggested_price = menu_price(cost_per_unit / (1 - target / 100))
 
     return CostBreakdown(
         ingredients=lines,
@@ -204,10 +289,7 @@ def compute(
         food_cost_percent=food_cost_percent,
         target_margin_percent=target,
         suggested_price=suggested_price,
-        # is_complete=not any(line.price_missing for line in lines),
-        is_complete=not any(
-            line.price_missing or line.unit_error or not line.is_active for line in lines
-        ),
+        is_complete=is_complete,
         warnings=warnings,
     )
 
@@ -234,23 +316,3 @@ def resolve_target_margin(costing=None) -> Decimal:
     if costing is not None and costing.target_margin_percent is not None:
         return Decimal(costing.target_margin_percent)
     return Decimal(settings_store.get("costing.target_margin_percent", "65"))
-
-
-def to_inputs(costing, price_overrides: dict[int, Decimal] | None = None) -> list[IngredientInput]:
-    overrides = price_overrides or {}
-    inputs = []
-    for row in costing.ingredients:
-        item = row.inventory_item
-        price = overrides.get(item.id, item.cost_per_unit)
-        inputs.append(
-            IngredientInput(
-                item_id=item.id,
-                name=item.name,
-                quantity=Decimal(row.quantity),
-                unit=row.unit,
-                stock_unit=item.unit,
-                cost_per_unit=Decimal(price) if price is not None else None,
-                is_active=item.is_active,
-            )
-        )
-    return inputs

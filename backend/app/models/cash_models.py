@@ -2,6 +2,14 @@ from sqlalchemy import Column, Integer, String, Numeric, Boolean, Date, DateTime
 from sqlalchemy.sql import func
 from app.db.session import Base
 
+# Every row the drawer is counted in: column suffix → rupee value. Notes first,
+# then coins. ₹20 and ₹10 coins have their own rows, apart from the notes.
+DENOMINATIONS = {
+    "500s": 500, "200s": 200, "100s": 100, "50s": 50, "20s": 20, "10s": 10,
+    "coin_20s": 20, "coin_10s": 10, "5s": 5, "2s": 2, "1s": 1,
+}
+
+
 class DailyCashCounter(Base):
     __tablename__ = "daily_cash_counter"
     
@@ -27,6 +35,11 @@ class DailyCashCounter(Base):
     opening_50s = Column(Integer, nullable=False, default=0)
     opening_20s = Column(Integer, nullable=False, default=0)
     opening_10s = Column(Integer, nullable=False, default=0)
+    opening_coin_20s = Column(Integer, nullable=False, default=0)
+    opening_coin_10s = Column(Integer, nullable=False, default=0)
+    opening_5s = Column(Integer, nullable=False, default=0)
+    opening_2s = Column(Integer, nullable=False, default=0)
+    opening_1s = Column(Integer, nullable=False, default=0)
 
     # v0.2 Patch - Denomination counting for closing balance
     closing_500s = Column(Integer, nullable=True)
@@ -35,6 +48,11 @@ class DailyCashCounter(Base):
     closing_50s = Column(Integer, nullable=True)
     closing_20s = Column(Integer, nullable=True)
     closing_10s = Column(Integer, nullable=True)
+    closing_coin_20s = Column(Integer, nullable=True)
+    closing_coin_10s = Column(Integer, nullable=True)
+    closing_5s = Column(Integer, nullable=True)
+    closing_2s = Column(Integer, nullable=True)
+    closing_1s = Column(Integer, nullable=True)
 
     @property
     def status(self) -> str:
