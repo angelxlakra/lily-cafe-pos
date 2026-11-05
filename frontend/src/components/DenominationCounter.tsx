@@ -2,56 +2,60 @@
  * DenominationCounter Component
  *
  * Touch-optimized component for counting Indian currency denominations.
- * Displays rows for ₹500 down to ₹10 notes, then ₹5, ₹2 and ₹1 coins.
- * ₹10 and ₹20 coins count in the ₹10 and ₹20 rows: same value, same total.
+ * Displays rows for ₹500 down to ₹10 notes, then ₹20, ₹10, ₹5, ₹2 and ₹1 coins.
  * Auto-calculates total from denomination counts.
  */
 
 import { useState } from 'react';
 import { CurrencyInr } from '@phosphor-icons/react';
 
-export interface Denominations {
-  500: number;
-  200: number;
-  100: number;
-  50: number;
-  20: number;
-  10: number;
-  5: number;
-  2: number;
-  1: number;
-}
+// Each row: the API field suffix (opening_<key>) and its rupee value. Notes first, then coins.
+export const DENOMINATION_ROWS = [
+  { key: '500s', value: 500, coin: false },
+  { key: '200s', value: 200, coin: false },
+  { key: '100s', value: 100, coin: false },
+  { key: '50s', value: 50, coin: false },
+  { key: '20s', value: 20, coin: false },
+  { key: '10s', value: 10, coin: false },
+  { key: 'coin_20s', value: 20, coin: true },
+  { key: 'coin_10s', value: 10, coin: true },
+  { key: '5s', value: 5, coin: true },
+  { key: '2s', value: 2, coin: true },
+  { key: '1s', value: 1, coin: true },
+] as const;
+
+export type DenominationKey = (typeof DENOMINATION_ROWS)[number]['key'];
+export type Denominations = Record<DenominationKey, number>;
 
 interface DenominationCounterProps {
   denominations: Denominations;
-  onChange: (denom: keyof Denominations, count: number) => void;
+  onChange: (denom: DenominationKey, count: number) => void;
   readOnly?: boolean;
 }
 
-// Largest first. Below ₹10 the drawer holds only coins.
-export const DENOMINATION_VALUES: (keyof Denominations)[] = [500, 200, 100, 50, 20, 10, 5, 2, 1];
-export const isCoin = (denom: number) => denom < 10;
-
 export const emptyDenominations = (): Denominations =>
-  ({ 500: 0, 200: 0, 100: 0, 50: 0, 20: 0, 10: 0, 5: 0, 2: 0, 1: 0 });
+  Object.fromEntries(DENOMINATION_ROWS.map(r => [r.key, 0])) as Denominations;
+
+export const denominationsTotal = (counts: Denominations) =>
+  DENOMINATION_ROWS.reduce((sum, r) => sum + r.value * counts[r.key], 0);
 
 /** The API's field names for one stage: { opening_500s: 2, …, opening_1s: 0 }. */
 export const denominationFields = <S extends 'opening' | 'closing'>(stage: S, counts: Denominations) =>
-  Object.fromEntries(DENOMINATION_VALUES.map(d => [`${stage}_${d}s`, counts[d]])) as Record<`${S}_${keyof Denominations}s`, number>;
+  Object.fromEntries(DENOMINATION_ROWS.map(r => [`${stage}_${r.key}`, counts[r.key]])) as Record<`${S}_${DenominationKey}`, number>;
 
 export default function DenominationCounter({
   denominations,
   onChange,
   readOnly = false
 }: DenominationCounterProps) {
-  const [focusedDenom, setFocusedDenom] = useState<keyof Denominations | null>(null);
+  const [focusedDenom, setFocusedDenom] = useState<DenominationKey | null>(null);
 
-  const handleIncrement = (denom: keyof Denominations, amount: number) => {
+  const handleIncrement = (denom: DenominationKey, amount: number) => {
     const newCount = Math.max(0, denominations[denom] + amount);
     onChange(denom, newCount);
   };
 
-  const handleDirectInput = (denom: keyof Denominations, value: string) => {
+  const handleDirectInput = (denom: DenominationKey, value: string) => {
     // Parse integer value
     const parsed = parseInt(value, 10);
     if (!isNaN(parsed) && parsed >= 0) {
@@ -63,9 +67,10 @@ export default function DenominationCounter({
 
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-2">
-      {DENOMINATION_VALUES.map((denom) => {
+      {DENOMINATION_ROWS.map(({ key: denom, value, coin }) => {
           const count = denominations[denom];
-          const subtotal = count * denom;
+          const subtotal = count * value;
+          const label = `₹${value} ${coin ? 'coin' : 'note'}`;
           const isFocused = focusedDenom === denom;
 
           return (
@@ -83,9 +88,9 @@ export default function DenominationCounter({
                 <div className="flex items-center gap-1">
                   <CurrencyInr size={16} weight="bold" className="text-lily-ink" />
                   <span className="text-sm font-bold text-neutral-text-dark dark:text-cream">
-                    {denom}
+                    {value}
                   </span>
-                  {isCoin(denom) && <span className="text-xs text-neutral-text-muted">coin</span>}
+                  {coin && <span className="text-xs text-neutral-text-muted">coin</span>}
                 </div>
                 <div className={`text-xs font-mono font-bold ${count > 0 ? 'text-lily-ink' : 'text-neutral-text-muted'}`}>
                   ₹{subtotal.toLocaleString('en-IN')}
@@ -100,7 +105,7 @@ export default function DenominationCounter({
                   disabled={readOnly || count === 0}
                   className="touch-target-large btn-secondary px-1.5 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                   type="button"
-                  aria-label={`Decrease ₹${denom} count by 5`}
+                  aria-label={`Decrease ${label} count by 5`}
                 >
                   -5
                 </button>
@@ -109,7 +114,7 @@ export default function DenominationCounter({
                   disabled={readOnly || count === 0}
                   className="touch-target-large btn-secondary px-2 text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                   type="button"
-                  aria-label={`Decrease ₹${denom} count by 1`}
+                  aria-label={`Decrease ${label} count by 1`}
                 >
                   -1
                 </button>
@@ -137,7 +142,7 @@ export default function DenominationCounter({
                   "
                   min="0"
                   step="1"
-                  aria-label={`Count of ₹${denom} ${isCoin(denom) ? 'coins' : 'notes'}`}
+                  aria-label={`Count of ${label}s`}
                 />
 
                 {/* Increment Buttons */}
@@ -146,7 +151,7 @@ export default function DenominationCounter({
                   disabled={readOnly}
                   className="touch-target-large btn-secondary px-2 text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                   type="button"
-                  aria-label={`Increase ₹${denom} count by 1`}
+                  aria-label={`Increase ${label} count by 1`}
                 >
                   +1
                 </button>
@@ -155,7 +160,7 @@ export default function DenominationCounter({
                   disabled={readOnly}
                   className="touch-target-large btn-secondary px-1.5 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                   type="button"
-                  aria-label={`Increase ₹${denom} count by 5`}
+                  aria-label={`Increase ${label} count by 5`}
                 >
                   +5
                 </button>

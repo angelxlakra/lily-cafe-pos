@@ -1,7 +1,5 @@
 """
-Coins in the cash counter: ₹5, ₹2 and ₹1 rows beside the notes.
-
-₹10 and ₹20 coins count in the ₹10 and ₹20 rows, so they need nothing new.
+Coins in the cash counter: ₹20, ₹10, ₹5, ₹2 and ₹1 rows beside the notes.
 """
 
 from sqlalchemy import create_engine, inspect, text
@@ -58,7 +56,8 @@ def test_an_older_database_gets_the_coin_columns_once(tmp_path):
         conn.execute(text("INSERT INTO daily_cash_counter (id, opening_10s) VALUES (1, 4)"))
 
     added = ensure_cash_columns(engine)
-    assert sorted(added) == sorted(f"{s}_{d}s" for s in ("opening", "closing") for d in (5, 2, 1))
+    coins = ("coin_20s", "coin_10s", "5s", "2s", "1s")
+    assert sorted(added) == sorted(f"{s}_{c}" for s in ("opening", "closing") for c in coins)
     assert ensure_cash_columns(engine) == []  # idempotent
 
     columns = {c["name"] for c in inspect(engine).get_columns("daily_cash_counter")}
@@ -66,3 +65,26 @@ def test_an_older_database_gets_the_coin_columns_once(tmp_path):
     with engine.connect() as conn:
         # An existing day reads as no coins, not NULL.
         assert conn.execute(text("SELECT opening_5s FROM daily_cash_counter")).scalar() == 0
+
+
+def test_20_and_10_rupee_coins_count_apart_from_the_notes(client, owner_headers):
+    opened = client.post(
+        "/api/v1/cash-counter/open",
+        json={"date": TODAY.isoformat(), **_counts("opening", **{"20s": 1, "10s": 2, "coin_20s": 3, "coin_10s": 4})},
+        headers=owner_headers,
+    )
+    assert opened.status_code == 201, opened.text
+    body = opened.json()
+    # 1 × 20 + 2 × 10 notes, 3 × 20 + 4 × 10 coins
+    assert float(body["opening_balance"]) == 140
+    assert (body["opening_20s"], body["opening_coin_20s"]) == (1, 3)
+    assert (body["opening_10s"], body["opening_coin_10s"]) == (2, 4)
+
+    closed = client.post(
+        "/api/v1/cash-counter/close",
+        json={"date": TODAY.isoformat(), **_counts("closing", **{"coin_20s": 5, "coin_10s": 1})},
+        headers=owner_headers,
+    )
+    assert closed.status_code == 200, closed.text
+    assert float(closed.json()["closing_balance"]) == 110
+    assert closed.json()["closing_coin_20s"] == 5

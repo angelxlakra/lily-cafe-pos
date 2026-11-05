@@ -76,10 +76,11 @@ _INVENTORY_ADDED_COLUMNS = {
 
 
 # Coins, added after the cash counter shipped with notes only.
+_CASH_COINS = ("coin_20s", "coin_10s", "5s", "2s", "1s")
 _CASH_ADDED_COLUMNS = {
     "daily_cash_counter": {
-        **{f"opening_{d}s": "INTEGER DEFAULT 0 NOT NULL" for d in (5, 2, 1)},
-        **{f"closing_{d}s": "INTEGER" for d in (5, 2, 1)},
+        **{f"opening_{c}": "INTEGER DEFAULT 0 NOT NULL" for c in _CASH_COINS},
+        **{f"closing_{c}": "INTEGER" for c in _CASH_COINS},
     },
 }
 

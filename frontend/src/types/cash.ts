@@ -21,6 +21,8 @@ export interface DailyCashCounter {
   opening_50s: number;
   opening_20s: number;
   opening_10s: number;
+  opening_coin_20s: number;
+  opening_coin_10s: number;
   opening_5s: number;
   opening_2s: number;
   opening_1s: number;
@@ -30,6 +32,8 @@ export interface DailyCashCounter {
   closing_50s: number | null;
   closing_20s: number | null;
   closing_10s: number | null;
+  closing_coin_20s: number | null;
+  closing_coin_10s: number | null;
   closing_5s: number | null;
   closing_2s: number | null;
   closing_1s: number | null;
@@ -44,6 +48,8 @@ export interface CashCounterOpen {
   opening_50s: number;
   opening_20s: number;
   opening_10s: number;
+  opening_coin_20s: number;
+  opening_coin_10s: number;
   opening_5s: number;
   opening_2s: number;
   opening_1s: number;
@@ -59,6 +65,8 @@ export interface CashCounterClose {
   closing_50s: number;
   closing_20s: number;
   closing_10s: number;
+  closing_coin_20s: number;
+  closing_coin_10s: number;
   closing_5s: number;
   closing_2s: number;
   closing_1s: number;
