@@ -299,11 +299,11 @@ def get_cash_counter_status_tool(db: Session, date: Optional[str] = None) -> str
 
     # Build denomination breakdown
     denomination_breakdown = {
-        "opening": {f"{d}s": getattr(counter, f"opening_{d}s") or 0 for d in DENOMINATIONS}
+        "opening": {k: getattr(counter, f"opening_{k}") or 0 for k in DENOMINATIONS}
     }
 
     if counter.closing_balance is not None:
-        denomination_breakdown["closing"] = {f"{d}s": getattr(counter, f"closing_{d}s") or 0 for d in DENOMINATIONS}
+        denomination_breakdown["closing"] = {k: getattr(counter, f"closing_{k}") or 0 for k in DENOMINATIONS}
 
     result = {
         "date": str(target_date),

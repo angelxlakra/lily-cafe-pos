@@ -70,8 +70,8 @@ def open_cash_counter(
         raise HTTPException(status_code=400, detail="Date cannot be in the future")
 
     # v0.2 Patch - Calculate opening_balance from denomination counts
-    counts = {f"opening_{d}s": getattr(data, f"opening_{d}s") for d in DENOMINATIONS}
-    opening_balance = Decimal(sum(getattr(data, f"opening_{d}s") * d for d in DENOMINATIONS))
+    counts = {f"opening_{k}": getattr(data, f"opening_{k}") for k in DENOMINATIONS}
+    opening_balance = Decimal(sum(counts[f"opening_{k}"] * v for k, v in DENOMINATIONS.items()))
 
     counter = DailyCashCounter(
         date=day,
@@ -107,7 +107,7 @@ def close_cash_counter(
         raise HTTPException(status_code=400, detail="Counter already closed")
 
     # v0.2 Patch - Calculate closing_balance from denomination counts
-    closing_balance = Decimal(sum(getattr(data, f"closing_{d}s") * d for d in DENOMINATIONS))
+    closing_balance = Decimal(sum(getattr(data, f"closing_{k}") * v for k, v in DENOMINATIONS.items()))
 
     # Get total cash payments for the day
     cash_payments = db.query(func.sum(Payment.amount)).filter(
@@ -122,8 +122,8 @@ def close_cash_counter(
     variance = closing_balance - expected_closing
 
     counter.closing_balance = closing_balance
-    for d in DENOMINATIONS:
-        setattr(counter, f"closing_{d}s", getattr(data, f"closing_{d}s"))
+    for k in DENOMINATIONS:
+        setattr(counter, f"closing_{k}", getattr(data, f"closing_{k}"))
     counter.expected_closing = expected_closing
     counter.variance = variance
     counter.notes = data.notes
@@ -329,8 +329,8 @@ def reopen_cash_counter(
 
     # Reset counter to "open" state - clear closing data
     counter.closing_balance = None
-    for d in DENOMINATIONS:
-        setattr(counter, f"closing_{d}s", None)
+    for k in DENOMINATIONS:
+        setattr(counter, f"closing_{k}", None)
     counter.expected_closing = None
     counter.variance = None
     counter.closed_by = None

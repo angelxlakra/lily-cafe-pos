@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { LockOpen, LockKey, CheckCircle, Info } from '@phosphor-icons/react';
 import { useSidebar } from '../context/SidebarContext';
-import DenominationCounter, { Denominations, denominationFields, emptyDenominations } from '../components/DenominationCounter';
+import DenominationCounter, { DenominationKey, Denominations, denominationFields, denominationsTotal, emptyDenominations } from '../components/DenominationCounter';
 import { useCashCounterToday, useOpenCashCounter, useCloseCashCounter, useVerifyCashCounter, useReopenCashCounter, useCashCounterHistory } from '../hooks/useCashCounter';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from '../utils/toast';
@@ -239,14 +239,12 @@ function OpenCounterForm() {
 
   // Calculate total from denominations
   const total = useMemo(() => {
-    return Object.entries(denominations).reduce((sum, [denom, count]) => {
-      return sum + (Number(denom) * count);
-    }, 0);
+    return denominationsTotal(denominations);
   }, [denominations]);
 
   const shownTotal = useCountUp(total, { duration: 300 });
 
-  const handleDenominationChange = (denom: keyof Denominations, count: number) => {
+  const handleDenominationChange = (denom: DenominationKey, count: number) => {
     setDenominations(prev => ({ ...prev, [denom]: count }));
   };
 
@@ -339,9 +337,7 @@ function CloseCounterForm({ counter }: { counter: any }) {
 
   // Calculate total from denominations
   const total = useMemo(() => {
-    return Object.entries(denominations).reduce((sum, [denom, count]) => {
-      return sum + (Number(denom) * count);
-    }, 0);
+    return denominationsTotal(denominations);
   }, [denominations]);
 
   // Get expected closing balance
@@ -353,7 +349,7 @@ function CloseCounterForm({ counter }: { counter: any }) {
   const shownDifference = useCountUp(Math.abs(difference), { duration: 300 });
   const matches = total > 0 && total === expectedClosing;
 
-  const handleDenominationChange = (denom: keyof Denominations, count: number) => {
+  const handleDenominationChange = (denom: DenominationKey, count: number) => {
     setDenominations(prev => ({ ...prev, [denom]: count }));
   };
 
